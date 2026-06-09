@@ -59,7 +59,7 @@ echo "Building runtime (in-place)..."
 # -----------------------------
 
 llc -filetype=obj src/zen_stdlib/constants.ll -o src/zen_stdlib/constants.o
-llc -filetype=obj src/zen_stdlib/zen_stdlib_opt.ll -o src/zen_stdlib/zen_stdlib_opt.o
+llc -filetype=obj src/zen_stdlib/stdlib_opt.ll -o src/zen_stdlib/stdlib_opt.o
 
 # -----------------------------
 # RUNTIME (.c → .o in same folder)
