@@ -378,18 +378,18 @@ export class HandleFunction {
         // store incoming param (p.temp)
         local.push(`store ${p.llvmType} ${p.temp}, ${p.llvmType}* ${ptr}`);
         
-        const t = this.IRB.newTemp()
-        local.push(`${t} = load ${p.llvmType}, ptr ${ptr}`);
+       // const t = this.IRB.newTemp()
+       // local.push(`${t} = load ${p.llvmType}, ptr ${ptr}`);
         
         
         // update symbol table
         this.IRB.setVar(p.name, this.IRB.createData({
-          ptr: t, // special case for primitive types (loaded value)
+          ptr, 
           llvmType: p.llvmType,
           type: p.type,
           isConstant: false,
           isGlobal: false,
-          needsLoad: false,
+          needsLoad: true,
           fromParam: true
         }));
       }

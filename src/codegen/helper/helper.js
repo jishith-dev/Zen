@@ -48,7 +48,7 @@ export class IRBuilder {
     this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported file flag
-    this.stdlibMode = false; // std mode toggler
+    this.stdlibMode = true; // std mode toggler
     
     this.formatMap = this.formatMap || new Map(); // format for screen() 
     

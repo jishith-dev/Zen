@@ -806,10 +806,12 @@ export class Parser {
     
     if (!isInsideMethod) {
       name = this.expect("IDENTIFIER").value;
+      if (!this.IRB.stdlibMode) {
       if (name.startsWith("_")) {
         this.IRB.emitError("NamingError"
           `Illegal identifier '${name}'. '_' prefix is reserved for Zen internal symbols`, this.lineAndColumn()
         );
+      }
       }
     }
     

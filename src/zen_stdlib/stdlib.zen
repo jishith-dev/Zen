@@ -58,7 +58,7 @@ fn pow(int base, int exp) double {
 
     if (base == 0) {
         if (exp > 0) return 0.0
-        return inf   // or error (0^-n)
+        return INF   
     }
 
     if (base == 1) return 1.0
@@ -92,8 +92,8 @@ fn pow(int base, int exp) double {
         // =========================
         // OVERFLOW GUARD
         // =========================
-        if (result == inf) {
-            return inf
+        if (result == INF) {
+            return INF
         }
 
         i = i + 1

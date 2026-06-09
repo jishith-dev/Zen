@@ -1265,37 +1265,81 @@ export class Expression {
       //   NEGATION (-)
       
       if (node.operator === "-") {
-        
-        if (val.type === "int") {
-          
-          return {
-            ptr: `-${v}`,
-            type: "int",
-            llvmType: "i32",
-            local,
-            global,
-            postOrPrefix: false,
-            endLabel: null,
-            isVarRef: false
-          };
-        }
-        
-        if (val.type === "double") {
-          
-          return {
-            ptr: `-${v}`,
-            type: "double",
-            llvmType: "double",
-            local,
-            global,
-            endLabel: null,
-            postOrPrefix: false,
-            isVarRef: false
-          };
-        }
-        
-        this.IRB.emitError("TypeError", `Cannot apply - to ${val.type}`, node);
-      }
+
+  // -------------------------
+  // CASE 1: literal (compile-time fold)
+  // -------------------------
+  if (val.kind === "literal") {
+   
+    if (val.type === "int") {
+      
+      return {
+        ptr: `-${v}`,
+        type: "int",
+        llvmType: "i32",
+        local,
+        global,
+        postOrPrefix: false,
+        endLabel: null,
+        isVarRef: false
+      };
+    }
+
+    if (val.type === "double") {
+      
+      return {
+        ptr: `-${v}`,
+        type: "double",
+        llvmType: "double",
+        local,
+        global,
+        postOrPrefix: false,
+        endLabel: null,
+        isVarRef: false
+      };
+    }
+  }
+
+  // -------------------------
+  // CASE 2: variable / reference (runtime IR)
+  // -------------------------
+
+  const tmp = this.IRB.newTemp();
+
+  if (val.type === "int") {
+    
+    const tm = this.IRB.newTemp();
+    this.IRB.emit(`${tm} = sub i32 0, ${v}`);
+    
+    return {
+      ptr: tm,
+      type: "int",
+      llvmType: "i32",
+      local,
+      global,
+      postOrPrefix: false,
+      endLabel: null
+    };
+  }
+
+  if (val.type === "double") {
+    
+    const tm = this.IRB.newTemp();
+    this.IRB.emit(`${tm} = fsub double 0.0, ${v}`);
+    
+    return {
+      ptr: tm,
+      type: "double",
+      llvmType: "double",
+      local,
+      global,
+      postOrPrefix: false,
+      endLabel: null
+    };
+  }
+
+  this.IRB.emitError("TypeError", `Cannot apply - to ${val.type}`, node);
+}
       
       // + 
       

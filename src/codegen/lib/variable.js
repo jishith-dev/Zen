@@ -414,9 +414,11 @@
       
       this.IRB.emitExpr(expr);
       
+      
       this.IRB.emit(
         `store ${llvmType} ${expr.ptr}, ptr ${orgPtr}`
       );
+     
       
       this.IRB.updateReactive(expression.name);
     }
