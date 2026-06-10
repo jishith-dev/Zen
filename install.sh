@@ -8,7 +8,7 @@ INSTALL_DIR="$HOME/.zen"
 echo "Installing Zen Compiler..."
 
 rm -rf "$INSTALL_DIR"
-git clone --depth 1 "$REPO" "$INSTALL_DIR"
+git clone --depth 1 --branch dev "$REPO" "$INSTALL_DIR"
 
 cd "$INSTALL_DIR"
 
