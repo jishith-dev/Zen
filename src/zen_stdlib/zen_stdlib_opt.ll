@@ -1,5 +1,5 @@
-; ModuleID = '/storage/emulated/0/zen/src/zen_stdlib/build/stdlib.ll'
-source_filename = "/storage/emulated/0/zen/src/zen_stdlib/build/stdlib.ll"
+; ModuleID = 'stdlib.ll'
+source_filename = "stdlib.ll"
 
 @INF = external local_unnamed_addr constant double
 @I32_MAX = external local_unnamed_addr constant i32
