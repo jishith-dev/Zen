@@ -3,7 +3,7 @@
 set -e
 
 REPO="https://github.com/jishith-dev/Zen.git"
-BRANCH="dev"
+BRANCH="main"
 INSTALL_DIR="$HOME/.zen"
 
 echo "Installing Zen Compiler..."
@@ -52,7 +52,7 @@ echo "Install LLVM and re-run installer."
 exit 1
 }
 
-echo "Building runtime (in-place)..."
+echo "Building runtime ..."
 
 llc -filetype=obj src/zen_stdlib/constants.ll -o src/zen_stdlib/constants.o
 
