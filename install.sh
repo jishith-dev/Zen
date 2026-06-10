@@ -56,7 +56,7 @@ echo "Building runtime ..."
 
 llc -filetype=obj src/zen_stdlib/constants.ll -o src/zen_stdlib/constants.o
 
-llc -filetype=obj src/zen_stdlib/zen_stdlib_opt.ll -o src/zen_stdlib/stdlib_opt.o
+llc -filetype=obj src/zen_stdlib/zen_stdlib_opt.ll -o src/zen_stdlib/zen_stdlib_opt.o
 
 
 clang -c src/codegen/runtime/runtime.c -o src/codegen/runtime/runtime.o
