@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO="https://github.com/jishith-dev/Zen.git"
-BRANCH="dev"
+BRANCH="main"
 INSTALL_DIR="$HOME/.zen"
 
 # ---------------- COLORS ----------------
