@@ -21,27 +21,47 @@ error()   { echo -e "${RED}[zen] error:${RESET} $*" >&2; }
 
 # ---------------- DEPS ----------------
 
+REQUIRED_DEPS=(clang llc opt git node)
+
 check_dep() {
-  command -v "$1" >/dev/null 2>&1 || {
-    error "$1 not found."
-    echo ""
-    echo "Install LLVM toolchain:"
-    echo "  Termux:         pkg install llvm clang"
-    echo "  Ubuntu/Debian:  sudo apt install llvm clang"
-    echo "  Arch:           sudo pacman -S llvm clang"
-    echo "  Fedora:         sudo dnf install llvm clang"
-    echo "  macOS:          brew install llvm"
-    echo ""
-    exit 1
-  }
+  command -v "$1" >/dev/null 2>&1
 }
 
 info "Checking dependencies..."
-check_dep clang
-check_dep llc
-check_dep opt
-check_dep git
-check_dep node
+
+missing=()
+
+for dep in "${REQUIRED_DEPS[@]}"; do
+  if ! check_dep "$dep"; then
+    missing+=("$dep")
+  fi
+done
+
+if [ ${#missing[@]} -ne 0 ]; then
+  error "Missing dependencies: ${missing[*]}"
+  echo ""
+  echo "Install them using:"
+  echo ""
+  echo "================ LINUX (Ubuntu/Debian) ================"
+  echo "sudo apt update"
+  echo "sudo apt install -y git nodejs npm clang llvm"
+  echo ""
+  echo "================ ARCH ================================"
+  echo "sudo pacman -S git nodejs npm clang llvm"
+  echo ""
+  echo "================ FEDORA =============================="
+  echo "sudo dnf install git nodejs npm clang llvm"
+  echo ""
+  echo "================ MACOS ==============================="
+  echo "brew install git node llvm"
+  echo ""
+  echo "================ TERMUX =============================="
+  echo "pkg update"
+  echo "pkg install git nodejs clang llvm"
+  echo ""
+  exit 1
+fi
+
 success "All dependencies found."
 
 # ---------------- CLONE ----------------
@@ -64,14 +84,20 @@ compile_ll() {
   local src="$1"
   local out="$2"
   [ -f "$src" ] || { error "Source not found: $src"; exit 1; }
-  llc -filetype=obj -relocation-model=pic "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
+  llc -filetype=obj -relocation-model=pic "$src" -o "$out" || {
+    error "Failed to compile: $src"
+    exit 1
+  }
 }
 
 compile_c() {
   local src="$1"
   local out="$2"
   [ -f "$src" ] || { error "Source not found: $src"; exit 1; }
-  clang -c -fPIC "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
+  clang -c -fPIC "$src" -o "$out" || {
+    error "Failed to compile: $src"
+    exit 1
+  }
 }
 
 compile_ll src/zen_stdlib/constants.ll        src/zen_stdlib/constants.o
@@ -124,7 +150,7 @@ if ! echo "$PATH" | grep -q "$BIN_DIR"; then
   warn "$BIN_DIR is not in your PATH."
   echo ""
   echo "Add this to your shell config (~/.bashrc or ~/.zshrc):"
-  echo "  export PATH=\"$BIN_DIR:\$PATH\""
+  echo "export PATH=\"$BIN_DIR:\$PATH\""
   echo ""
 fi
 
@@ -133,7 +159,7 @@ fi
 echo ""
 success "Zen installed successfully!"
 echo ""
-echo "  zen --help     show commands"
-echo "  zen --version  show version"
-echo "  zen run <file> run a .zen file"
+echo "  zen --help"
+echo "  zen --version"
+echo "  zen run <file>"
 echo ""

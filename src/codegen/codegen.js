@@ -141,14 +141,7 @@ export class CodeGen {
       }
     }
     
-    for (const node of this.ast) {
-      if (!this.IRB.diagnosticMode) {
-        if (this.IRB.hadError) {
-          return {ir: "", modules: [], symbolTable: [], functionTable: []};
-        }
-      }
-      this.dispatch(node);
-    }
+    for (const node of this.ast) this.dispatch(node);
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
       this.IRB.emit("ret i32 0 \n}");
     }
@@ -189,12 +182,6 @@ export class CodeGen {
   
   dispatch(node, globalScope = true, fromInsideBlock = false) {
     // if its direct node dont again hoist function. we can toggle this in src/codegen/lib/block.js
-    
-    if (!this.IRB.diagnosticMode) {
-      if (this.IRB.hadError) {
-        return {ir: "", modules: [], symbolTable: [], functionTable: []};
-      }
-    }
     
     // block level function hoisting 
     if (fromInsideBlock) {

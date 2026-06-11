@@ -72,7 +72,7 @@ Current Version: v1.0.0
 
 ---
 
-### K. Installation
+### Installation
 
 Zen can be installed depending on the target platform.
 
@@ -81,6 +81,51 @@ Zen can be installed depending on the target platform.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
 ```
+
+---
+
+## Host Language
+
+Zen's compiler is implemented in **JavaScript** and runs on **Node.js**. The compiler emits LLVM IR, which is then compiled to native machine code using the LLVM toolchain.
+
+### Dependencies
+
+The following dependencies are required before installing Zen:
+
+| Dependency | Purpose |
+|------------|---------|
+| `node` | Runs the Zen compiler |
+| `clang` | Compiles LLVM IR to native binary |
+| `llvm` | Provides `llc` and `opt` tools for optimization and linking |
+
+### Installing Dependencies
+
+#### Termux (Android)
+```bash
+pkg install llvm clang nodejs
+```
+
+#### Ubuntu / Debian
+```bash
+sudo apt install llvm clang nodejs
+```
+
+#### Arch Linux
+```bash
+sudo pacman -S llvm clang nodejs
+```
+
+#### Fedora
+```bash
+sudo dnf install llvm clang nodejs
+```
+
+#### macOS
+```bash
+brew install llvm node
+```
+
+---
 
 #### Windows
 
@@ -407,7 +452,16 @@ A sequence of decimal digits with no prefix, suffix, or separator.
 1000
 ```
 
-Hexadecimal, binary, and octal representations are not supported in v1.0.0.
+Hexadecimal literals are supported using the `0x` prefix.
+
+```zen
+0xFF
+0x1A3F
+0x00
+```
+
+Binary and octal representations are not supported in v1.0.0.
+
 
 #### 2.6.2 Double Literals
 
@@ -4846,7 +4900,7 @@ When a variable is declared without an initializer, it is lowered to its type's 
 
 Zen can be installed depending on the target platform.
 
-#### All Platforms (Linux, macOS, Termux)
+#### All Platforms (Linux, macOS, Android)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash

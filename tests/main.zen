@@ -1,0 +1,3 @@
+import (getList) from "m.zen"
+
+loop (value of getList()) screen(value)

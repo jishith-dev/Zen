@@ -288,6 +288,9 @@ export class Call {
         this.IRB.globals.push(global.join("\n"));
       }
       const isList = fn.returnType === "List";
+      if (isList) {
+      this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
+    }
       const isMap = fn.returnType === "Map";
       return {
         ptr: callTmp,
@@ -358,6 +361,11 @@ export class Call {
     }
     
     const isList = fn.returnType === "List";
+    
+    if (isList) {
+      this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
+    }
+    
     const isMap = fn.returnType === "Map";
     return {
       ptr: tmp,

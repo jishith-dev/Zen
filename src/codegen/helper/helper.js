@@ -753,6 +753,7 @@ strTemp() {
   ├── ${YELLOW}${err.message}${RESET}
   └── at: ${CYAN}${location}${RESET}`
   );
+  process.exit(1);
 }
   
   formatValue(value, type) {

@@ -5,7 +5,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath, pathToFileURL } from "url";
 
-// ---------------- ROOT ----------------
+// ROOT
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +17,7 @@ const IRBuilder = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/codegen/helper/helper.js")).href
 )).IRBuilder;
 
-// ---------------- HELP ----------------
+// HELP
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -83,7 +83,7 @@ function run(cmd) {
   }
 }
 
-// ---------------- HELP / VERSION ----------------
+// HELP / VERSION
 
 if (!command || command === "help" || command === "--help" || command === "-h") {
   help();
@@ -95,24 +95,12 @@ if (command === "version" || command === "--version" || command === "-v") {
   process.exit(0);
 }
 
-// ---------------- INPUT FILE ----------------
+// INPUT FILE
 
 const file = args[1];
 const moduleName = path.basename(file, path.extname(file));
 
 const IRB = new IRBuilder(moduleName);
-
-if (!IRB.diagnosticMode) {
-process.on("uncaughtException", (err) => {
-  IRB.emitError(`InternalError`, `${err.message}`);
-  process.exit(1);
-});
-
-process.on("unhandledRejection", (err) => {
-  IRB.emitError(`InternalError`, `${err}`);
-  process.exit(1);
-});
-}
 
 if (!file) {
   console.error("error: missing input file");
@@ -130,7 +118,7 @@ if (!fs.existsSync(inputFile)) {
 const PROJECT_ROOT = path.dirname(inputFile);
 const source = fs.readFileSync(inputFile, "utf8");
 
-// ---------------- LOAD COMPILER MODULES ----------------
+// LOAD COMPILER MODULES
 
 const Lexer = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/lexer/lexer.js")).href
@@ -144,7 +132,7 @@ const CodeGen = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/codegen/codegen.js")).href
 )).CodeGen;
 
-// ---------------- FRONTEND ---------------
+// FRONTEND
 
 const lexer = new Lexer(source, IRB);
 const tokens = lexer.tokenize();
@@ -162,7 +150,7 @@ if (command === "ast") {
   process.exit(0);
 }
 
-// ---------------- IR GENERATION ----------------
+// IR GENERATION
 
 const codegen = new CodeGen(ast, moduleName); 
 const llvm = codegen.generateLLVM();
@@ -178,12 +166,12 @@ if (!llvm) {
 
 const moduleFiles = llvm.modules ? [...llvm.modules] : [];
 
-// ---------------- BUILD DIR ----------------
+// BUILD DIR
 
 const buildDir = path.join(PROJECT_ROOT, "build");
 fs.mkdirSync(buildDir, { recursive: true });
 
-// ---------------- OUTPUT FILES ----------------
+// OUTPUT FILES
 
  const exeName = path.basename(inputFile).replace(/\.zen$/, "");
 
@@ -199,12 +187,12 @@ if (command === "clean") {
   process.exit(0);
 }
 
-// ---------------- LLVM PIPELINE ----------------
+// LLVM PIPELINE
 
 run(`opt -O2 ${outLL} -S -o ${outOptLL}`);
 run(`llc -filetype=obj -relocation-model=pic ${outOptLL} -o ${outO}`);
 
-// ---------------- MODULE OBJECTS ----------------
+// MODULE OBJECTS
 
 const moduleObjs = [];
 
@@ -216,7 +204,7 @@ for (const ll of moduleFiles) {
   moduleObjs.push(obj);
 }
 
-// ---------------- STD LIB + RUNTIME ----------------
+// STD LIB + RUNTIME
 
 const stdlibObjs = [
   path.join(COMPILER_ROOT, "src/zen_stdlib/constants.o"),
@@ -229,7 +217,7 @@ const runtimeObjs = [
   path.join(COMPILER_ROOT, "src/codegen/runtime/mapRuntime.o"),
 ];
 
-// ---------------- LINK ----------------
+// LINK
 
 const outputExe = path.join(buildDir, exeName);
 
@@ -244,7 +232,7 @@ run([
   outputExe,
 ].join(" "));
 
-// ---------------- RUN ----------------
+// RUN
 
 if (command === "build") {
   console.log(`Build successful: ${outputExe}`);

@@ -1,0 +1,6 @@
+fn getList() List<string> {
+ List<string> a = ["Hello", "Zen"]
+ return a
+}
+
+export(getList)
