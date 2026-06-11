@@ -5,6 +5,7 @@ import {
   GLOBAL_EXTERNAL,
   COMPOUND_OPERATORS
 } from "../../config/config.js";
+import fs from "fs";
 
 export class IRBuilder {
   constructor(moduleName) {
