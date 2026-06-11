@@ -243,7 +243,6 @@ const BUILTIN_FUNCTIONS = [
   "_time_month",
   "_time_day",
   "_time_year",
-  "_time_sleep",
   
   // HTTP
   "_http_get",

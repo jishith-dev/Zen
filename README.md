@@ -2,8 +2,8 @@
 
 **Version 1.0.0** · Stable · June 2026
 
-**GitHub**: [zen](https://github.com/&lt;your-username&gt;/zen)  
-**Contact**: yourmail@example.com  
+**GitHub**: https://github.com/`Jishith-dev/Zen`
+**Contact**: jishithmp534@gmail.com
 
 ---
 
@@ -72,37 +72,19 @@ Current Version: v1.0.0
 
 ---
 
-# Installation
+### K. Installation
 
-Zen can be installed depending on your operating system.
+Zen can be installed depending on the target platform.
 
-### Ubuntu / Debian / Linux
-
-Install Zen using apt:
+#### All Platforms (Linux, macOS, Termux)
 
 ```bash
-sudo apt install zen
+curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
 ```
 
-### macOS
+#### Windows
 
-Install Zen using Homebrew:
-
-```bash
-brew install zen
-```
-
-### Windows
-
-Windows support is not available in v1 yet. It will be added in a future release.
-
-### Termux (Android)
-
-Install Zen using pkg:
-
-```bash
-pkg install zen
-```
+Not available in v1 yet.
 
 ---
 
@@ -363,7 +345,7 @@ The following identifiers are reserved by the language and may not be used as us
 | **reactive** | `reactive` |
 | **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` |
 | **Loop Control flow** | `break` `continue` |
-| **export and import** | `export` `import`  `from` |
+| **export and import** | `export` `import` |
 | **Functions** | `fn` `return` |
 | **inference** | `auto` |
 | **struct** | `struct` |
@@ -503,30 +485,6 @@ false
 ```
 
 Any other casing (`True`, `TRUE`) is not a boolean literal and will be interpreted as an identifier.
-
-### 2.6.5 List Literals
-
-A comma-separated sequence of values enclosed in square brackets.
-
-```zen
-[10, 20, 30]
-["hello", "world"]
-[1.0, 2.5, 3.14]
-```
-
-The type of a list literal is inferred from its first element. All subsequent elements must match that type.
-
-```zen
-[10, 20, 30]       # inferred as List<int>
-[1.0, 2.5, 3.14]   # inferred as List<double>
-["a", "b", "c"]    # inferred as List<string>
-```
-
-An empty list `[]` has no inferrable type and must be used with an explicit declaration.
-
-```zen
-List<int> nums = []
-```
 
 ---
 
@@ -1268,7 +1226,7 @@ For cases requiring consistent mutation-safe iteration behavior, use:
 
 - the **general loop construct (Section 4.10)**:
 ```zen
-loop (init?, condition, update) { # init is optional
+loop (init; condition; update) {
   # safe controlled iteration
 }
 ```
@@ -1481,35 +1439,19 @@ a.country = "India"                    # creates new field at runtime
 
 #### Built-in Methods
 
-| Method | Signature | Description |
-|---|---|---|
-| `has` | `has(key)` | Returns `bool` — checks if a key exists |
-| `remove` | `remove(key)` | Deletes the key-value pair from the map |
-| `free` | `free()` | Releases the map from heap memory |
+| Method | Description |
+|---|---|
+| `free()` | Releases the Map from heap memory |
 
 ```zen
-Map person = {
-  name: "Achu",
-  age: 25
-}
-
-bool exists = person.has("name")       # true
-person.remove("age")                   # deletes age key
-person.free()                          # releases map
+a.free()
 ```
 
-#### Free and Maps
-
-After calling `free()`, the map must not be accessed. Any use after `free()` results in a runtime error.
+After calling `free()`, the Map must not be accessed or reassigned. Any use after `free()` will result in a runtime error.
 
 ```zen
-Map person = {
-  name: "Achu",
-  age: 25
-}
-
-person.free()
-person.name = "x"                      # runtime error: use after free
+a.free()
+a.name = "x"                           # runtime error: use after free
 ```
 
 ---
@@ -1602,19 +1544,6 @@ nums.push(1)                           # runtime error: use after free
 For nested lists, freeing an inner list directly is technically permitted but not recommended. ZEN cannot fully track inner list lifetimes after a partial free, and accessing a freed inner list will throw a runtime error.
 
 > **Recommendation:** Do not call `free()` on individual inner lists of a nested `List<List<T>>`. Free the outer list instead.
-
-### Built-in List Properties
-
-| Property | Type | Description |
-|---|---|---|
-| `length` | `int` | Number of elements currently in the list |
-| `capacity` | `int` | Total allocated slots before reallocation |
-
-```zen
-List<int> nums = [1, 2, 3]
-int len = nums.length      # 3
-int cap = nums.capacity    # allocated capacity
-```
 
 ---
 
@@ -2710,12 +2639,10 @@ Returns `int`.
 
 ```zen
 int len = length("hello")           # 5
-int arr[3] = [10, 20, 30]           # 3
+int len = length([1, 2, 3])         # 3
+List<int> nums = [10, 20, 30]
+int len = length(nums)              # 3
 ```
-
-note: length() is valid only for strings and fixed size arrays. List have
-built-in length property.
-
 ---
 
 #### Type Conversion Functions
@@ -2841,29 +2768,6 @@ bool connected = net.online()
 #### 11.3.1 `sys`
 
 System-level process control.
-
----
-
-##### `sys.performance`
-
-Returns a high-precision monotonic timestamp in milliseconds.
-
-```
-sys.performance() → double
-```
-
-Returns `double`.
-
-```zen
-double start = sys.performance()
-
-# ... code to benchmark ...
-
-double end = sys.performance()
-double elapsed = end - start
-
-screen("Elapsed: " + elapsed + "ms")
-```
 
 ---
 
@@ -4279,14 +4183,14 @@ Zen reports errors in a consistent structured format. Compile-time errors includ
 **Compile-time format:**
 ```
 [Zen  <ErrorType>]
-  ├── `<message>`
+  ├── <message>
   └── at: <file>:<line>:<col>
 ```
 
 **Runtime format:**
 ```
 [Zen  <ErrorType>]
-  └── `<message>`
+  └── <message>
 ```
 
 ---
@@ -4795,7 +4699,6 @@ The following identifiers are reserved by the language and cannot be used as use
 | `export` | Module |
 | `import` | Module |
 | `from` | Module |
-| `reactive` | reactive variable |
 
 ---
 
@@ -4943,33 +4846,24 @@ When a variable is declared without an initializer, it is lowered to its type's 
 
 Zen can be installed depending on the target platform.
 
-#### Ubuntu / Debian / Linux
+#### All Platforms (Linux, macOS, Termux)
 
 ```bash
-sudo apt install zen
-```
-
-#### macOS
-
-```bash
-brew install zen
+curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
 ```
 
 #### Windows
 
 Not available in v1 yet.
 
-#### Termux (Android)
-
-```bash
-pkg install zen
-```
+---
 
 ### L. Links
 
-- Source Code: https://github.com/&lt;your-repo&gt;
-- Documentation: https://&lt;your-doc-site&gt;
-- Issue Tracker: https://github.com/&lt;your-repo&gt;/issues
+- Source Code: 
+- **GitHub**: https://github.com/`Jishith-dev/Zen`
+- Documentation: https://`https://jishith-dev.github.io/zen-doc/`
+- Issue Tracker: https://github.com/`Jishith-dev/Zen/issues`
 
 ---
 
@@ -4982,7 +4876,7 @@ You are free to:
 - Modify the compiler
 - Contribute improvements and fixes
 
-License: MIT
+License: MIT 
 
 ---
 
@@ -4990,8 +4884,9 @@ License: MIT
 
 For bugs, contributions, or discussions:
 
-- Email: yourmail@example.com
-- GitHub: https://github.com/&lt;your-username&gt;
+- Email: jishithmp534@gmail.com
+- GitHub: https://github.com/`Jishith-dev/Zen`
+- 
 
 ## Disclaimer
 

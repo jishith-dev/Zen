@@ -64,14 +64,14 @@ compile_ll() {
   local src="$1"
   local out="$2"
   [ -f "$src" ] || { error "Source not found: $src"; exit 1; }
-  llc -filetype=obj "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
+  llc -filetype=obj -relocation-model=pic "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
 }
 
 compile_c() {
   local src="$1"
   local out="$2"
   [ -f "$src" ] || { error "Source not found: $src"; exit 1; }
-  clang -c "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
+  clang -c -fPIC "$src" -o "$out" || { error "Failed to compile: $src"; exit 1; }
 }
 
 compile_ll src/zen_stdlib/constants.ll        src/zen_stdlib/constants.o
