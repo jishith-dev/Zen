@@ -21,7 +21,7 @@ export class Module {
   }
 
 loadFile(source) {
-  return fs.readFileSync(source, "utf8");
+  return this.IRB.safeReadFile(source);
 }
   
   // MAIN ENTRY

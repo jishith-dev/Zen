@@ -1,5 +1,5 @@
-; ModuleID = '/storage/emulated/0/zen/tests/build/main.ll'
-source_filename = "/storage/emulated/0/zen/tests/build/main.ll"
+; ModuleID = '/sdcard/zen/tests/build/main.ll'
+source_filename = "/sdcard/zen/tests/build/main.ll"
 
 ; Function Attrs: nofree nounwind
 define void @screen_string_main_0(ptr readonly captures(none) %x) local_unnamed_addr #0 {

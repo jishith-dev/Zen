@@ -755,6 +755,21 @@ strTemp() {
   );
   process.exit(1);
 }
+
+ safeReadFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      this.emitError(
+        "FileNotFound",
+        `Cannot find file: ${filePath}`
+      );
+    }
+
+    throw err; // unexpected errors still crash 
+  }
+}
   
   formatValue(value, type) {
     if (type === "double") {

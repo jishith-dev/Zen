@@ -116,7 +116,7 @@ if (!fs.existsSync(inputFile)) {
 
 // Project root = file location 
 const PROJECT_ROOT = path.dirname(inputFile);
-const source = fs.readFileSync(inputFile, "utf8");
+const source = IRB.safeReadFile(inputFile);
 
 // LOAD COMPILER MODULES
 
