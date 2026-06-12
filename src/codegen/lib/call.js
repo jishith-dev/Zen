@@ -214,7 +214,7 @@ export class Call {
         );
       }
       
-      // 1. declared type vs inferred type check
+      // declared type vs inferred type check
       if (expectedType && inferredType && expectedType !== inferredType) {
         this.IRB.emitError(
           "TypeError",
@@ -222,7 +222,7 @@ export class Call {
         );
       }
       
-      // 2. validate ALL rest args
+      //  validate ALL rest args
       for (const a of restArgs) {
         const t = a.type;
         

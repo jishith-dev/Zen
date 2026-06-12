@@ -180,9 +180,12 @@ export class IRBuilder {
       // guard against duplicate definition
       if (this.functions.has(finalName)) continue;
       
+      const isListReturn = ["split"].includes(finalName);
+      
       this.setFunction(finalName, {
         name: finalName,
-        returnType: info.returnType,
+        returnType: isListReturn ? "List" : info.returnType,
+        retGeneric: isListReturn ? "string" : null, // only temporary now..coz v1 only have list return builtin called 'split', later we can improve this.
         isBuiltin: true
       }, node);
     }
@@ -214,7 +217,7 @@ export class IRBuilder {
       return size;
     }
     
-    return 8;
+    return 8; // fallback for ptr
   }
   
   bindLineColumn(node) {
