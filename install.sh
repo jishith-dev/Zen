@@ -53,7 +53,7 @@ if [ ${#missing[@]} -ne 0 ]; then
   echo ""
   echo "================ TERMUX =============================="
   echo "pkg update"
-  echo "pkg install git nodejs clang llvm libcurl"
+  echo "pkg install git nodejs clang llvm pkg-config libcurl"
   echo ""
   exit 1
 fi
@@ -70,7 +70,7 @@ if ! pkg-config --exists libcurl 2>/dev/null; then
   echo "  Arch          : sudo pacman -S curl"
   echo "  Fedora        : sudo dnf install libcurl-devel"
   echo "  macOS         : brew install curl"
-  echo "  Termux        : pkg install curl"
+  echo "  Termux        : pkg install pkg-config libcurl"
   echo ""
   exit 1
 fi
