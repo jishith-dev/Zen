@@ -180,12 +180,9 @@ export class IRBuilder {
       // guard against duplicate definition
       if (this.functions.has(finalName)) continue;
       
-      const isListReturn = ["split"].includes(finalName);
-      
       this.setFunction(finalName, {
         name: finalName,
-        returnType: isListReturn ? "List" : info.returnType,
-        retGeneric: isListReturn ? "string" : null, // only temporary now..coz v1 only have list return builtin called 'split', later we can improve this.
+        returnType: info.returnType,
         isBuiltin: true
       }, node);
     }
@@ -1885,10 +1882,13 @@ end:
         name: `p${i}`
       }));
       
+      const isListReturn = ["split"].includes(name);
+      
       this.setFunction(name, {
         name,
-        returnType: this.revertType(fn.ret),
-        params
+        returnType: isListReturn ? "List" : this.revertType(fn.ret),
+        params,
+        retGeneric: isListReturn ? "string" : this.revertType(fn.ret) // temp for minimal check now. coz 'split' is the only list return. can be extend later
       }, node);
     }
   }
