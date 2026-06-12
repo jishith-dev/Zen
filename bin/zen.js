@@ -215,6 +215,7 @@ const runtimeObjs = [
   path.join(COMPILER_ROOT, "src/codegen/runtime/runtime.o"),
   path.join(COMPILER_ROOT, "src/codegen/runtime/listRuntime.o"),
   path.join(COMPILER_ROOT, "src/codegen/runtime/mapRuntime.o"),
+  path.join(COMPILER_ROOT, "src/codegen/runtime/curlRuntime.o"),
 ];
 
 // LINK
@@ -228,6 +229,7 @@ run([
   ...stdlibObjs,
   ...runtimeObjs,
   "-O3",
+  "-lcurl",
   "-o",
   outputExe,
 ].join(" "));

@@ -148,7 +148,7 @@ const RESERVED_FUNCTIONS = [
   "cos", "tan", "log", "exp",
   "random", "randomInt",
   
-  "match", "json"
+  "match", "json", "split"
 ]
 
 // all built in functions
@@ -191,7 +191,7 @@ const BUILTIN_FUNCTIONS = [
   "replace", "contains",
   "upperCase", "lowerCase",
   "startsWith", "endsWith",
-  "trim", "splitAt",
+  "trim", "splitAt", "split",
   "repeat", "padStart", "padEnd", "padCenter", "count",
   "capitalize", "extName", "sin",
   "cos", "tan", "log", "exp",
@@ -825,6 +825,7 @@ const STD_FUNCTIONS_SCHEMA = {
   endsWith: { ret: "i1", params: ["i8*", "i8*"] },
   trim: { ret: "i8*", params: ["i8*"] },
   splitAt: { ret: "i8*", params: ["i8*", "i8*", "i32"] },
+  split: { ret: "ptr", params: ["i8*", "i8*"] },
   repeat: { ret: "i8*", params: ["i8*", "i32"] },
   count: { ret: "i32", params: ["i8*", "i8*"] },
   

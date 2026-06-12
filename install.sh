@@ -3,10 +3,8 @@
 set -euo pipefail
 
 REPO="https://github.com/jishith-dev/Zen.git"
-BRANCH="main"
+BRANCH="dev"
 INSTALL_DIR="$HOME/.zen"
-
-# ---------------- COLORS ----------------
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -18,8 +16,6 @@ info()    { echo -e "${CYAN}[zen]${RESET} $*"; }
 success() { echo -e "${GREEN}[zen]${RESET} $*"; }
 warn()    { echo -e "${YELLOW}[zen]${RESET} $*"; }
 error()   { echo -e "${RED}[zen] error:${RESET} $*" >&2; }
-
-# ---------------- DEPS ----------------
 
 REQUIRED_DEPS=(clang llc opt git node)
 
@@ -44,27 +40,44 @@ if [ ${#missing[@]} -ne 0 ]; then
   echo ""
   echo "================ LINUX (Ubuntu/Debian) ================"
   echo "sudo apt update"
-  echo "sudo apt install -y git nodejs npm clang llvm"
+  echo "sudo apt install -y git nodejs npm clang llvm libcurl4-openssl-dev"
   echo ""
   echo "================ ARCH ================================"
-  echo "sudo pacman -S git nodejs npm clang llvm"
+  echo "sudo pacman -S git nodejs npm clang llvm curl"
   echo ""
   echo "================ FEDORA =============================="
-  echo "sudo dnf install git nodejs npm clang llvm"
+  echo "sudo dnf install git nodejs npm clang llvm libcurl-devel"
   echo ""
   echo "================ MACOS ==============================="
-  echo "brew install git node llvm"
+  echo "brew install git node llvm curl"
   echo ""
   echo "================ TERMUX =============================="
   echo "pkg update"
-  echo "pkg install git nodejs clang llvm"
+  echo "pkg install git nodejs clang llvm libcurl"
   echo ""
   exit 1
 fi
 
-success "All dependencies found."
+# CHECK CURL DEV HEADERS
 
-# ---------------- CLONE ----------------
+info "Checking for libcurl headers..."
+
+if ! pkg-config --exists libcurl 2>/dev/null; then
+  error "libcurl development headers not found."
+  echo ""
+  echo "Install using:"
+  echo "  Ubuntu/Debian : sudo apt install -y libcurl4-openssl-dev"
+  echo "  Arch          : sudo pacman -S curl"
+  echo "  Fedora        : sudo dnf install libcurl-devel"
+  echo "  macOS         : brew install curl"
+  echo "  Termux        : pkg install libcurl"
+  echo ""
+  exit 1
+fi
+
+CURL_CFLAGS=$(pkg-config --cflags libcurl)
+
+success "All dependencies found."
 
 info "Installing Zen to $INSTALL_DIR..."
 
@@ -75,8 +88,6 @@ git clone --depth 1 --branch "$BRANCH" "$REPO" "$INSTALL_DIR" || {
 }
 
 cd "$INSTALL_DIR"
-
-# ---------------- BUILD STDLIB ----------------
 
 info "Building stdlib..."
 
@@ -100,18 +111,25 @@ compile_c() {
   }
 }
 
+compile_c_curl() {
+  local src="$1"
+  local out="$2"
+  [ -f "$src" ] || { error "Source not found: $src"; exit 1; }
+  clang -c -fPIC $CURL_CFLAGS "$src" -o "$out" || {
+    error "Failed to compile: $src"
+    exit 1
+  }
+}
+
 compile_ll src/zen_stdlib/constants.ll        src/zen_stdlib/constants.o
 compile_ll src/zen_stdlib/zen_stdlib_opt.ll   src/zen_stdlib/zen_stdlib_opt.o
 
-# ---------------- BUILD RUNTIME ----------------
-
 info "Building runtime..."
 
-compile_c src/codegen/runtime/runtime.c       src/codegen/runtime/runtime.o
-compile_c src/codegen/runtime/listRuntime.c   src/codegen/runtime/listRuntime.o
-compile_c src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o
-
-# ---------------- VERIFY ARTIFACTS ----------------
+compile_c      src/codegen/runtime/runtime.c       src/codegen/runtime/runtime.o
+compile_c      src/codegen/runtime/listRuntime.c   src/codegen/runtime/listRuntime.o
+compile_c      src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o
+compile_c_curl src/codegen/runtime/curlRuntime.c   src/codegen/runtime/curlRuntime.o
 
 info "Verifying build artifacts..."
 
@@ -121,6 +139,7 @@ ARTIFACTS=(
   src/codegen/runtime/runtime.o
   src/codegen/runtime/listRuntime.o
   src/codegen/runtime/mapRuntime.o
+  src/codegen/runtime/curlRuntime.o
 )
 
 for f in "${ARTIFACTS[@]}"; do
@@ -128,8 +147,6 @@ for f in "${ARTIFACTS[@]}"; do
 done
 
 success "All artifacts verified."
-
-# ---------------- LINK CLI ----------------
 
 info "Linking CLI..."
 
@@ -144,8 +161,6 @@ else
   BIN_DIR="$HOME/.local/bin"
 fi
 
-# ---------------- PATH CHECK ----------------
-
 if ! echo "$PATH" | grep -q "$BIN_DIR"; then
   warn "$BIN_DIR is not in your PATH."
   echo ""
@@ -153,8 +168,6 @@ if ! echo "$PATH" | grep -q "$BIN_DIR"; then
   echo "export PATH=\"$BIN_DIR:\$PATH\""
   echo ""
 fi
-
-# ---------------- DONE ----------------
 
 echo ""
 success "Zen installed successfully!"
