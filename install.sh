@@ -70,7 +70,7 @@ if ! pkg-config --exists libcurl 2>/dev/null; then
   echo "  Arch          : sudo pacman -S curl"
   echo "  Fedora        : sudo dnf install libcurl-devel"
   echo "  macOS         : brew install curl"
-  echo "  Termux        : pkg install libcurl"
+  echo "  Termux        : pkg install libcurl-dev"
   echo ""
   exit 1
 fi
