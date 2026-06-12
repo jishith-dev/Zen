@@ -192,6 +192,7 @@ const BUILTIN_FUNCTIONS = [
   "upperCase", "lowerCase",
   "startsWith", "endsWith",
   "trim", "splitAt", "split",
+  
   "repeat", "padStart", "padEnd", "padCenter", "count",
   "capitalize", "extName", "sin",
   "cos", "tan", "log", "exp",
@@ -286,7 +287,7 @@ const STD_FUNCTIONS = [
   "cos", "tan", "log", "exp",
   "random", "randomInt",
   
-  "match", "json"
+  "match", "json", "split"
 ];
 
 const NON_STANDALONE_BUILTINS = [];
