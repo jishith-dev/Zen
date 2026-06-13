@@ -260,6 +260,8 @@ export class HandleFunction {
       this.IRB.getLLVMType(returnType); // exclude auto for now
     
     const params = node.params;
+  
+   this.IRB.currentFunction = true; // make currentFunction true for getting sequential temp count for params
     
     const { ir, params: paramData } = this.IRB.buildParams(params, isMethod);
     
