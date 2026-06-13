@@ -221,7 +221,7 @@ export class HandleFunction {
       );
     }
     
-    this.IRB.funcTempCount = 0; // reset counter per function 
+    this.IRB.funcTempCounter = 0; // reset counter per function 
     
     if (this.IRB.currentFunction !== null) {
       this.IRB.emitError("SemanticError", "Nested functions are not supported", node);
