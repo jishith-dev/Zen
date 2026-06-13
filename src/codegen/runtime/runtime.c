@@ -19,7 +19,7 @@
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
 
-double zen_sys_performance() {
+double _sys_performance() {
 
 #ifdef _WIN32
     static LARGE_INTEGER freq;
