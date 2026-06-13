@@ -50,7 +50,9 @@ export class Conditional {
       
       this.block.block(body, false, meta);
       
+      if (!this.IRB.hasTerminator()) {
       this.IRB.emit(`br label %${endLabel}`);
+      }
     }
     
     // ===== else block =====
@@ -59,8 +61,9 @@ export class Conditional {
       this.IRB.emit(`${falseLabel}:`);
       
       this.block.block(node.else?.body);
-      
+      if (!this.IRB.hasTerminator()) {
       this.IRB.emit(`br label %${endLabel}`);
+      }
     } else {
       
       if (chain.length > 0) {
@@ -73,7 +76,9 @@ export class Conditional {
     const last = this.IRB.currentFunction ? this.IRB.currentFunction.body[this.IRB.currentFunction.body.length - 1] : this.IRB.locals[this.IRB.locals.length - 1];
     
     if (last !== `${endLabel}:`) {
+      if (!this.IRB.hasTerminator()) {
       this.IRB.emit(`${endLabel}:`);
+      }
     }
     
   }

@@ -54,6 +54,7 @@ export class IRBuilder {
     this.formatMap = this.formatMap || new Map(); // format for screen() 
     
     this.tempCount = 0; // main counter
+    this.funcTempCounter = 0;
     this.globalTempCount = 0; // global counter
     this.labelCount = 0;
     this.strCount = 0;
@@ -456,7 +457,7 @@ export class IRBuilder {
   }
   
   newTemp() {
-    return `%t${this.tempCount++}`;
+    return `%t${this.currentFunction ? this.funcTempCounter++ : this.tempCount++}`;
   }
   
   newGlobalTemp() {
@@ -2612,4 +2613,16 @@ end:
     
     return `List<${inner}>`;
   }
+  
+lastEmit() {
+  const body = this.currentFunction?.body;
+  if (!body) return "";
+  const last = body[body.length - 1];
+  return last?.trim() ?? "";
+}
+
+hasTerminator() {
+  const last = this.lastEmit();
+  return last.startsWith("ret ") || last.startsWith("br ") || last === "unreachable";
+}
 }
