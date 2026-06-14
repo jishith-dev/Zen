@@ -1074,6 +1074,8 @@ export class Expression {
             `${resultPtr} = call ptr @zen_map_get(ptr ${mapPtr}, ptr ${index.ptr})`
           );
           
+          
+          
           let meta;
           
           if (index.rawStr && mapLayout[index.rawStr]) {
@@ -1107,8 +1109,11 @@ export class Expression {
           
           let finalPtr = resultPtr;
           
+          const tm = this.IRB.newTemp();
+          local.push(`${tm} = load ${finalLLVMType}, ptr ${finalPtr}`);
+          
           return {
-            ptr: finalPtr,
+            ptr: tm,
             type: finalType,
             llvmType: finalLLVMType,
             addr: finalType,
