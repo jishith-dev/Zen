@@ -480,7 +480,7 @@
         
         this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
         
-        const isConstant = isVarDecl ? node.isConstant : data.isConstant;
+        const isConstant = isVarDecl ? node.isConstant : this.IRB.getVar(name, node).isConstant;
         
         this.IRB.setVar(node.name, this.IRB.createData({
           ptr,

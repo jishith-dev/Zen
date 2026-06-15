@@ -80,6 +80,16 @@ export class CodeGen {
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
+    this.IRB.functionBuff.push(`
+define void @_assignSeed () {
+  entry:
+
+  %t0 = call i32 @_time_millis()
+  store i32 %t0, ptr @SEED
+  ret void
+}
+    `)
+    this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
     
     const haveExport = this.ast.find(f => f.type === "EXPORT");
     const haveImport = this.ast.find(f => f.type === "IMPORT");
@@ -100,7 +110,7 @@ export class CodeGen {
     }
     
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.emit("define i32 @main() { \nentry:\n");
+      this.IRB.emit("define i32 @main() { \nentry:\ncall void @_assignSeed()");
     }
     
     // set builtins
@@ -235,10 +245,11 @@ export class CodeGen {
         this.loop.loopOf(node);
         break;
         
-      case 'LOOP_IN':
+     /* case 'LOOP_IN':
         this.loop.loopIn(node);
         break;
-        
+      */
+      
       case "STRUCT":
         this.struct.struct(node, globalScope);
         break;

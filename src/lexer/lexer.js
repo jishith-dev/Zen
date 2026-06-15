@@ -504,7 +504,7 @@ export class Lexer {
     }
     
     return {
-      value: hasDot ? parseFloat(result) : parseInt(result, 10),
+      value: result,
       isFloat: hasDot
     };
   }

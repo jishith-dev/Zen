@@ -234,6 +234,11 @@ export class Parser {
     }
     
     if (this.match("IDENTIFIER")) {
+      
+      if (this.tokens[this.pos + 1].type === "NEWLINE") {
+        
+        this.IRB.emitError("SyntaxError", `Unexpected token '${this.current().value}'`, this.lineAndColumn());
+      }
       const expr = this.parseExpression();
       
       return this.node({
@@ -941,6 +946,16 @@ export class Parser {
     // LOOP OF (ARRAY / LIST)
     // loop (int i of arr)
     
+    // NOTE: loop (v in map) is disabled in ZEN semantic design.
+// Map is not treated as an iterable sequence type.
+
+if (isLoopIn) {
+  this.IRB.emitError(
+    "SemanticError",
+    "loop (v in map) is not supported. Use explicit field access or supported iteration APIs.", this.lineAndColumn()
+  );
+}
+    
     if (isLoopOf) {
       
       const varName = this.expect("IDENTIFIER").value;
@@ -965,7 +980,7 @@ export class Parser {
     
     // LOOP IN (MAP)
     // loop (key in map)
-    
+    /*
     if (isLoopIn) {
       
       const keyName = this.expect("IDENTIFIER").value;
@@ -987,7 +1002,7 @@ export class Parser {
         body
       });
     }
-    
+    */
     
     // loop (init, condition, update)
     

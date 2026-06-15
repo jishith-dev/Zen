@@ -26,7 +26,7 @@ export class Expression {
   
   handleExpression(node, globalScope = true) { // default globalScope true
     
-    const op = node.operator;
+    const op = node?.operator;
     let local = [];
     let global = [];
     
@@ -1033,9 +1033,14 @@ export class Expression {
         }
         
         // MAP ACCESS — a[key]
-        
+        // Dynamic Map indexing (a[key]) is disabled to keep Map struct-like and LLVM-friendly.
+// Use dot access (a.name) or can be introduce a superate system
         if (base.isMap) {
-          
+          this.IRB.emitError(
+  "SemanticError",
+  "Dynamic Map indexing (map[key]) is not supported. Use dot access (a.name) instead.", node
+);
+          /*
           const mapLayout = base.layout;
           const typeSet = new Set();
           let genericType;
@@ -1051,7 +1056,7 @@ export class Expression {
           }
           
           if (typeSet.size > 1) {
-            this.IRB.emitError("LoopError", `Cannot iterate — Map '${base.name}' contains heterogeneous value types`, node)
+            this.IRB.emitError("TypeError", `Map '${base.name}' contains heterogeneous value types`, node)
           }
           
           
@@ -1108,10 +1113,13 @@ export class Expression {
             meta?.llvmType ?? this.IRB.getLLVMType(finalType);
           
           let finalPtr = resultPtr;
-          
-          const tm = this.IRB.newTemp();
+          let tm;
+          if (finalType !== "string" && finalType !== "List") {
+          tm = this.IRB.newTemp();
           local.push(`${tm} = load ${finalLLVMType}, ptr ${finalPtr}`);
-          
+          } else {
+            tm = finalPtr;
+          }
           return {
             ptr: tm,
             type: finalType,
@@ -1125,7 +1133,7 @@ export class Expression {
             isArray: false,
             needsLoad: false
           };
-          
+          */
         }
         
         // string index access

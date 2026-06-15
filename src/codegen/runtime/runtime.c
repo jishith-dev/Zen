@@ -177,7 +177,7 @@ const char* _time_time() {
     return buffer;
 }
 
-long long _time_millis() {
+int _time_millis() {
 
 #ifdef _WIN32
 

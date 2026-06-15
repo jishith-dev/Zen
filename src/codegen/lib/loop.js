@@ -420,7 +420,10 @@ export class Loop {
     this.IRB.exitScope();
   }
   
+  // Loop over Map is disabled: Map is not an iterable sequence type in ZEN.
+  /*
   loopIn(node) {
+    
     const { keyName, iterable, body } = node;
     
     this.IRB.guardStackOp("LOOP_IN", node);
@@ -589,4 +592,5 @@ export class Loop {
     this.IRB.loopStack.pop();
     this.IRB.exitScope();
   }
+  */
 }

@@ -828,6 +828,7 @@ fn randomInt(int a, int b) int {
     return a + Int((r * (b - a + 1)))
 }
 
+/*
 fn random() double {
 
     SEED = (SEED * 1103515245 + 12345) % I32_MAX
@@ -838,7 +839,17 @@ fn random() double {
 
     return SEED / 2147483647.0
 }
+*/
 
+fn random() double {
+    SEED = SEED * 1103515245 + 12345
+
+    if (SEED < 0) {
+        SEED = -SEED
+    }
+
+    return SEED / 2147483647.0
+}
 
 // regex 
 
