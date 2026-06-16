@@ -241,4 +241,5 @@ if (command === "build") {
   process.exit(0);
 }
 
-run(outputExe);
+const userArgs = args.slice(2).join(" ");
+run(`${outputExe} ${userArgs}`);
