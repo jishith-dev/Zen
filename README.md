@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 1.0.0** · Stable · June 2026
+**Version 1.0.1** · Stable · June 2026
 
 **GitHub**: https://github.com/`Jishith-dev/Zen`
 **Contact**: jishithmp534@gmail.com
@@ -842,7 +842,7 @@ const_decl
 
 ```zen
 int const MAX = 100
-string const VERSION = "1.0.0"
+string const VERSION = "1.0.1"
 ```
 
 ---
