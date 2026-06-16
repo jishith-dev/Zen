@@ -64,7 +64,7 @@ char* sys_input(const char* prompt) {
         buf[len - 1] = '\0';
     }
 
-    // allocate fresh memory per call (CRITICAL FIX)
+    // allocate fresh memory per call
     char* out = (char*)malloc(len + 1);
     
     if (!out) {
@@ -86,7 +86,6 @@ void _sys_panic(const char* msg) {
     // reset color
     fprintf(stderr, "\033[0m");
 
-    // stop program immediately
     exit(1);
 }
 
@@ -117,7 +116,6 @@ void _sys_color(const char *color) {
     else if (strcmp(color, "white") == 0)
         printf("\033[37m");
 
-    // BRIGHT COLORS
     else if (strcmp(color, "brightBlack") == 0)
         printf("\033[90m");
 
@@ -142,7 +140,6 @@ void _sys_color(const char *color) {
     else if (strcmp(color, "brightWhite") == 0)
         printf("\033[97m");
 
-    // STYLES
     else if (strcmp(color, "bold") == 0)
         printf("\033[1m");
 
@@ -348,7 +345,6 @@ int _os_cpuCount() {
 #endif
 }
 
-// ---------------- ARCH ----------------
 
 const char* _os_cpuArch() {
 #ifdef _WIN32
@@ -361,7 +357,6 @@ const char* _os_cpuArch() {
 #endif
 }
 
-// ---------------- CPU MODEL ----------------
 
 const char* _os_cpuModel() {
 #ifdef _WIN32
@@ -384,7 +379,6 @@ const char* _os_cpuModel() {
 #endif
 }
 
-// ---------------- CPU SPEED ----------------
 
 double _os_cpuSpeed() {
 #ifdef _WIN32
@@ -405,7 +399,7 @@ double _os_cpuSpeed() {
 
     fclose(f);
 
-    // Android fallback (optional, safer than fake 0)
+    // Android fallback 
     FILE *g = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
     if (g) {
         long khz = 0;
@@ -419,8 +413,6 @@ double _os_cpuSpeed() {
     return -1;
 #endif
 }
-
-// ---------------- MEMORY ----------------
 
 long _os_totalMemory() {
 #ifdef _WIN32
@@ -476,8 +468,6 @@ long _os_usedMemory() {
     return t - f;
 }
 
-// ---------------- PROCESS MEMORY ----------------
-
 long _os_processMemory() {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS pmc;
@@ -503,8 +493,6 @@ long _os_processMemory() {
 #endif
 }
 
-// ---------------- OS INFO ----------------
-
 const char* _os_osName() {
 #ifdef _WIN32
     return "Windows";
@@ -527,7 +515,6 @@ const char* _os_osVersion() {
 #endif
 }
 
-// ---------------- HOSTNAME ----------------
 
 char* _os_hostname() {
     char tmp[256];
@@ -550,8 +537,6 @@ char* _os_hostname() {
     return out;
 }
 
-// ---------------- USERNAME ----------------
-
 const char* _os_username() {
 #ifdef _WIN32
     static char name[128];
@@ -570,7 +555,6 @@ const char* _os_username() {
 #endif
 }
 
-// ---------------- UPTIME ----------------
 
 double _os_uptime() {
 #ifdef _WIN32
@@ -586,7 +570,7 @@ double _os_uptime() {
         fclose(f);
     }
 
-    // fallback (Android/Linux safe)
+    // fallback 
     #ifdef __linux__
     struct sysinfo info;
     if (sysinfo(&info) == 0) {
@@ -747,11 +731,7 @@ char* int_to_string(int x) {
     return res;
 }
 
-//
-// ===============================
-// DOUBLE → STRING
-// ===============================
-//
+
 char* double_to_string(double x) {
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "%f", x);
@@ -762,11 +742,7 @@ char* double_to_string(double x) {
     return res;
 }
 
-//
-// ===============================
-// BOOL → STRING
-// ===============================
-//
+
 char* bool_to_string(bool x) {
     const char* str = x ? "true" : "false";
 
@@ -791,7 +767,7 @@ int string_to_int(char* str) {
 
     while (str[i] != '\0') {
         if (str[i] < '0' || str[i] > '9') {
-            break; // or handle error
+            break; 
         }
 
         result = result * 10 + (str[i] - '0');
@@ -821,30 +797,18 @@ char* int_to_string_ascii(int value) {
     return out;
 }
 
-//
-// ===============================
-// STRING → DOUBLE
-// ===============================
-//
+
 double string_to_double(char* str) {
     if (str == NULL) return 0.0;
     return atof(str);
 }
 
-//
-// ===============================
-// STRING → BOOL
-// ===============================
-//
+
 bool string_to_bool(char* str) {
     return (str != NULL && strlen(str) > 0);
 }
 
-//
-// ===============================
-// OPTIONAL: FREE STRING
-// ===============================
-//
+
 void free_string(char* str) {
     if (str != NULL) {
         free(str);

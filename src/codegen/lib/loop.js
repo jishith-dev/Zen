@@ -17,7 +17,7 @@ export class Loop {
     this.IRB.enterScope();
     
     if (init !== null) {
-      // ===== init =====
+      
       if (SCALAR_TYPES.includes(init.dataType)) {
         this.variable.scalarVariable(init, false);
       } else {
@@ -35,10 +35,8 @@ export class Loop {
       continueLabel: updateLabel
     });
     
-    // jump to condition first
     this.IRB.emit(`br label %${condLabel}`);
     
-    // ===== condition =====
     this.IRB.emit(`${condLabel}:`);
     
     const expr = this.expr.handleExpression(condition, false);
@@ -52,7 +50,6 @@ export class Loop {
     
     this.IRB.emit(`br i1 ${condPtr}, label %${bodyLabel}, label %${endLabel}`);
     
-    // ===== body =====
     this.IRB.emit(`${bodyLabel}:`);
     
     this.block.block(node.body, false);
@@ -74,7 +71,6 @@ export class Loop {
     // loop back
     this.IRB.emit(`br label %${condLabel}`);
     
-    // ===== end =====
     this.IRB.emit(`${endLabel}:`);
     
     this.IRB.loopStack.pop();
@@ -121,7 +117,6 @@ export class Loop {
       continueLabel: condLabel
     });
     
-    // jump to condition first
     this.IRB.emit(`br label %${condLabel}`);
     
     // condition
@@ -146,7 +141,6 @@ export class Loop {
     // loop back to condition 
     this.IRB.emit(`br label %${condLabel}`);
     
-    // end
     this.IRB.emit(`${endLabel}:`);
     
     this.IRB.loopStack.pop();
@@ -175,13 +169,11 @@ export class Loop {
     
     this.IRB.emit(`br label %${bodyLabel}`);
     
-    // BODY
     
     this.IRB.emit(`${bodyLabel}:`);
     
     this.block.block(body, false);
     
-    // continue jumps here
     this.IRB.emit(`br label %${condLabel}`);
     
     // CONDITION CHECK
@@ -200,8 +192,6 @@ export class Loop {
     this.IRB.emit(
       `br i1 ${condPtr}, label %${bodyLabel}, label %${endLabel}`
     );
-    
-    // END
     
     this.IRB.emit(`${endLabel}:`);
     
@@ -233,7 +223,7 @@ export class Loop {
     this.IRB.emit(`${indexPtr} = alloca i32`);
     
     this.IRB.emit(`store i32 0, ptr ${indexPtr}`);
-    // resolve iterable
+  
     
     const expr = this.expr.handleExpression(iterable, false);
     
@@ -302,8 +292,6 @@ export class Loop {
     this.IRB.emit(
       `br i1 ${cmpTmp}, label %${bodyLabel}, label %${endLabel}`
     );
-    
-    // BODY
     
     this.IRB.emit(`${bodyLabel}:`);
     
@@ -412,8 +400,6 @@ export class Loop {
     this.IRB.emit(`br label %${startLabel}`);
     
     
-    // END
-    
     this.IRB.emit(`${endLabel}:`);
     
     this.IRB.loopStack.pop();
@@ -501,8 +487,7 @@ export class Loop {
     const idxPtr = this.IRB.newTemp();
     this.IRB.emit(`${idxPtr} = alloca i32`);
     this.IRB.emit(`store i32 0, ptr ${idxPtr}`);
-    
-    // KEY POINTER ALLOCA  (written by the switch, read in body)
+  
     
     const keySlot = this.IRB.newTemp();
     this.IRB.emit(`${keySlot} = alloca ptr`);

@@ -17,7 +17,7 @@ export class IO {
     }
     
     let strFrmt = "%s\n"; // default str format
-    const arg = args[0]; // first arg
+    const arg = args[0]; 
     
     if (args.length === 2) {
       if (args[1].type === "string") {

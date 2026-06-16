@@ -16,7 +16,7 @@ export class ZenHttp {
       );
     }
     
-    // Expression evaluation
+
 
     const exprs = args.map(arg => this.expr.handleExpression(arg));
     
@@ -53,8 +53,7 @@ export class ZenHttp {
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }
     };
-    
-    // Emit inner code first
+  
 
     exprs.forEach(e => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
@@ -73,13 +72,10 @@ export class ZenHttp {
       `declare ${llvmRet} @${funcName}(${exprs.map(e => getArgType(e.type)).join(", ")})`
     );
     
-    // PURE CALL 
 
       const t = this.IRB.newTemp();
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
       
-
-    // Return ZEN IR object
 
     return {
       ptr: t,

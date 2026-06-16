@@ -60,11 +60,8 @@ export class InferType {
         return type;
       }
       
-      // function declaration 
-      
       case 'FUNCTION_DECLARATION': {
         
-        // find return statement
         const returnStmt = node.body.body.find(
           stmt => stmt.type === "RETURN"
         );
@@ -130,13 +127,11 @@ export class InferType {
         const { base, fields } =
         this.IRB.resolveMemberChain(node);
         
-        // MAP ACCESS
         
         if (base.type === "variable") {
           
           const varInfo = this.IRB.getVar(base.name, node);
           
-          // MAP ROOT
           if (varInfo.type === "Map" || varInfo.isMap) {
             
             let currentLayout =
@@ -163,7 +158,6 @@ export class InferType {
               
               currentType = fieldInfo.type;
               
-              // move deeper for nested map
               if (fieldInfo.isMap) {
                 currentLayout = fieldInfo.layout;
               }
@@ -204,7 +198,6 @@ export class InferType {
         return fieldInfo.type;
       }
       
-      // FUNCTION CALL
       
       case "CALL": {
         

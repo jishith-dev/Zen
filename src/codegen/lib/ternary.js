@@ -14,7 +14,6 @@ export class Ternary {
     const falseLabel = this.IRB.newLabel("ternary_false");
     const mergeLabel = this.IRB.newLabel("ternary_merge");
     
-    // evaluate BOTH expressions early 
     const t = this.expr.handleExpression(node.trueExpr);
     const f = this.expr.handleExpression(node.falseExpr);
     const tType = t.type;
@@ -39,13 +38,11 @@ export class Ternary {
     this.IRB.emitExpr(t);
     this.IRB.emitExpr(f);
     
-    // type must match
     const resultType = t.llvmType;
     
     
     const boolPtr = this.IRB.toBool(cond.ptr, cond.type);
     
-    // branch
     this.IRB.emit(
       `br i1 ${boolPtr}, label %${trueLabel}, label %${falseLabel}`
     );
@@ -60,7 +57,7 @@ export class Ternary {
     this.IRB.emit(`${falseLabel}:`);
     this.IRB.emit(`br label %${mergeLabel}`);
     
-    // MERGE PHI
+    // PHI
     
     this.IRB.emit(`${mergeLabel}:`);
     

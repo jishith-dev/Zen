@@ -415,10 +415,7 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "length"
   },
-  
-  // ========================================
-  // SYS
-  // ========================================
+
   
   panic: {
     returnType: "void",
@@ -449,10 +446,6 @@ const BUILTIN_MAP = {
     returnType: "List",
     llvmName: "_sys_argv"
   },
-  
-  // ========================================
-  // FS
-  // ========================================
   
   readFile: {
     returnType: "string",
@@ -499,9 +492,6 @@ const BUILTIN_MAP = {
     llvmName: "_fs_changeDir"
   },
   
-  // ========================================
-  // OS
-  // ========================================
   
   cpuCount: {
     returnType: "int",
@@ -572,19 +562,13 @@ const BUILTIN_MAP = {
     returnType: "string",
     llvmName: "_os_battery"
   },
-  
-  // ========================================
-  // NET
-  // ========================================
+
   
   online: {
     returnType: "bool",
     llvmName: "_net_online"
   },
   
-  // ========================================
-  // TIME
-  // ========================================
   
   sleep: {
     returnType: "void",
@@ -621,9 +605,6 @@ const BUILTIN_MAP = {
     llvmName: "_time_year"
   },
   
-  // ========================================
-  // HTTP
-  // ========================================
   
   "get": {
     returnType: "string",
@@ -782,7 +763,7 @@ const GLOBAL_EXTERNAL = {
 };
 
 const STD_FUNCTIONS_SCHEMA = {
-  // ===== BASIC =====
+  
   isEven: { ret: "i1", params: ["i32"] },
   isOdd: { ret: "i1", params: ["i32"] },
   isPositive: { ret: "i1", params: ["i32"] },
@@ -799,7 +780,7 @@ const STD_FUNCTIONS_SCHEMA = {
   square: { ret: "i32", params: ["i32"] },
   cube: { ret: "i32", params: ["i32"] },
   
-  // ===== ROUNDING =====
+
   floor: { ret: "i32", params: ["double"] },
   ceil: { ret: "i32", params: ["double"] },
   round: { ret: "i32", params: ["double"] },
@@ -807,20 +788,18 @@ const STD_FUNCTIONS_SCHEMA = {
   
   mod: { ret: "i32", params: ["i32", "i32"] },
   
-  // ===== NUMBER THEORY =====
   gcd: { ret: "i32", params: ["i32", "i32"] },
   lcm: { ret: "i32", params: ["i32", "i32"] },
   factorial: { ret: "double", params: ["i32"] },
   isPrime: { ret: "i1", params: ["i32"] },
   
-  // ===== INTERPOLATION =====
+
   lerp: { ret: "double", params: ["double", "double", "double"] },
   normalize: { ret: "double", params: ["double", "double", "double"] },
   
-  // ===== UTILITY =====
+
   between: { ret: "i1", params: ["i32", "i32", "i32"] },
   
-  // ===== STRING =====
   reverse: { ret: "i8*", params: ["i8*"] },
   indexOf: { ret: "i32", params: ["i8*", "i8*"] },
   slice: { ret: "i8*", params: ["i8*", "i32", "i32"] },
@@ -861,9 +840,6 @@ const STD_FUNCTIONS_SCHEMA = {
   struct: { name: [llvm binding name, return type, params count, [params]]}
   */
 
-// ========================================
-// OS
-// ========================================
 
 const OS_MAP = {
   
@@ -967,10 +943,6 @@ const OS_MAP = {
 };
 
 
-// ========================================
-// FILE SYSTEM
-// ========================================
-
 const FILE_MAP = {
   
   _fs_cwd: [
@@ -1039,10 +1011,6 @@ const FILE_MAP = {
 };
 
 
-// ========================================
-// SYSTEM
-// ========================================
-
 const SYS_MAP = {
   
   _sys_exec: [
@@ -1088,10 +1056,6 @@ const SYS_MAP = {
   ],
 };
 
-
-// ========================================
-// TIME
-// ========================================
 
 const TIME_MAP = {
   
@@ -1147,10 +1111,6 @@ const TIME_MAP = {
 };
 
 
-// ========================================
-// NETWORK
-// ========================================
-
 const NETWORK_MAP = {
   
   _net_online: [
@@ -1161,10 +1121,6 @@ const NETWORK_MAP = {
   ]
 };
 
-
-// ========================================
-// HTTP
-// ========================================
 
 const HTTP_MAP = {
   

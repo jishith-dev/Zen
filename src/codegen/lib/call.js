@@ -101,7 +101,7 @@ export class Call {
     let global = [];
     let local = [];
     
-    // Evaluate all arguments
+
     
     for (const arg of finalArgs) {
       
@@ -116,7 +116,7 @@ export class Call {
       args.push(val);
     }
     
-    // REST INDEX
+  
     
     let restIndex = -1;
     
@@ -138,24 +138,22 @@ export class Call {
       const a = args[i];
       const param = fn.params[i];
       
-      // ── Map layout aliasing ──
+    
       if (param?.isMap || param?.type.type === "Map") {
         const argNode = finalArgs[i];
-        const argName = argNode?.name; // "b"
+        const argName = argNode?.name; 
         const layoutt = this.IRB.maps.get(argName);
         layout = layoutt;
         if (layout) {
           
-          this.IRB.maps.set(param.name, layoutt); // "a" same layout as "b"
+          this.IRB.maps.set(param.name, layoutt); 
         }
       }
     }
     
-    // REST CALL HANDLING (List based)
     
     if (hasRest) {
       
-      // declare runtime once
       this.IRB.declareOneTime(
         "zen_list_new",
         "declare ptr @zen_list_new(i64)"
@@ -178,14 +176,13 @@ export class Call {
       let global = [];
       let local = [];
       
-      // FIXED ARGS
+    
       
       for (const a of fixedArgs) {
         
         if (a.global?.length) global.push(...a.global);
         if (a.local?.length) local.push(...a.local);
         
-        // handle pointer-level correctly
         if (a.isList) {
           const tmp = this.IRB.newTemp();
           local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
@@ -204,7 +201,6 @@ export class Call {
       // expected type from function signature
       const expectedType = restParam?.type?.type || restParam?.type;
       
-      // inferred from first argument
       const inferredType = first?.type;
       
       if (!first) {
@@ -222,7 +218,6 @@ export class Call {
         );
       }
       
-      //  validate ALL rest args
       for (const a of restArgs) {
         const t = a.type;
         
@@ -260,11 +255,8 @@ export class Call {
         );
       }
       
-      // PASS VARARGS LIST
-      
       argStr.push(`ptr ${listPtr}`);
       
-      // EMIT CALL
       
       let callTmp = null;
       
@@ -311,7 +303,7 @@ export class Call {
       };
     }
     
-    // NORMAL CALL HANDLING
+    // NORMAL CALL 
     
     for (const a of args) {
       

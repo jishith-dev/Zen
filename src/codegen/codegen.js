@@ -266,11 +266,12 @@ define void @_assignSeed () {
         this.switch.handleSwitch(node);
         break;
         
+        // ignore these import and export. handled in module analyzer
       case 'IMPORT':
-        return // ignore 
+        return 
         
       case 'EXPORT':
-        return // ignore 
+        return 
         
       case 'RETURN':
         this.fn.handleReturn(node);
@@ -411,7 +412,7 @@ define void @_assignSeed () {
       const isMemberAssign = normalisedNode.expression.type === "MEMBER_ASSIGNMENT";
       
       if (isMemberAssign) {
-        // inside redirect ro map assign or struct 
+        // inside redirect to map assign or struct 
         this.struct.assignStruct(normalisedNode.expression, globalScope);
         return;
       }

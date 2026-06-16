@@ -47,14 +47,7 @@ fn sign(int x) int {
     return 0
 }
 
-
-// updated
-
 fn pow(int base, int exp) double {
-
-    // =========================
-    // EDGE CASES
-    // =========================
 
     if (exp == 0) return 1.0
 
@@ -69,9 +62,6 @@ fn pow(int base, int exp) double {
         return -1.0
     }
 
-    // =========================
-    // NEGATIVE EXPONENT
-    // =========================
 
     bool neg = false
 
@@ -80,10 +70,6 @@ fn pow(int base, int exp) double {
         exp = -exp
     }
 
-    // =========================
-    // CORE COMPUTATION
-    // =========================
-
     double result = 1.0
     int i = 0
 
@@ -91,9 +77,6 @@ fn pow(int base, int exp) double {
 
         result = result * base
 
-        // =========================
-        // OVERFLOW GUARD
-        // =========================
         if (result == INF) {
             return INF
         }
@@ -127,10 +110,6 @@ fn cube(int x) int {
     return x * x * x
 }
 
-
-// =======================
-// ROUNDING HELPERS (STRICT)
-// =======================
 
 fn floor(double x) int {
     int i = Int(x)
@@ -178,12 +157,6 @@ fn mod(int x, int m) int {
     return r
 }
 
-
-// =======================
-// NUMBER THEORY
-// =======================
-
-// NEW: greatest common divisor (Euclidean algorithm)
 fn gcd(int a, int b) int {
     a = abs(a)
     b = abs(b)
@@ -195,7 +168,6 @@ fn gcd(int a, int b) int {
     return a
 }
 
-// NEW: least common multiple
 fn lcm(int a, int b) int {
     if (a == 0 || b == 0) return 0
     return abs(a / gcd(a, b) * b)
@@ -213,7 +185,6 @@ fn factorial(int n) double {
     return result
 }
 
-// NEW: primality check
 fn isPrime(int n) bool {
     if (n < 2) return false
     if (n == 2) return true
@@ -226,34 +197,19 @@ fn isPrime(int n) bool {
     return true
 }
 
-
-// =======================
-// INTERPOLATION
-// =======================
-
-// NEW: linear interpolation between a and b by t (0.0 to 1.0)
 fn lerp(double a, double b, double t) double {
     return a + (b - a) * t
 }
 
-// NEW: normalize x from [a, b] range to [0.0, 1.0]
 fn normalize(double x, double a, double b) double {
     if (a == b) return 0.0
     return (x - a) / (b - a)
 }
 
 
-// =======================
-// UTILITY
-// =======================
-
 fn between(int x, int a, int b) bool {
     return (x >= a && x <= b)
 }
-
-// ============================================================
-// ZEN STRING STDLIB — FUNCTIONS
-// ============================================================
 
 fn reverse(string s) string {
     int len = length(s)
@@ -845,9 +801,7 @@ fn random() double {
 
 fn match(string text, string pattern) bool {
 
-    // =========================
-    // OR HANDLER (|)
-    // =========================
+
     if (contains(pattern, "|")) {
         string option = ""
         int k = 0
@@ -871,9 +825,6 @@ fn match(string text, string pattern) bool {
 
         string p = charAt(pattern, j)
 
-        // =========================
-        // WILDCARD ANY CHAR ?
-        // =========================
         if (p == "?") {
             if (i >= length(text)) return false
             i = i + 1
@@ -881,9 +832,7 @@ fn match(string text, string pattern) bool {
             continue
         }
 
-        // =========================
-        // WILDCARD *
-        // =========================
+
         if (p == "*") {
             if (j + 1 >= length(pattern)) return true
             int ti = i
@@ -896,9 +845,6 @@ fn match(string text, string pattern) bool {
             return false
         }
 
-        // =========================
-        // TYPE TOKENS (#)
-        // =========================
         if (p == "#") {
             string type = charAt(pattern, j + 1)
 
@@ -939,9 +885,6 @@ fn match(string text, string pattern) bool {
             }
         }
 
-        // =========================
-        // NAMED TOKENS (:int, :id, :string)
-        // =========================
         if (p == ":") {
             string token = ""
             int k = j
@@ -987,9 +930,6 @@ fn match(string text, string pattern) bool {
             }
         }
 
-        // =========================
-        // CHARACTER SET / RANGE [a,b,c] or [0-9]
-        // =========================
         if (p == "[") {
             int end = j + 1
             while (end < length(pattern)) {
@@ -1029,9 +969,7 @@ fn match(string text, string pattern) bool {
             continue
         }
 
-        // =========================
-        // LITERAL MATCH
-        // =========================
+
         if (i >= length(text)) return false
         if (charAt(text, i) != p) return false
         i = i + 1

@@ -1,6 +1,3 @@
-// ========================================================
-// ZEN LIST RUNTIME
-// ========================================================
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,22 +15,12 @@ void zen_args_set(void** args, int index, void* value) {
     args[index] = value;
 }
 
-
-
-// ========================================================
-// LIST STRUCT
-// ========================================================
-
 typedef struct {
 void* data;
 int size;
 int capacity;
 size_t element_size;
 } ZenList;
-
-// ========================================================
-// CREATE
-// ========================================================
 
 ZenList* zen_list_new(size_t element_size) {
 
@@ -47,10 +34,6 @@ list->element_size = element_size;
 return list;
 
 }
-
-// ========================================================
-// GROW
-// ========================================================
 
 void zen_list_grow(ZenList* list) {
 
@@ -83,10 +66,6 @@ list->capacity = new_capacity;
 
 }
 
-// ========================================================
-// PUSH
-// ========================================================
-
 void zen_list_push(ZenList* list, void* value) {
 
 if (list->size >= list->capacity) {  
@@ -105,10 +84,6 @@ list->size++;
 
 }
 
-// ========================================================
-// GET
-// ========================================================
-
 void* zen_list_get(ZenList* list, int index) {
 
 if (index < 0 || index >= list->size) {
@@ -121,10 +96,6 @@ char* base = (char*)list->data;
 return base + (index * list->element_size);
 
 }
-
-// ========================================================
-// SET
-// ========================================================
 
 void zen_list_set(
 ZenList* list,
@@ -146,10 +117,6 @@ memcpy(
 );
 
 }
-
-// ========================================================
-// POP
-// ========================================================
 
 void zen_list_pop(
 ZenList* list,
@@ -173,10 +140,6 @@ list->size--;
 
 }
 
-// ========================================================
-// REMOVE
-// ========================================================
-
 void zen_list_remove(
 ZenList* list,
 int index
@@ -199,17 +162,9 @@ list->size--;
 
 }
 
-// ========================================================
-// CLEAR
-// ========================================================
-
 void zen_list_clear(ZenList* list) {
 list->size = 0;
 }
-
-// ========================================================
-// FREE
-// ========================================================
 
 void zen_list_free(ZenList* list) {
 
@@ -221,57 +176,12 @@ free(list);
 
 }
 
-// ========================================================
-// CONTAINS (RAW MEMORY)
-// ========================================================
-/*
-bool zen_list_contains(
-ZenList* list,
-void* value
-) {
-
-char* base = (char*)list->data;  
-
-for (int i = 0; i < list->size; i++) {  
-
-    void* current =  
-        base + (i * list->element_size);  
-
-    if (  
-        memcmp(  
-            current,  
-            value,  
-            list->element_size  
-        ) == 0  
-    ) {  
-        return true;  
-    }  
-}  
-
-return false;
-
-}
-*/
-
-
-// ========================================================
-// FORWARD DECL
-// ========================================================
 bool zen_list_contains(ZenList* list, void* value);
 bool zen_list_deep_equals(ZenList* a, ZenList* b);
-
-// ========================================================
-// TYPE GUARD HELPERS (minimal runtime tagging assumption)
-// ========================================================
-// If element_size == sizeof(void*) we assume pointer type (nested list case)
 
 static inline bool zen_is_pointer_type(ZenList* list) {
     return list->element_size == sizeof(void*);
 }
-
-// ========================================================
-// CONTAINS (HYBRID)
-// ========================================================
 
 bool zen_list_contains(
     ZenList* list,
@@ -289,16 +199,14 @@ bool zen_list_contains(
         void* current =
             base + (i * list->element_size);
 
-        // ================================
-        // NESTED LIST CASE (DEEP COMPARE)
-        // ================================
+
         if (zen_is_pointer_type(list)) {
 
             ZenList* a = *(ZenList**)current;
             ZenList* b = *(ZenList**)value;
 
             if (a == b) {
-                return true; // same pointer fast path
+                return true; 
             }
 
             if (a && b && zen_list_deep_equals(a, b)) {
@@ -306,9 +214,7 @@ bool zen_list_contains(
             }
 
         }
-        // ================================
-        // PRIMITIVE CASE (FAST MEMCMP)
-        // ================================
+
         else {
 
             if (memcmp(
@@ -338,9 +244,7 @@ bool zen_list_deep_equals(ZenList* a, ZenList* b) {
         void* a_cur = (char*)a->data + i * a->element_size;
         void* b_cur = (char*)b->data + i * b->element_size;
 
-        // =========================
-        // RECURSIVE LIST CASE
-        // =========================
+
         if (zen_is_pointer_type(a)) {
 
             ZenList* la = *(ZenList**)a_cur;
@@ -351,9 +255,7 @@ bool zen_list_deep_equals(ZenList* a, ZenList* b) {
             }
 
         }
-        // =========================
-        // PRIMITIVE CASE
-        // =========================
+
         else {
 
             if (memcmp(
@@ -369,10 +271,6 @@ bool zen_list_deep_equals(ZenList* a, ZenList* b) {
     return true;
 }
 
-
-// ========================================================
-// VARARGS -> LIST
-// ========================================================
 
 ZenList* zen_va_ints(
     int count,
@@ -396,9 +294,6 @@ ZenList* zen_va_ints(
     return list;
 }
 
-// ========================================================
-// DOUBLE VARARGS
-// ========================================================
 
 ZenList* zen_va_doubles(
     int count,
@@ -422,9 +317,6 @@ ZenList* zen_va_doubles(
     return list;
 }
 
-// ========================================================
-// STRING VARARGS
-// ========================================================
 
 ZenList* zen_va_strings(
     int count,
@@ -448,9 +340,7 @@ ZenList* zen_va_strings(
     return list;
 }
 
-// ========================================================
-// BOOL VARARGS
-// ========================================================
+
 
 ZenList* zen_va_bools(
     int count,

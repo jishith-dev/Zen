@@ -277,8 +277,9 @@
         
         this.IRB.emitExpr(valExpr);
         
-        // MAP WRITE a[key] = value
-        
+        // MAP WRITE a[key] 
+        // disabled in v1. for more info : https://jishith-dev.github.io/zen-doc/site/#51-map
+        /*
         if (varInfo.isMap) {
           
           this.IRB.declareOneTime(
@@ -295,7 +296,6 @@
             mapPtr = tmp;
           }
           
-          // key expression ( must come from expression tree)
           const keyExpr = this.expr.handleExpression(expression.index);
           this.IRB.emitExpr(keyExpr);
           
@@ -318,6 +318,7 @@
           
           return;
         }
+        */
         
         if (varInfo.isList) {
           const generic = this.IRB.getDeepestGeneric(varInfo.generic);
@@ -502,7 +503,7 @@
       const llvmType = this.IRB.getLLVMType(dataType);
       
       this.IRB.bindLineColumn(node)
-      // evaluate RHS 
+      
       const val = this.expr.handleExpression(node.value, globalScope);
       
       // void check
@@ -692,7 +693,7 @@
                 `${tmp} = call ptr @zen_map_get(ptr ${currentPtr}, ptr ${indexExpr.ptr})`
               );
               
-              // load actual container ptr
+            
               
               if (!isLast) {
                 
@@ -705,7 +706,6 @@
                 currentPtr = loaded;
               }
               
-              // keep slot ptr for store
               else {
                 currentPtr = tmp;
               }
@@ -857,7 +857,7 @@
         this.IRB.emitError("TypeError", `Invalid assignment target — expected an array variable`, exprNode)
       }
       
-      // 2. apply indices 
+      
       
       let currentPtr = basePtr;
       let currentType = llvmType;
@@ -874,13 +874,12 @@
           `${elemPtr} = getelementptr ${currentType}, ${currentType}* ${currentPtr}, i32 0, i32 ${idxExpr.ptr}`
         );
         
-        // shrink type: [2 x [2 x i32]] - [2 x i32] - i32
+        // shrink type: eg [2 x [2 x i32]] [2 x i32] - i32
         currentType = this.IRB.getArrayElementType(currentType);
         
         currentPtr = elemPtr;
       }
       
-      // 3. store
       
       const valExpr = this.expr.handleExpression(exprNode.value);
       

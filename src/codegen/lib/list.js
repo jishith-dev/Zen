@@ -30,7 +30,7 @@ export class ZenList {
     
     // TYPES
     
-    const listLLVM = "%ZenList*"; // fixed
+    const listLLVM = "%ZenList*"; 
     
     const deepestType =
       this.IRB.getDeepestGeneric(node.generic);

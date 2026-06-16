@@ -15,8 +15,6 @@ export class ZenFileSystem {
       );
     }
 
-    // Expression evaluation
-
     const exprs = args.map(arg => this.expr.handleExpression(arg));
     
     exprs.forEach((expr, i) => {
@@ -61,16 +59,13 @@ export class ZenFileSystem {
     });
     
 
-    // Build LLVM call args safely
-
     const callArgs = exprs.map(e => {
       const t = getArgType(e.type);
       return `${t} ${e.ptr}`;
     }).join(", ");
     
     const llvmRet = this.IRB.getLLVMType(returnType);
-    
-    // Function declaration 
+
 
     this.IRB.declareOneTime(
       funcName,
@@ -79,8 +74,6 @@ export class ZenFileSystem {
     
       const t = this.IRB.newTemp();
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
-      
-    // Return ZEN IR object
 
     return {
       ptr: t,

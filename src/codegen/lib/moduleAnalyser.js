@@ -16,7 +16,7 @@ export class Module {
     // shared export metadata only
     this.modules = new Map();
     
-    // generated .ll files
+    // generated .ll files here
     this.generatedModules = new Map();
   }
 
@@ -24,7 +24,6 @@ loadFile(source) {
   return this.IRB.safeReadFile(source);
 }
   
-  // MAIN ENTRY
   moduleAnalyser(node) {
     const source = node.source;
     const imports = node.names;
@@ -39,18 +38,15 @@ loadFile(source) {
       this.IRB.emitError("ImportError", `'import' requires a source file path`, node)
     }
     
-    // 1. load source
     const file = this.loadFile(source);
     
-    // 2. lex
     const lexer = new Lexer(file, this.IRB);
     const tokens = lexer.tokenize();
     
-    // 3. parse
+  
     const parser = new Parser(tokens, this.IRB);
     const ast = parser.parse();
     
-    // 4. separate compilation
     const moduleName = path.basename(source, '.zen');
     
     this.IRB.globalTempCount = 0;
@@ -74,10 +70,9 @@ this.moduleFiles.add(llPath);
 
     const tables = { symbolTable: symbolTable[0], functionTable }
     
-    // 5. collect exports ONLY
+    
     this.collectExports(ast, source, tables);
     
-    // 6. resolve imports into current IR
     this.resolveImports(imports, source);
     
   }

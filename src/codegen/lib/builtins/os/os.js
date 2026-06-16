@@ -15,7 +15,7 @@ export class OS {
         );
       }
       
-      // Expression evaluation
+    
 
       const exprs = args.map(arg => this.expr.handleExpression(arg));
       
@@ -49,14 +49,14 @@ export class OS {
         }
       };
       
-      // Emit inner code first
+    
 
       exprs.forEach(e => {
         if (e.local?.length) this.IRB.emit(e.local.join("\n"));
         if (e.global?.length) this.IRB.emit(e.global.join("\n"));
       });
       
-      // Build LLVM call args safely
+    
 
       const callArgs = exprs.map(e => {
         const t = getArgType(e.type);
@@ -65,7 +65,7 @@ export class OS {
       
       const llvmRet = "void";
 
-      // Function declaration 
+  
 
       this.IRB.declareOneTime(
         funcName,
@@ -85,7 +85,6 @@ export class OS {
       );
     }
     
-    // Expression evaluation
 
     const exprs = args.map(arg => this.expr.handleExpression(arg));
     
@@ -123,7 +122,6 @@ export class OS {
       }
     };
     
-    // Emit inner code first
 
     exprs.forEach(e => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
@@ -137,9 +135,7 @@ export class OS {
     
     const llvmRet = this.IRB.getLLVMType(returnType);
     
-    // -------------------------
-    // Function declaration (once)
-    // -------------------------
+
     this.IRB.declareOneTime(
       funcName,
       `declare ${llvmRet} @${funcName}(${exprs.map(e => getArgType(e.type)).join(", ")})`

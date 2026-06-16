@@ -1,6 +1,4 @@
-// =====================================
-// SMART TRAFFIC SIGNAL SIMULATOR
-// =====================================
+
 
 List<string> roads = ["North", "South", "East", "West"]
 List<int> vehicles = []
@@ -21,10 +19,6 @@ while (i < 4) {
 }
 
 
-// =====================================
-// FIND MAX CONGESTED ROAD
-// =====================================
-
 int maxIndex = 0
 int j = 1
 
@@ -37,10 +31,6 @@ while (j < 4) {
   j += 1
 }
 
-
-// =====================================
-// SIGNAL SIMULATION
-// =====================================
 
 screen("---- TRAFFIC STATUS ----")
 
@@ -66,9 +56,6 @@ while (k < 4) {
 }
 
 
-// =====================================
-// BONUS LOGIC: WAIT TIME ESTIMATION
-// =====================================
 
 int waitTime = vehicles[maxIndex] * 2
 

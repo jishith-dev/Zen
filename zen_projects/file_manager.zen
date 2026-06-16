@@ -1,16 +1,13 @@
-# ==========================================
-#  ZEN Mini File Manager
-#  A real world CLI file manager in ZEN
-# ==========================================
+
 
 fn printDivider() {
-  screen("==========================================")
+  screen("Welcome to Zen File Manager")
 }
 
 fn printHeader() {
   sys.color("green")
   printDivider()
-  screen("       ZEN Mini File Manager v1.0")
+  screen("    ZEN Mini File Manager v1.0")
   printDivider()
   sys.color("reset")
 }
@@ -50,7 +47,7 @@ fn readFileOp() {
     sys.color("reset")
     screen(content)
     sys.color("green")
-    screen("  ----------------------")
+    
     sys.color("reset")
   } else {
     sys.color("red")
@@ -239,9 +236,6 @@ fn handleChoice(int choice) {
   }
 }
 
-# ==========================================
-#  Entry Point
-# ==========================================
 
 printHeader()
 showCwd()

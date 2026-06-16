@@ -16,7 +16,6 @@ export class Time {
       );
     }
     
-    // Expression evaluation
     const exprs = args.map(arg => this.expr.handleExpression(arg));
     
     exprs.forEach((expr, i) => {
@@ -35,9 +34,7 @@ export class Time {
       }
     });
     
-    // -------------------------
-    // Arg type mapper
-    // -------------------------
+
     const getArgType = (e) => {
       switch (e) {
         case "int":
@@ -53,15 +50,10 @@ export class Time {
       }
     };
     
-    // -------------------------
-    // Emit inner code first
-    // -------------------------
     exprs.forEach(e => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
-    
-    // Build LLVM call args safely
 
     const callArgs = exprs.map(e => {
       const t = getArgType(e.type);
@@ -69,15 +61,13 @@ export class Time {
     }).join(", ");
     
     const llvmRet = this.IRB.getLLVMType(returnType);
-    
-    // Function declaration 
+  
 
     this.IRB.declareOneTime(
       funcName,
       `declare ${llvmRet} @${funcName}(${exprs.map(e => getArgType(e.type)).join(", ")})`
     );
-    
-    // PURE CALL 
+  
 
       let t = null;
       if (llvmRet === "void") {
@@ -88,8 +78,6 @@ export class Time {
         
       }
     
-    
-    // Return ZEN IR object
 
     return {
       ptr: t,

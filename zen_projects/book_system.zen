@@ -1,6 +1,4 @@
-// =====================================
-// LIBRARY BOOK MANAGEMENT SYSTEM
-// =====================================
+
 
 List<string> books = []
 List<bool> isAvailable = []
@@ -20,9 +18,6 @@ while (i < n) {
 }
 
 
-// ======================
-// BORROW SYSTEM
-// ======================
 
 int choice = 1
 

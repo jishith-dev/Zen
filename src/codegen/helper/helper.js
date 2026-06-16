@@ -48,8 +48,8 @@ export class IRBuilder {
     
     this.diagnosticMode = false;
     this.DEBUG_IR = false; // debug mode
-    this.exported = false; // exported file flag
-    this.stdlibMode = false; // std mode toggler
+    this.exported = false; // exported module flag
+    this.stdlibMode = false; // stdlib mode toggler
     
     this.formatMap = this.formatMap || new Map(); // format for screen() 
     
@@ -108,7 +108,6 @@ export class IRBuilder {
         `store ${expr.llvmType} ${expr.ptr}, ptr ${ptr}`
       );
       
-      // recurse
       this.updateReactive(d, visited);
     }
   }
@@ -207,7 +206,6 @@ export class IRBuilder {
         size += this.sizeOf(field.type);
       }
       
-      // simple alignment
       if (size % 8 !== 0) {
         size += 8 - (size % 8);
       }
@@ -215,7 +213,7 @@ export class IRBuilder {
       return size;
     }
     
-    return 8; // fallback for ptr
+    return 8; // fallback for ptr (right now it assume 64 bit arch.)
   }
   
   bindLineColumn(node) {
@@ -414,7 +412,7 @@ export class IRBuilder {
       null :
       this.locals;
     
-    // exported global scope → ignore
+    // if its exported module should not emit
     if (!target) return
     
     // debug flag
@@ -545,7 +543,6 @@ strTemp() {
       "";
   }
   
-  // ===== SCOPES =====
   setVar(name, data) {
     
     const current = this.symbolTable[this.symbolTable.length - 1];
@@ -610,7 +607,7 @@ strTemp() {
     if (llvmType === "double") return 8;
     if (llvmType === "ptr") return 8;
     
-    // arrays like [10 x i32]
+    // arrays like [N x i32]
     const arrMatch = llvmType.match(/\[(\d+)\s+x\s+(.+)\]/);
     if (arrMatch) {
       const len = parseInt(arrMatch[1]);
@@ -618,7 +615,7 @@ strTemp() {
       return len * this.getTypeSizeStruct(elemType);
     }
     
-    // struct (IMPORTANT FIX)
+    // struct
     const structMatch = llvmType.match(/%(.+)/);
     if (structMatch) {
       const structName = structMatch[1];
@@ -836,7 +833,7 @@ strTemp() {
         continue;
       }
       
-      // ARRAY CHECK (use type tree safely)
+      // ARRAY CHECK 
       
       const isArray =
         p.type?.dimensions?.length > 0;
@@ -845,7 +842,7 @@ strTemp() {
         this.emitError("TypeError", `Fixed-size arrays cannot be passed as function parameters`, node)
       }
       
-      // FLATTEN TYPE → LLVM TYPE
+      // FLATTEN TYPE to LLVM TYPE
       
       const llvmType = this.getLLVMType(p.type.type);
       
@@ -853,16 +850,9 @@ strTemp() {
       
       paramData.push({
         name: p.name,
-        
-        // incoming SSA value
         temp,
-        
-        // LLVM type (flat)
         llvmType,
-        
-        // FULL TYPE TREE (IMPORTANT)
         type: p.type.type,
-        
         ptr: null
       });
     }
@@ -890,12 +880,10 @@ strTemp() {
     const name = this.strTemp();
     const len = this.utf8LenWithNull(str);
     
-    // create global string
     this.globals.push(
       `${name} = private unnamed_addr constant [${len} x i8] c"${str}\\00"`
     );
     
-    // return constant GEP (no temp!)
     return `getelementptr inbounds ([${len} x i8], [${len} x i8]* ${name}, i32 0, i32 0)`;
   }
   
@@ -932,8 +920,6 @@ strTemp() {
       };
     }
     
-    // NEW STRING
-    
     const escaped =
       this.escapeLLVMString(str);
     
@@ -948,7 +934,6 @@ strTemp() {
       `[${len} x i8] c"${escaped}\\00"`
     );
     
-    // fresh gep
     const tmp =
       this.newTemp();
     
@@ -1005,7 +990,6 @@ strTemp() {
       this.emitError("InternalError", "invalid restIndex", node);
     }
     
-    // fixed params
     for (let i = 0; i < restIndex; i++) {
       
       const expected =
@@ -1173,10 +1157,8 @@ end:
   
   normalizeNode(node) {
     
-    // CASE 1: Variable Declaration
     if (node.type === "VARIABLE_DECLARATION") return node;
     
-    // CASE 2: Assignment wrapped in VARIABLE_REFERENCE
     if (node.type === "VARIABLE_REFERENCE") {
       const expr = node.expression;
       const data = this.getVar(expr.name);
@@ -1193,11 +1175,11 @@ end:
     return node;
   }
   
-  // array helpwers 
+  // array helpers
   
   validateArrayType(type, node, expectedZenType, name) {
     
-    // ---------- LEAF ----------
+    // leaf
     if (node.type !== "ARRAY") {
       
       const res = this.expr.handleExpression(node);
@@ -1211,13 +1193,11 @@ end:
       return;
     }
     
-    // ---------- ARRAY ----------
     const match = type.match(/^\[(\d+) x (.*)\]$/);
     if (!match) this.emitError("SyntaxError", `Invalid array type declaration`, node)
     
     const size = parseInt(match[1]);
     const innerType = match[2];
-    // Helper at top of the method (or inline)
     
     if (node.elements.length !== size) {
       this.emitError("ArrayError", `Array '${name}' declared with size ${size} but got ${node.elements.length} element(s)`, node)
@@ -1242,7 +1222,7 @@ end:
   }
   
   buildGlobalInit(type, node, baseType, zenType, isTop = false) {
-    // ---------- LEAF ----------
+    // leaf
     if (node.type !== "ARRAY") {
       
       if (node.type !== zenType) {
@@ -1265,7 +1245,6 @@ end:
       return `${baseType} ${node.value}`;
     }
     
-    // ---------- ARRAY ----------
     const match = type.match(/^\[(\d+) x (.*)\]$/);
     const innerType = match[2];
     
@@ -1347,7 +1326,6 @@ end:
       this.validateArray(dimensions, value);
     }
     
-    // ---------------- GLOBAL ----------------
     if (isGlobal) {
       const ptr = this.newGlobalTemp();
       
@@ -1370,7 +1348,6 @@ end:
       }
     }
     
-    // ---------------- LOCAL ----------------
     let ir = [];
     const ptr = this.newTemp();
     
@@ -1404,7 +1381,6 @@ end:
         `${gep} = getelementptr ${arrayType}, ${arrayType}* ${ptr}, ${indices}`
       );
       
-      // evaluate each element here
       const res = this.expr.handleExpression(item.node);
       
       if (res.local.length) ir.push(...res.local);
@@ -1439,7 +1415,7 @@ end:
     if (type === "i64") return 8;
     if (type === "double") return 8;
     if (type.endsWith("*")) return 8; //pointer
-    if (type === "ptr") return 8;
+    if (type === "ptr") return 8; //(64 bit)
     this.emitError(
       "InternalError",
       `Unknown type size '${type}'`,
@@ -1468,7 +1444,7 @@ end:
   }
   
   getArrayElementType(type) {
-    // "[2 x [2 x i32]]" → "[2 x i32]"
+    // [2 x [2 x i32]] to [2 x i32]
     const match = type.match(/^\[\d+ x (.+)\]$/);
     return match ? match[1] : type;
   }
@@ -1479,7 +1455,7 @@ end:
     }
     let local = [];
     
-    const t = this.newTemp(); // ONLY SSA name
+    const t = this.newTemp(); 
     
     if (fnName === "toInt") {
       if (expr.type === "string" && targetType === "int") {
@@ -1548,9 +1524,9 @@ end:
       };
     }
     
-    // ---------------------------
-    // DOUBLE → INT
-    // ---------------------------
+
+    // DOUBLE  INT
+
     if (expr.type === "double" && targetType === "int") {
       local.push(`${t} = fptosi double ${expr.ptr} to i32`);
       
@@ -1567,10 +1543,8 @@ end:
     if (expr.type === "bool" && targetType === "double") {
       const intTemp = this.newTemp();
       
-      // step 1: bool → int
       local.push(`${intTemp} = zext i1 ${expr.ptr} to i32`);
       
-      // step 2: int → double
       local.push(`${t} = sitofp i32 ${intTemp} to double`);
       
       return {
@@ -1695,7 +1669,6 @@ end:
     
     const g = this.symbolTable[0]; // global scope
     
-    // ─── Mathematical Constants ───────────────────────────────
     g.set("PI", this.createData({
       ptr: "@PI",
       llvmType: "double",
@@ -1776,9 +1749,6 @@ end:
       needsLoad: true
     }));
     
-    
-    // ─── Integer Limits ───────────────────────────────────────
-    
     g.set("I32_MAX", this.createData({
       ptr: "@I32_MAX",
       llvmType: "i32",
@@ -1798,9 +1768,6 @@ end:
       kind: "external",
       needsLoad: true
     }));
-    
-    
-    // ─── Floating Point Limits ────────────────────────────────
     
     g.set("F64_MAX", this.createData({
       ptr: "@F64_MAX",
@@ -1831,9 +1798,6 @@ end:
       kind: "external",
       needsLoad: true
     }));
-    
-    
-    // ─── Special Float Values ─────────────────────────────────
     
     g.set("INF", this.createData({
       ptr: "@INF",
@@ -2053,8 +2017,6 @@ end:
     );
     for (const prop of mapLiteral.properties) {
       
-      // GLOBAL KEY STRING
-      
       const keyPtr =
         this.newGlobalString(
           prop.key
@@ -2075,7 +2037,6 @@ end:
           `${nestedMapPtr} = call ptr @zen_map_new()`
         );
         
-        // recurse deeper
         this.buildMapRecursive(
           nestedMapPtr,
           prop.value
@@ -2084,10 +2045,7 @@ end:
         valuePtr = nestedMapPtr;
       }
       
-      // NORMAL EXPRESSION
-      
       else {
-        
         
         const value =
           this.expr.handleExpression(
@@ -2105,8 +2063,6 @@ end:
         }
         
       }
-      
-      // MAP SET
       
       this.emit(
         `call void @zen_map_set(` +
@@ -2484,7 +2440,6 @@ end:
   normalizeCompound(node) {
     if (!node || typeof node !== "object") return node;
     
-    // recurse first
     for (const key in node) {
       if (node[key] && typeof node[key] === "object") {
         node[key] = this.normalizeCompound(node[key]);
@@ -2529,7 +2484,6 @@ end:
   
   normalizeUpdateToExpr(update, loopVarName) {
     
-    // 1. i++ / i--
     if (update.type === "UNARY_EXPRESSION") {
       const op = update.operator === "++" ? "+" : "-";
       return {
@@ -2551,12 +2505,11 @@ end:
       };
     }
     
-    // 2. i += 3, i -= 3, etc — normalize compound to plain assignment
     if (update.type === "ASSIGNMENT" && update.operator) {
       if (COMPOUND_OPERATORS.includes(update.operator)) {
         return this.normalizeCompound(update);
       }
-      // plain i = expr — already an assignment, pass through
+      // plain i = expr is already an assignment, so pass through
       return update;
     }
     

@@ -46,7 +46,7 @@ export class Struct {
     
     let byteSize = 0;
     
-    // BUILD STRUCT LAYOUT
+  
     
     for (let i = 0; i < fields.length; i++) {
       
@@ -99,13 +99,13 @@ export class Struct {
       byteSize += this.IRB.getTypeSizeStruct(llvmType);
     }
     
-    // EMIT LLVM STRUCT TYPE
+  
     
     this.IRB.globals.push(
       `%${name} = type { ${llvmFields.join(", ")} }`
     );
     
-    // REGISTER STRUCT
+  
     
     this.IRB.setStruct(name, {
       isGlobal: globalScope,
@@ -115,7 +115,7 @@ export class Struct {
       size: fields.length
     });
     
-    // METHODS SUPPORT
+  
     
     if (isMethod) {
       this.registerStructMethods(node);
@@ -167,7 +167,7 @@ export class Struct {
   
   assignStruct(node, globalScope) {
     
-    // 1. FLATTEN CHAIN  
+  
     
     const { base, fields } = this.IRB.resolveMemberChainAssign(node.object);
     const lastField = node.field;
@@ -182,7 +182,7 @@ export class Struct {
     
     if (variable?.isMap) {
       
-      // RESOLVE VALUE
+      
       
       const value = this.expr.handleExpression(node.value);
       
@@ -224,7 +224,7 @@ export class Struct {
           );
         }
         
-        // RUNTIME POINTER WALK
+      
         
         const keyPtr = this.IRB.newGlobalString(field);
         
@@ -258,11 +258,9 @@ export class Struct {
         }
       }
       
-      // FINAL KEY
       
       const keyPtr = this.IRB.newGlobalString(node.field);
       
-      // FIXED STORE TARGET
       
       let t;
       
@@ -368,7 +366,7 @@ export class Struct {
     const expectedIsList = fieldMeta?.isList;
     const fieldName = fieldMeta?.name;
     
-    // fixed array field
+    
     if (fieldMeta.llvmType?.startsWith("[")) {
       this.IRB.emitError(
         "SemanticError",

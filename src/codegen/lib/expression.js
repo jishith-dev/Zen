@@ -65,7 +65,7 @@ export class Expression {
       
       return {
         ptr: data.name,
-        ir: data.ir, // direct ir for module linking 
+        ir: data.ir, 
         symbol: data?.symbol, 
         type: "string",
         llvmType: "i8*",
@@ -93,7 +93,7 @@ export class Expression {
       
       const data = this.IRB.getVar(node.name, node);
       
-      // check its array so no need load. we can load in array access 
+      // check if its array so no need to load. we can load in array access 
       const isArray = data?.isArray;
       const isStruct = data?.isStruct;
       const isList = data?.isList;
@@ -569,7 +569,7 @@ export class Expression {
         let finalLLVMType = "ptr";
         let finalMapLayout = null;
         
-        // WALK:
+      
         // a.b.c.d
         
         for (let i = 0; i < fields.length; i++) {
@@ -619,8 +619,7 @@ export class Expression {
                 this.IRB.freedMap.set(base.name, new Set());
               }
               
-              // a.free() → path is "" (base itself)
-              // a.nested.again.free() → path is "nested.again"
+
               const freedPath = fields.slice(0, i).join(".");
               this.IRB.freedMap.get(base.name).add(freedPath);
               
@@ -748,7 +747,6 @@ export class Expression {
           
           isList = meta.isList;
           
-          // KEY STRING
           
           const keyPtr =
             this.IRB.newGlobalString(
@@ -782,8 +780,6 @@ export class Expression {
               resultPtr;
           }
         }
-        
-        // PTR -> REAL TYPE
         
         let finalPtr =
           resultPtr;
@@ -851,8 +847,7 @@ export class Expression {
       
       if (isList) {
         
-        const o =
-          object // this.handleExpression(node.object);
+        const o = object
         
         this.IRB.emitExpr(o);
         
@@ -899,7 +894,6 @@ export class Expression {
       
       const finalType = fieldInfo.llvmType;
       
-      //  KEY FIX
       const isArray = finalType?.startsWith("[") || finalType?.isArray;
       const isStruct = this.IRB.hasStruct(structName);
       
@@ -916,7 +910,7 @@ export class Expression {
         };
       }
       
-      //  normal scalar → load
+      //  normal scalar  load
       const val = this.IRB.newTemp();
       
       local.push(
@@ -1279,9 +1273,6 @@ export class Expression {
       
       if (node.operator === "-") {
 
-  // -------------------------
-  // CASE 1: literal (compile-time fold)
-  // -------------------------
   if (val.kind === "literal") {
    
     if (val.type === "int") {
@@ -1313,9 +1304,6 @@ export class Expression {
     }
   }
 
-  // -------------------------
-  // CASE 2: variable / reference (runtime IR)
-  // -------------------------
 
   const tmp = this.IRB.newTemp();
 
@@ -1552,7 +1540,7 @@ if (RNode?.isList) {
         
         const resultPtr = this.IRB.newTemp();
         
-        /* ---------- CONCAT --------*/
+       // CONCAT
         local.push(
           `${resultPtr} = call i8* @str_concat(i8* ${leftPtr}, i8* ${rightPtr})`
         );
@@ -1586,7 +1574,7 @@ if (RNode?.isList) {
           `${cmp} = call i32 @strcmp(i8* ${l}, i8* ${r})`
         );
         
-        // convert strcmp result → boolean
+        // convert strcmp result boolean
         const boolPtr = this.IRB.newTemp();
         
         if (op === "==") {
@@ -1631,8 +1619,6 @@ if (RNode?.isList) {
     }
     
     
-    //  2. NORMALIZE (bool → int)
-    
     const normalize = (type, val, k) => {
       
       if (type === "bool") {
@@ -1661,7 +1647,6 @@ if (RNode?.isList) {
       const skipLabel = this.IRB.newLabel("skip");
       const endLabel = this.IRB.newLabel("end");
       
-      /* ========= LEFT ========= */
       const LNode = resolve(node.left);
       
       if (LNode?.isList) {
@@ -1699,14 +1684,12 @@ if (RNode?.isList) {
       
       const lBool = toBool(LNode.ptr, LNode.type);
       
-      /* ========= BRANCH ========= */
       if (op === "&&") {
         local.push(`br i1 ${lBool}, label %${rhsLabel}, label %${skipLabel}`);
       } else {
         local.push(`br i1 ${lBool}, label %${skipLabel}, label %${rhsLabel}`);
       }
       
-      /* ========= RHS ========= */
       local.push(`${rhsLabel}:`);
       
       const RNode = resolve(node.right);
@@ -1723,16 +1706,14 @@ if (RNode?.isList) {
       
       const rBool = toBool(RNode.ptr, RNode.type);
       
-      // RHS may end in another block (nested short circuit)
+    
       const rIncomingBlock = RNode.endLabel || rhsLabel;
       
       local.push(`br label %${endLabel}`);
       
-      /* ========= SKIP ========= */
       local.push(`${skipLabel}:`);
       local.push(`br label %${endLabel}`);
       
-      /* ========= END ========= */
       local.push(`${endLabel}:`);
       
       const skipValue = op === "&&" ? "false" : "true";
@@ -1764,7 +1745,7 @@ if (RNode?.isList) {
       
       const type = isDouble ? "double" : "int";
       
-      // type promotion in comparison 
+      
       if (type === "double") {
         
         if (L.type === "int") {
@@ -1796,7 +1777,6 @@ if (RNode?.isList) {
       };
     }
     
-    //   3. TYPE PROMOTION
     
     let resultType =
       LOOKUP[L.type] > LOOKUP[R.type] ?

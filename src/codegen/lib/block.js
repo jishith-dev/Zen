@@ -9,7 +9,6 @@ export class Block {
     
     if (!blockNode) return;
     
-    // REAL BLOCK 
     if (blockNode.type === "BLOCK") {
       this.IRB.enterScope();
       

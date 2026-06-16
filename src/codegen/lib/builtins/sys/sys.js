@@ -43,8 +43,6 @@ export class ZenSys {
     };
     }
     
-    // Expression evaluation
-    
     const exprs = args.map(arg => this.expr.handleExpression(arg));
     
     exprs.forEach((expr, i) => {
@@ -64,9 +62,6 @@ export class ZenSys {
       }
     });
     
-    // -------------------------
-    // Arg type mapper
-    // -------------------------
     const getArgType = (e) => {
       switch (e) {
         case "int":
@@ -85,8 +80,7 @@ export class ZenSys {
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }
     };
-    
-    // Emit inner code first
+  
     
     exprs.forEach(e => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
@@ -100,15 +94,13 @@ export class ZenSys {
     
     const llvmRet = this.IRB.getLLVMType(returnType);
     
-    
-    // Function declaration 
+  
     
     this.IRB.declareOneTime(
       funcName,
       `declare ${llvmRet} @${funcName}(${exprs.map(e => getArgType(e.type)).join(", ")})`
     );
     
-    // PURE CALL 
     
     let t = null;
     if (llvmRet === "void") {

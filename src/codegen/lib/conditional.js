@@ -25,7 +25,6 @@ export class Conditional {
         this.IRB.emit(`${falseLabel}:`);
       }
       
-      // ===== condition =====
       const expr = this.expr.handleExpression(condition, false);
       
       this.IRB.emitExpr(expr);
@@ -42,10 +41,8 @@ export class Conditional {
         (node.else ? this.IRB.newLabel("else") : endLabel) :
         this.IRB.newLabel("elseif");
       
-      // ===== branch =====
       this.IRB.emit(`br i1 ${cond}, label %${trueLabel}, label %${falseLabel}`);
       
-      // ===== true block =====
       this.IRB.emit(`${trueLabel}:`);
       
       this.block.block(body, false, meta);
@@ -55,7 +52,6 @@ export class Conditional {
       }
     }
     
-    // ===== else block =====
     if (node.else) {
       
       this.IRB.emit(`${falseLabel}:`);
@@ -72,7 +68,6 @@ export class Conditional {
       }
     }
     
-    // ===== end =====
     const last = this.IRB.currentFunction ? this.IRB.currentFunction.body[this.IRB.currentFunction.body.length - 1] : this.IRB.locals[this.IRB.locals.length - 1];
     
     if (last !== `${endLabel}:`) {

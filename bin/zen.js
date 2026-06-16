@@ -114,11 +114,10 @@ if (!fs.existsSync(inputFile)) {
   process.exit(1);
 }
 
-// Project root = file location 
+// Project root 
 const PROJECT_ROOT = path.dirname(inputFile);
 const source = IRB.safeReadFile(inputFile);
 
-// LOAD COMPILER MODULES
 
 const Lexer = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/lexer/lexer.js")).href
@@ -131,8 +130,6 @@ const Parser = (await import(
 const CodeGen = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/codegen/codegen.js")).href
 )).CodeGen;
-
-// FRONTEND
 
 const lexer = new Lexer(source, IRB);
 const tokens = lexer.tokenize();
@@ -171,7 +168,6 @@ const moduleFiles = llvm.modules ? [...llvm.modules] : [];
 const buildDir = path.join(PROJECT_ROOT, "build");
 fs.mkdirSync(buildDir, { recursive: true });
 
-// OUTPUT FILES
 
  const exeName = path.basename(inputFile).replace(/\.zen$/, "");
 
@@ -187,7 +183,7 @@ if (command === "clean") {
   process.exit(0);
 }
 
-// LLVM PIPELINE
+// PIPELINE
 
 run(`opt -O2 ${outLL} -S -o ${outOptLL}`);
 run(`llc -filetype=obj -relocation-model=pic ${outOptLL} -o ${outO}`);
@@ -228,7 +224,7 @@ const runtimeObjs = isDev ? [
   path.join(COMPILER_ROOT, "src/codegen/runtime/curlRuntime.o"),
 ];
 
-// LINK
+// LINK ALL
 
 const outputExe = path.join(buildDir, exeName);
 
@@ -244,7 +240,6 @@ run([
   outputExe,
 ].join(" "));
 
-// RUN
 
 if (command === "build") {
   console.log(`Build successful: ${outputExe}`);
