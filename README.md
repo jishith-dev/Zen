@@ -56,9 +56,9 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v1.0.0
+Current Version: v1.0.1
 
-### v1.0.0 (Initial Release)
+### v1.0.1 
 
 - Full LLVM-based compiler pipeline
 - Lexer, Parser, AST generation
@@ -401,7 +401,7 @@ The following identifiers are reserved by the language and may not be used as us
 
 Keywords are case-sensitive. `fn` is reserved; `Fn` and `FN` are valid identifiers.
 
-ZEN reserves async and await as keywords in v1.0.0, and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Full async/await support, including the concurrency model and runtime semantics, is planned for v2.
+ZEN reserves async and await as keywords in v1, and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Full async/await support, including the concurrency model and runtime semantics, is planned for v2.
 
 ---
 
@@ -460,7 +460,7 @@ Hexadecimal literals are supported using the `0x` prefix.
 0x00
 ```
 
-Binary and octal representations are not supported in v1.0.0.
+Binary and octal representations are not supported in v1.
 
 
 #### 2.6.2 Double Literals
@@ -473,7 +473,7 @@ A decimal integer part, a dot, and a decimal fractional part. Both parts are req
 100.0
 ```
 
-Scientific notation is not supported in v1.0.0. A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
+Scientific notation is not supported in v1. A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
 
 #### 2.6.3 String Literals
 
@@ -978,8 +978,6 @@ field_access
 arr[0]
 matrix[1][2]
 person.name
-map["key"]
-map[runtimeKey]
 ```
 
 ---
@@ -1197,18 +1195,9 @@ do {
 
 #### Loop In — Map Iteration
 
-Iterates over key-value pairs in a `Map`.
-
-```
-loop_in_stmt
-  = "loop" "(" IDENTIFIER "in" IDENTIFIER ")" block
-```
-
-```zen
-loop (value in myMap) {
-  # value holds the current map value one by one
-}
-```
+> ⚠️ **Disabled in Zen** — `loop in` over a `Map` is not supported.  
+> Maps are heterogeneous (values can be any type), so iteration is undefined at compile time.  
+> This will throw a compile-time error.
 
 #### Loop Of — Array and List Iteration
 
@@ -1440,7 +1429,7 @@ Map values may be of the following types:
 - `List<T>`
 - Nested `Map`
 
-Struct instances may not be stored as Map values in v1.0.0.
+Struct instances may not be stored as Map values in v1.
 
 #### Literals and Nesting
 
@@ -1463,7 +1452,7 @@ Map b = {
 }
 ```
 
-> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.0.0 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
+> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.0.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
 
 #### Field Access
 
@@ -1475,12 +1464,7 @@ b.nested.hobbies[0]                    # 20
 b.nested.salary                        # 20000.5
 ```
 
-Runtime key access using a variable is also supported:
-
-```zen
-string key = "name"
-a[key]                                 # equivalent to a.name
-```
+> ⚠️ **Not supported in v1.x** — Runtime key access using a variable raises a compile-time error. Planned for v2.
 
 #### Field Assignment
 
@@ -1496,6 +1480,8 @@ a.country = "India"                    # creates new field at runtime
 | Method | Description |
 |---|---|
 | `free()` | Releases the Map from heap memory |
+| `has(key)` | Returns `bool` — checks if a key exists in the Map |
+| `remove(key)` | Removes a key-value pair from the Map |
 
 ```zen
 a.free()
@@ -1506,6 +1492,11 @@ After calling `free()`, the Map must not be accessed or reassigned. Any use afte
 ```zen
 a.free()
 a.name = "x"                           # runtime error: use after free
+```
+
+```zen
+bool exists = a.has("name")            # true if key exists
+a.remove("name")                       # removes key from Map
 ```
 
 ---
@@ -1538,7 +1529,7 @@ List elements may be of the following types:
 - `int`, `double`, `string`, `bool`
 - Nested `List<T>`
 
-`Map` is not a valid element type in v1.0.0, as Map has no literal form for use in expressions.
+`Map` is not a valid element type in v1, as Map has no literal form for use in expressions.
 
 `auto` is not valid as a type parameter — `List<auto>` is a compile-time error.
 
@@ -1652,7 +1643,7 @@ matrix[1][1] = 5
 
 #### Constraints
 
-- Fixed-size arrays cannot be passed as function parameters in v1.0.0.
+- Fixed-size arrays cannot be passed as function parameters in v1.
 - Fixed-size arrays have no built-in methods.
 - Resizing is not possible after declaration.
 
@@ -1701,7 +1692,7 @@ Struct fields may be of the following types:
 - `List<T>`
 - Another `struct` type
 
-`Map` is not a valid field type in v1.0.0.
+`Map` is not a valid field type in v1.
 
 #### Instantiation
 
@@ -1765,7 +1756,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.0.0, and methods cannot be called on a struct type directly — only on an instance.
+Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.0.1, and methods cannot be called on a struct type directly — only on an instance.
 
 ```zen
 Counter c
@@ -1776,8 +1767,8 @@ int v = c.get()                        # v = 1
 
 #### Constraints
 
-- Struct instances cannot be passed as function parameters in v1.0.0.
-- `Map` is not a valid field type in v1.0.0.
+- Struct instances cannot be passed as function parameters in v1.0.1.
+- `Map` is not a valid field type in v1.
 - Methods are user-defined only; no built-in struct methods exist.
 - Struct declarations may not be nested inside functions.
 
@@ -2262,55 +2253,8 @@ The condition is evaluated after each iteration. `break` exits immediately; `con
 
 ### 9.4 Loop In — Map Iteration
 
-Iterates over the keys of a `Map`. On each iteration, the loop variable holds the current key as a `string`.
-
-```
-loop_in_stmt
-  = "loop" "(" IDENTIFIER "in" IDENTIFIER ")" block
-```
-
-For `loop in` to be valid, two conditions must be met:
-
-- All values in the Map must be of the same type.
-- The Map must not contain nested fields — nested Maps or Lists as values are not permitted in a `loop in` target.
-
-If either condition is violated, the compiler raises an error. Full heterogeneous and nested Map iteration is deferred to v2.
-
-```zen
-Map config = {
-  host: "localhost",
-  port: "8080"
-}
-
-loop (key in config) {
-  string val = config[key]             # all values are string, no nesting — valid
-}
-```
-
-```zen
-Map mixed = {
-  name: "zen",
-  age: 21
-}
-
-loop (key in mixed) {                  # compile-time error: heterogeneous values
-}
-```
-
-```zen
-Map nested = {
-  info: {
-    city: "Bangalore"
-  }
-}
-
-loop (key in nested) {                 # compile-time error: nested fields not allowed
-}
-```
-
-`break` and `continue` work normally inside `loop in`.
-
----
+> ⚠️ **Not supported in v1.x** — `loop in` over a `Map` raises a compile-time error.
+> Maps are heterogeneous, so value iteration is undefined at compile time. Planned for v2.
 
 ### 9.5 Loop Of — List and Array Iteration
 
@@ -2407,7 +2351,7 @@ Values that require a stack frame or runtime evaluation cannot be exported. Atte
 | `int a = b + 1` | Variable reference — runtime dependent |
 | `auto a = 42` | Inferred type — not statically resolved for export |
 | Local variables | Not global scope |
-| Struct declarations | Not supported in v1.0.0 |
+| Struct declarations | Not supported in v1.0.1 |
 
 ```zen
 int a = 10             # valid — static literal
@@ -2424,7 +2368,7 @@ export(a, add, MAX)    # b would cause a compile-time error here
 
 #### Exported Files and Import Restriction
 
-A file that exports identifiers must not itself contain any `import` statement. Circular or dependent module chains are not permitted in v1.0.0. This is a compile-time error.
+A file that exports identifiers must not itself contain any `import` statement. Circular or dependent module chains are not permitted in v1.0.1. This is a compile-time error.
 
 ```zen
 import(utils) from "utils.zen"   # compile-time error: exported file cannot import
@@ -2847,6 +2791,49 @@ if (x < 0) {
 
 ---
 
+##### `sys.argv`
+
+Returns the command-line arguments passed to the program as a `List<string>`.
+
+```
+sys.argv()
+```
+
+Returns `List<string>`.
+
+```zen
+List<string> args = sys.argv()
+
+loop (arg in args) {
+  screen(arg)
+}
+```
+
+> `args[0]` is always the path to the compiled binary.
+
+---
+
+##### `sys.performance`
+
+Returns the current monotonic time in milliseconds as a `double`. Used for benchmarking and measuring execution time.
+
+```
+sys.performance()
+```
+
+Returns `double`.
+
+```zen
+double start = sys.performance()
+
+# ... code to benchmark ...
+
+double end = sys.performance()
+screen(end - start)                    # elapsed time in ms
+```
+
+---
+
 ##### `sys.color`
 
 Changes the terminal output color using ANSI formatting. Affects all subsequent `screen` output until changed again.
@@ -2862,9 +2849,9 @@ sys.color("color")
 Returns `void`.
 
 ```zen
-color("red")
+sys.color("red")
 screen("error occurred")
-color("reset")
+sys.color("reset")
 screen("back to normal")
 ```
 
@@ -4128,7 +4115,7 @@ Output: Native binary
 
 ### 12.3 Host Language
 
-The ZEN compiler is implemented in **JavaScript** and runs on **Node.js**. This is the v1.0.0 host. Self-hosting — rewriting the compiler in ZEN itself — is a future goal and not part of the current specification.
+The ZEN compiler is implemented in **JavaScript** and runs on **Node.js**. This is the v1 host. Self-hosting — rewriting the compiler in ZEN itself — is a future goal and not part of the current specification.
 
 ---
 
@@ -4141,7 +4128,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v1.0.0. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v1.0.1. All compilation uses `-O2` by default.
 
 ---
 
@@ -4669,23 +4656,12 @@ Common triggers:
 
 #### LoopError
 
-Raised when a `loop in` iterates over a `Map` whose value types cannot be resolved uniformly at runtime.
+Raised when `loop in` is used on a `Map`.
 
 ```
 [Zen  LoopError]
-  └── Cannot iterate — Map 'data' contains heterogeneous value types
+  └── Cannot iterate over Map — 'loop in' on Map is not supported in v1.x
 ```
-
-```
-[Zen  LoopError]
-  └── Cannot iterate — Map 'config' contains nested values incompatible with 'loop in'
-```
-
-Common triggers:
-- Using `loop in` on a `Map` that holds values of mixed types
-- Using `loop in` on a `Map` with nested or complex value structures
-
----
 
 #### PanicError
 
@@ -4709,7 +4685,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v1.0.0 provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
+ZEN v1.0.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -4893,7 +4869,7 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `MemoryError` | Runtime | Use after free |
 | `IndexError` | Runtime | Out-of-bounds array or list access |
 | `PanicError` | Runtime | Explicit `sys.panic()` call |
-| `LoopError` | Runtime | `loop in` on heterogeneous or nested Map |
+| `LoopError` | Compile-time | `loop in` on a `Map` is not supported in v1.x |
 
 
 ### K. Installation

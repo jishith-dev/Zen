@@ -91,7 +91,7 @@ if (!command || command === "help" || command === "--help" || command === "-h") 
 }
 
 if (command === "version" || command === "--version" || command === "-v") {
-  console.log("Zen v1.0.0");
+  console.log("Zen v1.0.1");
   process.exit(0);
 }
 
