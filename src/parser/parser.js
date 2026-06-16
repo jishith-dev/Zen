@@ -756,6 +756,16 @@ export class Parser {
       };
     }
     
+    if (this.match("IDENTIFIER")) {
+      const type = this.current().value;
+      this.advance();
+      
+      return {
+        type,
+        dimensions: []
+      };
+    }
+    
     let baseType;
     
     if (this.match("TYPE")) {

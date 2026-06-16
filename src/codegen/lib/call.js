@@ -304,21 +304,24 @@ export class Call {
       };
     }
     
+    
+    
     // NORMAL CALL 
     
     for (const a of args) {
       
-      if (a.needsLoad) {
+        if (a.isList) {
+          argStr.push(`ptr ${a.ptr}`);
+        } 
+       else if (a?.isStruct) {
+        argStr.push(`ptr ${a.ptr}`);
+      } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
         local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
         argStr.push(`ptr ${tmp}`);
       } else {
-        if (a.isList) {
-          argStr.push(`ptr ${a.ptr}`);
-        } else {
           argStr.push(`${a.llvmType} ${a.ptr}`);
         }
-      }
     }
     
     if (fn.returnType === "void") {

@@ -819,7 +819,22 @@ strTemp() {
         continue;
       }
       
-      if (p.type.type === "Map") {
+      if (this.hasStruct(p.type.type)) {
+        paramStr.push(`ptr ${temp}`);
+        
+        paramData.push({
+          ptr: temp,
+          name: p.name,
+          type: p.type.type,
+          llvmType: "ptr",
+          isStruct: true
+        });
+        
+        continue;
+      }
+      
+    // disabled in v1 
+    /*  if (p.type.type === "Map") {
         paramStr.push(`ptr  ${temp}`);
         
         paramData.push({
@@ -832,7 +847,7 @@ strTemp() {
         
         continue;
       }
-      
+      */
       // ARRAY CHECK 
       
       const isArray =
@@ -1440,7 +1455,7 @@ end:
   }
   
   hasStruct(name) {
-    return this.structTable && this.structTable.hasOwnProperty(name);
+    return this.structTable && this.structTable.has(name);
   }
   
   getArrayElementType(type) {

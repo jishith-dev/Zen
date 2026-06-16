@@ -340,7 +340,20 @@ export class HandleFunction {
           fromParam: true,
           isStruct: true
         }));
-      } else if (p.isRest) {
+      } else if (p?.isStruct) {
+        // update symbol table
+        
+        this.IRB.setVar(p.name, this.IRB.createData({
+          ptr: p.ptr,
+          llvmType: p.llvmType,
+          type: p.type,
+          isConstant: false,
+          isGlobal: false,
+          fromParam: true,
+          isStruct: true
+        }));
+      } 
+      else if (p.isRest) {
         
         this.IRB.declareOneTime(
           "ZenList",
