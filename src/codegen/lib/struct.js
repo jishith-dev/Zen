@@ -350,7 +350,7 @@ export class Struct {
     const structInfo = this.IRB.getStruct(structName);
     
     const fieldIndex = structInfo.fieldMap[lastField];
-    const isList = structInfo.layout[fieldIndex].isList
+    const isList = structInfo.layout[fieldIndex]?.isList
     
     if (fieldIndex === undefined) {
       this.IRB.emitError(
