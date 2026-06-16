@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO="https://github.com/jishith-dev/Zen.git"
-BRANCH="main"
+BRANCH="dev"
 INSTALL_DIR="$HOME/.zen"
 
 RED='\033[0;31m'
@@ -170,7 +170,7 @@ if ! echo "$PATH" | grep -q "$BIN_DIR"; then
 fi
 
 echo ""
-success "Zen installed successfully!"
+success "Zen dev installed successfully!"
 echo ""
 echo "  zen --help"
 echo "  zen --version"

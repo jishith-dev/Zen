@@ -206,12 +206,22 @@ for (const ll of moduleFiles) {
 
 // STD LIB + RUNTIME
 
-const stdlibObjs = [
+const isDev = process.argv[0].endsWith("node")
+
+const stdlibObjs = isDev ? [
+  path.join(COMPILER_ROOT, "dev/constants.o"),
+  path.join(COMPILER_ROOT, "dev/zen_stdlib_opt.o"),
+] : [
   path.join(COMPILER_ROOT, "src/zen_stdlib/constants.o"),
   path.join(COMPILER_ROOT, "src/zen_stdlib/zen_stdlib_opt.o"),
 ];
 
-const runtimeObjs = [
+const runtimeObjs = isDev ? [
+  path.join(COMPILER_ROOT, "dev/runtime.o"),
+  path.join(COMPILER_ROOT, "dev/listRuntime.o"),
+  path.join(COMPILER_ROOT, "dev/mapRuntime.o"),
+  path.join(COMPILER_ROOT, "dev/curlRuntime.o"),
+] : [
   path.join(COMPILER_ROOT, "src/codegen/runtime/runtime.o"),
   path.join(COMPILER_ROOT, "src/codegen/runtime/listRuntime.o"),
   path.join(COMPILER_ROOT, "src/codegen/runtime/mapRuntime.o"),
