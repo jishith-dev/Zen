@@ -476,3 +476,18 @@ ZenList* zen_va_bools(
 
     return list;
 }
+
+ZenList* _sys_argv(int argc, char** argv) {
+
+    ZenList* list =
+        zen_list_new(sizeof(char*));
+
+    for (int i = 0; i < argc; i++) {
+
+        char* arg = argv[i];
+
+        zen_list_push(list, &arg);
+    }
+
+    return list;
+}

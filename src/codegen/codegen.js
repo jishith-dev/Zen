@@ -110,7 +110,7 @@ define void @_assignSeed () {
     }
     
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.emit("define i32 @main() { \nentry:\ncall void @_assignSeed()");
+      this.IRB.emit("define i32 @main(i32 %argc, ptr %argv) { \nentry:\ncall void @_assignSeed()");
     }
     
     // set builtins

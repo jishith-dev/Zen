@@ -205,6 +205,7 @@ const BUILTIN_FUNCTIONS = [
   "_sys_getEnv",
   "_sys_color",
   "_sys_performance",
+  "_sys_argv",
   
   // FS
   "_fs_cwd",
@@ -330,7 +331,8 @@ const NAMESPACE_MAP = {
     "panic",
     "getEnv",
     "color",
-    "performance"
+    "performance",
+    "argv"
   ],
   
   time: [
@@ -441,6 +443,11 @@ const BUILTIN_MAP = {
   performance: {
     returnType: "double",
     llvmName: "_sys_performance"
+  },
+  
+  argv: {
+    returnType: "List",
+    llvmName: "_sys_argv"
   },
   
   // ========================================
@@ -1073,6 +1080,12 @@ const SYS_MAP = {
     []
   ],
   
+  _sys_argv: [
+    "_sys_argv",
+    "List",
+    0,
+    []
+  ],
 };
 
 

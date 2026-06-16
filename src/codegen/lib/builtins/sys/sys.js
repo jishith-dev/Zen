@@ -14,6 +14,35 @@ export class ZenSys {
       );
     }
     
+    // sys.argv is superately handled
+    
+    if (funcName === "_sys_argv") {
+      this.IRB.declareOneTime(
+        "ZenList",
+        "%ZenList = type { ptr, i32, i32, i64 }"
+      );
+      this.IRB.declareOneTime("_sys_argv", "declare ptr @_sys_argv(i32, ptr)");
+      const tmp = this.IRB.newTemp();
+      this.IRB.emit(`${tmp} = call ptr @_sys_argv(i32 %argc, ptr %argv)`);
+      
+    return {
+      ptr: tmp,
+      type: "string", // generic is string
+      llvmType: "ptr",
+      local: [],
+      global: [],
+      isList: true,
+      generic: {
+        generic: {
+        type: "string",
+        llvmType: "ptr",
+        isList: false
+        }
+      },
+      postOrPrefix: false
+    };
+    }
+    
     // Expression evaluation
     
     const exprs = args.map(arg => this.expr.handleExpression(arg));
