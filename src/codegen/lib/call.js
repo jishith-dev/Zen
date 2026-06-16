@@ -134,7 +134,8 @@ export class Call {
     
     let argStr = [];
     
-    for (let i = 0; i < args.length; i++) {
+    // Map as param in functions are disabled in v1
+    /*for (let i = 0; i < args.length; i++) {
       const a = args[i];
       const param = fn.params[i];
       
@@ -150,7 +151,7 @@ export class Call {
         }
       }
     }
-    
+    */
     
     if (hasRest) {
       

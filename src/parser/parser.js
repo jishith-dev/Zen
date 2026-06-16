@@ -828,6 +828,16 @@ export class Parser {
       this.skipNewlines()
       const t = this.parseType();
       
+    // Zen v1 limitation:
+// Map parameters are temporarily disabled.
+
+if (t.type === "Map") {
+  this.IRB.emitError(
+    "SemanticError",
+    "Map values cannot be used as function parameters."
+  );
+}
+      
       const name = this.expect("IDENTIFIER").value;
       this.skipNewlines()
       let isRest = false;
@@ -851,7 +861,7 @@ export class Parser {
       }
       if (this.match("ASSIGNMENT")) {
         this.advance();
-        param.default = this.parseExpression();
+        param.default = this.node(this.parseExpression());
       }
       
       params.push(param);

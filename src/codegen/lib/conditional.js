@@ -17,6 +17,7 @@ export class Conditional {
     ];
     
     let falseLabel = null;
+    let endLabelUsed = false;
     
     for (let i = 0; i < chain.length; i++) {
       const { condition, body } = chain[i];
@@ -49,6 +50,7 @@ export class Conditional {
       
       if (!this.IRB.hasTerminator()) {
       this.IRB.emit(`br label %${endLabel}`);
+      endLabelUsed = true;
       }
     }
     
@@ -57,8 +59,10 @@ export class Conditional {
       this.IRB.emit(`${falseLabel}:`);
       
       this.block.block(node.else?.body);
+      
       if (!this.IRB.hasTerminator()) {
       this.IRB.emit(`br label %${endLabel}`);
+      endLabelUsed = true;
       }
     } else {
       
@@ -71,7 +75,8 @@ export class Conditional {
     const last = this.IRB.currentFunction ? this.IRB.currentFunction.body[this.IRB.currentFunction.body.length - 1] : this.IRB.locals[this.IRB.locals.length - 1];
     
     if (last !== `${endLabel}:`) {
-      if (!this.IRB.hasTerminator()) {
+      
+      if (endLabelUsed) {
       this.IRB.emit(`${endLabel}:`);
       }
     }

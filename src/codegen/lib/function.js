@@ -359,7 +359,9 @@ export class HandleFunction {
           fromParam: true
         }));
         
-      } else if (p.isMap) {
+      }
+      // Map as fn param is disabled in v1
+      /* else if (p.isMap) {
         this.IRB.setVar(p.name, this.IRB.createData({
           ptr: p.ptr,
           llvmType: "ptr",
@@ -370,7 +372,7 @@ export class HandleFunction {
           fromParam: true,
           needsLoad: false
         }));
-      }
+      } */
       else {
         let ptr = `%${p.name}.addr`;
         
