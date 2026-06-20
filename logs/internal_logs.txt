@@ -1,0 +1,14 @@
+v1.1.1
+
+Disabeld map for dynamic access and dynamic assignment and disabled in fn parameter
+List accept struct
+introduced struct literal in limited way
+contains() do not check struct literal
+now allowed to write Person p = {name: ...} 
+function allow struct return
+structs allowed in export and import
+empty initialised global struct instance also can be exported and imported
+new builtin function called matchRegex() introduced. real posix ere regex.
+added new list methods 'join' and 'indexOf'
+new namespace function ffi.fn.
+made function name mangling

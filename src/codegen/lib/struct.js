@@ -35,7 +35,6 @@ export class Struct {
   
   struct(node, globalScope) {
     
-    this.IRB.guardStackOp("STRUCT", node);
     const name = node.name;
     const fields = node.fields;
     const isMethod = node?.methods?.length > 0;
@@ -78,7 +77,7 @@ export class Struct {
       } else {
         type = f.type;
       }
-      
+    
       layout.push({
         name: f.name,
         type: type,
@@ -137,19 +136,34 @@ export class Struct {
     
     const structName = node.struct_ref;
     const varName = node.name;
+    const value = node.value;
     
     const structInfo = this.IRB.getStruct(structName);
     
     const llvmType = `%${structName}`;
     
     let ptr;
+    let isRet;
     
+    if (value?.type === "MAP_LITERAL") {
+      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+      ptr= this.IRB.emitStructLiteral(structName, value);
+      
+    } else if (value === null) {
     if (globalScope) {
       ptr = this.IRB.newGlobalTemp();
       this.IRB.globals.push(`${ptr} = global ${llvmType} zeroinitializer`);
     } else {
+      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       ptr = this.IRB.newTemp();
       this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+    }
+    } else {
+      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+      const expr = this.expr.handleExpression(value);
+      this.IRB.emitExpr(expr);
+      ptr = expr.ptr;
+      isRet = true;
     }
     
     this.IRB.setVar(varName, this.IRB.createData({
@@ -159,7 +173,8 @@ export class Struct {
       isStruct: true,
       isGlobal: globalScope,
       isVarRef: true,
-      needsLoad: true
+      needsLoad: true,
+      isRet
     }));
     
   }
@@ -349,6 +364,7 @@ export class Struct {
     
     const fieldIndex = structInfo.fieldMap[lastField];
     const isList = structInfo.layout[fieldIndex]?.isList
+    const fieldMeta = structInfo.layout[fieldIndex];
     
     if (fieldIndex === undefined) {
       this.IRB.emitError(
@@ -358,9 +374,7 @@ export class Struct {
       );
     }
     
-    const value = this.expr.handleExpression(node.value);
-    
-    const fieldMeta = structInfo.layout[fieldIndex];
+    const value = this.expr.handleExpression(node.value, false, fieldMeta.type);
     
     const expected = fieldMeta?.type;
     const expectedIsList = fieldMeta?.isList;

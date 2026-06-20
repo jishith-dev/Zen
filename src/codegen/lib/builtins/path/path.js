@@ -1,9 +1,9 @@
-export class OS {
+export class PATH {
   constructor(IRB, expr) {
     this.IRB = IRB;
     this.expr = expr;
   }
-  zenNativeOSCall(node, globalScope, funcName, returnType, paramCount = 0, params, name) {
+  zenPATH(node, globalScope, funcName, returnType, paramCount = 0, params, name) {
     
     if (returnType === "void") {
       const args = node.args;

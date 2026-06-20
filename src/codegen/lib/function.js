@@ -203,6 +203,11 @@ export class HandleFunction {
       this.IRB.functions.get(name).layout = layout;
       return;
     }
+    
+    if (expr?.isStruct) {
+      this.IRB.emit(`ret void`);
+      return;
+    }
     // type check 
     if (expr.type !== funcType) {
       this.IRB.emitError("TypeError", `function ${name} expected ${funcType} but got ${expr.type}`, node);
@@ -237,7 +242,7 @@ export class HandleFunction {
     if (isMethod) {
       name = `${node.structName}_${node.name}`;
     } else {
-      name = node.name;
+      name = `zen_${node.name}`;
     }
     
     let returnType = node.returnType === "void" ?
@@ -258,12 +263,17 @@ export class HandleFunction {
     let llvmReturnType = returnType === "void" ?
       "void" : returnType === "List" ? "%ZenList*" : returnType === "Map" ? "ptr" :
       this.IRB.getLLVMType(returnType); // exclude auto for now
+      const isSret = this.IRB.hasStruct(returnType);
+      // if it is struct return, then change struct type to ptr
+    if (isSret) {
+      llvmReturnType = "void";
+    }
     
     const params = node.params;
   
    this.IRB.currentFunction = true; // make currentFunction true for getting sequential temp count for params
     
-    const { ir, params: paramData } = this.IRB.buildParams(params, isMethod);
+    const { ir, params: paramData } = this.IRB.buildParams(params, isMethod, returnType);
     
     this.IRB.currentFunction = {
       name,

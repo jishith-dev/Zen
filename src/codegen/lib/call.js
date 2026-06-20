@@ -6,11 +6,13 @@ import {
   NETWORK_MAP,
   SYS_MAP,
   HTTP_MAP,
-  STD_FUNCTIONS
+  STD_FUNCTIONS,
+  FFI_MAP,
+  PATH_MAP
 } from "../../config/config.js";
 
 export class Call {
-  constructor(IRB, expr, io, type, string, file, os, time, network, http, sys) {
+  constructor(IRB, expr, io, type, string, file, os, time, network, http, sys, ffi, path) {
     this.IRB = IRB;
     this.io = io;
     this.type = type;
@@ -21,6 +23,8 @@ export class Call {
     this.network = network;
     this.http = http;
     this.sys = sys;
+    this.ffi = ffi;
+    this.path = path;
   }
   
   setExpression(expr) {
@@ -59,7 +63,7 @@ export class Call {
       };
     }
     
-    const name = node.name;
+    const name = `zen_${node.name}`;
     
     if (STD_FUNCTIONS.includes(name)) {
       this.IRB.usedStdFunctions.add(name);
@@ -83,7 +87,11 @@ export class Call {
     }
     
     const fn = this.IRB.getFunction(name);
+    const isStruct = this.IRB.hasStruct(fn.returnType);
     
+    
+const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
+
     const hasRest = fn.params.some(p => p.isRest);
     
     const finalArgs = [...node.args];
@@ -261,7 +269,12 @@ export class Call {
       
       let callTmp = null;
       
-      if (fn.returnType === "void") {
+      if (fn.returnType === "void" || isStruct) {
+        
+        const tmp = this.IRB.newTemp();
+        if (isStruct) {
+          local.push(`${tmp} = alloca %${fn.returnType}`);
+        }
         
         local.push(
           `call void @${name}(${argStr.join(", ")})`
@@ -272,7 +285,7 @@ export class Call {
         callTmp = this.IRB.newTemp();
         
         local.push(
-          `${callTmp} = call ${this.IRB.getLLVMType(fn.returnType)} @${name}(${argStr.join(", ")})`
+          `${callTmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`
         );
       }
       
@@ -281,10 +294,13 @@ export class Call {
         this.IRB.globals.push(global.join("\n"));
       }
       const isList = fn.returnType === "List";
+      
+      const isMap = fn.returnType === "Map";
+      
       if (isList) {
       this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
     }
-      const isMap = fn.returnType === "Map";
+      
       return {
         ptr: callTmp,
         type: isList ? fn.retGeneric : fn.returnType,
@@ -300,6 +316,7 @@ export class Call {
         needsLoad: false,
         isList,
         isMap,
+        isStruct,
         isDirectCall: true
       };
     }
@@ -324,8 +341,16 @@ export class Call {
         }
     }
     
-    if (fn.returnType === "void") {
+    if (fn.returnType === "void" || isStruct) {
+      
+      const tmp = this.IRB.newTemp();
+        if (isStruct) {
+          local.push(`${tmp} = alloca %${fn.returnType}`);
+          local.push(`call void @${name}(ptr sret(%${fn.returnType}) ${tmp})`);
+        } else {
+      
       local.push(`call void @${name}(${argStr.join(", ")})`);
+        }
       
       if (asStatement) {
         this.IRB.emit(local.join("\n"));
@@ -333,9 +358,9 @@ export class Call {
       }
       
       return {
-        ptr: null,
-        type: "void",
-        llvmType: "void",
+        ptr: isStruct ? tmp : null,
+        type: isStruct ? fn.returnType : "void",
+        llvmType: isStruct ? "ptr" : "void",
         local: asStatement ? [] : local,
         global: asStatement ? [] : global,
         endLabel: null,
@@ -348,7 +373,7 @@ export class Call {
     const tmp = this.IRB.newTemp();
     
     local.push(
-      `${tmp} = call ${this.IRB.getLLVMType(fn.returnType)} @${name}(${argStr.join(", ")})`
+      `${tmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`
     );
     
     if (asStatement) {
@@ -358,11 +383,12 @@ export class Call {
     
     const isList = fn.returnType === "List";
     
+    const isMap = fn.returnType === "Map";
+    
     if (isList) {
       this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
     }
     
-    const isMap = fn.returnType === "Map";
     return {
       ptr: tmp,
       type: isList ? fn.retGeneric : fn.returnType,
@@ -378,6 +404,7 @@ export class Call {
       needsLoad: false, // call not need load
       isList,
       isMap,
+      isStruct,
       isDirectCall: true
     };
   }
@@ -425,8 +452,8 @@ export class Call {
       case 'length':
         return this.string.length(node, globalScope);
         
-      case 'panic':
-        return this.error.panic(node);
+      case 'matchRegex':
+        return this.string.matchRegex(node);
         
         // these are same pattern functions 
         // unified
@@ -437,6 +464,8 @@ export class Call {
         const NW = NETWORK_MAP[name];
         const HTTP = HTTP_MAP[name];
         const SYS = SYS_MAP[name];
+        const FFI = FFI_MAP[name];
+        const PATH = PATH_MAP[name];
         
         if (os) {
           return this.os.zenNativeOSCall(
@@ -498,6 +527,26 @@ export class Call {
             SYS[1],
             SYS[2],
             SYS[3],
+            name
+          );
+        } else if (FFI) {
+          return this.ffi.zenFFI(
+            node,
+            globalScope,
+            FFI[0],
+            FFI[1],
+            FFI[2],
+            FFI[3],
+            name
+          );
+        } else if (PATH) {
+          return this.path.zenPATH(
+            node,
+            globalScope,
+            PATH[0],
+            PATH[1],
+            PATH[2],
+            PATH[3],
             name
           );
         }

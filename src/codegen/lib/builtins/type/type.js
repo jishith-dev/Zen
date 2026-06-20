@@ -8,6 +8,14 @@ export class Type {
     
     const args = node.args;
     
+    if (!args) {
+  this.IRB.emitError(
+    "SyntaxError",
+    `'type()' must be called as a function — did you forget '()'?`,
+    node
+  );
+}
+    
     if (args[0].length > 1) {
       this.IRB.emitError("ArgumentError", "Function type() accept exactly 1 argument", node);
     }

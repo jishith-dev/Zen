@@ -226,10 +226,16 @@ export class Parser {
       const struct_ref = this.advance().value;
       const name = this.advance().value;
       
+      let value = null;
+      if (this.current().value === "=") {
+        this.advance();
+        value = this.node(this.parseExpression());
+      }
       return this.node({
         type: ParserTypes.VARIABLE_DECLARATION,
         struct_ref,
-        name
+        name,
+        value
       });
     }
     

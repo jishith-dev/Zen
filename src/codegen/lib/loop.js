@@ -370,15 +370,19 @@ export class Loop {
       
       const isNested =
         nextGeneric?.type === "List";
+      const isStruct = this.IRB.hasStruct(varType);
       
       this.IRB.setVar(varName, {
         ptr: valTmp,
         type: varType,
-        llvmType: llvmVarType,
+        llvmType: isStruct ? "ptr" : llvmVarType,
         isList: isNested,
+        isStruct,
+        isFromList: true,
+        isListAccess: true,
         generic: nextGeneric,
         fromLoopOf: true,
-        needsLoad: true
+        needsLoad: !isStruct
       });
     }
     

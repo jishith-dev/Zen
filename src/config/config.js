@@ -148,7 +148,8 @@ const RESERVED_FUNCTIONS = [
   "cos", "tan", "log", "exp",
   "random", "randomInt",
   
-  "match", "json", "split"
+  "match", "json", "split",
+  "matchRegex"
 ]
 
 // all built in functions
@@ -199,6 +200,9 @@ const BUILTIN_FUNCTIONS = [
   "random", "randomInt",
   
   "match", "json",
+  
+  "matchRegex",
+  
   // SYS
   "_sys_exec",
   "_sys_panic",
@@ -251,7 +255,65 @@ const BUILTIN_FUNCTIONS = [
   "_http_post",
   "_http_update",
   "_http_patch",
-  "_http_delete"
+  "_http_delete",
+  
+  // FFI
+  "_ffi_printf",
+  "_ffi_puts",
+  "_ffi_putchar",
+  "_ffi_getchar",
+  "_ffi_strlen",
+  "_ffi_strcmp",
+  "_ffi_strncmp",
+  "_ffi_pow",
+  "_ffi_sqrt",
+  "_ffi_fabs",
+  "_ffi_floor",
+  "_ffi_ceil",
+  "_ffi_round",
+  "_ffi_sin",
+  "_ffi_cos",
+  "_ffi_tan",
+  "_ffi_log",
+  "_ffi_exp",
+  "_ffi_exit",
+  "_ffi_system",
+  "_ffi_abort",
+  "_ffi_clock",
+  "_ffi_rand",
+  "_ffi_srand",
+  "_ffi_abs",
+  "_ffi_atoi",
+  "_ffi_atof",
+  "_ffi_toupper",
+  "_ffi_tolower",
+  "_ffi_isalpha",
+  "_ffi_isdigit",
+  "_ffi_isspace",
+  "_ffi_fmod",
+  "_ffi_log10",
+  "_ffi_log2",
+  "_ffi_atan",
+  "_ffi_asin",
+  "_ffi_acos",
+  "_ffi_atan2",
+  "_ffi_sinh",
+  "_ffi_cosh",
+  "_ffi_tanh",
+  "_ffi_trunc",
+  "_ffi_cbrt",
+  "_ffi_isupper",
+  "_ffi_islower",
+  "_ffi_isalnum",
+  "_ffi_ispunct",
+  "_ffi_isxdigit",
+  
+  // PATH
+  "_path_basename",
+  "_path_dirname",
+  "_path_extname",
+  "_path_join",
+  "_path_normalize"
 ]
 
 // zen written std functions
@@ -355,6 +417,66 @@ const NAMESPACE_MAP = {
   
   net: [
     "online"
+  ],
+  
+  ffi: [
+  "printf",
+  "puts",
+  "putchar",
+  "getchar",
+  "strlen",
+  "strcmp",
+  "strncmp",
+  "pow",
+  "sqrt",
+  "fabs",
+  "floor",
+  "ceil",
+  "round",
+  "sin",
+  "cos",
+  "tan",
+  "log",
+  "exp",
+  "exit",
+  "system",
+  "abort",
+  "clock",
+  "rand",
+  "srand",
+  "abs",
+  "atoi",
+  "atof",
+  "toupper",
+  "tolower",
+  "isalpha",
+  "isdigit",
+  "isspace",
+  "fmod",
+  "log10",
+  "log2",
+  "atan",
+  "asin",
+  "acos",
+  "atan2",
+  "sinh",
+  "cosh",
+  "tanh",
+  "trunc",
+  "cbrt",
+  "isupper",
+  "islower",
+  "isalnum",
+  "ispunct",
+  "isxdigit"
+],
+
+ path: [
+  "basename",
+  "dirname",
+  "extname",
+  "join",
+  "normalize"
   ]
 };
 
@@ -372,7 +494,7 @@ const BUILTIN_MAP = {
   },
   
   input: {
-    returnType: "any", // depending on which type variable it assigned 
+    returnType: "string", 
     llvmName: "input"
   },
   
@@ -629,6 +751,276 @@ const BUILTIN_MAP = {
   "delete": {
     returnType: "string",
     llvmName: "_http_delete"
+  },
+  
+  printf: {
+    returnType: "int",
+    llvmName: "_ffi_printf"
+  },
+
+  puts: {
+    returnType: "int",
+    llvmName: "_ffi_puts"
+  },
+
+  putchar: {
+    returnType: "int",
+    llvmName: "_ffi_putchar"
+  },
+
+  getchar: {
+    returnType: "int",
+    llvmName: "_ffi_getchar"
+  },
+
+  strlen: {
+    returnType: "int",
+    llvmName: "_ffi_strlen"
+  },
+
+  strcmp: {
+    returnType: "int",
+    llvmName: "_ffi_strcmp"
+  },
+
+  strncmp: {
+    returnType: "int",
+    llvmName: "_ffi_strncmp"
+  },
+
+  pow: {
+    returnType: "double",
+    llvmName: "_ffi_pow"
+  },
+
+  sqrt: {
+    returnType: "double",
+    llvmName: "_ffi_sqrt"
+  },
+
+  fabs: {
+    returnType: "double",
+    llvmName: "_ffi_fabs"
+  },
+
+  floor: {
+    returnType: "double",
+    llvmName: "_ffi_floor"
+  },
+
+  ceil: {
+    returnType: "double",
+    llvmName: "_ffi_ceil"
+  },
+
+  round: {
+    returnType: "double",
+    llvmName: "_ffi_round"
+  },
+
+  sin: {
+    returnType: "double",
+    llvmName: "_ffi_sin"
+  },
+
+  cos: {
+    returnType: "double",
+    llvmName: "_ffi_cos"
+  },
+
+  tan: {
+    returnType: "double",
+    llvmName: "_ffi_tan"
+  },
+
+  log: {
+    returnType: "double",
+    llvmName: "_ffi_log"
+  },
+
+  exp: {
+    returnType: "double",
+    llvmName: "_ffi_exp"
+  },
+
+  exit: {
+    returnType: "void",
+    llvmName: "_ffi_exit"
+  },
+
+  system: {
+    returnType: "int",
+    llvmName: "_ffi_system"
+  },
+
+  abort: {
+    returnType: "void",
+    llvmName: "_ffi_abort"
+  },
+
+  clock: {
+    returnType: "int",
+    llvmName: "_ffi_clock"
+  },
+
+  rand: {
+    returnType: "int",
+    llvmName: "_ffi_rand"
+  },
+
+  srand: {
+    returnType: "void",
+    llvmName: "_ffi_srand"
+  },
+
+  abs: {
+    returnType: "int",
+    llvmName: "_ffi_abs"
+  },
+
+  atoi: {
+    returnType: "int",
+    llvmName: "_ffi_atoi"
+  },
+
+  atof: {
+    returnType: "double",
+    llvmName: "_ffi_atof"
+  },
+
+  toupper: {
+    returnType: "int",
+    llvmName: "_ffi_toupper"
+  },
+
+  tolower: {
+    returnType: "int",
+    llvmName: "_ffi_tolower"
+  },
+
+  isalpha: {
+    returnType: "int",
+    llvmName: "_ffi_isalpha"
+  },
+
+  isdigit: {
+    returnType: "int",
+    llvmName: "_ffi_isdigit"
+  },
+
+  isspace: {
+    returnType: "int",
+    llvmName: "_ffi_isspace"
+  },
+
+  fmod: {
+    returnType: "double",
+    llvmName: "_ffi_fmod"
+  },
+
+  log10: {
+    returnType: "double",
+    llvmName: "_ffi_log10"
+  },
+
+  log2: {
+    returnType: "double",
+    llvmName: "_ffi_log2"
+  },
+
+  atan: {
+    returnType: "double",
+    llvmName: "_ffi_atan"
+  },
+
+  asin: {
+    returnType: "double",
+    llvmName: "_ffi_asin"
+  },
+
+  acos: {
+    returnType: "double",
+    llvmName: "_ffi_acos"
+  },
+
+  atan2: {
+    returnType: "double",
+    llvmName: "_ffi_atan2"
+  },
+
+  sinh: {
+    returnType: "double",
+    llvmName: "_ffi_sinh"
+  },
+
+  cosh: {
+    returnType: "double",
+    llvmName: "_ffi_cosh"
+  },
+
+  tanh: {
+    returnType: "double",
+    llvmName: "_ffi_tanh"
+  },
+
+  trunc: {
+    returnType: "double",
+    llvmName: "_ffi_trunc"
+  },
+
+  cbrt: {
+    returnType: "double",
+    llvmName: "_ffi_cbrt"
+  },
+
+  isupper: {
+    returnType: "int",
+    llvmName: "_ffi_isupper"
+  },
+
+  islower: {
+    returnType: "int",
+    llvmName: "_ffi_islower"
+  },
+
+  isalnum: {
+    returnType: "int",
+    llvmName: "_ffi_isalnum"
+  },
+
+  ispunct: {
+    returnType: "int",
+    llvmName: "_ffi_ispunct"
+  },
+
+  isxdigit: {
+    returnType: "int",
+    llvmName: "_ffi_isxdigit"
+  },
+  
+  basename: {
+    returnType: "string",
+    llvmName: "_path_basename"
+  },
+
+  dirname: {
+    returnType: "string",
+    llvmName: "_path_dirname"
+  },
+
+  extname: {
+    returnType: "string",
+    llvmName: "_path_extname"
+  },
+
+  join: {
+    returnType: "string",
+    llvmName: "_path_join"
+  },
+
+  normalize: {
+    returnType: "string",
+    llvmName: "_path_normalize"
   }
 };
 
@@ -1161,6 +1553,301 @@ const HTTP_MAP = {
   
 };
 
+const FFI_MAP = {
+
+  _ffi_printf: [
+    "_ffi_printf",
+    "int",
+    "INF",
+    ["string"]
+  ],
+
+  _ffi_puts: [
+    "_ffi_puts",
+    "int",
+    1,
+    ["string"]
+  ],
+
+  _ffi_putchar: [
+    "_ffi_putchar",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_getchar: [
+    "_ffi_getchar",
+    "int",
+    0,
+    []
+  ],
+
+  _ffi_strlen: [
+    "_ffi_strlen",
+    "int",
+    1,
+    ["string"]
+  ],
+
+  _ffi_strcmp: [
+    "_ffi_strcmp",
+    "int",
+    2,
+    ["string", "string"]
+  ],
+
+  _ffi_strncmp: [
+    "_ffi_strncmp",
+    "int",
+    3,
+    ["string", "string", "int"]
+  ],
+
+  _ffi_pow: [
+    "_ffi_pow",
+    "double",
+    2,
+    ["double", "double"]
+  ],
+
+  _ffi_sqrt: [
+    "_ffi_sqrt",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_fabs: [
+    "_ffi_fabs",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_floor: [
+    "_ffi_floor",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_ceil: [
+    "_ffi_ceil",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_round: [
+    "_ffi_round",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_sin: [
+    "_ffi_sin",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_cos: [
+    "_ffi_cos",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_tan: [
+    "_ffi_tan",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_log: [
+    "_ffi_log",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_exp: [
+    "_ffi_exp",
+    "double",
+    1,
+    ["double"]
+  ],
+
+  _ffi_exit: [
+    "_ffi_exit",
+    "void",
+    1,
+    ["int"]
+  ],
+
+  _ffi_system: [
+    "_ffi_system",
+    "int",
+    1,
+    ["string"]
+  ],
+
+  _ffi_abort: [
+    "_ffi_abort",
+    "void",
+    0,
+    []
+  ],
+
+  _ffi_clock: [
+    "_ffi_clock",
+    "int",
+    0,
+    []
+  ],
+
+  _ffi_rand: [
+    "_ffi_rand",
+    "int",
+    0,
+    []
+  ],
+
+  _ffi_srand: [
+    "_ffi_srand",
+    "void",
+    1,
+    ["int"]
+  ],
+  
+  _ffi_abs: [
+    "_ffi_abs",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_atoi: [
+    "_ffi_atoi",
+    "int",
+    1,
+    ["string"]
+  ],
+
+  _ffi_atof: [
+    "_ffi_atof",
+    "double",
+    1,
+    ["string"]
+  ],
+
+  _ffi_toupper: [
+    "_ffi_toupper",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_tolower: [
+    "_ffi_tolower",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_isalpha: [
+    "_ffi_isalpha",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_isdigit: [
+    "_ffi_isdigit",
+    "int",
+    1,
+    ["int"]
+  ],
+
+  _ffi_isspace: [
+    "_ffi_isspace",
+    "int",
+    1,
+    ["int"]
+  ],
+  
+  _ffi_fmod: ["_ffi_fmod", "double", 2, ["double", "double"]],
+  _ffi_log10: ["_ffi_log10", "double", 1, ["double"]],
+  _ffi_log2: ["_ffi_log2", "double", 1, ["double"]],
+  _ffi_atan: ["_ffi_atan", "double", 1, ["double"]],
+  _ffi_asin: ["_ffi_asin", "double", 1, ["double"]],
+  _ffi_acos: ["_ffi_acos", "double", 1, ["double"]],
+  _ffi_atan2: ["_ffi_atan2", "double", 2, ["double", "double"]],
+  _ffi_sinh: ["_ffi_sinh", "double", 1, ["double"]],
+  _ffi_cosh: ["_ffi_cosh", "double", 1, ["double"]],
+  _ffi_tanh: ["_ffi_tanh", "double", 1, ["double"]],
+  _ffi_trunc: ["_ffi_trunc", "double", 1, ["double"]],
+  _ffi_cbrt: ["_ffi_cbrt", "double", 1, ["double"]],
+
+  _ffi_abs: ["_ffi_abs", "int", 1, ["int"]],
+  _ffi_atoi: ["_ffi_atoi", "int", 1, ["string"]],
+  _ffi_atof: ["_ffi_atof", "double", 1, ["string"]],
+
+  _ffi_toupper: ["_ffi_toupper", "int", 1, ["int"]],
+  _ffi_tolower: ["_ffi_tolower", "int", 1, ["int"]],
+  _ffi_isalpha: ["_ffi_isalpha", "int", 1, ["int"]],
+  _ffi_isdigit: ["_ffi_isdigit", "int", 1, ["int"]],
+  _ffi_isspace: ["_ffi_isspace", "int", 1, ["int"]],
+  _ffi_isupper: ["_ffi_isupper", "int", 1, ["int"]],
+  _ffi_islower: ["_ffi_islower", "int", 1, ["int"]],
+  _ffi_isalnum: ["_ffi_isalnum", "int", 1, ["int"]],
+  _ffi_ispunct: ["_ffi_ispunct", "int", 1, ["int"]],
+  _ffi_isxdigit: ["_ffi_isxdigit", "int", 1, ["int"]]
+
+};
+
+const PATH_MAP = {
+
+  _path_basename: [
+    "_path_basename",
+    "string",
+    1,
+    ["string"]
+  ],
+
+  _path_dirname: [
+    "_path_dirname",
+    "string",
+    1,
+    ["string"]
+  ],
+
+  _path_extname: [
+    "_path_extname",
+    "string",
+    1,
+    ["string"]
+  ],
+
+  _path_join: [
+    "_path_join",
+    "string",
+    2,
+    ["string", "string"]
+  ],
+
+  _path_normalize: [
+    "_path_normalize",
+    "string",
+    1,
+    ["string"]
+  ]
+
+};
+
 export {
   LLVM_TYPES_MAP,
   TYPES,
@@ -1196,5 +1883,7 @@ export {
   HTTP_MAP,
   NAMESPACE_MAP,
   RESERVED_FUNCTIONS,
-  COMPOUND_OPERATORS
+  COMPOUND_OPERATORS,
+  FFI_MAP,
+  PATH_MAP
 }

@@ -18,6 +18,18 @@
 #include <pwd.h>
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
+#include <regex.h>
+
+int zen_regex_match(const char* str, const char* pattern) {
+  regex_t re;
+  int ret = regcomp(&re, pattern, REG_EXTENDED);
+  if (ret != 0) return -1;
+
+  ret = regexec(&re, str, 0, NULL, 0);
+  regfree(&re);
+
+  return (ret == 0) ? 1 : 0;
+}
 
 double _sys_performance() {
 
@@ -837,4 +849,84 @@ char* zen_char_to_string(char c) {
     s[0] = c;
     s[1] = '\0';
     return s;
+}
+
+char* _path_basename(const char* path) {
+
+    const char* slash = strrchr(path, '/');
+
+    if (!slash) {
+        return strdup(path);
+    }
+
+    return strdup(slash + 1);
+}
+
+
+char* _path_dirname(const char* path) {
+
+    const char* slash = strrchr(path, '/');
+
+    if (!slash) {
+        return strdup(".");
+    }
+
+    size_t len = slash - path;
+
+    char* out = malloc(len + 1);
+
+    strncpy(out, path, len);
+    out[len] = '\0';
+
+    return out;
+}
+
+
+char* _path_extname(const char* path) {
+
+    const char* dot = strrchr(path, '.');
+
+    if (!dot) {
+        return strdup("");
+    }
+
+    return strdup(dot);
+}
+
+
+char* _path_join(
+    const char* a,
+    const char* b
+) {
+
+    size_t lenA = strlen(a);
+    size_t lenB = strlen(b);
+
+    int needSlash =
+        lenA > 0 &&
+        a[lenA - 1] != '/';
+
+    char* out =
+        malloc(
+            lenA +
+            lenB +
+            needSlash +
+            1
+        );
+
+    strcpy(out, a);
+
+    if (needSlash) {
+        strcat(out, "/");
+    }
+
+    strcat(out, b);
+
+    return out;
+}
+
+
+char* _path_normalize(const char* path) {
+
+    return strdup(path);
 }

@@ -24,7 +24,7 @@ export class Expression {
   }
   
   
-  handleExpression(node, globalScope = true) { // default globalScope true
+  handleExpression(node, globalScope = true, StructName = "Unknown") { // default globalScope true
     
     const op = node?.operator;
     let local = [];
@@ -138,7 +138,9 @@ export class Expression {
         fromLoopOf,
         rawStr: data?.rawStr,
         isReactive: data?.isReactive,
-        isStruct: data?.isStruct
+        isStruct: data?.isStruct,
+        isListAccess: data?.isListAccess,
+        isRet: data?.isRet
       };
     }
     
@@ -216,6 +218,58 @@ export class Expression {
           "cannot infer empty array literal type", node
         );
       }
+      
+      if (first.type === "MAP_LITERAL") {
+
+  const structName = StructName //this.IRB.expectedStructName;
+  const elemSize = this.IRB.sizeOf(structName);
+  
+  if (!structName) {
+    this.IRB.emitError(
+      "TypeError",
+      "Cannot infer struct type for struct list literal",
+      node
+    );
+  }
+
+  const list = this.IRB.newTemp();
+
+  const local = [];
+  const global = [];
+
+  local.push(
+    `${list} = call ptr @zen_list_new(i64 ${elemSize})`
+  );
+
+  for (const el of node.elements) {
+
+    const structPtr =
+      this.IRB.emitStructLiteral(
+        structName,
+        el
+      );
+
+    local.push(
+      `call void @zen_list_push(ptr ${list}, ptr ${structPtr})`
+    );
+  }
+
+  return {
+    ptr: list,
+    addr: list,
+    type: structName,
+    llvmType: "%ZenList*",
+    local,
+    global,
+    isListLiteral: true,
+    isList: true,
+    generic: {
+      generic: {
+        type: structName
+      }
+    }
+  };
+}
       
       const elemExpr =
         this.handleExpression(first);
@@ -344,6 +398,9 @@ export class Expression {
         
       }
       
+    
+     this.IRB.emitExpr(object);
+
       if (object.isStruct) {
         
         let structName = object.type;
@@ -471,7 +528,7 @@ export class Expression {
           
           if (fieldIndex === undefined) {
             this.IRB.emitError(
-              "TypeError",
+              "ReferenceError",
               `Unknown field '${currentField}' in struct '${structName}'`,
               node
             );
@@ -479,16 +536,16 @@ export class Expression {
           
           fieldInfo =
             structInfo.layout[fieldIndex];
-          
+          const isList =
+          fieldInfo.isList;
           const ptr =
             this.IRB.newTemp();
-          
+          if (isList) {
           this.IRB.emit(
             `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
           );
-          
+          }
           basePtr = ptr;
-          
           structName = fieldInfo.type;
         }
         
@@ -499,10 +556,7 @@ export class Expression {
         
         const isList =
           fieldInfo.isList;
-        
-        const isMap =
-          fieldInfo.type === "Map";
-        
+          
         // LIST RETURN
         
         if (isList) {
@@ -884,11 +938,23 @@ export class Expression {
         
         const ptr = this.IRB.newTemp();
         
-        this.IRB.emit(
-          `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
-        );
+        const useOpaquePtr = object?.isRet;
+
+this.IRB.emit(
+  useOpaquePtr
+    ? `${ptr} = getelementptr inbounds %${structName}, ptr ${basePtr}, i32 0, i32 ${fieldIndex}`
+    : `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
+);
         
-        basePtr = ptr;
+   if (i < fields.length - 1 && this.IRB.hasStruct(fieldInfo.type)) {
+    const loaded = this.IRB.newTemp();
+    this.IRB.emit(`${loaded} = load ptr, ptr ${ptr}`);
+    basePtr = loaded;
+  } else {
+    basePtr = ptr;
+ }
+        
+      
         structName = fieldInfo.type;
       }
       
@@ -896,6 +962,7 @@ export class Expression {
       
       const isArray = finalType?.startsWith("[") || finalType?.isArray;
       const isStruct = this.IRB.hasStruct(structName);
+      
       
       if (isArray || isStruct) {
         //  return pointer (so ARRAY_ACCESS can use it)
@@ -1009,6 +1076,7 @@ export class Expression {
           
           const isNested =
             normalizedGeneric?.type === "List";
+          const isStruct = this.IRB.hasStruct(base.type);
           
           return {
             ptr: elemPtr,
@@ -1021,6 +1089,7 @@ export class Expression {
             endLabel: null,
             postOrPrefix: false,
             isArray: false,
+            isStruct,
             needsLoad: !isNested
           };
           
@@ -1179,8 +1248,9 @@ export class Expression {
       const isStringCharAccess = final.internalType === "char";
       const isListAccess = final.isList;
       const isDynamicMapAccess = final.isDynamicMapAccess;
+      const isStruct = final?.isStruct;
       
-      if (!isStringCharAccess && !isDynamicMapAccess) {
+      if (!isStringCharAccess && !isDynamicMapAccess && !isStruct) {
         local.push(
           
           `${val} = load ${final.llvmType}, ptr ${final.addr}`
@@ -1189,7 +1259,7 @@ export class Expression {
       }
       
       return {
-        ptr: isStringCharAccess || isDynamicMapAccess ? final.ptr : val,
+        ptr: isStringCharAccess || isDynamicMapAccess || isStruct ? final.ptr : val,
         raw: final.addr,
         addr: final.ptr,
         type: final.type,
@@ -1199,15 +1269,12 @@ export class Expression {
         global: [],
         endLabel: null,
         postOrPrefix: false,
-        isArray: final.isArray, // for fn return error usage only
+        isArray: final.isArray, 
+        isStruct,
         generic: final?.generic,
         needsLoad: final.needsLoad,
         isListAccess: final?.isListAccess
       };
-    }
-    
-    if (node.type === "MAP_LITERAL") {
-      this.IRB.emitError("SemanticError", `Map literals are not supported in Zen v1`, node)
     }
     
     if (node.type === "CALL") {

@@ -9,6 +9,14 @@ export class ZenHttp {
     
     const args = node.args;
     
+    if (!args) {
+  this.IRB.emitError(
+    "SyntaxError",
+    `'${funcName}' must be called as a function — did you forget '()'?`,
+    node
+  );
+}
+    
     if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",

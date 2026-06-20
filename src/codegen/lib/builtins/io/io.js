@@ -9,6 +9,14 @@ export class IO {
   screen(node) {
     const args = node.args;
     
+    if (!args) {
+  this.IRB.emitError(
+    "SyntaxError",
+    `'screen()' must be called as a function — did you forget '()'?`,
+    node
+  );
+}
+    
     this.IRB.declareOneTime("printf", "declare i32 @printf(i8*, ...)");
     this.IRB.declareOneTime("fflush", "declare i32 @fflush(i8*)");
     
@@ -46,8 +54,7 @@ export class IO {
       
       expr = this.expr.handleExpression(arg, false);
       
-      if (expr.local.length) this.IRB.emit(expr.local.join("\n"));
-      if (expr.global.length) this.IRB.globals.push(expr.global.join("\n"));
+      this.IRB.emitExpr(expr);
       type = expr.type;
       valuePtr = expr.ptr;
     }

@@ -49,12 +49,16 @@ export class ZenList {
     const validateDepth = (el, generic) => {
       
       const expectsList = generic.type === "List";
-      const isListLiteral =
+      let isActualList =
         el.type === "ARRAY" ||
         el.type === "LIST_LITERAL";
+        
+        if (el.type !== "ARRAY" && el.type !== "MAP_LITERAL") {
+          isActualList = this.expr.handleExpression(el)?.isList;
+        }
       
       // expected list but got primitive
-      if (expectsList && !isListLiteral) {
+      if (expectsList && !isActualList) {
         this.IRB.emitError(
           "TypeError",
           `List ${name} expects nested list elements`,
@@ -63,7 +67,7 @@ export class ZenList {
       }
       
       // expected primitive but got list
-      if (!expectsList && isListLiteral) {
+      if (!expectsList && isActualList) {
         this.IRB.emitError(
           "TypeError",
           `List ${name} expects '${generic.type}' but got List`,
@@ -71,7 +75,7 @@ export class ZenList {
         );
       }
       
-      if (isListLiteral) {
+      if (isActualList && !el.type === "variable") {
         for (const child of el.elements) {
           validateDepth(child, generic.generic);
         }
@@ -91,6 +95,15 @@ export class ZenList {
       element,
       generic
     ) => {
+      
+      // STRUCT
+      
+      if (element.type === "MAP_LITERAL") {
+  const structName = this.IRB.getDeepestGeneric(generic);
+  const structPtr = this.IRB.emitStructLiteral(structName, element);
+  this.IRB.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${structPtr})`);
+  return;
+}
       
       // NESTED LIST
       
@@ -266,6 +279,25 @@ export class ZenList {
       rootList = listTemp;
       
       const validate = (el, expectedType) => {
+        
+        if (el.type === "MAP_LITERAL") {
+
+  const structDef =
+    this.IRB.getStruct(expectedType);
+
+  if (!structDef) {
+    this.IRB.emitError(
+      "TypeError",
+      `List ${name} expected struct instance but got ${expectedType}`,
+      el
+    );
+  }
+
+  // validate fields here
+
+  return;
+}
+
         //  If its a nested array/list go deeper
         if (el.type === "ARRAY" || el.type === "LIST") {
           for (const sub of el.elements) {

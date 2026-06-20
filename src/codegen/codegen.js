@@ -22,6 +22,8 @@ import { InferType } from './infer/infer.js';
 import { ZenFileSystem } from './lib/builtins/fileSystem/file.js';
 import { IO } from './lib/builtins/io/io.js';
 import { ZenString } from './lib/builtins/string/string.js';
+import { FFI } from './lib/builtins/ffi/ffi.js';
+import { PATH } from './lib/builtins/path/path.js';
 
 import {
   SCALAR_TYPES,
@@ -43,9 +45,11 @@ export class CodeGen {
     this.expr = new Expression(this.IRB);
     this.time = new Time(this.IRB, this.expr);
     this.map = new ZenMap(this.IRB, this.expr);
+    this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
     this.infer = new InferType(this.IRB);
     this.file = new ZenFileSystem(this.IRB, this.expr);
+    this.path = new PATH(this.IRB, this.expr);
     this.module = new Module(this.IRB);
     this.ternary = new Ternary(this.IRB, this.expr);
     this.expr.setTernary(this.ternary)
@@ -59,7 +63,7 @@ export class CodeGen {
     
     this.type = new Type(this.IRB, this.expr);
     this.string = new ZenString(this.IRB, this.expr);
-    this.call = new Call(this.IRB, this.expr, this.io, this.type, this.string, this.file, this.os, this.time, this.network, this.http, this.sys);
+    this.call = new Call(this.IRB, this.expr, this.io, this.type, this.string, this.file, this.os, this.time, this.network, this.http, this.sys, this.ffi, this.path);
     
     this.expr.setCall(this.call);
     this.call.setExpression(this.expr);
@@ -80,16 +84,6 @@ export class CodeGen {
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
-    this.IRB.functionBuff.push(`
-define void @_assignSeed () {
-  entry:
-
-  %t0 = call i32 @_time_millis()
-  store i32 %t0, ptr @SEED
-  ret void
-}
-    `)
-    this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
     
     const haveExport = this.ast.find(f => f.type === "EXPORT");
     const haveImport = this.ast.find(f => f.type === "IMPORT");
@@ -107,6 +101,19 @@ define void @_assignSeed () {
       if (node.type === "IMPORT") {
         this.module.moduleAnalyser(node);
       }
+    }
+    
+    if (!this.IRB.exported) {
+    this.IRB.functionBuff.push(`
+define void @_assignSeed () {
+  entry:
+
+  %t0 = call i32 @_time_millis()
+  store i32 %t0, ptr @SEED
+  ret void
+}
+    `)
+    this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
     }
     
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
@@ -146,7 +153,7 @@ define void @_assignSeed () {
         
         const data = { name: node.name, returnType, params: node.params, retGeneric, generic }
         
-        this.IRB.setFunction(node.name, data, node);
+        this.IRB.setFunction(`zen_${node.name}`, data, node);
         
       }
     }
@@ -185,7 +192,8 @@ define void @_assignSeed () {
       ir: this.IRB.getIR() || "",
       modules: this.module.moduleFiles || [],
       symbolTable: this.IRB.symbolTable || [],
-      functionTable: this.IRB.functions || []
+      functionTable: this.IRB.functions || [],
+      structTable: this.IRB.structTable || []
     }
     
   }
@@ -218,7 +226,7 @@ define void @_assignSeed () {
         
         const data = { name: node.name, returnType, params: node.params, generic }
         
-        this.IRB.setFunction(node.name, data);
+        this.IRB.setFunction(`zen_${node.name}`, data);
       }
     }
     

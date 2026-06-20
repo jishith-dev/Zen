@@ -21,6 +21,14 @@ const IRBuilder = (await import(
 
 const args = process.argv.slice(2);
 const command = args[0];
+const optFlagFromCommand = args[2]; 
+const isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(optFlagFromCommand);
+const optFlag = isValidOptFlag ? optFlagFromCommand : "-O2"; // default -02
+const file = args[1];
+const inputFile = path.resolve(file);
+// Project root 
+const PROJECT_ROOT = path.dirname(inputFile);
+
 
 const validCommands = new Set([
   "run",
@@ -34,7 +42,8 @@ const validCommands = new Set([
   "help",
   "--version",
   "version",
-  "-v"
+  "-v",
+  "init"
 ]);
 
 if (!validCommands.has(command)) {
@@ -72,6 +81,7 @@ Usage:
   zen --help
   zen --version
   zen clean <file>
+  zen init <project-name>
 `);
 }
 
@@ -95,9 +105,51 @@ if (command === "version" || command === "--version" || command === "-v") {
   process.exit(0);
 }
 
+if (command === "init") {
+
+  console.log("Creating Project structure...");
+
+  const projectName = args[1];
+
+  if (!projectName) {
+    console.error("Usage: zen init <project-name>");
+    process.exit(1);
+  }
+
+  const projDir = path.join(PROJECT_ROOT, projectName);
+
+  if (fs.existsSync(projDir)) {
+    console.error("Project already exists!");
+    process.exit(1);
+  }
+
+  // create folders
+  fs.mkdirSync(projDir, { recursive: true });
+
+  // main.zen
+  fs.writeFileSync(
+    path.join(projDir, "main.zen"),
+    `screen("Hello Zen")\n`
+  );
+
+  // zen.json
+  const config = {
+    name: projectName,
+    version: "1.0.0",
+    entry: "main.zen"
+  };
+
+  fs.writeFileSync(
+    path.join(projDir, "zen.json"),
+    JSON.stringify(config, null, 2)
+  );
+
+  console.log(`Project '${projectName}' created successfully.`);
+  process.exit(0);
+}
+
 // INPUT FILE
 
-const file = args[1];
 const moduleName = path.basename(file, path.extname(file));
 
 const IRB = new IRBuilder(moduleName);
@@ -107,17 +159,12 @@ if (!file) {
   process.exit(1);
 }
 
-const inputFile = path.resolve(file);
-
 if (!fs.existsSync(inputFile)) {
   console.error(`error: file not found '${inputFile}'`);
   process.exit(1);
 }
 
-// Project root 
-const PROJECT_ROOT = path.dirname(inputFile);
 const source = IRB.safeReadFile(inputFile);
-
 
 const Lexer = (await import(
   pathToFileURL(path.join(COMPILER_ROOT, "src/lexer/lexer.js")).href
@@ -234,8 +281,9 @@ run([
   ...moduleObjs,
   ...stdlibObjs,
   ...runtimeObjs,
-  "-O3",
+  optFlag,
   "-lcurl",
+  "-lm",
   "-o",
   outputExe,
 ].join(" "));

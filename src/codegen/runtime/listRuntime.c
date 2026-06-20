@@ -381,3 +381,67 @@ ZenList* _sys_argv(int argc, char** argv) {
 
     return list;
 }
+
+int zen_list_indexOf(ZenList* list, void* value) {
+  char* base = (char*)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    void* current = base + (i * list->element_size);
+
+    if (zen_is_pointer_type(list)) {
+      ZenList* a = *(ZenList**)current;
+      ZenList* b = *(ZenList**)value;
+
+      if (a == b) return i;
+      if (a && b && zen_list_deep_equals(a, b)) return i;
+    } else {
+      if (memcmp(current, value, list->element_size) == 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
+char* zen_list_join(
+    ZenList* list,
+    const char* sep
+) {
+
+    if (list->size == 0) {
+        return strdup("");
+    }
+
+    size_t total = 1;
+
+    for (int i = 0; i < list->size; i++) {
+
+        char* s =
+            *(char**)zen_list_get(list, i);
+
+        total += strlen(s);
+
+        if (i != list->size - 1) {
+            total += strlen(sep);
+        }
+    }
+
+    char* result = malloc(total);
+    result[0] = '\0';
+
+    for (int i = 0; i < list->size; i++) {
+
+        char* s =
+            *(char**)zen_list_get(list, i);
+
+        strcat(result, s);
+
+        if (i != list->size - 1) {
+            strcat(result, sep);
+        }
+    }
+
+    return result;
+}
+

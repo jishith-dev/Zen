@@ -55,7 +55,7 @@ loadFile(source) {
 
     const moduleCodegen = new CodeGen(ast, moduleName);
     
-    const { ir, symbolTable, functionTable } = moduleCodegen.generateLLVM();
+    const { ir, symbolTable, functionTable, structTable } = moduleCodegen.generateLLVM();
     
     this.IRB.globalTempCount = 0;
     this.IRB.strCount = 0;
@@ -68,7 +68,7 @@ loadFile(source) {
 const llPath = this.writeLLFile(source, ir);
 this.moduleFiles.add(llPath);
 
-    const tables = { symbolTable: symbolTable[0], functionTable }
+    const tables = { symbolTable: symbolTable[0], functionTable, structTable }
     
     
     this.collectExports(ast, source, tables);
@@ -82,6 +82,7 @@ this.moduleFiles.add(llPath);
     
     const functions = new Map();
     const variables = new Map();
+    const structs = new Map();
     
     const exportNode = ast.find(
       n => n.type === "EXPORT"
@@ -166,17 +167,34 @@ this.moduleFiles.add(llPath);
           type: table.type,
           kind: "variable",
           isConstant: table?.isConstant,
-          needsLoad: true
+          needsLoad: true,
+          isStruct: table?.isStruct,
+          isRet: table?.isRet
         });
         
       }
       
+      if (
+        node.type === "STRUCT" &&
+        exportSet.has(node.name)) {
+      const table = tables.structTable.get(node.name);
+      
+      structs.set(node.name, {
+      isGlobal: table.globalScope,
+      layout: table.layout,
+      fieldMap: table.fieldMap,
+      byteSize: table.byteSize,
+      size: table.size
+      });
+      
+    }
     }
     
     // SAVE ONLY METADATA
     this.modules.set(moduleName, {
       functions,
-      variables
+      variables,
+      structs
     });
     
   }
@@ -267,10 +285,32 @@ this.moduleFiles.add(llPath);
           ptr: `${variable.ptr}`,
           llvmType: variable.llvmType,
           external: true,
+          isStruct: variable?.isStruct,
+          isRet: variable?.isRet,
           type: variable.type,
           needsLoad: true,
           isConstant: variable?.isConstant
         });
+        return;
+      }
+      
+     // STRUCT IMPORT
+      if (
+        moduleData.structs.has(name)
+      ) {
+        
+        const struct =
+          moduleData.structs.get(name);
+        const fieldTypes = struct.layout.map(f => f.llvmType).join(", ");
+  this.IRB.globals.push(`%${name} = type { ${fieldTypes} }`);
+       this.IRB.setStruct(name, {
+      isGlobal: struct.globalScope,
+      layout: struct.layout,
+      fieldMap: struct.fieldMap,
+      byteSize: struct.byteSize,
+      size: struct.size
+      });
+        
         return;
       }
       
