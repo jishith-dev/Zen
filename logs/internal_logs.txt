@@ -12,3 +12,15 @@ new builtin function called matchRegex() introduced. real posix ere regex.
 added new list methods 'join' and 'indexOf'
 new namespace function ffi.fn.
 made function name mangling
+several bug fixes
+
+introduced new List generic called 'byte' 
+disabled fn auto inference for struct also (before only have disabled List)
+several bug fixes
+all i8* to ptr (opaque pointer)
+new map method keys() return all keys in a map in string generic List.
+sys.argv() introduced
+new fs. namespace functions readFileBytes() and writeFileBytes()
+supported empty List inference in limited way (were context is available)
+sizeOf internal compiler helper updated to adapt to 32 bit and 64 bit system sizes.
+made all internal fn _ start prefix for internal zen llvm functions

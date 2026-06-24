@@ -4,8 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
-
-
+#include <stdint.h>
 
 void** zen_args_new(int count) {
     return (void**)malloc(sizeof(void*) * count);
@@ -22,7 +21,7 @@ int capacity;
 size_t element_size;
 } ZenList;
 
-ZenList* zen_list_new(size_t element_size) {
+ZenList* _zen_list_new(size_t element_size) {
 
 ZenList* list = (ZenList*)malloc(sizeof(ZenList));  
 
@@ -35,7 +34,7 @@ return list;
 
 }
 
-void zen_list_grow(ZenList* list) {
+void _zen_list_grow(ZenList* list) {
 
 int new_capacity;  
 
@@ -66,10 +65,15 @@ list->capacity = new_capacity;
 
 }
 
-void zen_list_push(ZenList* list, void* value) {
+void _zen_list_push(ZenList* list, void* value) {
+  
+  if (list == NULL) {
+    fprintf(stderr, "[Zen RuntimeError]\n  └── Attempted to use an uninitialized List — did you forget 'field = [...]'?\n");
+    exit(1);
+  }
 
 if (list->size >= list->capacity) {  
-    zen_list_grow(list);  
+    _zen_list_grow(list);  
 }  
 
 char* base = (char*)list->data;  
@@ -84,20 +88,41 @@ list->size++;
 
 }
 
-void* zen_list_get(ZenList* list, int index) {
+void* _zen_list_get(ZenList* list, int index) {
 
-if (index < 0 || index >= list->size) {
-    fprintf(stderr, "\033[1;31m[Zen  IndexError]\n  └── Index %d is out of bounds for List of length %d — valid range is 0 to %d\033[0m\n", index, list->size, list->size - 1);
-    exit(1);
-}  
+    if (list == NULL) {
+        fprintf(stderr,
+            "\033[1;31m[Zen RuntimeError]\n"
+            "  └── Attempted to access a null List\033[0m\n");
+        exit(1);
+    }
 
-char* base = (char*)list->data;  
+    if (list->size < 0) {
+        fprintf(stderr,
+            "\033[1;31m[Zen RuntimeError]\n"
+            "  └── List metadata is corrupted (length=%d)\033[0m\n",
+            list->size);
+        exit(1);
+    }
 
-return base + (index * list->element_size);
+    if (index < 0 || index >= list->size) {
+        fprintf(stderr,
+            "\033[1;31m[Zen IndexError]\n"
+            "  └── Index %d is out of bounds for List of length %d",
+            index, list->size);
 
+        if (list->size > 0)
+            fprintf(stderr, " — valid range is 0 to %d", list->size - 1);
+
+        fprintf(stderr, "\033[0m\n");
+        exit(1);
+    }
+
+    char* base = (char*)list->data;
+    return base + (index * list->element_size);
 }
 
-void zen_list_set(
+void _zen_list_set(
 ZenList* list,
 int index,
 void* value
@@ -118,7 +143,7 @@ memcpy(
 
 }
 
-void zen_list_pop(
+void _zen_list_pop(
 ZenList* list,
 void* out
 ) {
@@ -140,7 +165,7 @@ list->size--;
 
 }
 
-void zen_list_remove(
+void _zen_list_remove(
 ZenList* list,
 int index
 ) {
@@ -162,11 +187,11 @@ list->size--;
 
 }
 
-void zen_list_clear(ZenList* list) {
+void _zen_list_clear(ZenList* list) {
 list->size = 0;
 }
 
-void zen_list_free(ZenList* list) {
+void _zen_list_free(ZenList* list) {
 
 if (list->data != NULL) {  
     free(list->data);  
@@ -176,14 +201,14 @@ free(list);
 
 }
 
-bool zen_list_contains(ZenList* list, void* value);
-bool zen_list_deep_equals(ZenList* a, ZenList* b);
+bool _zen_list_contains(ZenList* list, void* value);
+bool _zen_list_deep_equals(ZenList* a, ZenList* b);
 
 static inline bool zen_is_pointer_type(ZenList* list) {
     return list->element_size == sizeof(void*);
 }
 
-bool zen_list_contains(
+bool _zen_list_contains(
     ZenList* list,
     void* value
 ) {
@@ -209,7 +234,7 @@ bool zen_list_contains(
                 return true; 
             }
 
-            if (a && b && zen_list_deep_equals(a, b)) {
+            if (a && b && _zen_list_deep_equals(a, b)) {
                 return true;
             }
 
@@ -231,7 +256,7 @@ bool zen_list_contains(
 }
 
 
-bool zen_list_deep_equals(ZenList* a, ZenList* b) {
+bool _zen_list_deep_equals(ZenList* a, ZenList* b) {
 
     if (a == b) return true;
 
@@ -250,7 +275,7 @@ bool zen_list_deep_equals(ZenList* a, ZenList* b) {
             ZenList* la = *(ZenList**)a_cur;
             ZenList* lb = *(ZenList**)b_cur;
 
-            if (!zen_list_deep_equals(la, lb)) {
+            if (!_zen_list_deep_equals(la, lb)) {
                 return false;
             }
 
@@ -278,14 +303,14 @@ ZenList* zen_va_ints(
 ) {
 
     ZenList* list =
-        zen_list_new(sizeof(int));
+        _zen_list_new(sizeof(int));
 
     for (int i = 0; i < count; i++) {
 
         int value =
             va_arg(args, int);
 
-        zen_list_push(
+        _zen_list_push(
             list,
             &value
         );
@@ -301,14 +326,14 @@ ZenList* zen_va_doubles(
 ) {
 
     ZenList* list =
-        zen_list_new(sizeof(double));
+        _zen_list_new(sizeof(double));
 
     for (int i = 0; i < count; i++) {
 
         double value =
             va_arg(args, double);
 
-        zen_list_push(
+        _zen_list_push(
             list,
             &value
         );
@@ -324,14 +349,14 @@ ZenList* zen_va_strings(
 ) {
 
     ZenList* list =
-        zen_list_new(sizeof(char*));
+        _zen_list_new(sizeof(char*));
 
     for (int i = 0; i < count; i++) {
 
         char* value =
             va_arg(args, char*);
 
-        zen_list_push(
+        _zen_list_push(
             list,
             &value
         );
@@ -348,7 +373,7 @@ ZenList* zen_va_bools(
 ) {
 
     ZenList* list =
-        zen_list_new(sizeof(bool));
+        _zen_list_new(sizeof(bool));
 
     for (int i = 0; i < count; i++) {
 
@@ -358,7 +383,7 @@ ZenList* zen_va_bools(
         bool value =
             promoted ? true : false;
 
-        zen_list_push(
+        _zen_list_push(
             list,
             &value
         );
@@ -370,19 +395,19 @@ ZenList* zen_va_bools(
 ZenList* _sys_argv(int argc, char** argv) {
 
     ZenList* list =
-        zen_list_new(sizeof(char*));
+        _zen_list_new(sizeof(char*));
 
     for (int i = 0; i < argc; i++) {
 
         char* arg = argv[i];
 
-        zen_list_push(list, &arg);
+        _zen_list_push(list, &arg);
     }
 
     return list;
 }
 
-int zen_list_indexOf(ZenList* list, void* value) {
+int _zen_list_indexOf(ZenList* list, void* value) {
   char* base = (char*)list->data;
 
   for (int i = 0; i < list->size; i++) {
@@ -393,7 +418,7 @@ int zen_list_indexOf(ZenList* list, void* value) {
       ZenList* b = *(ZenList**)value;
 
       if (a == b) return i;
-      if (a && b && zen_list_deep_equals(a, b)) return i;
+      if (a && b && _zen_list_deep_equals(a, b)) return i;
     } else {
       if (memcmp(current, value, list->element_size) == 0) {
         return i;
@@ -404,7 +429,7 @@ int zen_list_indexOf(ZenList* list, void* value) {
   return -1;
 }
 
-char* zen_list_join(
+char* _zen_list_join(
     ZenList* list,
     const char* sep
 ) {
@@ -418,7 +443,7 @@ char* zen_list_join(
     for (int i = 0; i < list->size; i++) {
 
         char* s =
-            *(char**)zen_list_get(list, i);
+            *(char**)_zen_list_get(list, i);
 
         total += strlen(s);
 
@@ -433,7 +458,7 @@ char* zen_list_join(
     for (int i = 0; i < list->size; i++) {
 
         char* s =
-            *(char**)zen_list_get(list, i);
+            *(char**)_zen_list_get(list, i);
 
         strcat(result, s);
 
@@ -445,3 +470,68 @@ char* zen_list_join(
     return result;
 }
 
+
+// bytes
+
+ZenList* _fs_readFileBytes(const char* path) {
+
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        return _zen_list_new(sizeof(uint8_t));
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+
+    ZenList* list =
+        _zen_list_new(sizeof(uint8_t));
+
+    for (long i = 0; i < size; i++) {
+
+        uint8_t b;
+
+        if (fread(&b, 1, 1, f) != 1) {
+            break;
+        }
+
+        _zen_list_push(
+            list,
+            &b
+        );
+    }
+
+    fclose(f);
+
+    return list;
+}
+
+void _fs_writeFileBytes(
+    const char* path,
+    ZenList* list
+) {
+
+    FILE* f = fopen(path, "wb");
+
+    if (!f) {
+        return;
+    }
+
+    for (int i = 0; i < list->size; i++) {
+
+        uint8_t b =
+            *(uint8_t*)_zen_list_get(
+                list,
+                i
+            );
+
+        fwrite(
+            &b,
+            1,
+            1,
+            f
+        );
+    }
+
+    fclose(f);
+}

@@ -20,7 +20,7 @@
 #include <sys/sysinfo.h>
 #include <regex.h>
 
-int zen_regex_match(const char* str, const char* pattern) {
+int _zen_regex_match(const char* str, const char* pattern) {
   regex_t re;
   int ret = regcomp(&re, pattern, REG_EXTENDED);
   if (ret != 0) return -1;
@@ -57,7 +57,7 @@ double _sys_performance() {
 
 }
 
-char* sys_input(const char* prompt) {
+char* _sys_input(const char* prompt) {
 
     char buf[1024];
 
@@ -637,19 +637,6 @@ char* _fs_readFile(const char* path) {
     return buffer;
 }
 
-void zen_sleep(int ms) {
-
-#ifdef _WIN32
-    Sleep(ms);
-#else
-    struct timespec ts;
-    ts.tv_sec = ms / 1000;
-    ts.tv_nsec = (ms % 1000) * 1000000;
-    nanosleep(&ts, NULL);
-#endif
-
-}
-
 int _sys_exec(const char *cmd) {
     if (!cmd) return -1;
     return system(cmd);
@@ -706,7 +693,7 @@ int _fs_makeDir(const char *path) {
 
 }
 
-char* int_to_string(int x) {
+char* _int_to_string(int x) {
     char* res = (char*)malloc(20);
     
     int i = 0;
@@ -744,7 +731,7 @@ char* int_to_string(int x) {
 }
 
 
-char* double_to_string(double x) {
+char* _double_to_string(double x) {
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "%f", x);
 
@@ -755,7 +742,7 @@ char* double_to_string(double x) {
 }
 
 
-char* bool_to_string(bool x) {
+char* _bool_to_string(bool x) {
     const char* str = x ? "true" : "false";
 
     char* res = (char*)malloc(strlen(str) + 1);
@@ -765,7 +752,7 @@ char* bool_to_string(bool x) {
 }
 
 
-int string_to_int(char* str) {
+int _string_to_int(char* str) {
     if (str == NULL) return 0;
 
     int result = 0;
@@ -789,7 +776,7 @@ int string_to_int(char* str) {
     return result * sign;
 }
 
-int string_to_int_ascii(char *str) {
+int _string_to_int_ascii(char *str) {
     int result = 0;
 
     while (*str) {
@@ -800,7 +787,7 @@ int string_to_int_ascii(char *str) {
     return result;
 }
 
-char* int_to_string_ascii(int value) {
+char* _int_to_string_ascii(int value) {
     char *out = (char*)malloc(2);
 
     out[0] = (char)value;
@@ -810,24 +797,24 @@ char* int_to_string_ascii(int value) {
 }
 
 
-double string_to_double(char* str) {
+double _string_to_double(char* str) {
     if (str == NULL) return 0.0;
     return atof(str);
 }
 
 
-bool string_to_bool(char* str) {
+bool _string_to_bool(char* str) {
     return (str != NULL && strlen(str) > 0);
 }
 
 
-void free_string(char* str) {
+void _free_string(char* str) {
     if (str != NULL) {
         free(str);
     }
 }
 
-char* str_concat(const char* a, const char* b) {
+char* _str_concat(const char* a, const char* b) {
     if (!a) a = "";
     if (!b) b = "";
 
@@ -844,7 +831,7 @@ char* str_concat(const char* a, const char* b) {
     return res;
 }
 
-char* zen_char_to_string(char c) {
+char* _zen_char_to_string(char c) {
     char* s = (char*)malloc(2);
     s[0] = c;
     s[1] = '\0';

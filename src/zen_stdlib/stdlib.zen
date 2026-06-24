@@ -982,10 +982,17 @@ fn match(string text, string pattern) bool {
 // json parser 
 
 fn _json_skipWS(string s, int i) int {
-    while (i < length(s) && charAt(s, i) == " ") {
+    while (i < length(s) && isWhitespace(charAt(s, i))) {
         i = i + 1
     }
     return i
+}
+
+fn isWhitespace(string c) bool {
+    return c == " " ||
+           c == "\n" ||
+           c == "\t" ||
+           c == "\r"
 }
 
 fn _json_extractValue(string s, int start) string {

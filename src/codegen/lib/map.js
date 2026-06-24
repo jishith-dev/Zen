@@ -15,7 +15,7 @@ export class ZenMap {
     
     this.IRB.declareOneTime(
       "zen_map_new",
-      "declare ptr @zen_map_new()"
+      "declare ptr @_zen_map_new()"
     );
     
     
@@ -81,14 +81,14 @@ export class ZenMap {
     if (globalScope) {
       this.IRB.globals.push(`${gName} = global ptr null`);
       this.IRB.emit(
-        `${mapPtr} = call ptr @zen_map_new()`
+        `${mapPtr} = call ptr @_zen_map_new()`
       );
       this.IRB.emit(`store ptr ${mapPtr}, ptr ${gName}`)
       
     } else {
       this.IRB.emit(`${lName} = alloca ptr`);
       this.IRB.emit(
-        `${mapPtr} = call ptr @zen_map_new()`
+        `${mapPtr} = call ptr @_zen_map_new()`
       );
       this.IRB.emit(`store ptr ${mapPtr}, ptr ${lName}`)
       

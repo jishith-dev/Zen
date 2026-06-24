@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 1.0.1** · Stable · June 2026
+**Version 1.1.1** · Stable · June 2026
 
 **GitHub**: https://github.com/`Jishith-dev/Zen`
 **Contact**: jishithmp534@gmail.com
@@ -56,15 +56,15 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v1.0.1
+Current Version: v1.1.1
 
-### v1.0.1 
+### v1.1.1 
 
 - Full LLVM-based compiler pipeline
 - Lexer, Parser, AST generation
 - LLVM IR generation and optimization
 - Native binary generation via clang
-- CLI support (run, build, ir, ast, tokens, clean)
+- CLI support (run, build, ir, ast, tokens, clean, init)
 - Basic type system (int, double, string, bool, List, Map)
 - Control flow (if, switch, loop, while)
 - Functions and structs
@@ -135,17 +135,18 @@ Not available in v1 yet.
 
 ## CLI Usage
 
-Zen provides a simple command-line interface for compiling, inspecting, and running programs.
+Zen provides a simple command-line interface for compiling, inspecting, running, and scaffolding projects.
 
 ```bash
-zen run <file>       # Compile and run program
-zen build <file>     # Build executable binary
-zen ir <file>        # Generate LLVM IR
-zen ast <file>       # Print Abstract Syntax Tree
-zen tokens <file>    # Print lexer tokens
-zen clean <file>     # Remove build artifacts
-zen --help           # Show help menu
-zen --version        # Show version info
+zen run <file>             # Compile and run program
+zen build <file>           # Build executable binary
+zen ir <file>              # Generate LLVM IR
+zen ast <file>             # Print Abstract Syntax Tree
+zen tokens <file>          # Print lexer tokens
+zen clean <file>           # Remove build artifacts
+zen init <project-name>    # Create a new Zen project
+zen --help                 # Show help menu
+zen --version              # Show version info
 ```
 
 ---
@@ -154,6 +155,7 @@ zen --version        # Show version info
 
 - All build artifacts are stored inside the `build/` directory.
 - Zen compiles to native binaries using LLVM.
+- `zen init` creates a project directory containing a starter `main.zen` file and a `zen.json` project configuration.
 - Each command is designed for development, debugging, and compilation workflows.
 
 ---
@@ -614,7 +616,7 @@ Every unit of source text falls into one of the following token types:
 
 ZEN is a statically typed language. Every value has a type known at compile time. This section defines the four primitive types that form the foundation of the type system.
 
-Data structure types — `List`, `Map`, `struct`, and fixed-size arrays — are defined separately in Section 4.
+Data structure types — `List`, `Map`, `struct`, and fixed-size arrays — are defined separately in Section 5.
 
 ---
 
@@ -1452,7 +1454,7 @@ Map b = {
 }
 ```
 
-> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.0.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
+> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.1.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
 
 #### Field Access
 
@@ -1482,6 +1484,7 @@ a.country = "India"                    # creates new field at runtime
 | `free()` | Releases the Map from heap memory |
 | `has(key)` | Returns `bool` — checks if a key exists in the Map |
 | `remove(key)` | Removes a key-value pair from the Map |
+| `keys()` | Returns `List<string>` containing all keys in the Map |
 
 ```zen
 a.free()
@@ -1497,6 +1500,8 @@ a.name = "x"                           # runtime error: use after free
 ```zen
 bool exists = a.has("name")            # true if key exists
 a.remove("name")                       # removes key from Map
+
+List<string> keys = a.keys()     # eg: ["name", "age"]
 ```
 
 ---
@@ -1504,6 +1509,8 @@ a.remove("name")                       # removes key from Map
 ### 5.2 List
 
 A `List` is a dynamically sized, heap-allocated array. Unlike `Map`, a `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
+
+> **Note:** `byte` is a special type available only as a List generic (`List<byte>`). Standalone `byte` variables, parameters, fields, and return types are not supported.
 
 #### Declaration
 
@@ -1527,7 +1534,9 @@ List<List<int>> matrix = [[1, 2], [3, 4]]
 List elements may be of the following types:
 
 - `int`, `double`, `string`, `bool`
+- Struct types
 - Nested `List<T>`
+- `List<byte>`
 
 `Map` is not a valid element type in v1, as Map has no literal form for use in expressions.
 
@@ -1540,6 +1549,7 @@ Elements are accessed by zero-based integer index.
 ```zen
 nums[0]                                # first element
 matrix[0][1]                           # nested access
+people[0].name                         # struct field access inside List<Struct>
 ```
 
 #### Assignment
@@ -1558,24 +1568,35 @@ matrix[1][0] = 10
 | `push` | `push(value)` | Appends a value to the end of the list |
 | `pop` | `pop()` | Removes and returns the last element |
 | `contains` | `contains(value)` | Returns `bool` — checks if value exists |
+| `indexOf` | `indexOf(value)` | Returns the index of the first matching element, or `-1` if not found |
+| `join` | `join(separator)` | Joins all elements into a string using the specified separator |
 | `removeAt` | `removeAt(index)` | Removes element at the given index |
 | `clear` | `clear()` | Removes all elements; list remains alive |
 | `free` | `free()` | Releases the list from heap memory |
 
 ```zen
 nums.push(30)
-nums.push([10, 20])                    # valid for nested List<List<int>>
+nums.push([10, 20])                     # valid for nested List<List<int>>
 int last = nums.pop()
 bool found = nums.contains(30)
-bool nested = matrix.contains([1, 2]) # checks for exact sublist match
+bool nested = matrix.contains([1, 2])   # checks for exact sublist match
+int idx = nums.indexOf(30)
+
+List<string> names = ["Zen", "Lang", "LLVM"]
+string joined = names.join(", ")
+
 nums.removeAt(0)
-nums.clear()                           # list is now [] but still usable
-nums.free()                            # list is released
+nums.clear()                            # list is now [] but still usable
+nums.free()                             # list is released
 ```
 
 `push` accepts a value matching the declared element type. For a `List<List<int>>`, pushing a `List<int>` literal is valid.
 
 `contains` on a nested list checks for an exact sublist match — the argument must be a list literal or reference matching the inner type.
+
+`indexOf` returns the index of the first matching element, or `-1` if the value is not present.
+
+`join` is available only on `List<string>`. It joins all string elements using the specified separator and returns a single string.
 
 #### Free and Nested Lists
 
@@ -1583,12 +1604,13 @@ After calling `free()`, the list must not be accessed. Any use after `free()` re
 
 ```zen
 nums.free()
-nums.push(1)                           # runtime error: use after free
+nums.push(1)                            # runtime error: use after free
 ```
 
 For nested lists, freeing an inner list directly is technically permitted but not recommended. ZEN cannot fully track inner list lifetimes after a partial free, and accessing a freed inner list will throw a runtime error.
 
 > **Recommendation:** Do not call `free()` on individual inner lists of a nested `List<List<T>>`. Free the outer list instead.
+```
 
 ---
 
@@ -1644,6 +1666,7 @@ matrix[1][1] = 5
 #### Constraints
 
 - Fixed-size arrays cannot be passed as function parameters in v1.
+- Fixed-size arrays cannot be return in functions
 - Fixed-size arrays have no built-in methods.
 - Resizing is not possible after declaration.
 
@@ -1696,17 +1719,46 @@ Struct fields may be of the following types:
 
 #### Instantiation
 
-A struct is instantiated by declaring a variable with the struct name as its type. No constructor syntax is used.
+A struct is instantiated by declaring a variable with the struct name as its type.
 
 ```zen
 Person p
 ```
 
-Fields are then assigned individually using dot notation.
+Fields may be assigned individually using dot notation.
 
 ```zen
 p.name = "Jishith"
 p.age = 21
+```
+
+Structs may also be initialized using struct literals.
+
+```zen
+Person p = {
+  name: "Jishith",
+  age: 21
+}
+```
+
+An existing struct variable may be reassigned using a struct literal.
+
+```zen
+p = {
+  name: "Zen",
+  age: 1
+}
+```
+
+Struct values can be copied from other struct variables or function returns.
+
+```zen
+Person p = getPerson()
+
+Person other
+other = getPerson()
+
+p = other
 ```
 
 #### Field Access
@@ -1732,11 +1784,54 @@ struct Person {
   address Address
 }
 
-Person p
-p.name = "Jishith"
+Person p = {
+  name: "Jishith",
+  address: {
+    city: "Bangalore",
+    zip: 560001
+  }
+}
+```
+
+Nested fields may also be assigned individually.
+
+```zen
 p.address.city = "Bangalore"
 p.address.zip = 560001
 ```
+
+#### Value Semantics
+
+Structs in ZEN use **value semantics**, not reference semantics.
+
+Assigning one struct to another creates a copy of the struct value.
+
+```zen
+Person p1 = {
+  name: "Jishith",
+  age: 21
+}
+
+Person p2 = p1
+
+p2.name = "Zen"
+
+print(p1.name)   # Jishith
+print(p2.name)   # Zen
+```
+
+Likewise, returning a struct from a function or assigning a struct literal produces a new struct value.
+
+```zen
+Person p = getPerson()
+
+p = {
+  name: "New Name",
+  age: 30
+}
+```
+
+Changes made to one struct variable do not affect other struct variables that were copied from it.
 
 #### Methods
 
@@ -1756,7 +1851,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.0.1, and methods cannot be called on a struct type directly — only on an instance.
+Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.1.1, and methods cannot be called on a struct type directly — only on an instance.
 
 ```zen
 Counter c
@@ -1765,9 +1860,60 @@ c.increment()
 int v = c.get()                        # v = 1
 ```
 
+#### Structs in Functions
+
+Structs can be passed as function parameters and returned from functions.
+
+```zen
+struct Person {
+  name string,
+  age int
+}
+
+fn greet(Person p) void {
+  print(p.name)
+}
+
+Person user = {
+  name: "Jishith",
+  age: 21
+}
+
+greet(user)
+```
+
+Functions may also return struct values.
+
+```zen
+fn createPerson() Person {
+  return {
+    name: "Jishith",
+    age: 21
+  }
+}
+
+Person p = createPerson()
+```
+
+Because structs use value semantics, passing a struct to a function passes a copy of the struct value. Changes made inside the function do not affect the original struct variable.
+
+```zen
+fn rename(Person p) void {
+  p.name = "Zen"
+}
+
+Person user = {
+  name: "Jishith",
+  age: 21
+}
+
+rename(user)
+
+print(user.name)   # Jishith
+```
+
 #### Constraints
 
-- Struct instances cannot be passed as function parameters in v1.0.1.
 - `Map` is not a valid field type in v1.
 - Methods are user-defined only; no built-in struct methods exist.
 - Struct declarations may not be nested inside functions.
@@ -1841,19 +1987,74 @@ fn deep(List<List<List<int>>> cube) void { ... }
 
 ### Map Parameters
 
-Map parameters are declared using the `Map` type. Note that Map parameters **do not support default values**.
+Maps cannot be used as function parameters.
 
 ```zen
-fn display(Map info) void { ... }
+fn display(Map info) void { ... }  # compile-time error
+```
 
-fn merge(Map source, Map target) void { ... }
+This restriction exists to preserve compile-time type safety and avoid dynamic Map usage across function boundaries.
+
+---
+
+### Struct Parameters
+
+Structs can be used as function parameters.
+
+```zen
+struct Person {
+  name string,
+  age int
+}
+
+fn display(Person p) void {
+  print(p.name)
+  print(p.age)
+}
+
+Person user = {
+  name: "Jishith",
+  age: 21
+}
+
+display(user)
+```
+
+Struct parameters follow ZEN's value semantics. Passing a struct to a function passes a copy of the struct value.
+
+```zen
+fn rename(Person p) void {
+  p.name = "Zen"
+}
+
+Person user = {
+  name: "Jishith",
+  age: 21
+}
+
+rename(user)
+
+print(user.name)  # Jishith
+```
+
+Functions may also return struct values.
+
+```zen
+fn createPerson() Person {
+  return {
+    name: "Jishith",
+    age: 21
+  }
+}
+
+Person user = createPerson()
 ```
 
 ---
 
 ### Default Parameters
 
-Zen supports default values for **primitive** and **List** parameters. If a caller omits an argument, the default value is used.
+Zen supports default values for **primitive** and **List** and **struct** parameters. If a caller omits an argument, the default value is used.
 
 **Primitive defaults:**
 
@@ -1879,14 +2080,35 @@ fn configure(List<string> flags = ["verbose", "safe"]) void {
 }
 ```
 
-**Map parameters do not support defaults.** A `Map` argument must always be explicitly passed by the caller.
+**struct defaults:**
 
 ```zen
-// Valid
+fn process(Person p = {name: "John"}) void {
+  ...
+}
+```
+
+**Maps cannot be used as function parameters.**
+
+```zen
+// Invalid
 fn display(Map info) void { ... }
 
-// Invalid — not supported in Zen
+// Invalid
 fn display(Map info = {}) void { ... }
+```
+
+Use structs instead when passing structured data to functions.
+
+```zen
+struct Person {
+  name string,
+  age int
+}
+
+fn display(Person p) void {
+  print(p.name)
+}
 ```
 
 #### Rest Parameters
@@ -1933,6 +2155,51 @@ return "done"
 - `return` is only valid inside a function block.
 - A `void` function may use a bare `return` to exit early.
 - The returned expression must match the declared return type.
+- Functions may omit an explicit return type when the return type can be inferred from the returned expression.
+
+```zen
+fn add(int a, int b) {
+  return a + b
+}
+
+int result = add(10, 20)
+```
+
+- Automatic return type inference is supported for primitive types such as `int`, `double`, `string`, and `bool`.
+- Automatic return type inference is **not supported** for `List<T>` or struct return values. These functions must declare their return type explicitly.
+
+```zen
+// Valid
+fn add(int a, int b) {
+  return a + b
+}
+
+// Invalid
+fn getNames() {
+  return ["Zen", "Lang"]
+}
+
+// Valid
+fn getNames() List<string> {
+  return ["Zen", "Lang"]
+}
+
+// Invalid
+fn createPerson() {
+  return {
+    name: "Jishith",
+    age: 21
+  }
+}
+
+// Valid
+fn createPerson() Person {
+  return {
+    name: "Jishith",
+    age: 21
+  }
+}
+```
 
 ---
 
@@ -2303,33 +2570,15 @@ loop (row of matrix) {
 }
 ```
 
-## 10. Modules — Export and Import
-
-ZEN supports a simple module system through `export` and `import`. A file may expose a defined set of globals and functions to other files, and consume exports from other files by name.
-
----
-
-### 10.1 Export
-
-The `export` keyword makes selected identifiers available to other files. It uses a call-like syntax:
-
-```
-export_stmt
-  = "export" "(" identifier_list ")"
-
-identifier_list
-  = IDENTIFIER ("," IDENTIFIER)*
-```
-
 #### Rules
 
 - A file may contain exactly one `export` statement. Multiple `export` calls in the same file are a compile-time error.
 - `export` must appear at the bottom of the file, after all declarations. For variables this is required; for functions it is strongly recommended.
-- Only global variables and functions may be exported. Local variables, block-scoped variables, and struct declarations may not be exported.
+- Global variables, functions, and struct declarations may be exported.
 
 #### Exportable Values
 
-Only **static global values** may be exported — values whose representation is fully determined at compile time without requiring a stack frame.
+Only global symbols may be exported.
 
 | Exportable | Example |
 |---|---|
@@ -2339,36 +2588,40 @@ Only **static global values** may be exported — values whose representation is
 | Bool literal | `bool flag = true` |
 | Constant | `int const MAX = 100` |
 | Global function | `fn add(int a, int b) int { ... }` |
+| Struct declaration | `struct Person { ... }` |
+| Global struct instance | `Person p` |
+| Initialized global struct instance | `Person p = { name: "ZEN" }` |
 | Static global array | `int arr[3] = [1, 2, 3]` |
 
 #### Non-Exportable Values
 
-Values that require a stack frame or runtime evaluation cannot be exported. Attempting to export them is a compile-time error.
-
-| Not Exportable | Reason |
-|---|---|
-| `int a = 10 + 10` | Expression — requires stack frame evaluation |
-| `int a = b + 1` | Variable reference — runtime dependent |
-| `auto a = 42` | Inferred type — not statically resolved for export |
-| Local variables | Not global scope |
-| Struct declarations | Not supported in v1.0.1 |
+| Not Exportable |
+|---|
+| Local variables |
+| Block-scoped variables |
+| Runtime-only values without a global symbol |
 
 ```zen
-int a = 10             # valid — static literal
-int b = a + 5          # invalid — expression, cannot be exported
-
-fn add(int x, int y) int {
-  return x + y
+struct Person {
+  name string,
+  age int
 }
 
-int const MAX = 100    # valid — constant literal
+Person user = {
+  name: "Jishith",
+  age: 21
+}
 
-export(a, add, MAX)    # b would cause a compile-time error here
+fn createPerson() Person {
+  return user
+}
+
+export(Person, user, createPerson)
 ```
 
 #### Exported Files and Import Restriction
 
-A file that exports identifiers must not itself contain any `import` statement. Circular or dependent module chains are not permitted in v1.0.1. This is a compile-time error.
+A file that exports identifiers must not itself contain any `import` statement. Circular or dependent module chains are not permitted in v1.1.1. This is a compile-time error.
 
 ```zen
 import(utils) from "utils.zen"   # compile-time error: exported file cannot import
@@ -2936,6 +3189,43 @@ int result = fs.writeFile("out.txt", "hello ZEN")
 
 ---
 
+##### `fs.readFileBytes`
+
+Reads the full contents of a file and returns it as a `List<byte>`.
+
+```
+fs.readFileBytes(path)
+```
+
+Returns `List<byte>`.
+
+```zen
+List<byte> data = fs.readFileBytes("image.png")
+```
+
+---
+
+##### `fs.writeFileBytes`
+
+Writes a `List<byte>` to a file.
+
+```
+fs.writeFileBytes(path, data)
+```
+
+Returns `void`.
+
+```zen
+List<byte> data = fs.readFileBytes("image.png")
+
+fs.writeFileBytes(
+  "copy.png",
+  data
+)
+```
+
+---
+
 ##### `fs.appendFile`
 
 Appends a string to an existing file without overwriting.
@@ -3318,6 +3608,83 @@ Returns `string`.
 ```zen
 string res = http.delete("https://api.example.com/users/1")
 ```
+
+---
+
+#### 11.3.7 `ffi`
+
+Foreign Function Interface (FFI) bindings to selected C standard library functions.
+
+---
+
+##### Available Functions
+
+| Function | Description |
+|---|---|
+| `ffi.printf` | Prints formatted output |
+| `ffi.puts` | Prints a string followed by a newline |
+| `ffi.putchar` | Writes a single character |
+| `ffi.getchar` | Reads a single character |
+| `ffi.strlen` | Returns string length |
+| `ffi.strcmp` | Compares two strings |
+| `ffi.strncmp` | Compares the first `n` characters of two strings |
+| `ffi.pow` | Raises a value to a power |
+| `ffi.sqrt` | Returns square root |
+| `ffi.fabs` | Returns absolute value of a floating-point number |
+| `ffi.floor` | Rounds down |
+| `ffi.ceil` | Rounds up |
+| `ffi.round` | Rounds to nearest integer |
+| `ffi.sin` | Sine |
+| `ffi.cos` | Cosine |
+| `ffi.tan` | Tangent |
+| `ffi.log` | Natural logarithm |
+| `ffi.exp` | Exponential function |
+| `ffi.exit` | Terminates the program |
+| `ffi.system` | Executes a system command |
+| `ffi.abort` | Aborts program execution |
+| `ffi.clock` | Returns processor time used |
+| `ffi.rand` | Returns a pseudo-random integer |
+| `ffi.srand` | Seeds the random number generator |
+| `ffi.abs` | Returns absolute value of an integer |
+| `ffi.atoi` | Converts string to integer |
+| `ffi.atof` | Converts string to double |
+| `ffi.toupper` | Converts character to uppercase |
+| `ffi.tolower` | Converts character to lowercase |
+| `ffi.isalpha` | Checks for alphabetic character |
+| `ffi.isdigit` | Checks for numeric digit |
+| `ffi.isspace` | Checks for whitespace character |
+| `ffi.fmod` | Floating-point remainder |
+| `ffi.log10` | Base-10 logarithm |
+| `ffi.log2` | Base-2 logarithm |
+| `ffi.atan` | Arc tangent |
+| `ffi.asin` | Arc sine |
+| `ffi.acos` | Arc cosine |
+| `ffi.atan2` | Arc tangent of y/x |
+| `ffi.sinh` | Hyperbolic sine |
+| `ffi.cosh` | Hyperbolic cosine |
+| `ffi.tanh` | Hyperbolic tangent |
+| `ffi.trunc` | Truncates fractional part |
+| `ffi.cbrt` | Cube root |
+| `ffi.isupper` | Checks for uppercase character |
+| `ffi.islower` | Checks for lowercase character |
+| `ffi.isalnum` | Checks for alphanumeric character |
+| `ffi.ispunct` | Checks for punctuation character |
+| `ffi.isxdigit` | Checks for hexadecimal digit |
+```
+
+### Examples
+
+```zen
+ffi.puts("Hello from FFI")
+
+int len = ffi.strlen("ZEN")
+
+double root = ffi.sqrt(144.0)
+
+int value = ffi.atoi("123")
+```
+
+> FFI functions are thin wrappers around native C library functions. Their behavior follows the underlying platform implementation.
 
 ---
 
@@ -3925,6 +4292,39 @@ string r = extName("data.txt")   # ".txt"
 
 ---
 
+#### `matchRegex`
+
+Matches a string against a POSIX Extended Regular Expression (ERE).
+
+```
+matchRegex(text, pattern)
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `text` | `string` | Yes | Input string to test |
+| `pattern` | `string` | Yes | POSIX ERE pattern |
+
+Returns `bool`.
+
+```zen
+matchRegex("hello123", "^[a-z]+[0-9]+$")
+matchRegex("test@example.com", "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+matchRegex("12345", "^[0-9]+$")
+matchRegex("abc", "^[0-9]+$")
+```
+
+```zen
+bool ok = matchRegex(
+  "user@example.com",
+  "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+)
+
+print(ok)   # true
+```
+
+---
+
 ##### `match`
 ```
 match(s, pattern) → bool
@@ -4128,7 +4528,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v1.0.1. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v1.1.1. All compilation uses `-O2` by default.
 
 ---
 
@@ -4685,7 +5085,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v1.0.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
+ZEN v1.1.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -4920,13 +5320,16 @@ For bugs, contributions, or discussions:
 
 ## Disclaimer
 
-Zen v1 is the first stable release of the language and compiler.
+Zen is an actively evolving language and compiler.
 
-While most features are documented and implemented, there may still be:
-- Undocumented behaviors
-- Edge-case undefined behavior (UB)
-- Minor inconsistencies in certain compiler paths
+While the documentation aims to cover all supported features in the current release, there may still be:
 
-If you encounter any unexpected behavior, bugs, or missing documentation, please report it.
+- Undocumented features
+- Undocumented implementation details
+- Edge-case bugs
+- Undefined behavior in uncommon scenarios
+- Documentation inaccuracies or omissions
 
-This helps improve the language and ensures future releases are more stable and consistent.
+If you discover behavior that differs from the documentation, find a bug, or notice missing documentation, please open an issue or report it.
+
+Feedback from users helps improve the language, compiler, standard library, tooling, and documentation for future releases.

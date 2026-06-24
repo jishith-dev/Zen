@@ -140,15 +140,16 @@ export class Parser {
     
     if (this.matchKeyword("return")) {
       this.advance();
-      
+      let value;
       if (
         this.match("NEWLINE") ||
         this.match("BLOCK_END") ||
         this.match("EOF")
       ) {
-        return null;
+        value = [];
+      } else {
+       value = this.parseExpression();
       }
-      const value = this.parseExpression();
       
       return this.node({
         type: ParserTypes.RETURN,
@@ -452,6 +453,14 @@ export class Parser {
     
     const name = this.expect("IDENTIFIER").value;
     
+    if (name === "byte") {
+  this.IRB.emitError(
+    "TypeError",
+    "`byte` is a reserved primitive type and cannot be used as a struct name",
+    this.lineAndColumn()
+  );
+}
+    
     this.expect("BLOCK_START");
     
     const fields = [];
@@ -574,7 +583,7 @@ export class Parser {
       innerType = this.parseListGeneric();
     }
     
-    // primitive / struct
+    // primitive / struct / byte
     else if (
       this.match("TYPE") ||
       this.match("IDENTIFIER")
@@ -829,7 +838,7 @@ export class Parser {
       name = this.expect("IDENTIFIER").value;
       if (!this.IRB.stdlibMode) {
       if (name.startsWith("_")) {
-        this.IRB.emitError("NamingError"
+        this.IRB.emitError("NamingError",
           `Illegal identifier '${name}'. '_' prefix is reserved for Zen internal symbols`, this.lineAndColumn()
         );
       }
@@ -838,7 +847,7 @@ export class Parser {
     
     this.expect("LEFT_PARENTHESIS");
     
-    const params = [];
+  const params = []
     
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines()

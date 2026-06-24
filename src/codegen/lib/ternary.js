@@ -38,8 +38,11 @@ export class Ternary {
     this.IRB.emitExpr(t);
     this.IRB.emitExpr(f);
     
-    const resultType = t.llvmType;
-    
+    let resultType = t.llvmType;
+    let isStruct = this.IRB.hasStruct(t.type)
+    if (isStruct) {
+      resultType = "ptr";
+    }
     
     const boolPtr = this.IRB.toBool(cond.ptr, cond.type);
     
@@ -76,6 +79,7 @@ export class Ternary {
       local: [],
       global: [],
       isVarRef: false,
+      isStruct,
       isList: t.isList || f.isList
     };
   }

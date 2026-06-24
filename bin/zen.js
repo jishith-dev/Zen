@@ -24,10 +24,6 @@ const command = args[0];
 const optFlagFromCommand = args[2]; 
 const isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(optFlagFromCommand);
 const optFlag = isValidOptFlag ? optFlagFromCommand : "-O2"; // default -02
-const file = args[1];
-const inputFile = path.resolve(file);
-// Project root 
-const PROJECT_ROOT = path.dirname(inputFile);
 
 
 const validCommands = new Set([
@@ -101,7 +97,7 @@ if (!command || command === "help" || command === "--help" || command === "-h") 
 }
 
 if (command === "version" || command === "--version" || command === "-v") {
-  console.log("Zen v1.0.1");
+  console.log("Zen v1.1.1");
   process.exit(0);
 }
 
@@ -116,7 +112,7 @@ if (command === "init") {
     process.exit(1);
   }
 
-  const projDir = path.join(PROJECT_ROOT, projectName);
+  const projDir = path.resolve(projectName);
 
   if (fs.existsSync(projDir)) {
     console.error("Project already exists!");
@@ -136,7 +132,7 @@ if (command === "init") {
   const config = {
     name: projectName,
     version: "1.0.0",
-    entry: "main.zen"
+    main: "main.zen"
   };
 
   fs.writeFileSync(
@@ -150,14 +146,18 @@ if (command === "init") {
 
 // INPUT FILE
 
-const moduleName = path.basename(file, path.extname(file));
-
-const IRB = new IRBuilder(moduleName);
+const file = args[1];
 
 if (!file) {
   console.error("error: missing input file");
   process.exit(1);
 }
+
+const moduleName = path.basename(file, path.extname(file));
+const inputFile = path.resolve(file);
+const PROJECT_ROOT = path.dirname(inputFile);
+
+const IRB = new IRBuilder(moduleName);
 
 if (!fs.existsSync(inputFile)) {
   console.error(`error: file not found '${inputFile}'`);
@@ -234,6 +234,7 @@ if (command === "clean") {
 
 run(`opt -O2 ${outLL} -S -o ${outOptLL}`);
 run(`llc -filetype=obj -relocation-model=pic ${outOptLL} -o ${outO}`);
+
 
 // MODULE OBJECTS
 

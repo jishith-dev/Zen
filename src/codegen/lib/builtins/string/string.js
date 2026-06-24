@@ -36,13 +36,13 @@ export class ZenString {
     
     this.IRB.emitExpr(expr)
     
-    this.IRB.declareOneTime("strlen", "declare i32 @strlen(i8*)");
+    this.IRB.declareOneTime("strlen", "declare i32 @strlen(ptr)");
     
     let finalPtr = null;
     
       if (!isArray) {
         const t = this.IRB.newTemp();
-        this.IRB.emit(`${t} = call i32 @strlen(i8* ${expr.ptr})`);
+        this.IRB.emit(`${t} = call i32 @strlen(ptr ${expr.ptr})`);
         
         finalPtr = t;
         
@@ -103,13 +103,13 @@ export class ZenString {
   
   this.IRB.declareOneTime(
     "zen_regex_match",
-    "declare i32 @zen_regex_match(ptr, ptr)"
+    "declare i32 @_zen_regex_match(ptr, ptr)"
   );
   
   const resultTemp = this.IRB.newTemp();
   
   this.IRB.emit(
-    `${resultTemp} = call i32 @zen_regex_match(ptr ${exprs[0].ptr}, ptr ${exprs[1].ptr})`
+    `${resultTemp} = call i32 @_zen_regex_match(ptr ${exprs[0].ptr}, ptr ${exprs[1].ptr})`
   );
   
   const finalPtr = this.IRB.newTemp();

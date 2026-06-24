@@ -63,14 +63,22 @@ export class Call {
       };
     }
     
-    const name = `zen_${node.name}`;
+    const name = node.name;
+    let isStdFn = false;
     
     if (STD_FUNCTIONS.includes(name)) {
+      isStdFn = true;
       this.IRB.usedStdFunctions.add(name);
       if (!this.IRB.functions.has(name)) {
+        
         this.IRB.setStdlibFunctions(node);
       }
     }
+    
+    let mangledName = isStdFn ? name : `zen_${name}`;
+    if (this.IRB.stdlibMode) {
+      mangledName = name;
+      } 
     
     if (node.isInbuilt && !STD_FUNCTIONS.includes(name)) {
       
@@ -86,7 +94,7 @@ export class Call {
       );
     }
     
-    const fn = this.IRB.getFunction(name);
+    const fn = this.IRB.getFunction(name, node);
     const isStruct = this.IRB.hasStruct(fn.returnType);
     
     
@@ -111,18 +119,51 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
     
 
     
-    for (const arg of finalArgs) {
-      
-      const val = this.expr.handleExpression(arg, false);
-      
-      if (val.type === "void") {
-        this.IRB.emitError("TypeError", "void value used in expression", node);
-      }
-      
-      this.IRB.emitExpr(val);
-      
-      args.push(val);
+    for (let i = 0; i < finalArgs.length; i++) {
+  
+  const arg = finalArgs[i];
+  const param = fn.params[i];
+  
+  let val;
+  
+  if (arg.type === "MAP_LITERAL") {
+    
+    // Determine the expected struct type from the param's declared type
+    const paramType = param?.type?.type || param?.type;
+    
+    if (!paramType || !this.IRB.hasStruct(paramType)) {
+      this.IRB.emitError(
+        "TypeError",
+        `Cannot infer struct type for literal argument in call to '${node.name}'`,
+        node
+      );
     }
+    
+    const ptr = this.IRB.emitStructLiteral(paramType, arg);
+    
+    val = {
+      ptr,
+      type: paramType,
+      llvmType: `%${paramType}`,
+      isStruct: true,
+      local: [],
+      global: [],
+      isVarRef: false
+    };
+    
+  } else {
+    
+    val = this.expr.handleExpression(arg, false);
+    
+    if (val.type === "void") {
+      this.IRB.emitError("TypeError", "void value used in expression", node);
+    }
+    
+    this.IRB.emitExpr(val);
+  }
+  
+  args.push(val);
+}
     
   
     
@@ -165,12 +206,12 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
       
       this.IRB.declareOneTime(
         "zen_list_new",
-        "declare ptr @zen_list_new(i64)"
+        "declare ptr @_zen_list_new(i64)"
       );
       
       this.IRB.declareOneTime(
         "zen_list_push",
-        "declare void @zen_list_push(ptr, ptr)"
+        "declare void @_zen_list_push(ptr, ptr)"
       );
       
       this.IRB.declareOneTime(
@@ -243,7 +284,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
       const listPtr = this.IRB.newTemp();
       
       local.push(
-        `${listPtr} = call ptr @zen_list_new(i64 ${elementSize})`
+        `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`
       );
       
       const count = restArgs.length;
@@ -260,7 +301,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
         local.push(`store ${llvmType} ${a.ptr}, ptr ${tmp}`);
         
         local.push(
-          `call void @zen_list_push(ptr ${listPtr}, ptr ${tmp})`
+          `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`
         );
       }
       
@@ -277,7 +318,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
         }
         
         local.push(
-          `call void @${name}(${argStr.join(", ")})`
+          `call void @${mangledName}(${argStr.join(", ")})`
         );
         
       } else {
@@ -304,8 +345,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
       return {
         ptr: callTmp,
         type: isList ? fn.retGeneric : fn.returnType,
-        llvmType: isList ?
-          "%ZenList" : this.IRB.getLLVMType(fn.returnType),
+        llvmType: this.IRB.getLLVMType(fn.returnType),
         generic: isList ? fn.generic : null,
         local: asStatement ? [] : local,
         global: asStatement ? [] : global,
@@ -327,10 +367,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
     
     for (const a of args) {
       
-        if (a.isList) {
-          argStr.push(`ptr ${a.ptr}`);
-        } 
-       else if (a?.isStruct) {
+      if (a?.isStruct) {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
@@ -345,11 +382,20 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
       
       const tmp = this.IRB.newTemp();
         if (isStruct) {
+          
           local.push(`${tmp} = alloca %${fn.returnType}`);
-          local.push(`call void @${name}(ptr sret(%${fn.returnType}) ${tmp})`);
+
+const args = [
+  `ptr sret(%${fn.returnType}) ${tmp}`,
+  ...argStr
+];
+
+local.push(
+  `call void @${mangledName}(${args.join(", ")})`
+);
         } else {
       
-      local.push(`call void @${name}(${argStr.join(", ")})`);
+      local.push(`call void @${mangledName}(${argStr.join(", ")})`);
         }
       
       if (asStatement) {
@@ -366,14 +412,15 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
         endLabel: null,
         isVarRef: false,
         postOrPrefix: false,
-        layout
+        layout,
+        isStruct
       };
     }
     
     const tmp = this.IRB.newTemp();
     
     local.push(
-      `${tmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`
+      `${tmp} = call ${llvmRetType} @${mangledName}(${argStr.join(", ")})`
     );
     
     if (asStatement) {
@@ -392,8 +439,7 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
     return {
       ptr: tmp,
       type: isList ? fn.retGeneric : fn.returnType,
-      llvmType: isList ?
-        "%ZenList" : this.IRB.getLLVMType(fn.returnType),
+      llvmType: this.IRB.getLLVMType(fn.returnType),
       local: asStatement ? [] : local,
       global: asStatement ? [] : global,
       endLabel: null,

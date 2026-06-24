@@ -17,8 +17,8 @@ export class IO {
   );
 }
     
-    this.IRB.declareOneTime("printf", "declare i32 @printf(i8*, ...)");
-    this.IRB.declareOneTime("fflush", "declare i32 @fflush(i8*)");
+    this.IRB.declareOneTime("printf", "declare i32 @printf(ptr, ...)");
+    this.IRB.declareOneTime("fflush", "declare i32 @fflush(ptr)");
     
     if (args.length > 2) {
       this.IRB.emitError("ArgumentError", "screen() takes exactly upto 2 arguments", node);
@@ -110,7 +110,7 @@ export class IO {
     
     this.IRB.declareOneTime(
       "sys_input",
-      "declare ptr @sys_input(ptr)"
+      "declare ptr @_sys_input(ptr)"
     );
     
     const args = node?.value?.args || node?.args;
@@ -145,7 +145,7 @@ export class IO {
     }
     
     this.IRB.emit(
-      `${ptr} = call ptr @sys_input(ptr ${promptPtr})`
+      `${ptr} = call ptr @_sys_input(ptr ${promptPtr})`
     );
     
     return {

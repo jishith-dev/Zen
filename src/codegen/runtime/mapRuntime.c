@@ -29,7 +29,7 @@ typedef struct {
 } ZenMap;
 
 
-ZenMap* zen_map_new() {
+ZenMap* _zen_map_new() {
 
     ZenMap* map =
         malloc(sizeof(ZenMap));
@@ -47,7 +47,7 @@ ZenMap* zen_map_new() {
 }
 
 
-void zen_map_resize(ZenMap* map) {
+void _zen_map_resize(ZenMap* map) {
 
     map->capacity *= 2;
 
@@ -64,7 +64,7 @@ void zen_map_resize(ZenMap* map) {
 }
 
 
-void zen_map_set(ZenMap* map, char* key, void* value, int type) {
+void _zen_map_set(ZenMap* map, char* key, void* value, int type) {
 
     for (int i = 0; i < map->count; i++) {
 
@@ -78,7 +78,7 @@ void zen_map_set(ZenMap* map, char* key, void* value, int type) {
     }
 
     if (map->count >= map->capacity) {
-        zen_map_resize(map);
+        _zen_map_resize(map);
     }
 
     map->entries[map->count].key = strdup(key);
@@ -88,7 +88,7 @@ void zen_map_set(ZenMap* map, char* key, void* value, int type) {
 }
 
 
-void* zen_map_get(
+void* _zen_map_get(
     ZenMap* map,
     char* key
 ) {
@@ -112,7 +112,7 @@ exit(1);
 
 
 
-bool zen_map_has(
+bool _zen_map_has(
     ZenMap* map,
     char* key
 ) {
@@ -125,7 +125,7 @@ bool zen_map_has(
 }
 
 
-void zen_map_remove(
+void _zen_map_remove(
     ZenMap* map,
     char* key
 ) {
@@ -163,7 +163,7 @@ void zen_map_remove(
 
 
 
-void zen_map_free(
+void _zen_map_free(
     ZenMap* map
 ) {
 

@@ -39,7 +39,7 @@ export class Type {
     
     return {
       ptr: expr.ptr,
-      llvmType: "i8*",
+      llvmType: "ptr",
       type: "string",
       isConstant: true,
       local: [],
@@ -176,7 +176,7 @@ export class Type {
     return {
       ptr: cast.ptr,
       type: "string",
-      llvmType: "i8*",
+      llvmType: "ptr",
       local: [],
       global: [],
       isConstant: true,
@@ -203,7 +203,7 @@ export class Type {
     return {
       ptr: cast.ptr,
       type: "string",
-      llvmType: "i8*",
+      llvmType: "ptr",
       local: [],
       global: [],
       isConstant: true,

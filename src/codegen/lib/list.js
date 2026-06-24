@@ -11,12 +11,12 @@ export class ZenList {
     
     this.IRB.declareOneTime(
       "zen_list_new",
-      "declare ptr @zen_list_new(i64)"
+      "declare ptr @_zen_list_new(i64)"
     );
     
     this.IRB.declareOneTime(
       "zen_list_push",
-      "declare void @zen_list_push(ptr, ptr)"
+      "declare void @_zen_list_push(ptr, ptr)"
     );
     
     this.IRB.declareOneTime(
@@ -30,7 +30,7 @@ export class ZenList {
     
     // TYPES
     
-    const listLLVM = "%ZenList*"; 
+    const listLLVM = "ptr"; 
     
     const deepestType =
       this.IRB.getDeepestGeneric(node.generic);
@@ -101,7 +101,7 @@ export class ZenList {
       if (element.type === "MAP_LITERAL") {
   const structName = this.IRB.getDeepestGeneric(generic);
   const structPtr = this.IRB.emitStructLiteral(structName, element);
-  this.IRB.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${structPtr})`);
+  this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr})`);
   return;
 }
       
@@ -139,9 +139,7 @@ export class ZenList {
         const childList =
           this.IRB.newTemp();
         
-        this.IRB.emit(
-          `${childList} = call ptr @zen_list_new(i64 ${innerSize})`
-        );
+        this.IRB.emit(`${childList} = call ptr @_zen_list_new(i64 ${innerSize})`);
         
         // PUSH CHILD ELEMENTS
         
@@ -169,13 +167,7 @@ export class ZenList {
         
         // PUSH CHILD LIST
         
-        this.IRB.emit(
-          `call void @zen_list_push(` +
-          `ptr ${listPtr}, ` +
-          `ptr ${tmp}` +
-          `)`
-        );
-        
+        this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
         
         return;
       }
@@ -206,12 +198,7 @@ export class ZenList {
         `store ${elementLLVM} ${expr.ptr}, ptr ${tmp}`
       );
       
-      this.IRB.emit(
-        `call void @zen_list_push(` +
-        `ptr ${listPtr}, ` +
-        `ptr ${tmp}` +
-        `)`
-      );
+      this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     };
     
     // DETECT LIST LITERAL
@@ -272,9 +259,7 @@ export class ZenList {
       const listTemp =
         this.IRB.newTemp();
       
-      this.IRB.emit(
-        `${listTemp} = call ptr @zen_list_new(i64 ${elementSize})`
-      );
+      this.IRB.emit(`${listTemp} = call ptr @_zen_list_new(i64 ${elementSize})`);
       
       rootList = listTemp;
       

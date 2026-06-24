@@ -334,7 +334,7 @@ this.moduleFiles.add(llPath);
       if (p.isRest) {
         
         
-        paramStr.push(`%ZenList* ${temp}`);
+        paramStr.push(`ptr ${temp}`);
         
         paramData.push({
           ptr: temp,
@@ -348,14 +348,14 @@ this.moduleFiles.add(llPath);
       }
       
       if (p.type.type === "List") {
-        paramStr.push(`%ZenList* ${temp}`);
+        paramStr.push(`ptr ${temp}`);
         
         paramData.push({
           ptr: temp,
           name: p.name,
           type: p.type.generic.type,
           generic: { generic: p.type.generic },
-          llvmType: "%ZenList*",
+          llvmType: "ptr",
           isList: true
         });
         

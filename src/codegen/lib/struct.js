@@ -44,7 +44,7 @@ export class Struct {
     const llvmFields = [];
     
     let byteSize = 0;
-    
+    let maxAlign = 0;
   
     
     for (let i = 0; i < fields.length; i++) {
@@ -94,11 +94,7 @@ export class Struct {
       fieldMap[f.name] = i;
       llvmFields.push(llvmType);
       
-      // accumulate byte size
-      byteSize += this.IRB.getTypeSizeStruct(llvmType);
     }
-    
-  
     
     this.IRB.globals.push(
       `%${name} = type { ${llvmFields.join(", ")} }`
@@ -110,11 +106,11 @@ export class Struct {
       isGlobal: globalScope,
       layout,
       fieldMap,
-      byteSize,
       size: fields.length
     });
     
-  
+   this.IRB.getStruct(name).byteSize = this.IRB.sizeOf(name);
+   this.IRB.getStruct(name).align = this.IRB.alignOf(name);
     
     if (isMethod) {
       this.registerStructMethods(node);
@@ -159,11 +155,27 @@ export class Struct {
       this.IRB.emit(`${ptr} = alloca ${llvmType}`);
     }
     } else {
-      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      const expr = this.expr.handleExpression(value);
-      this.IRB.emitExpr(expr);
-      ptr = expr.ptr;
-      isRet = true;
+    
+  this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+
+  const expr = this.expr.handleExpression(value);
+  this.IRB.emitExpr(expr);
+
+  ptr = this.IRB.newTemp();
+  this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+
+  this.IRB.declareOneTime(
+    "llvm.memcpy.p0.p0.i64",
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+  );
+
+  this.IRB.emit(
+    `call void @llvm.memcpy.p0.p0.i64(` +
+    `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`
+  );
+
+  isRet = false;
+
     }
     
     this.IRB.setVar(varName, this.IRB.createData({
@@ -246,7 +258,7 @@ export class Struct {
         const temp = this.IRB.newTemp();
         let t;
         
-        this.IRB.declareOneTime("zen_map_get", "declare ptr @zen_map_get(ptr, ptr)");
+        this.IRB.declareOneTime("zen_map_get", "declare ptr @_zen_map_get(ptr, ptr)");
         
         if (needsLoad) {
           t = this.IRB.newTemp()
@@ -256,7 +268,7 @@ export class Struct {
           t = currentPtr;
         }
         this.IRB.emit(
-          `${temp} = call ptr @zen_map_get(ptr ${t}, ptr ${keyPtr.name})`
+          `${temp} = call ptr @_zen_map_get(ptr ${t}, ptr ${keyPtr.name})`
         );
         
         currentPtr = temp;
@@ -286,7 +298,7 @@ export class Struct {
         t = currentPtr;
       }
       this.IRB.emit(
-        `call void @zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr})`
+        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr})`
       );
       
       // LAYOUT UPDATE 
@@ -354,8 +366,12 @@ export class Struct {
         `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
       );
       
-      basePtr = ptr;
-      structName = structInfo.layout[fieldIndex].type;
+      const fieldMeta = structInfo.layout[fieldIndex];
+
+
+  basePtr = ptr;
+
+  structName = fieldMeta.type;
     }
     
     // FINAL FIELD  
@@ -374,6 +390,7 @@ export class Struct {
       );
     }
     
+    const isStructInfer = this.IRB.hasStruct(fieldMeta.type);
     const value = this.expr.handleExpression(node.value, false, fieldMeta.type);
     
     const expected = fieldMeta?.type;
@@ -458,7 +475,7 @@ export class Struct {
       );
     } else {
       this.IRB.emit(
-        `store ${llvmType} ${value.ptr}, ${llvmType}* ${finalPtr}`
+        `store ${llvmType} ${value.ptr}, ptr ${finalPtr}`
       );
     }
   }

@@ -3,14 +3,14 @@
 const LLVM_TYPES_MAP = {
   int: "i32",
   double: "double",
-  string: "i8*",
+  string: "ptr",
   bool: "i1"
 };
 
 const ZEN_TYPES_MAP = {
   "i32": "int",
   "double": "double",
-  "i8*": "string",
+  "ptr": "string",
   "i1": "bool"
 }
 
@@ -58,6 +58,8 @@ const LOGICAL_OPS = [
 const TYPES = ["int", "bool", "string", "double"];
 
 const SCALAR_TYPES = ["int", "bool", "double"];
+
+const speacialTypes = ["byte"]; // only use inside List<T>
 
 const NON_SCALAR_TYPES = ["string"];
 
@@ -221,6 +223,8 @@ const BUILTIN_FUNCTIONS = [
   "_fs_makeDir",
   "_fs_changeDir",
   "_fs_renameFile",
+  "_fs_writeFileBytes",
+  "_fs_readFileBytes",
   
   // OS
   "_os_cpuCount",
@@ -385,7 +389,9 @@ const NAMESPACE_MAP = {
     "renameFile",
     "makeDir",
     "cwd",
-    "changeDir"
+    "changeDir",
+    "readFileBytes",
+    "writeFileBytes"
   ],
   
   sys: [
@@ -577,6 +583,16 @@ const BUILTIN_MAP = {
   writeFile: {
     returnType: "int",
     llvmName: "_fs_writeFile"
+  },
+  
+  readFileBytes: {
+    returnType: "byte",
+    llvmName: "_fs_readFileBytes"
+  },
+  
+  writeFileBytes: {
+    returnType: "void",
+    llvmName: "_fs_writeFileBytes"
   },
   
   appendFile: {
@@ -1063,7 +1079,7 @@ const FORMAT_MAP = {
   string: {
     fmt: "@.scan_string",
     fmtType: "[6 x i8]",
-    varType: "i8*",
+    varType: "ptr",
     decl: "scan_string",
     ir: '@.scan_string = private constant [6 x i8] c"%[^\\0A]\\00"',
     zero: null
@@ -1192,28 +1208,28 @@ const STD_FUNCTIONS_SCHEMA = {
 
   between: { ret: "i1", params: ["i32", "i32", "i32"] },
   
-  reverse: { ret: "i8*", params: ["i8*"] },
-  indexOf: { ret: "i32", params: ["i8*", "i8*"] },
-  slice: { ret: "i8*", params: ["i8*", "i32", "i32"] },
-  charAt: { ret: "i8*", params: ["i8*", "i32"] },
-  replace: { ret: "i8*", params: ["i8*", "i8*", "i8*"] },
-  contains: { ret: "i1", params: ["i8*", "i8*"] },
-  upperCase: { ret: "i8*", params: ["i8*"] },
-  lowerCase: { ret: "i8*", params: ["i8*"] },
-  startsWith: { ret: "i1", params: ["i8*", "i8*"] },
-  endsWith: { ret: "i1", params: ["i8*", "i8*"] },
-  trim: { ret: "i8*", params: ["i8*"] },
-  splitAt: { ret: "i8*", params: ["i8*", "i8*", "i32"] },
-  split: { ret: "ptr", params: ["i8*", "i8*"] },
-  repeat: { ret: "i8*", params: ["i8*", "i32"] },
-  count: { ret: "i32", params: ["i8*", "i8*"] },
+  reverse: { ret: "ptr", params: ["ptr"] },
+  indexOf: { ret: "i32", params: ["ptr", "ptr"] },
+  slice: { ret: "ptr", params: ["ptr", "i32", "i32"] },
+  charAt: { ret: "ptr", params: ["ptr", "i32"] },
+  replace: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },
+  contains: { ret: "i1", params: ["ptr", "ptr"] },
+  upperCase: { ret: "ptr", params: ["ptr"] },
+  lowerCase: { ret: "ptr", params: ["ptr"] },
+  startsWith: { ret: "i1", params: ["ptr", "ptr"] },
+  endsWith: { ret: "i1", params: ["ptr", "ptr"] },
+  trim: { ret: "ptr", params: ["ptr"] },
+  splitAt: { ret: "ptr", params: ["ptr", "ptr", "i32"] },
+  split: { ret: "ptr", params: ["ptr", "ptr"] },
+  repeat: { ret: "ptr", params: ["ptr", "i32"] },
+  count: { ret: "i32", params: ["ptr", "ptr"] },
   
-  padStart: { ret: "i8*", params: ["i8*", "i32", "i8*"] },
-  padEnd: { ret: "i8*", params: ["i8*", "i32", "i8*"] },
-  padCenter: { ret: "i8*", params: ["i8*", "i32", "i8*"] },
+  padStart: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
+  padEnd: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
+  padCenter: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
   
-  capitalize: { ret: "i8*", params: ["i8*"] },
-  extName: { ret: "i8*", params: ["i8*"] },
+  capitalize: { ret: "ptr", params: ["ptr"] },
+  extName: { ret: "ptr", params: ["ptr"] },
   
   sin: { ret: "double", params: ["double"] },
   cos: { ret: "double", params: ["double"] },
@@ -1224,8 +1240,8 @@ const STD_FUNCTIONS_SCHEMA = {
   
   randomInt: { ret: "i32", params: ["i32", "i32"] },
   random: { ret: "double", params: [] },
-  match: { ret: "i1", params: ["i8*", "i8*"] },
-  json: { ret: "i8*", params: ["i8*", "i8*"] }
+  match: { ret: "i1", params: ["ptr", "ptr"] },
+  json: { ret: "ptr", params: ["ptr", "ptr"] }
 };
 
 /* zen native simlar Structure functions map
@@ -1356,6 +1372,20 @@ const FILE_MAP = {
     "int",
     2,
     ["string", "string"]
+  ],
+  
+  _fs_readFileBytes: [
+    "_fs_readFileBytes",
+    "byte",
+    1,
+    ["string"]
+  ],
+  
+  _fs_writeFileBytes: [
+    "_fs_writeFileBytes",
+    "void",
+    2,
+    ["string", "byte"]
   ],
   
   _fs_exists: [

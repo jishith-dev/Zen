@@ -24,7 +24,7 @@ export class Expression {
   }
   
   
-  handleExpression(node, globalScope = true, StructName = "Unknown") { // default globalScope true
+  handleExpression(node, globalScope = true, ContextType = "Unknown") { // default globalScope true
     
     const op = node?.operator;
     let local = [];
@@ -68,7 +68,7 @@ export class Expression {
         ir: data.ir, 
         symbol: data?.symbol, 
         type: "string",
-        llvmType: "i8*",
+        llvmType: "ptr",
         length: data.length,
         local: data.local,
         global: data.global,
@@ -192,16 +192,20 @@ export class Expression {
       return expr;
     }
     
+    if (node.type === "MAP_LITERAL") {
+      this.IRB.emitError("SemanticError", "Map litetals are not supported", node);
+    }
+    
     if (node.type === "ARRAY") {
       
       this.IRB.declareOneTime(
         "zen_list_new",
-        "declare ptr @zen_list_new(i64)"
+        "declare ptr @_zen_list_new(i64)"
       );
       
       this.IRB.declareOneTime(
         "zen_list_push",
-        "declare void @zen_list_push(ptr, ptr)"
+        "declare void @_zen_list_push(ptr, ptr)"
       );
       
       this.IRB.declareOneTime(
@@ -211,17 +215,49 @@ export class Expression {
       
       // infer element type from first element
       const first = node.elements[0];
-      
-      if (!first) {
-        this.IRB.emitError(
-          "TypeError",
-          "cannot infer empty array literal type", node
-        );
+
+if (!first) {
+  
+  // Caller knows the expected type 
+  // List<T> field or variable) — use it instead of inferring from elements
+  if (ContextType) {
+    
+    this.IRB.declareOneTime(
+      "zen_list_new",
+      "declare ptr @_zen_list_new(i64)"
+    );
+    
+    const elemSize = this.IRB.sizeOf(ContextType);
+    
+    const list = this.IRB.newTemp();
+    
+    this.IRB.emit(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
+    
+    return {
+      ptr: list,
+      addr: list,
+      type: ContextType,
+      llvmType: "ptr",
+      local: [],
+      global: [],
+      isListLiteral: true,
+      isList: true,
+      generic: {
+        generic: { type: ContextType }
       }
+    };
+  }
+  
+
+  this.IRB.emitError(
+    "TypeError",
+    "cannot infer empty array literal type", node
+  );
+}
       
       if (first.type === "MAP_LITERAL") {
 
-  const structName = StructName //this.IRB.expectedStructName;
+  const structName = ContextType;
   const elemSize = this.IRB.sizeOf(structName);
   
   if (!structName) {
@@ -238,7 +274,7 @@ export class Expression {
   const global = [];
 
   local.push(
-    `${list} = call ptr @zen_list_new(i64 ${elemSize})`
+    `${list} = call ptr @_zen_list_new(i64 ${elemSize})`
   );
 
   for (const el of node.elements) {
@@ -250,7 +286,7 @@ export class Expression {
       );
 
     local.push(
-      `call void @zen_list_push(ptr ${list}, ptr ${structPtr})`
+      `call void @_zen_list_push(ptr ${list}, ptr ${structPtr})`
     );
   }
 
@@ -258,7 +294,7 @@ export class Expression {
     ptr: list,
     addr: list,
     type: structName,
-    llvmType: "%ZenList*",
+    llvmType: "ptr",
     local,
     global,
     isListLiteral: true,
@@ -270,11 +306,66 @@ export class Expression {
     }
   };
 }
-      
-      const elemExpr =
+
+
+const elemExpr =
         this.handleExpression(first);
       
       this.IRB.emitExpr(elemExpr);
+
+if (elemExpr.isStruct) {
+  const structName = elemExpr.type;
+  const elemSize = this.IRB.sizeOf(structName);
+
+  const list = this.IRB.newTemp();
+  const local = [];
+  const global = [];
+
+  local.push(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
+
+  // first element already evaluated above
+  const firstTmp = this.IRB.newTemp();
+  this.IRB.declareOneTime(
+    "llvm.memcpy.p0.p0.i64",
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+  );
+  local.push(`${firstTmp} = alloca %${structName}`);
+  local.push(`call void @llvm.memcpy.p0.p0.i64(ptr ${firstTmp}, ptr ${elemExpr.ptr}, i64 ${elemSize}, i1 false)`);
+  local.push(`call void @_zen_list_push(ptr ${list}, ptr ${firstTmp})`);
+
+  // remaining elements
+  for (let i = 1; i < node.elements.length; i++) {
+    const el = node.elements[i];
+
+    let elPtr;
+    if (el.type === "MAP_LITERAL") {
+      elPtr = this.IRB.emitStructLiteral(structName, el);
+    } else {
+      const expr = this.handleExpression(el);
+      this.IRB.emitExpr(expr);
+      
+      const tmp = this.IRB.newTemp();
+      local.push(`${tmp} = alloca %${structName}`);
+      local.push(`call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${elemSize}, i1 false)`);
+      elPtr = tmp;
+    }
+
+    local.push(`call void @_zen_list_push(ptr ${list}, ptr ${elPtr})`);
+  }
+
+  return {
+    ptr: list,
+    addr: list,
+    type: structName,
+    llvmType: "ptr",
+    local,
+    global,
+    isListLiteral: true,
+    isList: true,
+    generic: { generic: { type: structName } }
+  };
+}
+
       
       const elemLLVM =
         elemExpr.isList ?
@@ -293,7 +384,7 @@ export class Expression {
       const global = [];
       
       local.push(
-        `${list} = call ptr @zen_list_new(i64 ${elemSize})`
+        `${list} = call ptr @_zen_list_new(i64 ${elemSize})`
       );
       
       for (const el of node.elements) {
@@ -315,7 +406,7 @@ export class Expression {
         );
         
         local.push(
-          `call void @zen_list_push(ptr ${list}, ptr ${tmp})`
+          `call void @_zen_list_push(ptr ${list}, ptr ${tmp})`
         );
       }
       
@@ -323,7 +414,7 @@ export class Expression {
         ptr: list,
         addr: list,
         type: elemExpr.type,
-        llvmType: "%ZenList*",
+        llvmType: "ptr",
         local,
         global,
         isListLiteral: true,
@@ -412,22 +503,29 @@ export class Expression {
         
         for (let i = 0; i < fields.length; i++) {
           
-          const LIST_PROPS = ["push", "pop", "contains", "removeAt", "clear", "free", "length", "capacity"];
+          const LIST_PROPS = ["push", "pop", "contains", "removeAt", "clear", "free", "length", "capacity", "join", "indexOf"];
+
           
-          if (LIST_PROPS.includes(fields[i])) {
+          if (fieldInfo?.isList && LIST_PROPS.includes(fields[i])) {
             
-            const t = this.IRB.newTemp();
-            this.IRB.emit(`${t} = load ptr, ptr ${basePtr}`);
+          let t = this.IRB.newTemp();
+           
+          this.IRB.emit(`${t} = load ptr, ptr ${basePtr}`);
+           
+           this.IRB.declareOneTime(
+    "ZenList",
+    "%ZenList = type { ptr, i32, i32, i64 }"
+  );
             
             const fakeObject = {
               ptr: t,
-              type: fieldInfo.type,
-              llvmType: fieldInfo.llvmType,
+              type: fieldInfo?.type,
+              llvmType: fieldInfo?.llvmType,
               local: [],
               global: [],
               isList: true,
               isVarRef: true,
-              generic: fieldInfo.generic
+              generic: fieldInfo?.generic
             };
             
             return this.IRB.handleListProperty(
@@ -439,8 +537,8 @@ export class Expression {
               fields[fields.length - 1]
             );
           }
-          const structInfo =
-            this.IRB.getStruct(structName);
+          
+          const structInfo = this.IRB.getStruct(structName);
           
           if (!structInfo) {
             this.IRB.emitError(
@@ -570,7 +668,7 @@ export class Expression {
             isList: true,
             isVarRef: true,
             generic: fieldInfo.generic,
-            needsLoad: true
+            needsLoad: true,
           };
         }
         
@@ -583,7 +681,7 @@ export class Expression {
         
         this.IRB.declareOneTime(
           "zen_map_get",
-          "declare ptr @zen_map_get(ptr, ptr)"
+          "declare ptr @_zen_map_get(ptr, ptr)"
         );
         
         // MAP LAYOUT
@@ -666,8 +764,8 @@ export class Expression {
           switch (field) {
             
             case 'free': {
-              this.IRB.declareOneTime("zen_map_free", "declare void @zen_map_free(ptr)");
-              this.IRB.emit(`call void @zen_map_free(ptr ${currentMapPtr})`);
+              this.IRB.declareOneTime("zen_map_free", "declare void @_zen_map_free(ptr)");
+              this.IRB.emit(`call void @_zen_map_free(ptr ${currentMapPtr})`);
               
               if (!this.IRB.freedMap.has(base.name)) {
                 this.IRB.freedMap.set(base.name, new Set());
@@ -681,14 +779,14 @@ export class Expression {
             }
             
             case 'remove': {
-              this.IRB.declareOneTime("zen_map_remove", "declare void @zen_map_remove(ptr, ptr)");
+              this.IRB.declareOneTime("zen_map_remove", "declare void @_zen_map_remove(ptr, ptr)");
               const mapPtr = currentMapPtr;
               const argNode = node.args?.[0];
               if (!argNode) {
                 this.IRB.emitError("ArgumentError", `'map.remove' expects exactly 1 argument, got 0`, node);
               }
               const keyStr = this.handleExpression(argNode);
-              this.IRB.emit(`call void @zen_map_remove(ptr ${mapPtr}, ptr ${keyStr.ptr})`);
+              this.IRB.emit(`call void @_zen_map_remove(ptr ${mapPtr}, ptr ${keyStr.ptr})`);
               return {
                 ptr: null,
                 type: "void",
@@ -699,7 +797,7 @@ export class Expression {
             }
             
             case 'has': {
-              this.IRB.declareOneTime("zen_map_has", "declare i1 @zen_map_has(ptr, ptr)");
+              this.IRB.declareOneTime("zen_map_has", "declare i1 @_zen_map_has(ptr, ptr)");
               const mapPtr = currentMapPtr;
               const argNode = node.args?.[0];
               if (!argNode) {
@@ -707,7 +805,7 @@ export class Expression {
               }
               const keyStr = this.handleExpression(argNode);
               const result = this.IRB.newTemp();
-              this.IRB.emit(`${result} = call i1 @zen_map_has(ptr ${mapPtr}, ptr ${keyStr.ptr})`);
+              this.IRB.emit(`${result} = call i1 @_zen_map_has(ptr ${mapPtr}, ptr ${keyStr.ptr})`);
               return {
                 ptr: result,
                 type: "bool",
@@ -715,6 +813,52 @@ export class Expression {
                 local: [],
                 global: [],
                 isVarRef: false
+              }
+            }
+            
+            case 'keys': {
+              
+             const keys = Object.keys(this.IRB.maps.get(base.name));
+             this.IRB.declareOneTime(
+        "zen_list_new",
+        "declare ptr @_zen_list_new(i64)"
+      );
+      
+      this.IRB.declareOneTime(
+        "zen_list_push",
+        "declare void @_zen_list_push(ptr, ptr)"
+      );
+      
+      this.IRB.declareOneTime(
+        "ZenList",
+        "%ZenList = type { ptr, i32, i32, i64 }"
+      );
+      
+      const list = this.IRB.newTemp();
+      this.IRB.emit(`${list} = call ptr @_zen_list_new(i64 8)`); // ptr sizeOf 64bit
+      
+             for (const k of keys) {
+               const keyStr = this.IRB.newGlobalString(k);
+             
+             const tmp = this.IRB.newTemp();
+             this.IRB.emit(`${tmp} = alloca ptr`);
+    this.IRB.emit(`store ptr ${keyStr.name}, ptr ${tmp}`);
+    this.IRB.emit(`call void @_zen_list_push(ptr ${list}, ptr ${tmp})`);
+
+             }
+              
+              
+              return {
+                ptr: list,
+                type: "string",
+                llvmType: "ptr",
+                local: [],
+                global: [],
+                needsLoad: true,
+                isList: true,
+                generic: {
+                  generic: "string"
+                }
               }
             }
           }
@@ -740,7 +884,7 @@ export class Expression {
             
             this.IRB.declareOneTime(
               "zen_map_get",
-              "declare ptr @zen_map_get(ptr, ptr)"
+              "declare ptr @_zen_map_get(ptr, ptr)"
             );
             
             // get actual list ptr first
@@ -750,12 +894,7 @@ export class Expression {
             const listPtr =
               this.IRB.newTemp();
             
-            this.IRB.emit(
-              `${listPtr} = call ptr @zen_map_get(` +
-              `ptr ${currentMapPtr}, ` +
-              `ptr ${keyPtr.name}` +
-              `)`
-            );
+            this.IRB.emit(`${listPtr} = call ptr @_zen_map_get(ptr ${currentMapPtr}, ptr ${keyPtr.name})`);
             
             // remaining field
             const nextField =
@@ -812,12 +951,7 @@ export class Expression {
           resultPtr =
             this.IRB.newTemp();
           
-          this.IRB.emit(
-            `${resultPtr} = call ptr @zen_map_get(` +
-            `ptr ${currentMapPtr}, ` +
-            `ptr ${keyPtr.name}` +
-            `)`
-          );
+          this.IRB.emit(`${resultPtr} = call ptr @_zen_map_get(ptr ${currentMapPtr}, ptr ${keyPtr.name})`);
           
           // NEXT MAP
           
@@ -938,7 +1072,7 @@ export class Expression {
         
         const ptr = this.IRB.newTemp();
         
-        const useOpaquePtr = object?.isRet;
+        const useOpaquePtr = object?.isRet || object?.fromParam;
 
 this.IRB.emit(
   useOpaquePtr
@@ -946,15 +1080,8 @@ this.IRB.emit(
     : `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
 );
         
-   if (i < fields.length - 1 && this.IRB.hasStruct(fieldInfo.type)) {
-    const loaded = this.IRB.newTemp();
-    this.IRB.emit(`${loaded} = load ptr, ptr ${ptr}`);
-    basePtr = loaded;
-  } else {
-    basePtr = ptr;
- }
+        basePtr = ptr;
         
-      
         structName = fieldInfo.type;
       }
       
@@ -972,6 +1099,7 @@ this.IRB.emit(
           type: structName,
           llvmType: finalType,
           local,
+          isStruct: isStruct,
           global: [],
           isVarRef: false
         };
@@ -981,7 +1109,7 @@ this.IRB.emit(
       const val = this.IRB.newTemp();
       
       local.push(
-        `${val} = load ${finalType}, ${finalType}* ${basePtr}`
+        `${val} = load ${finalType}, ptr ${basePtr}`
       );
       
       return {
@@ -1007,6 +1135,8 @@ this.IRB.emit(
         if (base.local?.length) {
           local.push(...base.local);
         }
+        
+        if (base.global?.length) global.push(...base.global);
         
         if (
           n.index.type === "UNARY_EXPRESSION" &&
@@ -1043,7 +1173,7 @@ this.IRB.emit(
           
           if (
             base.isMapValue ||
-            base.fromParam || base?.isDirectCall
+            base.fromParam || base?.isDirectCall || !base?.needsLoad
           ) {
             listTemp = base.ptr;
           } else {
@@ -1057,14 +1187,12 @@ this.IRB.emit(
           
           this.IRB.declareOneTime(
             "zen_list_get",
-            "declare ptr @zen_list_get(ptr, i32)"
+            "declare ptr @_zen_list_get(ptr, i32)"
           );
           
           const elemPtr = this.IRB.newTemp();
           
-          local.push(
-            `${elemPtr} = call ptr @zen_list_get(ptr ${listTemp}, i32 ${index.ptr})`
-          );
+          local.push(`${elemPtr} = call ptr @_zen_list_get(ptr ${listTemp}, i32 ${index.ptr})`);
           
           const isListValue = !!base.generic
           
@@ -1125,7 +1253,7 @@ this.IRB.emit(
           
           this.IRB.declareOneTime(
             "zen_map_get",
-            "declare ptr @zen_map_get(ptr, ptr)"
+            "declare ptr @_zen_map_get(ptr, ptr)"
           );
           
           // Load the map ptr if needed
@@ -1139,7 +1267,7 @@ this.IRB.emit(
           // index.ptr is the runtime key string ptr (from loopIn keyName binding)
           const resultPtr = this.IRB.newTemp();
           local.push(
-            `${resultPtr} = call ptr @zen_map_get(ptr ${mapPtr}, ptr ${index.ptr})`
+            `${resultPtr} = call ptr @_zen_map_get(ptr ${mapPtr}, ptr ${index.ptr})`
           );
           
           
@@ -1200,25 +1328,22 @@ this.IRB.emit(
         }
         
         // string index access
-        if (base.type === "string" && base.llvmType === "i8*") {
-          
-          if (base.local?.length) local.push(...base.local);
-          if (base.global?.length) global.push(...base.global);
+        if (base.type === "string") {
           
           local.push(
-            `${ptr} = getelementptr i8, i8* ${base.ptr ?? base.addr}, i32 ${index.ptr}`
+            `${ptr} = getelementptr i8, ptr ${base.ptr ?? base.addr}, i32 ${index.ptr}`
           );
           
           const t = this.IRB.newTemp();
-          local.push(`${t} = load i8, i8* ${ptr}`);
-          this.IRB.declareOneTime("zen_char_to_string", "declare i8* @zen_char_to_string(i8)");
+          local.push(`${t} = load i8, ptr ${ptr}`);
+          this.IRB.declareOneTime("zen_char_to_string", "declare ptr @_zen_char_to_string(i8)");
           const tem = this.IRB.newTemp();
-          local.push(`${tem} = call i8* @zen_char_to_string(i8 ${t})`);
+          local.push(`${tem} = call ptr @_zen_char_to_string(i8 ${t})`);
           
           return {
             addr: tem,
             ptr: tem,
-            llvmType: "i8*",
+            llvmType: "ptr",
             type: "string",
             internalType: "char", // only for internal use
             local: base.local || [],
@@ -1227,7 +1352,7 @@ this.IRB.emit(
         }
         
         local.push(
-          `${ptr} = getelementptr ${base.llvmType}, ${base.llvmType}* ${base.addr}, i32 0, i32 ${index.ptr}`
+          `${ptr} = getelementptr ${base.llvmType}, ptr ${base.addr}, i32 0, i32 ${index.ptr}`
         );
         
         const nextType = this.IRB.getElementType(base.llvmType);
@@ -1251,10 +1376,7 @@ this.IRB.emit(
       const isStruct = final?.isStruct;
       
       if (!isStringCharAccess && !isDynamicMapAccess && !isStruct) {
-        local.push(
-          
-          `${val} = load ${final.llvmType}, ptr ${final.addr}`
-        );
+        local.push(`${val} = load ${final.llvmType}, ptr ${final.addr}`);
         final.needsLoad = false;
       }
       
@@ -1452,7 +1574,7 @@ this.IRB.emit(
         const newVal = this.IRB.newTemp();
         local.push(`${newVal} = ${isDouble ? "f" : ""}${op} ${llvmType} ${old}, ${one}`);
         
-        local.push(`store ${val.llvmType} ${newVal}, ${val.llvmType}* ${val.addr}`);
+        local.push(`store ${val.llvmType} ${newVal}, ptr ${val.addr}`);
         
         //  return based on prefix/postfix
         return {
@@ -1603,19 +1725,19 @@ if (RNode?.isList) {
       }
       
       if (op === "+") {
-        this.IRB.declareOneTime("str_concat", "declare i8* @str_concat(i8*, i8*)");
+        this.IRB.declareOneTime("str_concat", "declare ptr @_str_concat(ptr, ptr)");
         
         const resultPtr = this.IRB.newTemp();
         
        // CONCAT
         local.push(
-          `${resultPtr} = call i8* @str_concat(i8* ${leftPtr}, i8* ${rightPtr})`
+          `${resultPtr} = call ptr @_str_concat(ptr ${leftPtr}, ptr ${rightPtr})`
         );
         
         return {
           ptr: resultPtr,
           type: "string",
-          llvmType: "i8*",
+          llvmType: "ptr",
           local: local,
           global: global,
           endLabel: null,
@@ -1628,7 +1750,7 @@ if (RNode?.isList) {
         
         this.IRB.declareOneTime(
           "str_cmp",
-          "declare i32 @strcmp(i8*, i8*)"
+          "declare i32 @strcmp(ptr, ptr)"
         );
         
         const resultPtr = this.IRB.newTemp();
@@ -1638,7 +1760,7 @@ if (RNode?.isList) {
         
         const cmp = this.IRB.newTemp();
         local.push(
-          `${cmp} = call i32 @strcmp(i8* ${l}, i8* ${r})`
+          `${cmp} = call i32 @strcmp(ptr ${l}, ptr ${r})`
         );
         
         // convert strcmp result boolean
@@ -1739,7 +1861,7 @@ if (RNode?.isList) {
         }
         else if (type === "string") {
           const t0 = this.IRB.newTemp();
-          local.push(`${t0} = load i8, i8* ${val}`);
+          local.push(`${t0} = load i8, ptr ${val}`);
           local.push(`${t} = icmp ne i8 ${t0}, 0`);
         }
         else {

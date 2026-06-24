@@ -247,7 +247,7 @@ export class Loop {
     } else if (expr.isList) {
       this.IRB.declareOneTime(
         "zen_list_get",
-        "declare ptr @zen_list_get(ptr, i32)"
+        "declare ptr @_zen_list_get(ptr, i32)"
       );
       varType = expr.type;
       llvmVarType = this.IRB.getLLVMType(varType);
@@ -362,7 +362,7 @@ export class Loop {
       
       const valTmp = this.IRB.newTemp();
       this.IRB.emit(
-        `${valTmp} = call ptr @zen_list_get(ptr ${tm}, i32 ${idxTmp})`
+        `${valTmp} = call ptr @_zen_list_get(ptr ${tm}, i32 ${idxTmp})`
       );
   
       const nextGeneric =
@@ -433,7 +433,7 @@ export class Loop {
       mapPtr = tmp;
     }
     
-    this.IRB.declareOneTime("zen_map_get", "declare ptr @zen_map_get(ptr, ptr)");
+    this.IRB.declareOneTime("zen_map_get", "declare ptr @_zen_map_get(ptr, ptr)");
     
     // GET MAP LAYOUT
     
@@ -546,7 +546,7 @@ export class Loop {
     // Fetch the value for this key (available to body if needed)
     const valueTmp = this.IRB.newTemp();
     this.IRB.emit(
-      `${valueTmp} = call ptr @zen_map_get(ptr ${mapPtr}, ptr ${currentKeyPtr})`
+      `${valueTmp} = call ptr @_zen_map_get(ptr ${mapPtr}, ptr ${currentKeyPtr})`
     );
     
     this.IRB.setVar(keyName, {

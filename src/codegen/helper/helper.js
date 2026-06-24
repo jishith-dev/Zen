@@ -42,6 +42,24 @@ export class IRBuilder {
     this.currentStruct = null;
     this.usedStdFunctions = new Set();
     
+    this.is64 = [
+  "x64",
+  "arm64",
+  "mips64",
+  "mips64el",
+  "ppc64",
+  "ppc64le",
+  "s390x",
+  "loong64",
+  "riscv64"
+];
+
+this.target = {
+  arch: process.arch,
+  platform: process.platform,
+  ptrSize: this.is64.includes(process.arch) ? 8 : 4
+};
+    
     this.loopStack = [];
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
@@ -188,35 +206,59 @@ export class IRBuilder {
     }
   }
   
-  sizeOf(type) {
+  alignOf(type) {
   if (type === "int") return 4;
   if (type === "double") return 8;
   if (type === "bool") return 1;
-  if (type === "string") return 8;
+  if (type === "string") return this.target.ptrSize;
+  if (type === "byte") return 1;
+  
+  const structInfo = this.getStruct(type);
+  if (structInfo) {
+    // struct alignment = max alignment of its fields
+    let maxAlign = 1;
+    for (const field of structInfo.layout) {
+      const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
+      maxAlign = Math.max(maxAlign, a);
+    }
+    return maxAlign;
+  }
+  
+  return this.target.ptrSize
+}
 
-  // struct
+sizeOf(type) {
+  if (type === "int") return 4;
+  if (type === "double") return 8;
+  if (type === "bool") return 1;
+  if (type === "string") return this.target.ptrSize
+  if (type === "byte") return 1;
+  
   const structInfo = this.getStruct(type);
 
   if (structInfo) {
-    let size = 0;
+    let offset = 0;
+    let maxAlign = 1;
 
     for (const field of structInfo.layout) {
-      
-      if (field.isList) {
-        size += 8;
-        continue;
-      }
-      size += this.sizeOf(field.type);
+     
+      const align = field.isList ? this.target.ptrSize : this.alignOf(field.type);
+      const size = field.isList ? this.target.ptrSize : this.sizeOf(field.type);
+
+      // pad before field to satisfy its alignment
+      offset = Math.ceil(offset / align) * align;
+      offset += size;
+
+      maxAlign = Math.max(maxAlign, align);
     }
 
-    if (size % 8 !== 0) {
-      size += 8 - (size % 8);
-    }
+    // pad struct total size to its own alignment
+    offset = Math.ceil(offset / maxAlign) * maxAlign;
 
-    return size;
+    return offset;
   }
 
-  return 8;
+  return this.target.ptrSize; // fallback
 }
   
   bindLineColumn(node) {
@@ -316,12 +358,12 @@ export class IRBuilder {
     };
   }
   
-  getFunction(name) {
+  getFunction(name, node) {
     if (this.functions.has(name)) {
       return this.functions.get(name);
     }
     
-    this.emitError("ReferenceError", `Function '${name}' is not defined`)
+    this.emitError("ReferenceError", `Function '${name}' is not defined`, node)
   }
   
   typeMatches(expr, expectedType, expectedIsList = false) {
@@ -438,6 +480,10 @@ export class IRBuilder {
     }
     
     if (type === "Map" || type === "List" || type === "ptr") {
+      return "ptr";
+    }
+    
+    if (type === "byte") {
       return "ptr";
     }
     
@@ -596,51 +642,13 @@ strTemp() {
     const tmp = this.newTemp();
     
     this.emit(
-      `${tmp} = load ${v.llvmType}, ${v.llvmType}* ${v.ptr}`
+      `${tmp} = load ${v.llvmType}, ptr ${v.ptr}`
     );
     
     return tmp;
   }
   
-  getTypeSizeStruct(llvmType) {
-    
-    // pointer
-    if (llvmType.endsWith("*")) return 8;
-    
-    if (llvmType === "i1") return 1;
-    if (llvmType === "i8") return 1;
-    if (llvmType === "i32") return 4;
-    if (llvmType === "i64") return 8;
-    if (llvmType === "double") return 8;
-    if (llvmType === "ptr") return 8;
-    
-    // arrays like [N x i32]
-    const arrMatch = llvmType.match(/\[(\d+)\s+x\s+(.+)\]/);
-    if (arrMatch) {
-      const len = parseInt(arrMatch[1]);
-      const elemType = arrMatch[2];
-      return len * this.getTypeSizeStruct(elemType);
-    }
-    
-    // struct
-    const structMatch = llvmType.match(/%(.+)/);
-    if (structMatch) {
-      const structName = structMatch[1];
-      const structInfo = this.getStruct(structName);
-      if (!structInfo) {
-        this.emitError(
-          "ReferenceError",
-          `Unknown struct type '${structName}'`
-        );
-      }
-      return structInfo.byteSize;
-    }
-    
-    this.emitError(
-      "InternalError",
-      `Unknown type size for '${llvmType}'`
-    );
-  }
+  
   
   
   getListDepth(g) {
@@ -668,7 +676,7 @@ strTemp() {
     }
     else if (type === "string") {
       const t0 = this.newTemp();
-      this.emit(`${t0} = load i8, i8* ${val}`);
+      this.emit(`${t0} = load i8, ptr ${val}`);
       this.emit(`${t} = icmp ne i8 ${t0}, 0`);
     }
     else {
@@ -682,9 +690,9 @@ strTemp() {
     const len = this.newTemp();
     const cmp = this.newTemp();
     
-    this.declareOneTime("strlen", "declare i64 @strlen(i8*)");
+    this.declareOneTime("strlen", "declare i64 @strlen(ptr)");
     
-    this.emit(`${len} = call i64 @strlen(i8* ${ptr})`);
+    this.emit(`${len} = call i64 @strlen(ptr ${ptr})`);
     this.emit(`${cmp} = icmp ne i64 ${len}, 0`);
     
     return cmp;
@@ -706,7 +714,7 @@ strTemp() {
         this.emit(`${tmp} = fcmp une double ${ptr}, 0.0`);
         return tmp;
         
-      case "i8*":
+      case "ptr":
       case "string":
         return this.toBoolString(ptr)
         
@@ -810,7 +818,7 @@ strTemp() {
       }
       
       if (p.type.type === "List") {
-        paramStr.push(`%ZenList* ${temp}`);
+        paramStr.push(`ptr ${temp}`);
         
         paramData.push({
           ptr: temp,
@@ -826,7 +834,7 @@ strTemp() {
       
       if (this.hasStruct(p.type.type)) {
         
-        paramStr.push(`ptr ${temp}`);
+        paramStr.push(`ptr ${temp}`); 
         
         
         paramData.push({
@@ -892,7 +900,7 @@ strTemp() {
     }
     
     if (this.hasStruct(returnType)) {
-        paramStr.push(`ptr sret(%${returnType}) %sret`);
+        paramStr.unshift(`ptr sret(%${returnType}) %sret`); // because sret attr need to be first
       }
     
     return {
@@ -932,7 +940,7 @@ strTemp() {
       const tmp =
         this.newTemp();
       
-      const ir = `getelementptr inbounds [${cached.len} x i8], [${cached.len} x i8]* ${cached.globalName}, i32 0, i32 0`;
+      const ir = `getelementptr inbounds [${cached.len} x i8], ptr ${cached.globalName}, i64 0, i64 0`;
       
       this.emit(`${tmp} = ${ir}`);
       
@@ -963,7 +971,7 @@ strTemp() {
     const tmp =
       this.newTemp();
     
-    const ir = `getelementptr inbounds [${len} x i8], [${len} x i8]* ${globalName}, i32 0, i32 0`
+    const ir = `getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`;
     
     this.emit(`${tmp} = ${ir}`);
     
@@ -1047,29 +1055,29 @@ strTemp() {
   emitScreenInt(val) {
     this.declareOneTime("fmt_int", '@.fmt_int = private constant [4 x i8] c"%d\\0A\\00"');
     
-    this.declareOneTime("screen_int", `define void @screen_int(i32 %x) {
+    this.declareOneTime("screen_int", `define void @_screen_int(i32 %x) {
 entry:
-  call i32 (i8*, ...) @printf(i8* getelementptr ([4 x i8], [4 x i8]* @.fmt_int, i32 0, i32 0),
+  call i32 (ptr, ...) @printf(ptr getelementptr ([4 x i8], [4 x i8]* @.fmt_int, i32 0, i32 0),
     i32 %x)
-  call i32 @fflush(i8* null)
+  call i32 @fflush(ptr null)
   ret void
 }`);
     
-    this.emit(`call void @screen_int(i32 ${val})`);
+    this.emit(`call void @_screen_int(i32 ${val})`);
   }
   
   emitScreenDouble(val) {
     this.declareOneTime("fmt_double", '@.fmt_double = private constant [5 x i8] c"%lf\\0A\\00"');
     
-    this.declareOneTime("screen_double", `define void @screen_double(double %x) {
+    this.declareOneTime("screen_double", `define void @_screen_double(double %x) {
 entry:
-  call i32 (i8*, ...) @printf(i8* getelementptr ([5 x i8], [5 x i8]* @.fmt_double, i32 0, i32 0),
+  call i32 (ptr, ...) @printf(ptr getelementptr ([5 x i8], [5 x i8]* @.fmt_double, i32 0, i32 0),
     double %x)
-  call i32 @fflush(i8* null)
+  call i32 @fflush(ptr null)
   ret void
 }`);
     
-    this.emit(`call void @screen_double(double ${val})`);
+    this.emit(`call void @_screen_double(double ${val})`);
   }
   
   toLLVMString(str) { // for screen string format 
@@ -1118,7 +1126,7 @@ entry:
       const { llvmStr, length } = this.toLLVMString(format);
       
       const fmtName = `fmt_string_${this.moduleName}_${id}`;
-      const fnName = `screen_string_${this.moduleName}_${id}`;
+      const fnName = `_screen_string_${this.moduleName}_${id}`;
       
       this.declareOneTime(
         fmtName,
@@ -1127,41 +1135,41 @@ entry:
       
       this.declareOneTime(
         fnName,
-        `define void @${fnName}(i8* %x) {
+        `define void @${fnName}(ptr %x) {
 entry:
-  call i32 (i8*, ...) @printf(i8* getelementptr ([${length} x i8], [${length} x i8]* @.${fmtName}, i32 0, i32 0),
-    i8* %x)
-  call i32 @fflush(i8* null)
+  call i32 (ptr, ...) @printf(ptr getelementptr ([${length} x i8], [${length} x i8]* @.${fmtName}, i32 0, i32 0),
+    ptr %x)
+  call i32 @fflush(ptr null)
   ret void
 }`
       );
     }
     
-    const fnName = `screen_string_${this.moduleName}_${id}`;  
+    const fnName = `_screen_string_${this.moduleName}_${id}`;  
     
-    this.emit(`call void @${fnName}(i8* ${val})`);
+    this.emit(`call void @${fnName}(ptr ${val})`);
   }
   
   emitScreenBool(val) {
     this.declareOneTime("fmt_bool_t", '@.fmt_bool_t = private constant [6 x i8] c"true\\0A\\00"');
     this.declareOneTime("fmt_bool_f", '@.fmt_bool_f = private constant [7 x i8] c"false\\0A\\00"');
     
-    this.declareOneTime("screen_bool", `define void @screen_bool(i1 %b) {
+    this.declareOneTime("screen_bool", `define void @_screen_bool(i1 %b) {
 entry:
   br i1 %b, label %true, label %false
 true:
-  call i32 (i8*, ...) @printf(i8* getelementptr ([6 x i8], [6 x i8]* @.fmt_bool_t, i32 0, i32 0))
-  call i32 @fflush(i8* null)
+  call i32 (ptr, ...) @printf(ptr getelementptr ([6 x i8], [6 x i8]* @.fmt_bool_t, i32 0, i32 0))
+  call i32 @fflush(ptr null)
   br label %end
 false:
-  call i32 (i8*, ...) @printf(i8* getelementptr ([7 x i8], [7 x i8]* @.fmt_bool_f, i32 0, i32 0))
-  call i32 @fflush(i8* null)
+  call i32 (ptr, ...) @printf(ptr getelementptr ([7 x i8], [7 x i8]* @.fmt_bool_f, i32 0, i32 0))
+  call i32 @fflush(ptr null)
   br label %end
 end:
   ret void
 }`);
     
-    this.emit(`call void @screen_bool(i1 ${val})`);
+    this.emit(`call void @_screen_bool(i1 ${val})`);
   }
   
   containsUnary(node) {
@@ -1265,7 +1273,7 @@ end:
       
       if (zenType === "string") {
         const gep = this.getGlobalStringPtr(node.value);
-        return `i8* ${gep}`;
+        return `ptr ${gep}`;
       }
       
       return `${baseType} ${node.value}`;
@@ -1386,11 +1394,11 @@ end:
       const cast = this.newTemp();
       
       ir.push(
-        `${cast} = bitcast ${arrayType}* ${ptr} to i8*`
+        `${cast} = bitcast ${arrayType}* ${ptr} to ptr`
       );
       
       ir.push(
-        `call void @llvm.memset.p0i8.i64(i8* ${cast}, i8 0, i64 ${totalSize}, i1 false)`
+        `call void @llvm.memset.p0i8.i64(ptr ${cast}, i8 0, i64 ${totalSize}, i1 false)`
       );
       
       return { ir, ptr, llvmType: arrayType, length };
@@ -1413,7 +1421,7 @@ end:
       if (res.global.length) ir.push(...res.global);
       
       ir.push(
-        `store ${res.llvmType} ${res.ptr}, ${res.llvmType}* ${gep}`
+        `store ${res.llvmType} ${res.ptr}, ptr ${gep}`
       );
     });
     
@@ -1485,9 +1493,9 @@ end:
     
     if (fnName === "toInt") {
       if (expr.type === "string" && targetType === "int") {
-        this.declareOneTime("string_to_int_ascii", "declare i32 @string_to_int_ascii(i8*)");
+        this.declareOneTime("string_to_int_ascii", "declare i32 @_string_to_int_ascii(ptr)");
         
-        local.push(`${t} = call i32 @string_to_int_ascii(i8* ${expr.ptr})`);
+        local.push(`${t} = call i32 @_string_to_int_ascii(ptr ${expr.ptr})`);
         
         return {
           ptr: t,
@@ -1499,13 +1507,13 @@ end:
     }
     if (fnName === "toString")
       if (expr.type === "int" && targetType === "string") {
-        this.declareOneTime("int_to_string_ascii", "declare i8* @int_to_string_ascii(i32)");
+        this.declareOneTime("int_to_string_ascii", "declare ptr @_int_to_string_ascii(i32)");
         
-        local.push(`${t} = call i8* @int_to_string_ascii(i32 ${expr.ptr})`);
+        local.push(`${t} = call ptr @_int_to_string_ascii(i32 ${expr.ptr})`);
         
         return {
           ptr: t,
-          llvmType: "i8*",
+          llvmType: "ptr",
           type: "string",
           local
         };
@@ -1599,13 +1607,13 @@ end:
     // INT STRING
     
     if (expr.type === "int" && targetType === "string") {
-      this.declareOneTime("int_to_string", "declare i8* @int_to_string(i32)");
+      this.declareOneTime("int_to_string", "declare ptr @_int_to_string(i32)");
       
-      local.push(`${t} = call i8* @int_to_string(i32 ${expr.ptr})`);
+      local.push(`${t} = call ptr @_int_to_string(i32 ${expr.ptr})`);
       
       return {
         ptr: t,
-        llvmType: "i8*",
+        llvmType: "ptr",
         type: "string",
         local
       };
@@ -1614,13 +1622,13 @@ end:
     // DOUBLE  STRING
     
     if (expr.type === "double" && targetType === "string") {
-      this.declareOneTime("double_to_string", "declare i8* @double_to_string(double)");
+      this.declareOneTime("double_to_string", "declare ptr @_double_to_string(double)");
       
-      local.push(`${t} = call i8* @double_to_string(double ${expr.ptr})`);
+      local.push(`${t} = call ptr @_double_to_string(double ${expr.ptr})`);
       
       return {
         ptr: t,
-        llvmType: "i8*",
+        llvmType: "ptr",
         type: "string",
         local
       };
@@ -1629,12 +1637,12 @@ end:
     // BOOL  STRING
     
     if (expr.type === "bool" && targetType === "string") {
-      this.declareOneTime("bool_to_string", "declare i8* @bool_to_string(i1)");
-      local.push(`${t} = call i8* @bool_to_string(i1 ${expr.ptr})`);
+      this.declareOneTime("bool_to_string", "declare ptr @_bool_to_string(i1)");
+      local.push(`${t} = call ptr @_bool_to_string(i1 ${expr.ptr})`);
       
       return {
         ptr: t,
-        llvmType: "i8*",
+        llvmType: "ptr",
         type: "string",
         local
       };
@@ -1643,9 +1651,9 @@ end:
     // STRING INT
     
     if (expr.type === "string" && targetType === "int") {
-      this.declareOneTime("string_to_int", "declare i32 @string_to_int(i8*)");
+      this.declareOneTime("string_to_int", "declare i32 @_string_to_int(ptr)");
       
-      local.push(`${t} = call i32 @string_to_int(i8* ${expr.ptr})`);
+      local.push(`${t} = call i32 @_string_to_int(ptr ${expr.ptr})`);
       
       return {
         ptr: t,
@@ -1658,9 +1666,9 @@ end:
     // STRING  DOUBLE
     
     if (expr.type === "string" && targetType === "double") {
-      this.declareOneTime("string_to_double", "declare double @string_to_double(i8*)");
+      this.declareOneTime("string_to_double", "declare double @_string_to_double(ptr)");
       
-      local.push(`${t} = call double @string_to_double(i8* ${expr.ptr})`);
+      local.push(`${t} = call double @_string_to_double(ptr ${expr.ptr})`);
       
       return {
         ptr: t,
@@ -1675,9 +1683,9 @@ end:
     if (expr.type === "string" && targetType === "bool") {
       const len = this.newTemp();
       const res = this.newTemp();
-      this.declareOneTime("strlen", "declare i64 @strlen(i8*)");
+      this.declareOneTime("strlen", "declare i64 @strlen(ptr)");
       
-      local.push(`${len} = call i64 @strlen(i8* ${expr.ptr})`);
+      local.push(`${len} = call i64 @strlen(ptr ${expr.ptr})`);
       local.push(`${res} = icmp ne i64 ${len}, 0`);
       
       return {
@@ -1875,7 +1883,7 @@ end:
       
       const isListReturn = ["split"].includes(name);
       
-      this.setFunction(name, {
+      this.setFunction(`${name}`, {
         name,
         returnType: isListReturn ? "List" : this.revertType(fn.ret),
         params,
@@ -2039,7 +2047,7 @@ end:
   ) {
     this.declareOneTime(
       "zen_map_set",
-      "declare void @zen_map_set(ptr, ptr, ptr)"
+      "declare void @_zen_map_set(ptr, ptr, ptr)"
     );
     for (const prop of mapLiteral.properties) {
       
@@ -2060,7 +2068,7 @@ end:
           this.newTemp();
         
         this.emit(
-          `${nestedMapPtr} = call ptr @zen_map_new()`
+          `${nestedMapPtr} = call ptr @_zen_map_new()`
         );
         
         this.buildMapRecursive(
@@ -2090,13 +2098,7 @@ end:
         
       }
       
-      this.emit(
-        `call void @zen_map_set(` +
-        `ptr ${parentMapPtr}, ` +
-        `ptr ${keyPtr.name}, ` +
-        `ptr ${valuePtr}` +
-        `)`
-      );
+      this.emit(`call void @_zen_map_set(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${valuePtr})`);
     }
   }
   
@@ -2219,20 +2221,25 @@ end:
       case "push": {
   this.declareOneTime(
     "zen_list_push",
-    "declare void @zen_list_push(ptr, ptr)"
+    "declare void @_zen_list_push(ptr, ptr)"
   );
 
-  const deepestType = this.getDeepestGeneric(object.generic?.generic);
+  const deepestType = this.getDeepestGeneric(object.generic);
   const isStructElement = this.hasStruct(deepestType);
 
   // STRUCT LITERAL push({...})
   if (node.args[0]?.type === "MAP_LITERAL" && isStructElement) {
     const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
-    this.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${structPtr})`);
+    this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr})`);
     return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
   }
 
   const arg = this.expr.handleExpression(node.args[0], false);
+  
+  if (this.hasStruct(arg.type)) {
+    this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`);
+    return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
+  }
 
   const expType = object?.generic?.generic?.type;
 
@@ -2263,48 +2270,20 @@ end:
   }
 
   this.emit(`store ${llvmType} ${t}, ptr ${tmp}`);
-  this.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+  this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
 
   return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
 }
-    /*
-      case "pop": {
-        
-        this.declareOneTime(
-          "zen_list_pop",
-          "declare void @zen_list_pop(ptr, ptr)"
-        );
-        
-        const llvmType = this.getListElementLLVM(object.generic);
-        
-        const type = this.getDeepestGeneric(object.generic)
-        
-        const unwrapGeneric = (g) => {
-          if (!g || g.type !== "List") return null;
-          return g.generic;
-        }
-        
-        const isList = llvmType === "ptr";
-        
-        const out = this.newTemp();
-        this.emit(`${out} = alloca ${llvmType}`);
-        
-        this.emit(
-          `call void @zen_list_pop(ptr ${listPtr}, ptr ${out})`
-        );
-        
-        return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
-      }
-      */
       
       case "pop": {
 
   this.declareOneTime(
     "zen_list_pop",
-    "declare void @zen_list_pop(ptr, ptr)"
+    "declare void @_zen_list_pop(ptr, ptr)"
   );
 
   const type = this.getDeepestGeneric(object.generic);
+  
   const isStruct = this.hasStruct(type);
 
   const unwrapGeneric = (g) => {
@@ -2322,7 +2301,7 @@ end:
     const out = this.newTemp();
     this.emit(`${out} = call ptr @malloc(i64 ${size})`);
 
-    this.emit(`call void @zen_list_pop(ptr ${listPtr}, ptr ${out})`);
+    this.emit(`call void @_zen_list_pop(ptr ${listPtr}, ptr ${out})`);
 
     return {
       ptr: out,
@@ -2341,7 +2320,7 @@ end:
     const out = this.newTemp();
     this.emit(`${out} = alloca ptr`);
 
-    this.emit(`call void @zen_list_pop(ptr ${listPtr}, ptr ${out})`);
+    this.emit(`call void @_zen_list_pop(ptr ${listPtr}, ptr ${out})`);
 
     const val = this.newTemp();
     this.emit(`${val} = load ptr, ptr ${out}`);
@@ -2358,13 +2337,13 @@ end:
     };
   }
 
-  // PRIMITIVE — original behavior
+  // PRIMITIVE 
   const llvmType = this.getListElementLLVM(object.generic);
 
   const out = this.newTemp();
   this.emit(`${out} = alloca ${llvmType}`);
 
-  this.emit(`call void @zen_list_pop(ptr ${listPtr}, ptr ${out})`);
+  this.emit(`call void @_zen_list_pop(ptr ${listPtr}, ptr ${out})`);
 
   const val = this.newTemp();
   this.emit(`${val} = load ${llvmType}, ptr ${out}`);
@@ -2384,7 +2363,7 @@ end:
         
         this.declareOneTime(
           "zen_list_remove",
-          "declare void @zen_list_remove(ptr, i32)"
+          "declare void @_zen_list_remove(ptr, i32)"
         );
         
         const index = this.expr.handleExpression(node.args[0]);
@@ -2399,7 +2378,7 @@ end:
         this.emitExpr(index)
         
         this.emit(
-          `call void @zen_list_remove(ptr ${listPtr}, i32 ${index.ptr})`
+          `call void @_zen_list_remove(ptr ${listPtr}, i32 ${index.ptr})`
         );
         
         return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
@@ -2409,10 +2388,10 @@ end:
         
         this.declareOneTime(
           "zen_list_clear",
-          "declare void @zen_list_clear(ptr)"
+          "declare void @_zen_list_clear(ptr)"
         );
         
-        this.emit(`call void @zen_list_clear(ptr ${listPtr})`);
+        this.emit(`call void @_zen_list_clear(ptr ${listPtr})`);
         return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
       }
       
@@ -2432,7 +2411,7 @@ end:
         
         this.declareOneTime(
           "zen_list_contains",
-          "declare i1 @zen_list_contains(ptr, ptr)"
+          "declare i1 @_zen_list_contains(ptr, ptr)"
         );
         
         const arg = this.expr.handleExpression(node.args[0]);
@@ -2473,7 +2452,7 @@ end:
         const val = this.newTemp();
         
         this.emit(
-          `${val} = call i1 @zen_list_contains(ptr ${listPtr}, ptr ${tmp})`
+          `${val} = call i1 @_zen_list_contains(ptr ${listPtr}, ptr ${tmp})`
         );
         
         return { ptr: val, type: "bool", llvmType: "i1", local: [], global: [] };
@@ -2495,7 +2474,7 @@ end:
 
   this.declareOneTime(
     "zen_list_indexOf",
-    "declare i32 @zen_list_indexOf(ptr, ptr)"
+    "declare i32 @_zen_list_indexOf(ptr, ptr)"
   );
 
   const arg =
@@ -2544,7 +2523,7 @@ end:
   const val = this.newTemp();
 
   this.emit(
-    `${val} = call i32 @zen_list_indexOf(ptr ${listPtr}, ptr ${tmp})`
+    `${val} = call i32 @_zen_list_indexOf(ptr ${listPtr}, ptr ${tmp})`
   );
 
   return {
@@ -2564,7 +2543,7 @@ case "join": {
     this.emitError(
       "TypeError",
       `'join' is only supported for flat List<string>, got List<${immediateType}>`,
-      node
+      node.args[0]
     );
   }
 
@@ -2581,7 +2560,7 @@ case "join": {
 
   this.declareOneTime(
     "zen_list_join",
-    "declare ptr @zen_list_join(ptr, ptr)"
+    "declare ptr @_zen_list_join(ptr, ptr)"
   );
 
   const sep =
@@ -2600,7 +2579,7 @@ case "join": {
   const val = this.newTemp();
 
   this.emit(
-    `${val} = call ptr @zen_list_join(ptr ${listPtr}, ptr ${sep.ptr})`
+    `${val} = call ptr @_zen_list_join(ptr ${listPtr}, ptr ${sep.ptr})`
   );
 
   return {
@@ -2616,12 +2595,12 @@ case "join": {
         
         this.declareOneTime(
           "zen_list_free",
-          "declare void @zen_list_free(ptr)"
+          "declare void @_zen_list_free(ptr)"
         );
         
         if (!fromMap) {
           
-          this.emit(`call void @zen_list_free(ptr ${listPtr})`);
+          this.emit(`call void @_zen_list_free(ptr ${listPtr})`);
           this.emit(`store ptr null, ptr ${object.ptr}`)
           
           this.freedVars.add(node.object.name);
@@ -2635,7 +2614,7 @@ case "join": {
           
           this.declareOneTime(
             "zen_map_remove",
-            "declare void @zen_map_remove(ptr, ptr)"
+            "declare void @_zen_map_remove(ptr, ptr)"
           );
           
           let key;
@@ -2644,7 +2623,7 @@ case "join": {
           }
           const t = this.newTemp();
           this.emit(`${t} = load ptr, ptr ${object.basePtr}`)
-          this.emit(`call void @zen_map_remove(ptr ${t}, ptr ${key.name})`)
+          this.emit(`call void @_zen_map_remove(ptr ${t}, ptr ${key.name})`)
           
           if (!this.freedFields.has(object.name)) {
             this.freedFields.set(object.name, new Set());
@@ -2822,26 +2801,12 @@ emitStructLiteral(structName, mapLiteralNode) {
   
   const llvmType = `%${structName}`;
   let structPtr = this.newTemp();
-  const isReturnStruct = 
-  this.currentFunction && 
-  this.hasStruct(this.currentFunction?.returnType) &&
-  this.currentFunction?.returnType === structName;
   
-  this.declareOneTime("zen_list_new", "declare ptr @zen_list_new(i64)");
-  this.declareOneTime("zen_list_push", "declare ptr @zen_list_push(ptr, ptr)");
-  
-  const insideSretFn = this.currentFunction && 
-  this.hasStruct(this.currentFunction?.returnType);
+  this.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }");
+  this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
+  this.declareOneTime("zen_list_push", "declare ptr @_zen_list_push(ptr, ptr)");
 
-if (isReturnStruct) {
-  structPtr = "%sret";
-} else if (insideSretFn) {
-  this.declareOneTime("malloc", "declare ptr @malloc(i64)");
-  const size = this.sizeOf(structName);
-  this.emit(`${structPtr} = call ptr @malloc(i64 ${size})`);
-} else {
   this.emit(`${structPtr} = alloca ${llvmType}`);
-}
 
   const structInfo = this.getStruct(structName);
 
@@ -2864,23 +2829,25 @@ if (isReturnStruct) {
 
     // NESTED LIST FIELD
     if (prop.value.type === "ARRAY") {
+      
       const innerStructName = this.getDeepestGeneric(field.generic)
       const elementSize = this.sizeOf(innerStructName)
 
       const listPtr = this.newTemp();
-      this.emit(`${listPtr} = call ptr @zen_list_new(i64 ${elementSize})`);
+      this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
 
       for (const el of prop.value.elements) {
         if (el.type === "MAP_LITERAL") {
           const innerPtr = this.emitStructLiteral(innerStructName, el);
-          this.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
+          this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
         } else {
           const expr = this.expr.handleExpression(el);
+          
           this.emitExpr(expr);
           const tmp = this.newTemp();
-          this.emit(`${tmp} = alloca ${field.llvmType}`);
-          this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${tmp}`);
-          this.emit(`call void @zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+          this.emit(`${tmp} = alloca ${expr.llvmType}`);
+          this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
+          this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
         }
       }
 
@@ -2888,18 +2855,32 @@ if (isReturnStruct) {
       continue;
     }
 
-    // NESTED STRUCT FIELD
-    if (prop.value.type === "MAP_LITERAL") {
-      
-      const nestedPtr = this.emitStructLiteral(field.type, prop.value);
-      this.emit(`store ptr ${nestedPtr}, ptr ${fieldPtr}`);
-      continue;
-    }
+  // NESTED STRUCT FIELD (literal)
+if (prop.value.type === "MAP_LITERAL") {
+  const nestedPtr = this.emitStructLiteral(field.type, prop.value);
+  this.declareOneTime("memcpy", "declare void @llvm.memcpy(ptr, ptr, i64, i1)")
+  this.emit(`call void @llvm.memcpy(ptr ${fieldPtr}, ptr ${nestedPtr}, i64 ${this.sizeOf(field.type)}, i1 false)`);
+  continue;
+}
 
-    // NORMAL FIELD
-    const expr = this.expr.handleExpression(prop.value, false, structName);
-    this.emitExpr(expr);
-    this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
+if (!field.isList && this.hasStruct(field.type)) {
+  const expr = this.expr.handleExpression(prop.value, false, structName);
+  this.emitExpr(expr);
+  this.declareOneTime(
+    "llvm.memcpy.p0.p0.i64",
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+  );
+  const size = this.sizeOf(field.type);
+  this.emit(
+    `call void @llvm.memcpy.p0.p0.i64(ptr ${fieldPtr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`
+  );
+  continue;
+}
+
+// NORMAL FIELD 
+const expr = this.expr.handleExpression(prop.value, false, structName);
+this.emitExpr(expr);
+this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
   }
 
   return structPtr;

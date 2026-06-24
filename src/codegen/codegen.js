@@ -47,7 +47,7 @@ export class CodeGen {
     this.map = new ZenMap(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
-    this.infer = new InferType(this.IRB);
+    this.infer = new InferType(this.IRB, this.expr);
     this.file = new ZenFileSystem(this.IRB, this.expr);
     this.path = new PATH(this.IRB, this.expr);
     this.module = new Module(this.IRB);
@@ -103,6 +103,7 @@ export class CodeGen {
       }
     }
     
+    if (!this.IRB.stdlibMode) {
     if (!this.IRB.exported) {
     this.IRB.functionBuff.push(`
 define void @_assignSeed () {
@@ -115,9 +116,10 @@ define void @_assignSeed () {
     `)
     this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
     }
+    }
     
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.emit("define i32 @main(i32 %argc, ptr %argv) { \nentry:\ncall void @_assignSeed()");
+      this.IRB.emit(`define i32 @main(i32 %argc, ptr %argv) { \nentry:\n${this.IRB.stdlibMode ? "" : "call void @_assignSeed()"}`);
     }
     
     // set builtins
@@ -153,7 +155,7 @@ define void @_assignSeed () {
         
         const data = { name: node.name, returnType, params: node.params, retGeneric, generic }
         
-        this.IRB.setFunction(`zen_${node.name}`, data, node);
+        this.IRB.setFunction(`${node.name}`, data, node);
         
       }
     }
@@ -226,7 +228,7 @@ define void @_assignSeed () {
         
         const data = { name: node.name, returnType, params: node.params, generic }
         
-        this.IRB.setFunction(`zen_${node.name}`, data);
+        this.IRB.setFunction(`${node.name}`, data);
       }
     }
     
@@ -338,6 +340,13 @@ define void @_assignSeed () {
     if (isTernary) {
       
       const t = this.ternary.ternary(node.value);
+      
+      const isStruct = this.IRB.hasStruct(t.type);
+      
+      if (isStruct) {
+        this.struct.structRef(node, globalScope);
+        return;
+      }
       const name = node.name;
       this.IRB.guardGlobal(name, node);
       this.IRB.guardStackOp("TERNARY", node);
@@ -367,7 +376,7 @@ define void @_assignSeed () {
       this.IRB.setVar(name, this.IRB.createData({
         ptr: globalScope ? gName : lName,
         llvmType: t.llvmType,
-        type: node.dataType,
+        type: t.type,
         isConstant: node.isConstant,
         isGlobal: globalScope,
         needsLoad: true

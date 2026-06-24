@@ -1,7 +1,0 @@
-v1.0.1
-
-Map disabled dynamic access and dynamic assignments.
-Map disabled in function parameters
-
-List accept structs
-List accept auto for inference

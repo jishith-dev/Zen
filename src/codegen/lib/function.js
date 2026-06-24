@@ -4,6 +4,7 @@ export class HandleFunction {
     this.block = block;
     this.expr = expr;
     this.infer = infer;
+    this.haveBareRet = false;
   }
   
   collectReturns(node) {
@@ -14,8 +15,10 @@ export class HandleFunction {
       case "RETURN": {
         if (!node.value) {
           this.IRB.currentFunction.returnTypes.push("void");
+          
         } else {
           const type = this.infer.infer(node.value);
+        
           this.IRB.currentFunction.returnTypes.push(type);
         }
         return;
@@ -89,13 +92,16 @@ export class HandleFunction {
     }
   }
   
+  
   handleReturn(node) {
     
     if (this.IRB.currentFunction === null) {
       this.IRB.emitError("SemanticError", "return outside function", node);
     }
     
-    if (node?.value.length === 0) {
+    // bare return without 'return'
+    if (node.value.length === 0) {
+      this.haveBareRet = true;
       this.IRB.emit(`ret void`);
       return;
     }
@@ -104,8 +110,11 @@ export class HandleFunction {
     const name = currentFunction.name;
     const first = this.IRB.currentFunction.returnTypes[0];
     
+    // infer block
     if (this.IRB.currentFunction.returnType === "auto") {
       
+      this.collectReturns(this.IRB.currentFunction.bodyAst);
+    
       const totalReturns = currentFunction.returnTypes.length;
       
       const isSameType = currentFunction.returnTypes.every(type => type === first)
@@ -139,8 +148,10 @@ export class HandleFunction {
       const llvmReturnType = this.IRB.getLLVMType(retType);
       
       this.IRB.currentFunction.body.unshift(this.IRB.currentFunction.local.join("\n"));
-      this.IRB.currentFunction.body.unshift(`define ${llvmReturnType} @${this.IRB.currentFunction.name} ${this.IRB.currentFunction.paramsIr} { \n entry:`);
+      this.IRB.currentFunction.body.unshift(`define ${llvmReturnType} @${this.IRB.currentFunction.mangledName} ${this.IRB.currentFunction.paramsIr} { \n entry:`);
     }
+    
+    
     
     const funcType = this.IRB.currentFunction.returnType;
     
@@ -150,6 +161,72 @@ export class HandleFunction {
       this.IRB.emit("ret void");
       return;
     }
+    
+    // STRUCT RETURN
+    if (this.IRB.hasStruct(funcType)) {
+  const params = this.IRB.currentFunction.params;
+  const struct = this.IRB.getStruct(funcType);
+  
+  let expr = null;
+  
+  if (node.value.type === "MAP_LITERAL") {
+    expr = {
+      isStruct: true,
+      type: funcType
+    }
+    
+    const ptr = this.IRB.emitStructLiteral(funcType, node.value)
+    
+    expr.ptr = ptr;
+    
+  } else {
+  expr = this.expr.handleExpression(node.value);
+  this.IRB.emitExpr(expr);
+  }
+  
+  if (expr?.isStruct && this.IRB.hasStruct(expr.type)) {
+    
+    this.IRB.declareOneTime(
+      "llvm.memcpy.p0.p0.i64",
+      "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+    );
+    this.IRB.emit(
+      `call void @llvm.memcpy.p0.p0.i64(ptr %sret, ptr ${expr.ptr}, i64 ${struct.byteSize}, i1 false)`
+    );
+  }
+  
+  
+  if (params) {
+    
+    const returnedVarName = node.value.name; 
+    
+    // Find parameter matching the returned variable name
+    let srcPtr = null;
+    if (this.IRB.hasVar(returnedVarName)) {
+      srcPtr = this.IRB.getVar(returnedVarName).ptr;
+    }
+    
+    if (srcPtr) {
+      const size = struct.byteSize;
+      
+      this.IRB.declareOneTime(
+        "llvm.memcpy.p0.p0.i64",
+        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+      );
+      
+      this.IRB.emit(
+        `call void @llvm.memcpy.p0.p0.i64(` +
+        `ptr %sret, ptr ${srcPtr}, i64 ${size}, i1 false)`
+      );
+      this.IRB.emit("ret void");
+      return;
+    }
+  }
+  
+  // Just emit ret (sret already populated by prior stores)
+  this.IRB.emit("ret void");
+  return;
+}
     
     const expr = this.expr.handleExpression(node.value, false);
     
@@ -204,10 +281,7 @@ export class HandleFunction {
       return;
     }
     
-    if (expr?.isStruct) {
-      this.IRB.emit(`ret void`);
-      return;
-    }
+    
     // type check 
     if (expr.type !== funcType) {
       this.IRB.emitError("TypeError", `function ${name} expected ${funcType} but got ${expr.type}`, node);
@@ -226,6 +300,8 @@ export class HandleFunction {
       );
     }
     
+    this.haveBareRet = false; 
+    
     this.IRB.funcTempCounter = 0; // reset counter per function 
     
     if (this.IRB.currentFunction !== null) {
@@ -239,11 +315,20 @@ export class HandleFunction {
     let local = []
     
     let name;
+    let mangledName;
     if (isMethod) {
       name = `${node.structName}_${node.name}`;
+      mangledName = name;
     } else {
-      name = `zen_${node.name}`;
+      name = node.name;
+      if (this.IRB.stdlibMode) {
+      mangledName = name;
+      } else {
+        mangledName = `zen_${name}`;
+      }
     }
+    
+    
     
     let returnType = node.returnType === "void" ?
       "void" :
@@ -261,10 +346,10 @@ export class HandleFunction {
     }
     
     let llvmReturnType = returnType === "void" ?
-      "void" : returnType === "List" ? "%ZenList*" : returnType === "Map" ? "ptr" :
-      this.IRB.getLLVMType(returnType); // exclude auto for now
-      const isSret = this.IRB.hasStruct(returnType);
-      // if it is struct return, then change struct type to ptr
+      "void" : this.IRB.getLLVMType(returnType); // exclude auto for now
+      
+    const isSret = this.IRB.hasStruct(returnType);
+    
     if (isSret) {
       llvmReturnType = "void";
     }
@@ -277,9 +362,12 @@ export class HandleFunction {
     
     this.IRB.currentFunction = {
       name,
+      mangledName,
       body: [],
+      bodyAst: node.body,
       isList: returnType === "List",
       returnType, // temporarily store return type even its auto
+      params: paramData,
       hasReturn: false,
       isAsync: node.isAsync,
       returnTypes: [],
@@ -292,7 +380,7 @@ export class HandleFunction {
     // do not make function signature if it's auto
     if (returnType !== "auto") {
       
-      this.IRB.emit(`define ${llvmReturnType} @${name} ${ir} {`);
+      this.IRB.emit(`define ${llvmReturnType} @${mangledName} ${ir} {`);
       this.IRB.emit("entry:");
     }
     
@@ -302,12 +390,12 @@ export class HandleFunction {
         
         this.IRB.declareOneTime(
           "zen_list_new",
-          "declare ptr @zen_list_new(i64)"
+          "declare ptr @_zen_list_new(i64)"
         );
         
         this.IRB.declareOneTime(
           "zen_list_get",
-          "declare ptr @zen_list_get(ptr, i32)"
+          "declare ptr @_zen_list_get(ptr, i32)"
         );
         
         this.IRB.declareOneTime(
@@ -315,17 +403,8 @@ export class HandleFunction {
           `%ZenList = type { ptr, i32, i32, i64 }`
         );
         
-        const getDeepestType = (g) => {
-          
-          if (g.type === "List") {
-            return getDeepestType(g.generic);
-          }
-          
-          return g.type;
-        };
-        
         const deepestType =
-          getDeepestType(p.generic.generic);
+          this.IRB.getDeepestType(p.generic);
         
         this.IRB.setVar(p.name, this.IRB.createData({
           ptr: p.ptr,
@@ -339,7 +418,7 @@ export class HandleFunction {
           needsLoad: false
         }));
       } else if (p?.isMethod) {
-        // update symbol table
+        
         
         this.IRB.setVar(p.name, this.IRB.createData({
           ptr: p.ptr,
@@ -351,18 +430,33 @@ export class HandleFunction {
           isStruct: true
         }));
       } else if (p?.isStruct) {
-        // update symbol table
-        
-        this.IRB.setVar(p.name, this.IRB.createData({
-          ptr: p.ptr,
-          llvmType: p.llvmType,
-          type: p.type,
-          isConstant: false,
-          isGlobal: false,
-          fromParam: true,
-          isStruct: true
-        }));
-      } 
+
+  const struct = this.IRB.getStruct(p.type);
+
+  const localPtr = `%${p.name}.addr`;
+
+  local.push(`${localPtr} = alloca %${p.type}`);
+
+  this.IRB.declareOneTime(
+    "llvm.memcpy.p0.p0.i64",
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+  );
+
+  local.push(
+    `call void @llvm.memcpy.p0.p0.i64(` +
+    `ptr ${localPtr}, ptr ${p.ptr}, i64 ${struct.byteSize}, i1 false)`
+  );
+
+  this.IRB.setVar(p.name, this.IRB.createData({
+    ptr: localPtr,
+    llvmType: p.llvmType,
+    type: p.type,
+    isConstant: false,
+    isGlobal: false,
+    fromParam: true,
+    isStruct: true
+  }));
+}
       else if (p.isRest) {
         
         this.IRB.declareOneTime(
@@ -372,7 +466,7 @@ export class HandleFunction {
         // update symbol table
         this.IRB.setVar(p.name, this.IRB.createData({
           ptr: p.ptr,
-          llvmType: "%ZenList*",
+          llvmType: "ptr",
           type: p.type,
           generic: { generic: { type: p.type } },
           isConstant: false,
@@ -403,7 +497,7 @@ export class HandleFunction {
         local.push(`${ptr} = alloca ${p.llvmType}`); // always push to local for infering
         
         // store incoming param (p.temp)
-        local.push(`store ${p.llvmType} ${p.temp}, ${p.llvmType}* ${ptr}`);
+        local.push(`store ${p.llvmType} ${p.temp}, ptr ${ptr}`);
         
        // const t = this.IRB.newTemp()
        // local.push(`${t} = load ${p.llvmType}, ptr ${ptr}`);
@@ -422,22 +516,14 @@ export class HandleFunction {
       }
     }
     
-    if (returnType === "auto") {
-      this.collectReturns(node.body)
-    }
-    
-    if (returnType === "auto" && this.IRB.currentFunction.returnTypes.length === 0) {
-      this.IRB.emit(`define void @${name} ${ir} {`);
-      this.IRB.emit("entry:");
-    }
-    
     if (returnType !== "auto") {
       this.IRB.emit(local.join("\n"))
     }
     
     this.block.block(node.body, false);
     
-    if (!this.IRB.currentFunction.hasReturn) {
+    
+    if (!this.hasGuaranteedReturn(node.body)) {
       if (returnType === "int") {
         this.IRB.emit("ret i32 0");
       } else if (returnType === "bool") {
@@ -445,7 +531,7 @@ export class HandleFunction {
       } else if (returnType === "double") {
         this.IRB.emit("ret double 0.0");
       } else if (returnType === "string") {
-        this.IRB.emit("ret i8* null");
+        this.IRB.emit("ret ptr null");
       } else {
         this.IRB.emit("ret void");
       }

@@ -179,21 +179,21 @@
         const isExported = this.IRB.exported;
         
         if (isExported) {
-          this.IRB.globals.push(`${gName} = global i8* ${expr?.symbol}`);
+          this.IRB.globals.push(`${gName} = global ptr ${expr?.symbol}`);
         } else {
-          this.IRB.globals.push(`${gName} = global i8* null`);
+          this.IRB.globals.push(`${gName} = global ptr null`);
         }
         
-        this.IRB.emit(`store i8* ${expr.ptr}, i8** ${gName}`);
+        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${gName}`);
         
       } else { // local scope
         
         this.IRB.guardStackOp(`LOCAL_VARIABLE ${name}`, node);
         ptr = lName;
         
-        this.IRB.emit(`${lName} = alloca i8*`);
+        this.IRB.emit(`${lName} = alloca ptr`);
         
-        this.IRB.emit(`store i8* ${expr.ptr}, i8** ${lName}`);
+        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${lName}`);
       }
       
       this.IRB.setVar(name, this.IRB.createData({
@@ -255,7 +255,7 @@
         if (base) {
           
           const isArrayType = varInfo.llvmType?.startsWith("[");
-          const isZenList = varInfo.llvmType === "%ZenList*";
+          const isZenList = varInfo?.isList;
           
           const isStringReassignment =
             varInfo.type === "string" &&
@@ -284,7 +284,7 @@
           
           this.IRB.declareOneTime(
             "zen_map_set",
-            "declare void @zen_map_set(ptr, ptr, ptr)"
+            "declare void @_zen_map_set(ptr, ptr, ptr)"
           );
           
           // base map pointer
@@ -313,7 +313,7 @@
           }
           
           this.IRB.emit(
-            `call void @zen_map_set(ptr ${mapPtr}, ptr ${keyExpr.ptr}, ptr ${valExpr.ptr})`
+            `call void @_zen_map_set(ptr ${mapPtr}, ptr ${keyExpr.ptr}, ptr ${valExpr.ptr})`
           );
           
           return;
@@ -360,46 +360,48 @@
         return this.callVariable(this.IRB.normalizeNode(node), isGlobal);
       }
       
-      if (orgData?.isStruct) {
-        this.IRB.bindLineColumn(node)
-        const rhs = this.expr.handleExpression(expression.value);
-        
-        const struct = this.IRB.getStruct(rhs.type);
-        
-        const isStructCopy =
-          rhs.isStruct && struct;
-        
-        if (isStructCopy) {
-          
-          const size = struct.byteSize;
-          
-          const dstPtr = orgData.ptr;
-          const srcPtr = rhs.ptr;
-          
-          this.IRB.declareOneTime(
-            "llvm.memcpy.p0.p0.i64",
-            "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
-          );
-          
-          this.IRB.emit(
-            `call void @llvm.memcpy.p0.p0.i64(` +
-            `ptr ${dstPtr}, ptr ${srcPtr}, i64 ${size}, i1 false)`
-          );
-          
-          return;
-        }
-      }
+     
+     if (orgData?.isStruct) {
+
+  this.IRB.bindLineColumn(node);
+
+  let srcPtr;
+
+  if (expression.value.type === "MAP_LITERAL") {
+    srcPtr = this.IRB.emitStructLiteral(orgData.type, expression.value);
+  } else {
+    const rhs = this.expr.handleExpression(expression.value);
+
+    srcPtr = rhs.ptr;
+  }
+
+  const struct = this.IRB.getStruct(orgData.type);
+
+  this.IRB.declareOneTime(
+    "llvm.memcpy.p0.p0.i64",
+    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+  );
+
+  this.IRB.emit(
+    `call void @llvm.memcpy.p0.p0.i64(` +
+    `ptr ${orgData.ptr}, ptr ${srcPtr}, i64 ${struct.byteSize}, i1 false)`
+  );
+
+  return;
+}
       
       const orgPtr = orgData.ptr;
       const orgType = orgData.type;
       const llvmType = orgData.llvmType;
       const isConstant = orgData.isConstant;
       
+      
       if (isConstant) {
         this.IRB.emitError("ConstError", `Cannot reassign constant '${name}'`, node);
       }
       
       this.IRB.bindLineColumn(node)
+      
       
       const expr = this.expr.handleExpression(expression.value);
       
@@ -541,8 +543,26 @@
       const isMap = val?.isMap;
       const isStruct = val?.isStruct;
       
-      if (isList || isMap || isStruct) {
+      if (isList || isMap) {
+        
         this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
+      } else if (this.IRB.hasStruct(val.type)) {
+        if (val?.fromParam) {
+          this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
+        } else {
+          
+  const size = this.IRB.getStruct(val.type).byteSize;
+
+  this.IRB.declareOneTime(
+    "llvm.memcpy",
+    "declare void @llvm.memcpy(ptr, ptr, i64, i1)"
+  );
+
+  this.IRB.emit(
+    `call void @llvm.memcpy(ptr ${ptr}, ptr ${val.ptr}, i64 ${size}, i1 false)`
+  );
+
+}
       } else {
         this.IRB.emit(`store ${llvmType} ${val.ptr}, ptr ${ptr}`);
       }
@@ -655,12 +675,12 @@
           
           this.IRB.declareOneTime(
             "zen_map_set",
-            "declare void @zen_map_set(ptr, ptr, ptr)"
+            "declare void @_zen_map_set(ptr, ptr, ptr)"
           );
           
           this.IRB.declareOneTime(
             "zen_map_get",
-            "declare void @zen_map_get(ptr, ptr)"
+            "declare void @_zen_map_get(ptr, ptr)"
           );
           const baseExpr = this.expr.handleExpression(b);
           
@@ -684,13 +704,13 @@
               
               this.IRB.declareOneTime(
                 "zen_map_get",
-                "declare ptr @zen_map_get(ptr, ptr)"
+                "declare ptr @_zen_map_get(ptr, ptr)"
               );
               
               const tmp = this.IRB.newTemp();
               
               this.IRB.emit(
-                `${tmp} = call ptr @zen_map_get(ptr ${currentPtr}, ptr ${indexExpr.ptr})`
+                `${tmp} = call ptr @_zen_map_get(ptr ${currentPtr}, ptr ${indexExpr.ptr})`
               );
               
             
@@ -717,13 +737,13 @@
               
               this.IRB.declareOneTime(
                 "zen_list_get",
-                "declare ptr @zen_list_get(ptr, i32)"
+                "declare ptr @_zen_list_get(ptr, i32)"
               );
               
               const tmp = this.IRB.newTemp();
               
               this.IRB.emit(
-                `${tmp} = call ptr @zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
+                `${tmp} = call ptr @_zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
               );
               
               if (!isLast) {
@@ -797,13 +817,13 @@
               
               this.IRB.declareOneTime(
                 "zen_list_get",
-                "declare ptr @zen_list_get(ptr, i32)"
+                "declare ptr @_zen_list_get(ptr, i32)"
               );
               
               tmp = this.IRB.newTemp();
               
               this.IRB.emit(
-                `${tmp} = call ptr @zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
+                `${tmp} = call ptr @_zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
               );
               
               

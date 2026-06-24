@@ -79,7 +79,7 @@ export class ZenSys {
         case 'bool':
           return "i1";
         case "string":
-          return "i8*";
+          return "ptr";
         case "List":
           return "ptr";
         case "Map":

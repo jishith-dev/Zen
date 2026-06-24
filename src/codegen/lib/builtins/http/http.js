@@ -56,7 +56,7 @@ export class ZenHttp {
         case 'bool':
           return "i1";
         case "string":
-          return "i8*";
+          return "ptr";
         default:
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }
