@@ -4,7 +4,10 @@
 
 **GitHub**: https://github.com/`Jishith-dev/Zen`
 **Contact**: jishithmp534@gmail.com
-
+**Installation**: 
+```bash
+curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
+```
 ---
 
 ## Introduction
@@ -64,7 +67,7 @@ Current Version: v1.1.1
 - Lexer, Parser, AST generation
 - LLVM IR generation and optimization
 - Native binary generation via clang
-- CLI support (run, build, ir, ast, tokens, clean, init)
+- CLI support (run, build, ir, ast, tokens, clean, init, login, signup, whoami, list, publish, unpublish, install)
 - Basic type system (int, double, string, bool, List, Map)
 - Control flow (if, switch, loop, while)
 - Functions and structs
@@ -135,7 +138,9 @@ Not available in v1 yet.
 
 ## CLI Usage
 
-Zen provides a simple command-line interface for compiling, inspecting, running, and scaffolding projects.
+Zen provides a comprehensive command-line interface for compiling, inspecting, running, package management, and project scaffolding.
+
+### Compilation & Development
 
 ```bash
 zen run <file>             # Compile and run program
@@ -144,10 +149,105 @@ zen ir <file>              # Generate LLVM IR
 zen ast <file>             # Print Abstract Syntax Tree
 zen tokens <file>          # Print lexer tokens
 zen clean <file>           # Remove build artifacts
-zen init <project-name>    # Create a new Zen project
-zen --help                 # Show help menu
-zen --version              # Show version info
 ```
+
+### Project Management
+
+```bash
+zen init <name>            # Create a new runnable Zen project
+zen init <name> --bin      # Create a new library Zen package
+```
+
+### Package Registry
+
+```bash
+zen install <package>      # Install a package
+zen publish                # Publish/update your package
+zen unpublish              # Remove your package from registry
+zen list                   # Browse all available packages
+```
+
+### Authentication
+
+```bash
+zen signup                 # Create a Zen Registry account
+zen login                  # Login to your account
+zen whoami                 # Show currently logged-in user
+zen logout                 # Logout and remove credentials
+```
+
+### Help & Version
+
+```bash
+zen --help                 # Show help menu
+zen -h                     # Show help menu (short form)
+zen help                   # Show help menu (verbose)
+zen --version              # Show Zen version
+zen -v                     # Show Zen version (short form)
+zen version                # Show Zen version (verbose)
+```
+
+### Optimization Flags
+
+For compilation commands, you can specify optimization level:
+
+```bash
+zen run <file> -O0         # No optimization
+zen run <file> -O1         # Basic optimization
+zen run <file> -O2         # Standard optimization (default)
+zen run <file> -O3         # Aggressive optimization
+```
+
+### Examples
+
+Compile and run a single file:
+
+```bash
+zen run hello.zen
+```
+
+Build a project into binary:
+
+```bash
+zen build myapp
+# Creates: ./build/myapp
+```
+
+Create a new project:
+
+```bash
+zen init calculator
+cd calculator
+zen run
+```
+
+Create a library package:
+
+```bash
+zen init string-utils --bin
+```
+
+Install and use a package:
+
+```bash
+zen install banking
+zen install calculator
+```
+
+Publish your package:
+
+```bash
+zen publish
+# Publishes package defined in zen.json
+```
+
+Browse registry:
+
+```bash
+zen list
+# Shows packages with pagination
+```
+
 
 ---
 

@@ -19,8 +19,13 @@ disabled fn auto inference for struct also (before only have disabled List)
 several bug fixes
 all i8* to ptr (opaque pointer)
 new map method keys() return all keys in a map in string generic List.
-sys.argv() introduced
 new fs. namespace functions readFileBytes() and writeFileBytes()
 supported empty List inference in limited way (were context is available)
 sizeOf internal compiler helper updated to adapt to 32 bit and 64 bit system sizes.
 made all internal fn _ start prefix for internal zen llvm functions
+- Added binary file support through List<byte>.
+- Added compiler target awareness for pointer size
+  (32-bit and 64-bit aware size/alignment calculations).
+- Fixed struct passing and struct return edge cases.
+- Improved global string handling after opaque pointer migration.
+- Improved empty List type inference when type context exists.

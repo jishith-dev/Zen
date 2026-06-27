@@ -84,6 +84,19 @@ Generated `zen.json`:
 }
 ```
 
+- Added official **Zen Package Registry** for package management
+- Added `zen signup` and `zen login` for authentication
+- Added `zen logout` and `zen whoami` for account management
+- Added `zen install <package>` to install packages from registry
+- Added `zen publish` to publish packages to registry
+- Added `zen unpublish` to remove packages from registry
+- Added `zen list` with pagination to browse all packages (50 per page)
+- Registry supports both runnable applications (`main`) and library packages (`bin`)
+- Library packages install to `~/.zen/packages/`
+- Runnable applications install to current directory
+- Secure JWT-based authentication
+- GitHub-hosted package source code
+
 ### Fixes
 
 - `contains()` no longer performs struct literal comparisons
