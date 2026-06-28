@@ -802,7 +802,8 @@ if (command === "unpublish") {
     }
 
     const isDev = process.argv[0].endsWith("node");
-
+    console.log(process.argv[0])
+console.log(isDev)
     const stdlibObjs = isDev ? [
       path.join(this.COMPILER_ROOT, "dev/constants.o"),
       path.join(this.COMPILER_ROOT, "dev/zen_stdlib_opt.o"),
