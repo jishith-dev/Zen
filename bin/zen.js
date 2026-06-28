@@ -822,6 +822,7 @@ if (command === "unpublish") {
       ...stdlibObjs,
       ...runtimeObjs,
       this.optFlag,
+      "-Wno-override-module",
       "-lcurl",
       "-lm",
       "-o",
