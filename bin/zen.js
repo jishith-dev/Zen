@@ -807,8 +807,8 @@ if (command === "unpublish") {
       path.join(this.COMPILER_ROOT, "dev/constants.o"),
       path.join(this.COMPILER_ROOT, "dev/zen_stdlib_opt.o"),
     ] : [
-      path.join(this.COMPILER_ROOT, "src/zen_stdlib/constants.o"),
-      path.join(this.COMPILER_ROOT, "src/zen_stdlib/zen_stdlib_opt.o"),
+      path.join(this.COMPILER_ROOT, "src/zen_stdlib/constants.ll"),
+      path.join(this.COMPILER_ROOT, "src/zen_stdlib/zen_stdlib_opt.ll"),
     ];
 
     const runtimeObjs = isDev ? [
@@ -817,10 +817,10 @@ if (command === "unpublish") {
       path.join(this.COMPILER_ROOT, "dev/mapRuntime.o"),
       path.join(this.COMPILER_ROOT, "dev/curlRuntime.o"),
     ] : [
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/runtime.o"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/listRuntime.o"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/mapRuntime.o"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/curlRuntime.o"),
+      path.join(this.COMPILER_ROOT, "src/codegen/runtime/runtime.c"),
+      path.join(this.COMPILER_ROOT, "src/codegen/runtime/listRuntime.c"),
+      path.join(this.COMPILER_ROOT, "src/codegen/runtime/mapRuntime.c"),
+      path.join(this.COMPILER_ROOT, "src/codegen/runtime/curlRuntime.c"),
     ];
 
     const outputExe = path.join(buildDir, this.moduleName);
