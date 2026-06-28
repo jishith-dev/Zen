@@ -801,23 +801,12 @@ if (command === "unpublish") {
       }
     }
 
-    const isDev = process.argv[0].endsWith("node");
-    console.log(process.argv[0])
-console.log(isDev)
-    const stdlibObjs = isDev ? [
-      path.join(this.COMPILER_ROOT, "dev/constants.o"),
-      path.join(this.COMPILER_ROOT, "dev/zen_stdlib_opt.o"),
-    ] : [
+    const stdlibObjs =  [
       path.join(this.COMPILER_ROOT, "src/zen_stdlib/constants.ll"),
       path.join(this.COMPILER_ROOT, "src/zen_stdlib/zen_stdlib_opt.ll"),
     ];
 
-    const runtimeObjs = isDev ? [
-      path.join(this.COMPILER_ROOT, "dev/runtime.o"),
-      path.join(this.COMPILER_ROOT, "dev/listRuntime.o"),
-      path.join(this.COMPILER_ROOT, "dev/mapRuntime.o"),
-      path.join(this.COMPILER_ROOT, "dev/curlRuntime.o"),
-    ] : [
+    const runtimeObjs =  [
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/runtime.c"),
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/listRuntime.c"),
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/mapRuntime.c"),
