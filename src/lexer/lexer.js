@@ -1,3 +1,4 @@
+
 import {
   TYPES,
   TokenTypes,
@@ -15,13 +16,13 @@ const SORTED_OPERATORS = [...OPERATORS]
   .sort((a, b) => b.length - a.length);
 
 export class Lexer {
-  constructor(source, IRB) {
+  constructor(source, IRB, offsetLine = 1, offsetColumn = 1) {
     this.source = source;
     this.pos = 0;
     this.currentChar = this.source[this.pos] || null;
     this.tokens = [];
-    this.line = 1;
-    this.column = 1;
+    this.line = offsetLine;
+    this.column = offsetColumn;
     this.IRB = IRB;
   }
   
@@ -576,6 +577,9 @@ export class Lexer {
         this.advance(); // $
         this.advance(); // {
         
+        const exprLine = this.line;     
+        const exprColumn = this.column;
+        
         let expr = "";
         let depth = 1;
         
@@ -607,7 +611,9 @@ export class Lexer {
         
         parts.push({
           type: "EXPR",
-          value: expr.trim()
+          value: expr.trim(),
+          line: exprLine,
+          column: exprColumn
         });
         
         this.advance(); // skip closing }
@@ -661,3 +667,5 @@ export class Lexer {
   }
   
 }
+
+const end = performance.now()

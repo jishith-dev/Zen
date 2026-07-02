@@ -6,6 +6,8 @@ import {
   COMPOUND_OPERATORS
 } from "../../config/config.js";
 import fs from "fs";
+import path from "path";
+import os from "os";
 
 export class IRBuilder {
   constructor(moduleName) {
@@ -64,9 +66,10 @@ this.target = {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
     
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
+    this.haveExport = false;
     this.stdlibMode = false; // stdlib mode toggler
     
     this.formatMap = this.formatMap || new Map(); // format for screen() 
@@ -81,6 +84,19 @@ this.target = {
     this.symbolTable = [new Map()];
     this.structTable = new Map();
     this.usedStdlib = new Map();
+  }
+  
+  reset(moduleName) {
+    this.formatMap = new Map();
+    this.tempCount = 0; 
+    this.funcTempCounter = 0;
+    this.globalTempCount = 0; 
+    this.labelCount = 0;
+    this.strCount = 0;
+    this.moduleName = moduleName;
+    this.returnCount = 0;
+    this.returnTypes = [];
+    this.haveExport = false;
   }
   
   hasPath(from, target, visited = new Set()) {
@@ -276,7 +292,7 @@ sizeOf(type) {
     }
   }
   
-  setStruct(name, data) {
+  setStruct(name, data, node) {
     if (this.structTable.has(name)) {
       this.emitError("DeclarationError", `Struct '${name}' is already defined`, node)
     }
@@ -613,7 +629,7 @@ strTemp() {
       }
     }
     
-    this.emitError("ReferenceError", `variable ${name} is not defined`);
+    this.emitError("ReferenceError", `variable ${name} is not defined`, node);
   }
   
   enterScope() {
@@ -795,6 +811,7 @@ strTemp() {
     
     const paramStr = [];
     const paramData = [];
+    const types = [];
     
     for (const p of params) {
       const temp = this.newTemp();
@@ -803,8 +820,8 @@ strTemp() {
       
       if (p.isRest) {
         
-        
-        paramStr.push(`%ZenList* ${temp}`);
+        types.push("ptr");
+        paramStr.push(`ptr ${temp}`);
         
         paramData.push({
           ptr: temp,
@@ -818,6 +835,7 @@ strTemp() {
       }
       
       if (p.type.type === "List") {
+        types.push("ptr");
         paramStr.push(`ptr ${temp}`);
         
         paramData.push({
@@ -833,7 +851,7 @@ strTemp() {
       }
       
       if (this.hasStruct(p.type.type)) {
-        
+        types.push("ptr");
         paramStr.push(`ptr ${temp}`); 
         
         
@@ -876,6 +894,7 @@ strTemp() {
       
       const llvmType = this.getLLVMType(p.type.type);
       
+      types.push(llvmType);
       paramStr.push(`${llvmType} ${temp}`);
       
       paramData.push({
@@ -888,6 +907,7 @@ strTemp() {
     }
     
     if (isMethod) {
+      types.push("ptr");
       paramStr.unshift(`ptr %this`);
       paramData.push({
         name: "this",
@@ -905,7 +925,8 @@ strTemp() {
     
     return {
       ir: `(${paramStr.join(", ")})`,
-      params: paramData
+      params: paramData,
+      types: `(${types.join(", ")})`
     };
   }
   
@@ -1299,9 +1320,9 @@ end:
     }
     
     const expected =
-      dimensions[depth].type === "int" ?
+      Number(dimensions[depth].type === "int" ?
       dimensions[depth].value :
-      this.constEval(dimensions[depth], "Array dimension");
+      this.constEval(dimensions[depth], "Array dimension"));
     
     if (node.elements.length !== expected) {
       this.emitError("ArrayError", `Array size mismatch at dimension ${depth} — expected ${expected} element(s), got ${node.elements.length}`, node)
@@ -2395,144 +2416,104 @@ end:
         return { ptr: null, type: "void", llvmType: "void", local: [], global: [] };
       }
       
-      case "contains": {
-        
-        const deepestType = this.getDeepestGeneric(object.generic?.generic);
-  const isStruct = this.hasStruct(deepestType);
+case "contains": {
 
-  // structs — no contains support
-  if (isStruct) {
-    this.emitError(
-  "TypeError",
-  `'contains' is not supported for List<${deepestType}>. Check fields manually using a loop`,
-  node.args[0]
-);
-  }
-        
-        this.declareOneTime(
-          "zen_list_contains",
-          "declare i1 @_zen_list_contains(ptr, ptr)"
-        );
-        
-        const arg = this.expr.handleExpression(node.args[0]);
-        
-        const expType =
-          object?.generic?.generic?.type;
-        
-        if (expType === "List") {
-          
-          const expArgType =
-            arg?.isList === true ? "List" : arg?.type;
-          
-          if (expArgType !== "List") {
-            this.emitError("TypeError", `'${node.object.name}.contains' expects a List element, got '${expArgType}'`, node.args[0])
-          }
-          
-        } else {
-          
-          const expArgType =
-            arg?.isList === true ? "List" : arg?.type;
-          
-          if (expArgType !== expType) {
-            this.emitError("TypeError", `'${node.object.name}.contains' expects type '${expType}', got '${expArgType}'`, node.args[0])
-          }
-        }
-        
-        
-        this.emitExpr(arg);
-        
-        const llvmType = this.getListElementLLVM(object.generic);
-        
-        const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ${llvmType}`);
-        
-        this.emit(`store ${llvmType} ${arg.ptr}, ptr ${tmp}`);
-        
-        
-        const val = this.newTemp();
-        
-        this.emit(
-          `${val} = call i1 @_zen_list_contains(ptr ${listPtr}, ptr ${tmp})`
-        );
-        
-        return { ptr: val, type: "bool", llvmType: "i1", local: [], global: [] };
-      }
-      
-      case "indexOf": {
+  const expType = object?.generic?.generic?.type;
 
-  const deepestType = this.getDeepestGeneric(object.generic);
-  const isStruct = this.hasStruct(deepestType);
+  const allowed = expType === "int" || expType === "double" || expType === "bool" || expType === "string";
 
-  // BLOCK STRUCTS — same reasoning as contains()
-  if (isStruct) {
+  if (!allowed) {
     this.emitError(
       "TypeError",
-      `'indexOf' is not supported for List<${deepestType}>. Check fields manually using a loop`,
+      `'contains' is currently only supported for List<int>, List<double>, List<bool>, and List<string>. Got List<${expType}>`,
       node.args[0]
     );
   }
 
-  this.declareOneTime(
-    "zen_list_indexOf",
-    "declare i32 @_zen_list_indexOf(ptr, ptr)"
-  );
+  const isStringElement = expType === "string";
+  const fnName = isStringElement ? "_zen_list_contains_string" : "_zen_list_contains_primitive";
 
-  const arg =
-    this.expr.handleExpression(node.args[0]);
+  this.declareOneTime(fnName, `declare i1 @${fnName}(ptr, ptr)`);
 
-  const expType = object.generic.generic.type === "List" ? "List" : this.getDeepestGeneric(object.generic);
+  const arg = this.expr.handleExpression(node.args[0]);
 
-  const expArgType =
-    arg?.isList ? "List" : arg?.type;
-
-  if (expType === "List") {
-
-    if (expArgType !== "List") {
-      this.emitError(
-        "TypeError",
-        `'${node.object.name}.indexOf' expects a List element, got '${expArgType}'`,
-        node.args[0]
-      );
-    }
-
-  } else {
-
-    if (expArgType !== expType) {
-      this.emitError(
-        "TypeError",
-        `'${node.object.name}.indexOf' expects type '${expType}', got '${expArgType}'`,
-        node.args[0]
-      );
-    }
-
+  const expArgType = arg?.isList === true ? "List" : arg?.type;
+  if (expArgType !== expType) {
+    this.emitError("TypeError", `'${node.object.name}.contains' expects type '${expType}', got '${expArgType}'`, node.args[0]);
   }
 
   this.emitExpr(arg);
 
-  const llvmType =
-    this.getListElementLLVM(object.generic);
+  const llvmType = this.getListElementLLVM(object.generic);
 
   const tmp = this.newTemp();
-
   this.emit(`${tmp} = alloca ${llvmType}`);
 
-  this.emit(
-    `store ${llvmType} ${arg.ptr}, ptr ${tmp}`
-  );
+  let ptr;
+  if (arg.needsLoad) {
+    const t = this.newTemp();
+    this.emit(`${t} = load ${llvmType}, ptr ${arg.ptr}`);
+    ptr = t;
+  } else {
+    ptr = arg.ptr;
+  }
+
+  this.emit(`store ${llvmType} ${ptr}, ptr ${tmp}`);
 
   const val = this.newTemp();
+  this.emit(`${val} = call i1 @${fnName}(ptr ${listPtr}, ptr ${tmp})`);
 
-  this.emit(
-    `${val} = call i32 @_zen_list_indexOf(ptr ${listPtr}, ptr ${tmp})`
-  );
+  return { ptr: val, type: "bool", llvmType: "i1", local: [], global: [] };
+}
 
-  return {
-    ptr: val,
-    type: "int",
-    llvmType: "i32",
-    local: [],
-    global: []
-  };
+case "indexOf": {
+
+  const expType = object.generic.generic.type;
+
+  const allowed = expType === "int" || expType === "double" || expType === "bool" || expType === "string";
+
+  if (!allowed) {
+    this.emitError(
+      "TypeError",
+      `'indexOf' is currently only supported for List<int>, List<double>, List<bool>, and List<string>. Got List<${expType}>`,
+      node.args[0]
+    );
+  }
+
+  const isStringElement = expType === "string";
+  const fnName = isStringElement ? "_zen_list_indexOf_string" : "_zen_list_indexOf_primitive";
+
+  this.declareOneTime(fnName, `declare i32 @${fnName}(ptr, ptr)`);
+
+  const arg = this.expr.handleExpression(node.args[0]);
+
+  const expArgType = arg?.isList === true ? "List" : arg?.type;
+  if (expArgType !== expType) {
+    this.emitError("TypeError", `'${node.object.name}.indexOf' expects type '${expType}', got '${expArgType}'`, node.args[0]);
+  }
+
+  this.emitExpr(arg);
+
+  const llvmType = this.getListElementLLVM(object.generic);
+
+  const tmp = this.newTemp();
+  this.emit(`${tmp} = alloca ${llvmType}`);
+
+  let ptr;
+  if (arg.needsLoad) {
+    const t = this.newTemp();
+    this.emit(`${t} = load ${llvmType}, ptr ${arg.ptr}`);
+    ptr = t;
+  } else {
+    ptr = arg.ptr;
+  }
+
+  this.emit(`store ${llvmType} ${ptr}, ptr ${tmp}`);
+
+  const val = this.newTemp();
+  this.emit(`${val} = call i32 @${fnName}(ptr ${listPtr}, ptr ${tmp})`);
+
+  return { ptr: val, type: "int", llvmType: "i32", local: [], global: [] };
 }
 
 case "join": {
@@ -2828,7 +2809,7 @@ emitStructLiteral(structName, mapLiteralNode) {
     );
 
     // NESTED LIST FIELD
-    if (prop.value.type === "ARRAY") {
+ /*   if (prop.value.type === "ARRAY") {
       
       const innerStructName = this.getDeepestGeneric(field.generic)
       const elementSize = this.sizeOf(innerStructName)
@@ -2853,7 +2834,47 @@ emitStructLiteral(structName, mapLiteralNode) {
 
       this.emit(`store ptr ${listPtr}, ptr ${fieldPtr}`);
       continue;
+    }*/
+    
+// NESTED LIST FIELD
+if (prop.value.type === "ARRAY") {
+
+  const isNestedList = field.generic?.generic?.type === "List";
+
+  const elementSize = isNestedList
+    ? 8
+    : this.sizeOf(this.getDeepestGeneric(field.generic));
+
+  const listPtr = this.newTemp();
+  this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
+
+  for (const el of prop.value.elements) {
+
+    if (el.type === "ARRAY") {
+      const innerListPtr = this.emitNestedListLiteral(el, field.generic.generic);
+      const tmp = this.newTemp();
+      this.emit(`${tmp} = alloca ptr`);
+      this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+
+    } else if (el.type === "MAP_LITERAL") {
+      const innerStructName = this.getDeepestGeneric(field.generic);
+      const innerPtr = this.emitStructLiteral(innerStructName, el);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
+
+    } else {
+      const expr = this.expr.handleExpression(el);
+      this.emitExpr(expr);
+      const tmp = this.newTemp();
+      this.emit(`${tmp} = alloca ${expr.llvmType}`);
+      this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     }
+  }
+
+  this.emit(`store ptr ${listPtr}, ptr ${fieldPtr}`);
+  continue;
+}
 
   // NESTED STRUCT FIELD (literal)
 if (prop.value.type === "MAP_LITERAL") {
@@ -2885,4 +2906,86 @@ this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
 
   return structPtr;
 }
+
+emitNestedListLiteral(arrayNode, elementGeneric) {
+
+  const isNestedList = elementGeneric?.type === "List";
+
+  const elementSize = isNestedList
+    ? 8 // pointer to inner list
+    : this.sizeOf(elementGeneric?.type ?? this.getDeepestGeneric({ generic: elementGeneric }));
+
+  const listPtr = this.newTemp();
+  this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
+
+  for (const el of arrayNode.elements) {
+
+    if (el.type === "ARRAY") {
+      // recurse another level deeper
+      const innerListPtr = this.emitNestedListLiteral(el, elementGeneric.generic);
+      const tmp = this.newTemp();
+      this.emit(`${tmp} = alloca ptr`);
+      this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+
+    } else if (el.type === "MAP_LITERAL") {
+      const structName = elementGeneric?.type;
+      const innerPtr = this.emitStructLiteral(structName, el);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
+
+    } else {
+      const expr = this.expr.handleExpression(el);
+      this.emitExpr(expr);
+      const tmp = this.newTemp();
+      this.emit(`${tmp} = alloca ${expr.llvmType}`);
+      this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+    }
+  }
+
+  return listPtr;
+}
+
+loadFile(source, node) {
+    if (!source) {
+      this.emitError("ModuleError", "Missing module source", node);
+    }
+
+    if (source.endsWith(".zen")) {
+      return this.safeReadFile(source);
+    }
+
+    const packageDir = path.join(os.homedir(), ".zen", "packages", source);
+
+    if (!fs.existsSync(packageDir)) {
+      this.emitError("ModuleError", `Package '${source}' not found`, node);
+    }
+
+    const manifestPath = path.join(packageDir, "zen.json");
+
+    if (!fs.existsSync(manifestPath)) {
+      this.emitError("ModuleError", `Package '${source}' missing zen.json`, node);
+    }
+
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    } catch {
+      this.emitError("ModuleError", `Invalid zen.json in '${source}'`, node);
+    }
+
+    if (!manifest.bin) {
+      this.emitError("ModuleError", `Package '${source}' missing bin entry`, node);
+    }
+
+    const entryFile = path.join(packageDir, manifest.bin);
+
+    if (!fs.existsSync(entryFile)) {
+      this.emitError("ModuleError", `Entry file not found in '${source}'`, node);
+    }
+
+    return this.safeReadFile(entryFile);
+  }
+
+
 }

@@ -3,418 +3,186 @@ import { Parser } from "../../parser/parser.js";
 import { CodeGen } from "../codegen.js";
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 export class Module {
-  constructor(IRB, module) {
+  constructor(IRB, moduleFiles) {
     this.IRB = IRB;
-    this.module = module;
-    this.moduleImports = new Map();
-    this.c = 0;
-    this.moduleFiles = new Set();
-
-    // GLOBAL MODULE REGISTRY
-    // shared export metadata only
     this.modules = new Map();
-    
-    // generated .ll files here
+    this.moduleImports = new Map();
     this.generatedModules = new Map();
+    this.moduleFiles = moduleFiles;
+
+    this.loadingStack = new Set();
   }
 
-loadFile(source) {
-  return this.IRB.safeReadFile(source);
-}
-  
   moduleAnalyser(node) {
     const source = node.source;
-    const imports = node.names;
-    
-    // already compiled
+    const imports = node.names || [];
+
+    if (!source) {
+      this.IRB.emitError("ImportError", "import requires source", node);
+    }
+
+    if (this.loadingStack.has(source) || this.moduleFiles.isCompiling(source)) {
+  this.IRB.emitError("ImportError", `Circular import detected '${source}'`, node);
+}
+
     if (this.modules.has(source)) {
       this.resolveImports(imports, source);
       return;
     }
+
+    this.loadingStack.add(source);
+    this.moduleFiles.startCompiling(source);
+
+    const file = this.IRB.loadFile(source, node);
+
+    const moduleName = path.basename(source, ".zen");
     
-    if (!source) {
-      this.IRB.emitError("ImportError", `'import' requires a source file path`, node)
-    }
-    
-    const file = this.loadFile(source);
-    
+    const prevModule = this.IRB.moduleName;
+
+    this.IRB.reset();
+    this.IRB.moduleName = moduleName;
+
     const lexer = new Lexer(file, this.IRB);
     const tokens = lexer.tokenize();
-    
-  
+
     const parser = new Parser(tokens, this.IRB);
     const ast = parser.parse();
-    
-    const moduleName = path.basename(source, '.zen');
-    
-    this.IRB.globalTempCount = 0;
-    this.IRB.strCount = 0;
-    this.IRB.formatMap = new Map(); // reset screen string cache
 
-    const moduleCodegen = new CodeGen(ast, moduleName);
+    const codegen = new CodeGen(ast, moduleName, this.moduleFiles);
     
-    const { ir, symbolTable, functionTable, structTable } = moduleCodegen.generateLLVM();
+    const { ir, symbolTable, functionTable, structTable } = codegen.generateLLVM();
     
-    this.IRB.globalTempCount = 0;
-    this.IRB.strCount = 0;
-    // store generated llvm
-    this.generatedModules.set(
-      source,
-      ir
-    );
+    this.IRB.moduleName = prevModule;
 
-const llPath = this.writeLLFile(source, ir);
-this.moduleFiles.add(llPath);
+    const tables = {
+      symbolTable: symbolTable[0],
+      functionTable,
+      structTable
+    };
 
-    const tables = { symbolTable: symbolTable[0], functionTable, structTable }
+    const exportNode = ast.find(n => n.type === "EXPORT");
+    const exports = exportNode ? exportNode.names : [];
     
+    this.moduleFiles.IRB = this.IRB;
+
+    this.collectExports(exports, moduleName, tables, node);
     
-    this.collectExports(ast, source, tables);
+    this.modules.set(source, {
+      functions: this.extract(functionTable),
+      variables: this.extract(symbolTable[0]),
+      structs: this.extract(structTable)
+    });
     
-    this.resolveImports(imports, source);
+    this.resolveImports(imports, source, tables, node);
+
+    this.generatedModules.set(source, ir);
+    const llPath = this.writeLLFile(source, ir);
+    this.moduleFiles.add(llPath);
     
+    this.loadingStack.delete(source);
+this.moduleFiles.finishCompiling(source);
   }
-  
-  // EXPORT ANALYSIS
-  collectExports(ast, moduleName, tables) {
-    
-    const functions = new Map();
-    const variables = new Map();
-    const structs = new Map();
-    
-    const exportNode = ast.find(
-      n => n.type === "EXPORT"
-    );
-    
-    if (!exportNode) {
-      this.IRB.emitError(
-        "ModuleError",
-        `${moduleName} does not provide any exports`, ast
-      );
-      return;
-    }
-    
-    const exportSet = new Set(exportNode?.names);
-    
-    for (const name of exportSet) {
-      const exists = ast.some(n =>
-        n.name === name
-      );
-      
-      if (!exists) {
+
+  collectExports(exports, moduleName, tables, node) {
+    if (!exports || exports.length === 0) return;
+
+    const seen = new Set();
+
+    for (const name of exports) {
+      if (seen.has(name)) {
+        this.IRB.emitError("ExportError", `Duplicate export '${name}'`, node);
+      }
+      seen.add(name);
+
+      const ok =
+        tables.functionTable.has(name) ||
+        tables.symbolTable.has(name) ||
+        tables.structTable.has(name);
+
+      if (!ok) {
         this.IRB.emitError(
           "ExportError",
-          `${name} is not defined`, ast
+          `'${name}' not defined in ${moduleName}`,
+          node
         );
       }
     }
-    
-    this.validateDuplicates(
-      exportNode.names,
-      "Export"
-    );
-    
-    for (const node of ast) {
-      
-      // FUNCTION EXPORT
-      if (
-        node.type === "FUNCTION_DECLARATION" &&
-        exportSet.has(node.name)) {
-        
-        if (!tables.functionTable.has(node.name)) {
-          this.IRB.emitError(
-            "InternalError",
-            `Missing function table entry for ${node.name}`,
-            node
-          );
-        }
-        
-        const table = tables.functionTable.get(node.name);
-        
-        functions.set(node.name, {
-          name: table.name,
-          llvmType: this.IRB.getLLVMType(table.returnType),
-          kind: "function",
-          returnType: table.returnType,
-          params: table.params,
-          fromParam: true,
-          retGeneric: table?.retGeneric,
-          layout: table?.layout,
-          generic: table?.generic
-        });
-      }
-      
-      // VARIABLE EXPORT
-      if (
-        node.type === "VARIABLE_DECLARATION" &&
-        exportSet.has(node.name)) {
-        
-        if (!tables.symbolTable.has(node.name)) {
-          this.IRB.emitError(
-            "InternalError",
-            `Missing symbol table entry for '${node.name}'`,
-            node
-          );
-        }
-        
-        const table = tables.symbolTable.get(node.name);
-        
-        variables.set(node.name, {
-          ptr: table.ptr,
-          llvmType: table.llvmType,
-          type: table.type,
-          kind: "variable",
-          isConstant: table?.isConstant,
-          needsLoad: true,
-          isStruct: table?.isStruct,
-          isRet: table?.isRet
-        });
-        
-      }
-      
-      if (
-        node.type === "STRUCT" &&
-        exportSet.has(node.name)) {
-      const table = tables.structTable.get(node.name);
-      
-      structs.set(node.name, {
-      isGlobal: table.globalScope,
-      layout: table.layout,
-      fieldMap: table.fieldMap,
-      byteSize: table.byteSize,
-      size: table.size
-      });
-      
-    }
-    }
-    
-    // SAVE ONLY METADATA
-    this.modules.set(moduleName, {
-      functions,
-      variables,
-      structs
-    });
-    
   }
-  
-  validateDuplicates(names, type) {
-    
-    const seen = new Set();
-    
-    for (const name of names) {
-      
-      if (seen.has(name)) {
-        this.IRB.emitError("DeclarationError", `Duplicate ${type.toLowerCase()} '${name}' is already defined`)
-      }
-      
-      seen.add(name);
-    }
-  }
-  
-  // IMPORT RESOLUTION
-  resolveImports(imports, source) {
-    
+
+  resolveImports(imports, source, tables, node) {
     const imported = this.moduleImports.get(source) || new Set();
     this.moduleImports.set(source, imported);
-    
-    this.validateDuplicates(
-      imports,
-      "Import"
-    );
-    
-    const moduleData =
-      this.modules.get(source);
-    
-    if (!moduleData) {
-      this.IRB.emitError("ImportError", `Cannot resolve module '${source}' — file not found`)
-    }
-    
-    imports.forEach(name => {
-      
+
+    const seen = new Set();
+
+    for (const name of imports) {
+      if (seen.has(name)) {
+        this.IRB.emitError("ImportError", `Duplicate import '${name}'`, node);
+      }
+      seen.add(name);
+
       if (imported.has(name)) {
-        this.IRB.emitError(
-          "ImportError",
-          `${name} already imported from ${source}`
-        );
+        this.IRB.emitError("ImportError", `'${name}' already imported from ${source}`, node);
       }
-      
+
       imported.add(name);
-      
-      // FUNCTION IMPORT
-      if (
-        moduleData.functions.has(name)
-      ) {
-        
-        const fn =
-          moduleData.functions.get(name);
-        
-        const params =
-          this.buildParams(fn.params);
-        
-        this.IRB.globals.push(
-          `declare ${fn.llvmType} @${fn.name}${params}`
-        );
-        
-        // register locally
-        this.IRB.functions.set(
-          fn.name,
-          fn
-        );
-        
-        return;
-      }
-      
-      // VARIABLE IMPORT
-      if (
-        moduleData.variables.has(name)
-      ) {
-        
-        const variable =
-          moduleData.variables.get(name);
-        
-        this.IRB.globals.push(
-          `${variable.ptr} = external global ${variable.llvmType}`
-        );
-        
-        variable?.isMap ? this.IRB.maps.set(variable?.layout) : "";
-        
-        // register locally
-        this.IRB.setVar(name, {
-          ptr: `${variable.ptr}`,
-          llvmType: variable.llvmType,
-          external: true,
-          isStruct: variable?.isStruct,
-          isRet: variable?.isRet,
-          type: variable.type,
-          needsLoad: true,
-          isConstant: variable?.isConstant
-        });
-        return;
-      }
-      
-     // STRUCT IMPORT
-      if (
-        moduleData.structs.has(name)
-      ) {
-        
-        const struct =
-          moduleData.structs.get(name);
-        const fieldTypes = struct.layout.map(f => f.llvmType).join(", ");
-  this.IRB.globals.push(`%${name} = type { ${fieldTypes} }`);
-       this.IRB.setStruct(name, {
-      isGlobal: struct.globalScope,
-      layout: struct.layout,
-      fieldMap: struct.fieldMap,
-      byteSize: struct.byteSize,
-      size: struct.size
-      });
-        
-        return;
-      }
-      
-      this.IRB.emitError(
-        "ImportError",
-        `${name} not exported from ${source}`
-      );
-    });
-  }
-  
-  buildParams(params) {
-    
-    const paramStr = [];
-    const paramData = [];
-    
-    for (const p of params) {
-      const temp = this.IRB.newTemp();
-      
-      // REST PARAM
-      
-      if (p.isRest) {
-        
-        
-        paramStr.push(`ptr ${temp}`);
-        
-        paramData.push({
-          ptr: temp,
-          name: p.name,
-          type: p.type.type,
-          llvmType: "ptr",
-          isRest: true
-        });
-        
+
+      if (tables.functionTable.has(name)) {
+        const fn = tables.functionTable.get(name);
+
+        const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);
+
+        this.IRB.globals.push(`declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${fn.name}${types}`);
+        this.IRB.setFunction(name, fn);
         continue;
       }
       
-      if (p.type.type === "List") {
-        paramStr.push(`ptr ${temp}`);
-        
-        paramData.push({
-          ptr: temp,
-          name: p.name,
-          type: p.type.generic.type,
-          generic: { generic: p.type.generic },
-          llvmType: "ptr",
-          isList: true
-        });
-        
+      if (tables.structTable.has(name)) {
+        const s = tables.structTable.get(name);
+        const fields = (s.layout || []).map(f => f.llvmType).join(", ");
+
+        this.IRB.globals.push(`%${name} = type { ${fields} }`);
+
+        this.IRB.setStruct(name, s);
+
         continue;
       }
-      
-      if (p.type.type === "Map") {
-        paramStr.push(`ptr  ${temp}`);
+
+      if (tables.symbolTable.has(name)) {
         
-        paramData.push({
-          ptr: temp,
-          name: p.name,
-          type: "ptr",
-          llvmType: "ptr",
-          isMap: true
-        });
-        
+        const v = tables.symbolTable.get(name);
+
+        this.IRB.globals.push(`${v.ptr} = external global ${v.llvmType}`);
+
+        this.IRB.setVar(name, v);
         continue;
       }
-      
-      // ARRAY CHECK (use type tree safely)
-      
-      const isArray =
-        p.type?.dimensions?.length > 0;
-      
-      if (isArray) {
-        this.IRB.emitError("TypeError", `Fixed-size arrays cannot be passed as function parameters`)
-      }
-      
-      // FLATTEN TYPE → LLVM TYPE
-      
-      const llvmType = this.IRB.getLLVMType(p.type.type);
-      
-      paramStr.push(`${llvmType} ${temp}`);
-      
-      paramData.push({
-        name: p.name,
-        
-        // incoming SSA value
-        temp,
-        
-        // LLVM type (flat)
-        llvmType,
-        
-        // FULL TYPE TREE (IMPORTANT)
-        type: p.type.type,
-        
-        ptr: null
-      });
+
+      this.IRB.emitError("ImportError", `'${name}' not exported from ${source}`, node);
     }
-    
-    return `(${paramStr.join(", ")})`
   }
-  
-writeLLFile(source, llvm) {
-  const buildDir = path.join(path.dirname(source), "build");
-  fs.mkdirSync(buildDir, { recursive: true });
-  const outFile = path.join(buildDir, path.basename(source, ".zen") + ".ll");
-  fs.writeFileSync(outFile, llvm);
-  return outFile;
-}
+
+  extract(table) {
+    const map = new Map();
+    if (!table) return map;
+
+    for (const [k, v] of table.entries()) {
+      map.set(k, v);
+    }
+
+    return map;
+  }
+
+  writeLLFile(source, ir) {
+    const dir = path.join(path.dirname(source), "build");
+    fs.mkdirSync(dir, { recursive: true });
+
+    const out = path.join(dir, path.basename(source, ".zen") + ".ll");
+    fs.writeFileSync(out, ir);
+
+    return out;
+  }
 }

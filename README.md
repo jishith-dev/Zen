@@ -67,7 +67,7 @@ Current Version: v1.1.1
 - Lexer, Parser, AST generation
 - LLVM IR generation and optimization
 - Native binary generation via clang
-- CLI support (run, build, ir, ast, tokens, clean, init, login, signup, whoami, list, publish, unpublish, install)
+- CLI support (run, build, ir, ast, tokens, clean, init, login, signup, logout, recovery, whoami, list, publish, unpublish, install)
 - Basic type system (int, double, string, bool, List, Map)
 - Control flow (if, switch, loop, while)
 - Functions and structs
@@ -174,6 +174,7 @@ zen signup                 # Create a Zen Registry account
 zen login                  # Login to your account
 zen whoami                 # Show currently logged-in user
 zen logout                 # Logout and remove credentials
+zen recovery               # Recover forgotten password
 ```
 
 ### Help & Version

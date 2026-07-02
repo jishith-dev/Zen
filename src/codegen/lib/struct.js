@@ -13,11 +13,24 @@ export class Struct {
       
       const fnName = `${structName}_${method.name}`;
       
+      const returnType = method.returnType === "void" ?
+          "void" : method.returnType.type;
+        
+        const isArrayRet = returnType === "void" ? false : returnType === "List" ? false : method.returnType?.dimensions.length > 0;
+        const retGeneric = returnType === "List" ? this.IRB.getDeepestGeneric(method.returnType.generic) : returnType;
+        const generic = returnType === "List" ? method.returnType : null;
+        
+        if (isArrayRet) this.IRB.emitError("SemanticError", `function ${name} cannot return array`, method);
+        
+        
+      
       this.IRB.functions.set(fnName, {
         name: fnName,
         params: method.params,
         returnType: method.returnType,
         isMethod: true,
+        retGeneric,
+        generic: generic,
         struct: structName
       });
     }
@@ -168,7 +181,7 @@ export class Struct {
     "llvm.memcpy.p0.p0.i64",
     "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
   );
-
+ 
   this.IRB.emit(
     `call void @llvm.memcpy.p0.p0.i64(` +
     `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`

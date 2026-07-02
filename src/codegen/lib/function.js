@@ -193,6 +193,8 @@ export class HandleFunction {
     this.IRB.emit(
       `call void @llvm.memcpy.p0.p0.i64(ptr %sret, ptr ${expr.ptr}, i64 ${struct.byteSize}, i1 false)`
     );
+    this.IRB.emit("ret void");
+    return;
   }
   
   
@@ -227,8 +229,10 @@ export class HandleFunction {
   this.IRB.emit("ret void");
   return;
 }
+
+    let listGeneric = this.IRB.currentFunction.listGeneric; // list return have type context. so pass it to handleExpression
     
-    const expr = this.expr.handleExpression(node.value, false);
+    const expr = this.expr.handleExpression(node.value, false, listGeneric);
     
     this.IRB.emitExpr(expr);
     
@@ -334,6 +338,12 @@ export class HandleFunction {
       "void" :
       node.returnType.type; // exclude auto infer for now
     
+    let listGeneric;
+    
+    if (returnType === "List") {
+      listGeneric = this.IRB.getDeepestGeneric(node.returnType.generic);
+    }
+    
     if (
       returnType !== "void" &&
       !this.hasGuaranteedReturn(node.body)
@@ -366,6 +376,7 @@ export class HandleFunction {
       body: [],
       bodyAst: node.body,
       isList: returnType === "List",
+      listGeneric,
       returnType, // temporarily store return type even its auto
       params: paramData,
       hasReturn: false,
@@ -404,7 +415,7 @@ export class HandleFunction {
         );
         
         const deepestType =
-          this.IRB.getDeepestType(p.generic);
+          this.IRB.getDeepestGeneric(p.generic);
         
         this.IRB.setVar(p.name, this.IRB.createData({
           ptr: p.ptr,

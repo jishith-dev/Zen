@@ -301,6 +301,7 @@ export class Parser {
       !this.match("EOF")
     ) {
       
+      this.skipNewlines();
       let key;
       
       if (this.match("IDENTIFIER")) {
@@ -667,7 +668,12 @@ export class Parser {
     const names = [];
     
     while (!this.match("RIGHT_PARENTHESIS")) {
+      
+      this.skipNewlines();
+      
       names.push(this.expect("IDENTIFIER").value);
+      
+      this.skipNewlines();
       
       if (this.match("COMMA")) {
         this.advance();
@@ -691,9 +697,13 @@ export class Parser {
     this.expect("LEFT_PARENTHESIS");
     
     const names = [];
-    
+    this.skipNewlines();
     while (!this.match("RIGHT_PARENTHESIS")) {
+      
+      this.skipNewlines();
       names.push(this.expect("IDENTIFIER").value);
+      
+      this.skipNewlines();
       
       if (this.match("COMMA")) {
         this.advance();
@@ -1782,10 +1792,12 @@ if (isLoopIn) {
       if (typeof part === "string") {
         return part;
       }
-      
+    
       const lexer = new Lexer(
         part.value,
-        this.IRB
+        this.IRB,
+        part.line,
+        part.column
       );
       
       const tokens = lexer.tokenize();

@@ -37,7 +37,7 @@ import {
 } from '../config/config.js';
 
 export class CodeGen {
-  constructor(ast, moduleName) {
+  constructor(ast, moduleName, moduleFiles) {
     this.ast = ast;
     this.moduleName = moduleName;
     
@@ -50,7 +50,7 @@ export class CodeGen {
     this.infer = new InferType(this.IRB, this.expr);
     this.file = new ZenFileSystem(this.IRB, this.expr);
     this.path = new PATH(this.IRB, this.expr);
-    this.module = new Module(this.IRB);
+    this.module = new Module(this.IRB, moduleFiles);
     this.ternary = new Ternary(this.IRB, this.expr);
     this.expr.setTernary(this.ternary)
     this.os = new OS(this.IRB, this.expr);
@@ -88,8 +88,8 @@ export class CodeGen {
     const haveExport = this.ast.find(f => f.type === "EXPORT");
     const haveImport = this.ast.find(f => f.type === "IMPORT");
     
-    if (haveImport && haveExport) {
-      this.IRB.emitError("ModuleError", "cannot import module from same export file", node);
+    if (haveExport) {
+      this.IRB.haveExport = true;
     }
     
     for (const node of this.ast) {
@@ -145,7 +145,6 @@ define void @_assignSeed () {
         
         const returnType = node.returnType === "void" ?
           "void" : node.returnType.type;
-        
         
         const isArrayRet = returnType === "void" ? false : returnType === "List" ? false : node.returnType?.dimensions.length > 0;
         const retGeneric = returnType === "List" ? this.IRB.getDeepestGeneric(node.returnType.generic) : returnType;

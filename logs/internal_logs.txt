@@ -29,3 +29,21 @@ made all internal fn _ start prefix for internal zen llvm functions
 - Fixed struct passing and struct return edge cases.
 - Improved global string handling after opaque pointer migration.
 - Improved empty List type inference when type context exists.
+
+
+cli install github repo math is now dynamic. it takes default branch for github what user set.
+
+set decription 50 char to 400
+
+added zen recovery
+added zen uninstall
+
+bug fixes
+
+json to postgre migration for registry
+
+now support import and export modules in one file
+
+handled circular imports
+
+support lib import 

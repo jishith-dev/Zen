@@ -201,102 +201,6 @@ free(list);
 
 }
 
-bool _zen_list_contains(ZenList* list, void* value);
-bool _zen_list_deep_equals(ZenList* a, ZenList* b);
-
-static inline bool zen_is_pointer_type(ZenList* list) {
-    return list->element_size == sizeof(void*);
-}
-
-bool _zen_list_contains(
-    ZenList* list,
-    void* value
-) {
-
-    if (!list || !list->data) {
-        return false;
-    }
-
-    char* base = (char*)list->data;
-
-    for (int i = 0; i < list->size; i++) {
-
-        void* current =
-            base + (i * list->element_size);
-
-
-        if (zen_is_pointer_type(list)) {
-
-            ZenList* a = *(ZenList**)current;
-            ZenList* b = *(ZenList**)value;
-
-            if (a == b) {
-                return true; 
-            }
-
-            if (a && b && _zen_list_deep_equals(a, b)) {
-                return true;
-            }
-
-        }
-
-        else {
-
-            if (memcmp(
-                current,
-                value,
-                list->element_size
-            ) == 0) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-
-bool _zen_list_deep_equals(ZenList* a, ZenList* b) {
-
-    if (a == b) return true;
-
-    if (!a || !b) return false;
-
-    if (a->size != b->size) return false;
-
-    for (int i = 0; i < a->size; i++) {
-
-        void* a_cur = (char*)a->data + i * a->element_size;
-        void* b_cur = (char*)b->data + i * b->element_size;
-
-
-        if (zen_is_pointer_type(a)) {
-
-            ZenList* la = *(ZenList**)a_cur;
-            ZenList* lb = *(ZenList**)b_cur;
-
-            if (!_zen_list_deep_equals(la, lb)) {
-                return false;
-            }
-
-        }
-
-        else {
-
-            if (memcmp(
-                a_cur,
-                b_cur,
-                a->element_size
-            ) != 0) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-
 ZenList* zen_va_ints(
     int count,
     va_list args
@@ -407,28 +311,6 @@ ZenList* _sys_argv(int argc, char** argv) {
     return list;
 }
 
-int _zen_list_indexOf(ZenList* list, void* value) {
-  char* base = (char*)list->data;
-
-  for (int i = 0; i < list->size; i++) {
-    void* current = base + (i * list->element_size);
-
-    if (zen_is_pointer_type(list)) {
-      ZenList* a = *(ZenList**)current;
-      ZenList* b = *(ZenList**)value;
-
-      if (a == b) return i;
-      if (a && b && _zen_list_deep_equals(a, b)) return i;
-    } else {
-      if (memcmp(current, value, list->element_size) == 0) {
-        return i;
-      }
-    }
-  }
-
-  return -1;
-}
-
 char* _zen_list_join(
     ZenList* list,
     const char* sep
@@ -534,4 +416,46 @@ void _fs_writeFileBytes(
     }
 
     fclose(f);
+}
+
+bool _zen_list_contains_primitive(ZenList* list, void* value) {
+    if (!list || !list->data) return false;
+    char* base = (char*)list->data;
+    for (int i = 0; i < list->size; i++) {
+        if (memcmp(base + i * list->element_size, value, list->element_size) == 0)
+            return true;
+    }
+    return false;
+}
+
+int _zen_list_indexOf_primitive(ZenList* list, void* value) {
+    if (!list || !list->data) return -1;
+    char* base = (char*)list->data;
+    for (int i = 0; i < list->size; i++) {
+        if (memcmp(base + i * list->element_size, value, list->element_size) == 0)
+            return i;
+    }
+    return -1;
+}
+
+bool _zen_list_contains_string(ZenList* list, char** valuePtr) {
+    if (!list || !list->data) return false;
+    char* value = *valuePtr;
+    char** base = (char**)list->data;
+    for (int i = 0; i < list->size; i++) {
+        if (base[i] == value) return true;
+        if (base[i] && value && strcmp(base[i], value) == 0) return true;
+    }
+    return false;
+}
+
+int _zen_list_indexOf_string(ZenList* list, char** valuePtr) {
+    if (!list || !list->data) return -1;
+    char* value = *valuePtr;
+    char** base = (char**)list->data;
+    for (int i = 0; i < list->size; i++) {
+        if (base[i] == value) return i;
+        if (base[i] && value && strcmp(base[i], value) == 0) return i;
+    }
+    return -1;
 }

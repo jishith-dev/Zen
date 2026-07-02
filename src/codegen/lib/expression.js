@@ -307,9 +307,8 @@ if (!first) {
   };
 }
 
-
 const elemExpr =
-        this.handleExpression(first);
+        this.handleExpression(first, false, ContextType);
       
       this.IRB.emitExpr(elemExpr);
 
@@ -557,67 +556,84 @@ if (elemExpr.isStruct) {
             this.IRB.functions.has(possibleMethod);
           
           if (isMethod) {
-            
-            const fn =
-              this.IRB.getFunction(possibleMethod);
-            
-            const args = [];
-            
-            // implicit this
-            args.push(`ptr ${basePtr}`);
-            
-            // method args
-            for (const argNode of (node.args || [])) {
-              
-              const arg =
-                this.handleExpression(argNode);
-              
-              this.IRB.emitExpr(arg);
-              
-              args.push(
-                `${arg.llvmType} ${arg.ptr}`
-              );
-            }
-            
-            // void method
-            if (fn.returnType.type === "void") {
-              
-              this.IRB.emit(
-                `call void @${possibleMethod}(${args.join(", ")})`
-              );
-              
-              return {
-                ptr: null,
-                type: "void",
-                llvmType: "void",
-                local,
-                global: [],
-                isVarRef: false
-              };
-            }
-            
-            // returning method
-            const retType =
-              this.IRB.getLLVMType(
-                fn.returnType.type
-              );
-            
-            const tmp =
-              this.IRB.newTemp();
-            
-            this.IRB.emit(
-              `${tmp} = call ${retType} @${possibleMethod}(${args.join(", ")})`
-            );
-            
-            return {
-              ptr: tmp,
-              type: fn.returnType.type,
-              llvmType: retType,
-              local,
-              global: [],
-              isVarRef: false
-            };
-          }
+  const fn = this.IRB.getFunction(possibleMethod);
+
+  const args = [];
+
+  // implicit this
+  args.push(`ptr ${basePtr}`);
+
+  // method args
+  for (const argNode of (node.args || [])) {
+    const arg = this.handleExpression(argNode);
+    this.IRB.emitExpr(arg);
+    args.push(`${arg.llvmType} ${arg.ptr}`);
+  }
+
+  // void method
+  if (fn.returnType.type === "void") {
+    this.IRB.emit(
+      `call void @${possibleMethod}(${args.join(", ")})`
+    );
+    return {
+      ptr: null,
+      type: "void",
+      llvmType: "void",
+      local,
+      global: [],
+      isVarRef: false
+    };
+  }
+
+  const retType = this.IRB.getLLVMType(fn.returnType.type);
+  const isStruct = this.IRB.hasStruct(fn.returnType.type);
+
+  // struct-returning method — use sret convention
+  if (isStruct) {
+    const tmp = this.IRB.newTemp();
+    this.IRB.emit(`${tmp} = alloca ${retType}`);
+
+    const sretArgs = [
+      `ptr sret(${retType}) ${tmp}`,
+      ...args
+    ];
+
+    this.IRB.emit(
+      `call void @${possibleMethod}(${sretArgs.join(", ")})`
+    );
+
+    return {
+      ptr: tmp,
+      type: fn.returnType.type,
+      llvmType: retType,
+      isStruct: true,
+      isVarRef: false,
+      local,
+      global: []
+    };
+  }
+
+  // primitive / list-returning method
+  const tmp = this.IRB.newTemp();
+  this.IRB.emit(
+    `${tmp} = call ${retType} @${possibleMethod}(${args.join(", ")})`
+  );
+
+  const isList = fn.returnType.type === "List";
+
+  return {
+    ptr: tmp,
+    type: isList ? fn.retGeneric : fn.returnType.type,
+    llvmType: retType,
+    local,
+    retGeneric: fn.retGeneric,
+    generic: fn.generic,
+    isList,
+    isStruct: false,
+    global: [],
+    isVarRef: false
+  };
+}
           
           // FIELD LOOKUP
           
@@ -658,6 +674,8 @@ if (elemExpr.isStruct) {
         // LIST RETURN
         
         if (isList) {
+          
+          this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
           
           return {
             ptr: basePtr,
@@ -1005,7 +1023,7 @@ if (elemExpr.isStruct) {
           }
         }
         
-        
+        this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
         
         // RETURN FINAL VALUE
         
@@ -1026,7 +1044,7 @@ if (elemExpr.isStruct) {
       }
       
       
-      // list / method 
+      // list  / struct
       
       let structName = object.type;
       let basePtr = object.ptr;
@@ -1173,7 +1191,7 @@ this.IRB.emit(
           
           if (
             base.isMapValue ||
-            base.fromParam || base?.isDirectCall || !base?.needsLoad
+            base.fromParam || base?.isDirectCall
           ) {
             listTemp = base.ptr;
           } else {
@@ -1204,6 +1222,7 @@ this.IRB.emit(
           
           const isNested =
             normalizedGeneric?.type === "List";
+            
           const isStruct = this.IRB.hasStruct(base.type);
           
           return {
@@ -1345,45 +1364,59 @@ this.IRB.emit(
             ptr: tem,
             llvmType: "ptr",
             type: "string",
-            internalType: "char", // only for internal use
+            internalType: "char", // only for internal use,
+            needsLoad: false,
             local: base.local || [],
             global: []
           };
         }
         
-        local.push(
-          `${ptr} = getelementptr ${base.llvmType}, ptr ${base.addr}, i32 0, i32 ${index.ptr}`
-        );
-        
-        const nextType = this.IRB.getElementType(base.llvmType);
-        
-        return {
-          addr: ptr,
-          llvmType: nextType,
-          type: base.type,
-          local: base.local || [],
-          global: []
-        };
+      // fixed size array
+const basePtr = base.addr ?? base.ptr;
+
+const elemPtr = this.IRB.newTemp();
+
+local.push(
+  `${elemPtr} = getelementptr ${base.llvmType}, ptr ${basePtr}, i32 0, i32 ${index.ptr}`
+);
+
+const elemType = this.IRB.getElementType(base.llvmType);
+
+return {
+  ptr: elemPtr,
+  addr: elemPtr,
+  llvmType: elemType,
+  type: base.type,
+  local: base.local || [],
+  global: [],
+  needsLoad: true,
+  isArrayAccess: true
+};
       };
       
       const final = buildAccess(node);
       
       const val = this.IRB.newTemp();
       
-      const isStringCharAccess = final.internalType === "char";
       const isListAccess = final.isList;
-      const isDynamicMapAccess = final.isDynamicMapAccess;
       const isStruct = final?.isStruct;
+      const needsLoad = final?.needsLoad;
       
-      if (!isStringCharAccess && !isDynamicMapAccess && !isStruct) {
+      let resultPtr = final.ptr;
+      let resultAddr = final?.addr;
+      
+      if (!isStruct && needsLoad) {
+        
         local.push(`${val} = load ${final.llvmType}, ptr ${final.addr}`);
         final.needsLoad = false;
+        
+        resultPtr = val;
       }
       
       return {
-        ptr: isStringCharAccess || isDynamicMapAccess || isStruct ? final.ptr : val,
-        raw: final.addr,
-        addr: final.ptr,
+        ptr: resultPtr,
+        raw: resultAddr,
+        addr: resultAddr,
         type: final.type,
         llvmType: final.llvmType,
         local,
@@ -1394,7 +1427,7 @@ this.IRB.emit(
         isArray: final.isArray, 
         isStruct,
         generic: final?.generic,
-        needsLoad: final.needsLoad,
+        needsLoad: needsLoad,
         isListAccess: final?.isListAccess
       };
     }

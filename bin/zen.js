@@ -6,6 +6,7 @@ import readline from "readline";
 import os from "os";
 import { execSync } from "child_process";
 import { fileURLToPath, pathToFileURL } from "url";
+import { ModuleFiles } from "../src/codegen/lib/moduleFiles.js";
 
 class ZEN {
   constructor() {
@@ -17,10 +18,11 @@ class ZEN {
     this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(this.optFlagFromCommand);
     this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
     this.PROJECT_ROOT = null;
+    this.moduleFiles = new ModuleFiles();
     this.COMPILER_ROOT = null;
     this.validCommands = new Set([
   "run", "build", "ir", "ast", "tokens", "clean", "init", "list", "whoami",
-  "publish", "install",
+  "publish", "install", "recovery", "uninstall", 
   "signup", "login", "logout", "unpublish",
   "--help", "-h", "help", "--version", "-v", "version"
 ]);
@@ -155,11 +157,13 @@ Usage:
   zen clean <file>
   zen init <project-name>
   zen install <package-name>
+  zen uninstall <package-name>
   zen signup
   zen login
   zen whoami
   zen logout
   zen publish
+  zen recovery
   zen list
   zen unpublish <package>
   zen --help
@@ -170,6 +174,7 @@ Usage:
   // auth
 
 async handleSignup() {
+  
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -214,8 +219,16 @@ async handleSignup() {
       console.error(`error: ${data.error}`);
       process.exit(1);
     }
+    
+  console.log("ZEN RECOVERY CODES");
 
-    console.log(data.message);
+  data.codes.forEach((c, i) => {
+    console.log(`${i + 1}. ${c}`);
+  });
+
+  console.log("\nSave these codes. They will not be shown again.\n");
+
+   console.log(data.message);
   } catch (err) {
     rl.close();
     console.error(`error: ${err.message}`);
@@ -447,6 +460,41 @@ async handleLogout() {
   }
 }
 
+async handleUninstall() {
+  const packageName = this.args[1];
+
+  if (!packageName) {
+    console.error("error: Usage zen uninstall <package-name>");
+    process.exit(1);
+  }
+
+  try {
+    // Check current directory
+    let installDir = path.join(process.cwd(), packageName);
+    
+    // If not there, check ~/.zen/packages/
+    if (!fs.existsSync(installDir)) {
+      installDir = path.join(
+        process.env.HOME || process.env.USERPROFILE,
+        ".zen",
+        "packages",
+        packageName
+      );
+    }
+
+    if (!fs.existsSync(installDir)) {
+      console.error(`error: Package '${packageName}' not installed`);
+      process.exit(1);
+    }
+
+    fs.rmSync(installDir, { recursive: true, force: true });
+    console.log(`Uninstalled ${packageName}`);
+  } catch (err) {
+    console.error(`error: Uninstall failed: ${err.message}`);
+    process.exit(1);
+  }
+}
+
   async handleInstall() {
   const packageName = this.args[1];
 
@@ -478,9 +526,14 @@ async handleLogout() {
     const repoUrl = new URL(pkg.repo);
     const [owner, repo] = repoUrl.pathname.slice(1).split("/");
 
-    const configRes = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/main/zen.json`
-    );
+    const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+const repoData = await repoRes.json();
+
+const branch = repoData.default_branch;
+
+const configRes = await fetch(
+  `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/zen.json`
+);
 
     if (!configRes.ok) {
       console.error("error: Failed to fetch zen.json");
@@ -509,21 +562,30 @@ async handleLogout() {
     }
 
     if (fs.existsSync(installDir)) {
-      console.log(`Already installed at ${installDir}`);
-      return;
-    }
+  // Check if update needed
+  const localConfigPath = path.join(installDir, "zen.json");
+  const localConfig = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
+  
+  if (localConfig.version === pkg.latest) {
+    console.log(`Already installed at ${installDir} (latest)`);
+    return;
+  }
 
-    fs.mkdirSync(installDir, { recursive: true });
+  console.log(`Updating ${packageName} from v${localConfig.version} to v${pkg.latest}...`);
+  execSync(`cd ${installDir} && git pull`, { stdio: "inherit" });
+  console.log(`Updated to v${pkg.latest}`);
+  return;
+}
 
-    console.log(`Cloning ${owner}/${repo}...`);
+fs.mkdirSync(installDir, { recursive: true });
+console.log(`Cloning ${owner}/${repo}...`);
+execSync(
+  `git clone https://github.com/${owner}/${repo}.git ${installDir}`,
+  { stdio: "inherit" }
+);
 
-    execSync(
-      `git clone https://github.com/${owner}/${repo}.git ${installDir}`,
-      { stdio: "inherit" }
-    );
-
-    console.log(`Installed ${packageName} v${pkg.latest}`);
-    console.log(`Location: ${installDir}`);
+console.log(`Installed ${packageName} v${pkg.latest}`);
+console.log(`Location: ${installDir}`);
 
   } catch (err) {
     console.error(`error: Install failed: ${err.message}`);
@@ -616,6 +678,62 @@ async handleWhoami() {
       process.exit(1);
     }
   }
+  
+  async handleRecovery() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  const ask = (q) => new Promise(resolve => rl.question(q, resolve));
+
+  try {
+    const username = (await ask("Username: ")).trim();
+    const recoveryCode = (await ask("Recovery code: ")).trim();
+    const newPassword = await ask("New password: ");
+    const confirm = await ask("Confirm password: ");
+
+    rl.close();
+
+    if (!username || !recoveryCode || !newPassword) {
+      console.error("error: All fields required");
+      process.exit(1);
+    }
+
+    if (newPassword !== confirm) {
+      console.error("error: Passwords do not match");
+      process.exit(1);
+    }
+
+    const res = await fetch(
+      "https://zen-registry-production.up.railway.app/api/recovery",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username,
+          recoveryCode,
+          newPassword
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(`error: ${data.error}`);
+      process.exit(1);
+    }
+
+    console.log(data.message);
+  } catch (err) {
+    rl.close();
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+}
 
   async main() {
     const command = this.command;
@@ -666,6 +784,16 @@ if (command === "list") {
   return;
 }
 
+if (command === "recovery") {
+  await this.handleRecovery();
+  return;
+}
+
+if (command === "uninstall") {
+  await this.handleUninstall();
+  return;
+}
+
 if (command === "unpublish") {
   await this.handleUnpublish();
   return;
@@ -699,11 +827,12 @@ if (command === "unpublish") {
         pathToFileURL(path.join(this.COMPILER_ROOT, "src/codegen/helper/helper.js")).href
       )).IRBuilder;
     } catch (err) {
-      console.error("error: Failed to load IRBuilder");
+      console.error("error: Failed to load IRBuilder" + err);
       process.exit(1);
     }
 
     const IRB = new IRBuilder(this.moduleName);
+    
     await this.setSource(file, IRB);
 
     let Lexer;
@@ -717,8 +846,9 @@ if (command === "unpublish") {
     }
 
     const lexer = new Lexer(this.source, IRB);
+    
     const tokens = lexer.tokenize();
-
+    
     if (command === "tokens") {
       console.log(JSON.stringify(tokens, null, 2));
       process.exit(0);
@@ -751,9 +881,13 @@ if (command === "unpublish") {
       console.error("error: Failed to load CodeGen");
       process.exit(1);
     }
+    
+    this.moduleFiles.startCompiling(file);
 
-    const codegen = new CodeGen(ast, this.moduleName);
+    const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles);
     const llvm = codegen.generateLLVM();
+    
+    this.moduleFiles.finishCompiling(file);
 
     if (!llvm) {
       console.error("error: Code generation failed");
@@ -765,7 +899,8 @@ if (command === "unpublish") {
       process.exit(0);
     }
 
-    const moduleFiles = llvm.modules ? [...llvm.modules] : [];
+    const moduleFiles = this.moduleFiles.moduleFiles;
+    
     const buildDir = this.buildDir();
 
     if (command === "clean") {
@@ -814,7 +949,7 @@ if (command === "unpublish") {
     ];
 
     const outputExe = path.join(buildDir, this.moduleName);
-
+    
     this.run([
       "clang",
       outO,
