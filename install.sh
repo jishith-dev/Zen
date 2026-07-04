@@ -60,18 +60,17 @@ fi
 
 info "Checking LLVM version..."
 
-LLC_VERSION=$(llc --version | head -n1 | grep -oE '[0-9]+(\.[0-9]+)?' | cut -d. -f1)
+LLC_VERSION_LINE=$(llc --version 2>/dev/null | grep -m1 -oE 'LLVM version [0-9]+(\.[0-9]+)*' || true)
+LLC_VERSION=$(echo "$LLC_VERSION_LINE" | grep -oE '[0-9]+' | head -n1)
 
 if [ -z "$LLC_VERSION" ]; then
-  error "Unable to determine LLVM version."
-  exit 1
+    error "Unable to determine LLVM version."
+    exit 1
 fi
 
 if [ "$LLC_VERSION" -lt 20 ]; then
-  error "LLVM 20 or newer is required (found LLVM $LLC_VERSION)."
-  echo ""
-  echo "Please install LLVM 20 or later."
-  exit 1
+    error "LLVM 20 or newer is required (found LLVM $LLC_VERSION)."
+    exit 1
 fi
 
 success "LLVM $LLC_VERSION detected."
