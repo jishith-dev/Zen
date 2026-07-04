@@ -84,6 +84,7 @@ this.target = {
     this.symbolTable = [new Map()];
     this.structTable = new Map();
     this.usedStdlib = new Map();
+    this.enums = new Map();
   }
   
   reset(moduleName) {
@@ -494,6 +495,8 @@ sizeOf(type) {
     if (this.structTable.has(type)) {
       return `%${type}`;
     }
+    
+    if (type === "struct") return "ptr";
     
     if (type === "Map" || type === "List" || type === "ptr") {
       return "ptr";
@@ -2987,5 +2990,67 @@ loadFile(source, node) {
     return this.safeReadFile(entryFile);
   }
 
+registerBuiltInStructs(name, fields = [], methods = {}) {
 
+  const layout = [];
+  const fieldMap = {};
+  const llvmFields = [];
+
+  for (let i = 0; i < fields.length; i++) {
+
+    const f = fields[i];
+
+    const llvmType = this.getLLVMType(f.type);
+
+    layout.push({
+      name: f.name,
+      type: f.type,
+      llvmType,
+      index: i,
+      isList: false,
+      generic: null,
+      dimensions: []
+    });
+
+    fieldMap[f.name] = i;
+    llvmFields.push(llvmType);
+  }
+
+  this.globals.push(
+    `%${name} = type { ${llvmFields.join(", ")} }`
+  );
+
+  this.setStruct(name, {
+    isBuiltin: true,
+    isGlobal: true,
+    layout,
+    fieldMap,
+    size: fields.length,
+    methods
+  });
+
+  this.getStruct(name).byteSize = this.sizeOf(name);
+  this.getStruct(name).align = this.alignOf(name);
+}
+
+initBuiltInStructs() {
+
+  this.registerBuiltInStructs(
+    "HttpServer",
+    [],
+    { opaque: true }
+  );
+
+  this.registerBuiltInStructs(
+    "HttpRequest",
+    [],
+    { opaque: true }
+  );
+
+  this.registerBuiltInStructs(
+    "HttpResponse",
+    []
+  );
+
+}
 }

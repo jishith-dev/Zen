@@ -173,6 +173,21 @@ export class Struct {
 
   const expr = this.expr.handleExpression(value);
   this.IRB.emitExpr(expr);
+  
+  if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+    // opaque handle (HttpServer, HttpRequest, ...) 
+    let tmp;
+    if (globalScope) {
+      tmp = this.IRB.newGlobalTemp();
+      this.IRB.globals.push(`${tmp} = global ptr null`);
+    } else {
+      tmp = this.IRB.newTemp();
+      this.IRB.emit(`${tmp} = alloca ptr`);
+    }
+    this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
+    ptr = tmp;
+    isRet = false;
+  } else {
 
   ptr = this.IRB.newTemp();
   this.IRB.emit(`${ptr} = alloca ${llvmType}`);
@@ -188,6 +203,7 @@ export class Struct {
   );
 
   isRet = false;
+  }
 
     }
     

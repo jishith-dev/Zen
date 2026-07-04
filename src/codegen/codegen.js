@@ -9,6 +9,7 @@ import { Call } from './lib/call.js';
 import { Switch } from './lib/switch.js';
 import { Module } from './lib/moduleAnalyser.js';
 import { Expression } from './lib/expression.js';
+import { Enum } from './lib/enum.js';
 import { ZenMap } from './lib/map.js';
 import { ZenList } from './lib/list.js';
 import { Struct } from './lib/struct.js';
@@ -18,6 +19,7 @@ import { ZenSys } from './lib/builtins/sys/sys.js';
 import { OS } from './lib/builtins/os/os.js';
 import { Time } from './lib/builtins/time/time.js';
 import { ZenNetwork } from './lib/builtins/network/network.js';
+import { ZenHttpServer } from './lib/builtins/httpServer/httpServer.js';
 import { InferType } from './infer/infer.js';
 import { ZenFileSystem } from './lib/builtins/fileSystem/file.js';
 import { IO } from './lib/builtins/io/io.js';
@@ -47,7 +49,9 @@ export class CodeGen {
     this.map = new ZenMap(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
+    this.httpServer = new ZenHttpServer(this.IRB, this.expr);
     this.infer = new InferType(this.IRB, this.expr);
+    this.enum = new Enum(this.IRB);
     this.file = new ZenFileSystem(this.IRB, this.expr);
     this.path = new PATH(this.IRB, this.expr);
     this.module = new Module(this.IRB, moduleFiles);
@@ -63,7 +67,7 @@ export class CodeGen {
     
     this.type = new Type(this.IRB, this.expr);
     this.string = new ZenString(this.IRB, this.expr);
-    this.call = new Call(this.IRB, this.expr, this.io, this.type, this.string, this.file, this.os, this.time, this.network, this.http, this.sys, this.ffi, this.path);
+    this.call = new Call(this.IRB, this.expr, this.io, this.type, this.string, this.file, this.os, this.time, this.network, this.http, this.sys, this.ffi, this.path, this.httpServer);
     
     this.expr.setCall(this.call);
     this.call.setExpression(this.expr);
@@ -84,6 +88,8 @@ export class CodeGen {
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
+    
+    this.IRB.initBuiltInStructs();
     
     const haveExport = this.ast.find(f => f.type === "EXPORT");
     const haveImport = this.ast.find(f => f.type === "IMPORT");
@@ -284,6 +290,10 @@ define void @_assignSeed () {
         
       case 'RETURN':
         this.fn.handleReturn(node);
+        break;
+        
+      case 'ENUM': 
+        this.enum.handleEnum(node);
         break;
         
       case 'MAP_DECLARATION':

@@ -119,7 +119,7 @@ const char* _http_post(
     return zen_request("POST", url, body);
 }
 
-const char* _http_update(
+const char* _http_put(
     const char *url,
     const char *body
 ) {

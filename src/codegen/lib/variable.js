@@ -50,7 +50,7 @@
       }
       
       const expr = this.expr.handleExpression(node.value, globalScope);
-      
+    
       if (this.IRB.isDeclaredInCurrentScope(name)) {
         this.IRB.emitError("DeclarationError", `Variable '${name}' is already defined`, node)
       }
@@ -442,145 +442,168 @@
     }
     
     callVariable(node, globalScope) {
-      
-      const isVarDecl = node.type === "VARIABLE_DECLARATION";
-      const isMethodCall = !!node.value?.callee;
-      const name = node.name || node?.expression.name;
-      
-      if (isMethodCall) {
-        const fakeNode = {
-          type: "MEMBER_ACCESS",
-          field: node.value.callee.field,
-          object: node.value.callee.object,
-          args: node.value.args
-        }
-        
-        const valExpr = this.expr.handleExpression(fakeNode);
-        
-        this.IRB.emitExpr(valExpr);
-        
-        let ptr;
-        if (globalScope) {
-          if (isVarDecl) {
-            ptr = this.IRB.newGlobalTemp();
-            this.IRB.globals.push(`${ptr} = global ${valExpr.llvmType}  ${this.IRB.initialValue(valExpr.type)}`);
-            
-          } else {
-            const data = this.IRB.getVar(name, node);
-            ptr = data.ptr;
-          }
-          
-        } else { // local scope
-          if (isVarDecl) {
-            ptr = this.IRB.newTemp();
-            this.IRB.emit(`${ptr} = alloca ${valExpr.llvmType}`);
-            
-          } else {
-            const data = this.IRB.getVar(name, node);
-            ptr = data.ptr;
-          }
-        }
-        
-        this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
-        
-        const isConstant = isVarDecl ? node.isConstant : this.IRB.getVar(name, node).isConstant;
-        
-        this.IRB.setVar(node.name, this.IRB.createData({
-          ptr,
-          llvmType: valExpr.llvmType,
-          type: valExpr.type,
-          isConstant,
-          isGlobal: globalScope,
-          needsLoad: true
-        }));
-        return;
-      }
-      
-      this.IRB.guardGlobal(name, node);
-      let dataType = node.dataType;
-      if (dataType === "auto") {
-        dataType = this.infer.infer(node);
-      }
-      
-      const llvmType = this.IRB.getLLVMType(dataType);
-      
-      this.IRB.bindLineColumn(node)
-      
-      const val = this.expr.handleExpression(node.value, globalScope);
-      
-      // void check
-      if (val?.returnType === "void") {
-        this.IRB.emitError("TypeError", `Cannot assign result of '${node.value.name}' — function returns void`, node)
-      }
-      
-      if (val.type !== dataType) {
-        this.IRB.emitError("TypeError", `Cannot assign '${val.type}' to variable '${name}' of type '${dataType}'`, node)
-      }
-      
-      let ptr;
-      let value = this.IRB.initialValue(dataType);
-      
-      if (globalScope) {
-        if (isVarDecl) {
-          ptr = this.IRB.newGlobalTemp();
-          this.IRB.globals.push(`${ptr} = global ${llvmType} ${value}`);
-        } else {
-          const data = this.IRB.getVar(name, node);
-          ptr = data.ptr;
-        }
-        
-      } else {
-        if (isVarDecl) {
-          ptr = this.IRB.newTemp();
-          this.IRB.emit(`${ptr} = alloca ${llvmType}`);
-        } else {
-          const data = this.IRB.getVar(name, node);
-          ptr = data.ptr;
-        }
-      }
-      
-      const isList = val?.isList;
-      const isMap = val?.isMap;
-      const isStruct = val?.isStruct;
-      
-      if (isList || isMap) {
-        
-        this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
-      } else if (this.IRB.hasStruct(val.type)) {
-        if (val?.fromParam) {
-          this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
-        } else {
-          
-  const size = this.IRB.getStruct(val.type).byteSize;
 
-  this.IRB.declareOneTime(
-    "llvm.memcpy",
-    "declare void @llvm.memcpy(ptr, ptr, i64, i1)"
-  );
+  const isVarDecl = node.type === "VARIABLE_DECLARATION";
+  const isMethodCall = !!node.value?.callee;
+  const name = node.name || node?.expression.name;
+  let declaredType = node.dataType;
+  if (declaredType === "auto") declaredType = this.infer.infer(node);
 
-  this.IRB.emit(
-    `call void @llvm.memcpy(ptr ${ptr}, ptr ${val.ptr}, i64 ${size}, i1 false)`
-  );
+  if (isMethodCall) {
+    const fakeNode = {
+      type: "MEMBER_ACCESS",
+      field: node.value.callee.field,
+      object: node.value.callee.object,
+      args: node.value.args
+    };
 
-}
-      } else {
-        this.IRB.emit(`store ${llvmType} ${val.ptr}, ptr ${ptr}`);
-      }
-      
-      if (!isVarDecl) return;
-      
-      this.IRB.setVar(name, this.IRB.createData({
-        ptr,
-        llvmType: isList || isMap || isStruct ? "ptr" : llvmType,
-        type: dataType,
-        isConstant: false,
-        isGlobal: globalScope,
-        needsLoad: true,
-        isList,
-        isMap,
-        isStruct
-      }));
+    const valExpr = this.expr.handleExpression(fakeNode);
+
+    const actual = valExpr?.isList ? `List` : valExpr.type;
+    const expected = declaredType;
+
+    if (valExpr?.isList || declaredType !== valExpr.type) {
+      this.IRB.emitError(
+        "TypeError",
+        `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
+        node
+      );
     }
+
+    this.IRB.emitExpr(valExpr);
+
+    let ptr;
+    if (globalScope) {
+      if (isVarDecl) {
+        ptr = this.IRB.newGlobalTemp();
+        this.IRB.globals.push(`${ptr} = global ${valExpr.llvmType}  ${this.IRB.initialValue(valExpr.type)}`);
+      } else {
+        const data = this.IRB.getVar(name, node);
+        ptr = data.ptr;
+      }
+    } else { // local scope
+      if (isVarDecl) {
+        ptr = this.IRB.newTemp();
+        this.IRB.emit(`${ptr} = alloca ${valExpr.llvmType}`);
+      } else {
+        const data = this.IRB.getVar(name, node);
+        ptr = data.ptr;
+      }
+    }
+
+    this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
+
+    const isConstant = isVarDecl ? node.isConstant : this.IRB.getVar(name, node).isConstant;
+
+    this.IRB.setVar(node.name, this.IRB.createData({
+      ptr,
+      llvmType: valExpr.llvmType,
+      type: valExpr.type,
+      isConstant,
+      isGlobal: globalScope,
+      needsLoad: true
+    }));
+    return;
+  }
+
+  this.IRB.guardGlobal(name, node);
+  let dataType = node.dataType;
+  if (dataType === "auto") {
+    dataType = this.infer.infer(node);
+  }
+
+  const llvmType = this.IRB.getLLVMType(dataType);
+
+  this.IRB.bindLineColumn(node);
+
+  const val = this.expr.handleExpression(node.value, globalScope);
+
+  // void check
+  if (val?.returnType === "void") {
+    this.IRB.emitError("TypeError", `Cannot assign result of '${node.value.name}' — function returns void`, node);
+  }
+
+  if (val.type !== dataType) {
+    this.IRB.emitError("TypeError", `Cannot assign '${val.type}' to variable '${name}' of type '${dataType}'`, node);
+  }
+
+  let ptr;
+  let value = this.IRB.initialValue(dataType);
+
+  if (globalScope) {
+    if (isVarDecl) {
+      ptr = this.IRB.newGlobalTemp();
+      this.IRB.globals.push(`${ptr} = global ${llvmType} ${value}`);
+    } else {
+      const data = this.IRB.getVar(name, node);
+      ptr = data.ptr;
+    }
+  } else {
+    if (isVarDecl) {
+      ptr = this.IRB.newTemp();
+      this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+    } else {
+      const data = this.IRB.getVar(name, node);
+      ptr = data.ptr;
+    }
+  }
+
+  const isList = val?.isList;
+  const isMap = val?.isMap;
+  const isStruct = val?.isStruct;
+
+  if (isList || isMap) {
+
+    this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
+  } else if (this.IRB.hasStruct(val.type)) {
+    if (val?.fromParam) {
+      this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
+    } else {
+
+      const structInfo = this.IRB.getStruct(val.type);
+      if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+        // opaque handle (HttpServer, HttpRequest, ...)
+        let tmp;
+        if (globalScope) {
+          tmp = this.IRB.newGlobalTemp();
+          this.IRB.globals.push(`${tmp} = global ptr null`);
+        } else {
+          tmp = this.IRB.newTemp();
+          this.IRB.emit(`${tmp} = alloca ptr`);
+        }
+        this.IRB.emit(`store ptr ${val.ptr}, ptr ${tmp}`);
+        ptr = tmp;
+      } else {
+        const size = this.IRB.getStruct(val.type).byteSize;
+
+        this.IRB.declareOneTime(
+          "llvm.memcpy",
+          "declare void @llvm.memcpy(ptr, ptr, i64, i1)"
+        );
+
+        this.IRB.emit(
+          `call void @llvm.memcpy(ptr ${ptr}, ptr ${val.ptr}, i64 ${size}, i1 false)`
+        );
+      }
+    }
+  } else {
+    this.IRB.emit(`store ${llvmType} ${val.ptr}, ptr ${ptr}`);
+  }
+
+  if (!isVarDecl) return;
+
+  this.IRB.setVar(name, this.IRB.createData({
+    ptr,
+    llvmType: isList || isMap || isStruct ? "ptr" : llvmType,
+    type: dataType,
+    isConstant: false,
+    isGlobal: globalScope,
+    needsLoad: true,
+    isList,
+    isMap,
+    isStruct
+  }));
+}
     
     arrayVariable(node, globalScope) {
       

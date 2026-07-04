@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 1.1.1** · Stable · June 2026
+**Version 1.2.1** · Stable · June 2026
 
 **GitHub**: https://github.com/`Jishith-dev/Zen`
 **Contact**: jishithmp534@gmail.com
@@ -59,19 +59,29 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v1.1.1
+Current Version: v1.2.1
 
-### v1.1.1 
+### v1.2.1
 
-- Full LLVM-based compiler pipeline
-- Lexer, Parser, AST generation
-- LLVM IR generation and optimization
-- Native binary generation via clang
-- CLI support (run, build, ir, ast, tokens, clean, init, login, signup, logout, recovery, whoami, list, publish, unpublish, install)
-- Basic type system (int, double, string, bool, List, Map)
-- Control flow (if, switch, loop, while)
-- Functions and structs
-- Error reporting system (ReferenceError, TypeError, InternalError)
+- Dynamic GitHub default branch detection for `zen install`
+- Increased package description limit from 50 to 400 characters
+- Added `zen recovery` command
+- Added `zen uninstall` command
+- Migrated package registry from JSON to PostgreSQL
+- Added support for importing and exporting modules in the same file
+- Added circular import handling
+- Added library imports
+- Introduced built-in `HttpServer`, `HttpRequest`, and `HttpResponse` structs
+- Added `httpServer` namespace
+- Added `httpServer.create()`
+- Added `HttpServer.listen()`, `HttpServer.next()`, and `HttpServer.close()`
+- Added `HttpRequest.method` and `HttpRequest.path`
+- Added `HttpRequest.json()`, `html()`, `css()`, `send()`, `setHeader()`, `redirect()`, and `status()`
+- Added new system functions: `sys.setEnv()`, `sys.hasEnv()`, `sys.timestamp()`, `sys.execOutput()`
+- Added new OS functions: `os.exit()`, `os.pid()`, `os.parentPid()`, `os.platform()`, `os.isWindows()`, `os.isLinux()`, `os.isMac()`, `os.isAndroid()`, and `os.homeDir()`
+- Added new package manager commands: `zen search`, `zen my_packages`, and `zen kind`
+- Introduced `enum` with constant integer values
+- Several compiler, CLI, registry, and runtime bug fixes
 
 ---
 
@@ -162,6 +172,10 @@ zen init <name> --bin      # Create a new library Zen package
 
 ```bash
 zen install <package>      # Install a package
+zen uninstall <package>    # Remove an installed package
+zen search <package>       # Search packages
+zen kind <package>         # Show package kind (main/bin)
+zen mine                   # List your published packages
 zen publish                # Publish/update your package
 zen unpublish              # Remove your package from registry
 zen list                   # Browse all available packages
@@ -197,6 +211,11 @@ zen run <file> -O0         # No optimization
 zen run <file> -O1         # Basic optimization
 zen run <file> -O2         # Standard optimization (default)
 zen run <file> -O3         # Aggressive optimization
+
+zen build <file> -O0       # No optimization
+zen build <file> -O1       # Basic optimization
+zen build <file> -O2       # Standard optimization (default)
+zen build <file> -O3       # Aggressive optimization
 ```
 
 ### Examples
@@ -418,25 +437,65 @@ base = 20   # doubled → 40, final → 45
 | Chained reactives | Supported — propagates in order |
 | Expression type | Variable references only |
 
+---
+
+## Enumerations (enum)
+
+Zen provides **enumerations (`enum`)** for defining a fixed set of named constant integer values.
+
+### Syntax
+
+```zen
+enum <Name> {
+    value1,
+    value2,
+    value3 = 10
+}
+```
+
+### Example
+
+```zen
+enum Color {
+    green,
+    red,
+    blue = 3
+}
+
+print(Color.green)   # 0
+print(Color.red)     # 1
+print(Color.blue)    # 3
+```
+
+### Rules
+
+- Enum values must be constant integers.
+- Values without an explicit assignment are automatically incremented.
+- Only single-value enum members are supported.
+
+---
 
 ## Scope of This Specification
 
-Version 1.0.0 defines the **stable core** of the language:
+Version 1.2.1 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
 - Primitive and composite data types
-- Variable and map declarations
-- Function definitions
+- Variable, reactive variable, enum, and map declarations
+- Function and struct definitions
+- Module import/export system
 - Control flow constructs
+- Built-in HTTP server API
 - Compilation and evaluation model
 
-Future versions will address type system extensions, optimization semantics, and concurrency primitives.
+Future versions will continue expanding the standard library, language features, and compiler optimizations.
 
+---
 
 ## Lexical Structure
 
-The ZEN compiler reduces source text into a flat sequence of tokens before any parsing occurs. Each token carries two fields: a **type** and a **value**. All subsequent grammar rules operate on this token stream, never on raw source characters.
+The ZEN compiler reduces source text into a flat sequence of tokens before any parsing occurs. Each token carries four fields: a **type** and a **value** and **line** and **column**. All subsequent grammar rules operate on this token stream, never on raw source characters.
 
 ---
 
@@ -490,6 +549,7 @@ The following identifiers are reserved by the language and may not be used as us
 | Category | Keywords |
 |---|---|
 | **Types** | `int` `double` `string` `bool` `List` `Map` |
+| **Speacial Type** | `byte` |
 | **reactive** | `reactive` |
 | **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` |
 | **Loop Control flow** | `break` `continue` |
@@ -1492,6 +1552,58 @@ p.age = 21
 p.greet()
 string n = p.getName()
 ```
+
+---
+
+#### Built-in Structs
+
+Zen provides several built-in structs that are available without importing any library.
+
+##### HttpServer
+
+Represents an HTTP server instance.
+
+```zen
+HttpServer server = httpServer.create(8080)
+
+while (server.listen() == 1) {
+    HttpRequest req = server.next()
+
+    req.send("Hello, World!")
+}
+
+server.close()
+```
+
+##### HttpRequest
+
+Represents an HTTP request and provides request information and response helpers.
+
+**Properties**
+
+```zen
+req.method
+req.path
+```
+
+**Methods**
+
+```zen
+req.json(...)
+req.html(...)
+req.css(...)
+req.send(...)
+req.setHeader(...)
+req.redirect(...)
+req.status(...)
+```
+
+##### HttpResponse
+
+Reserved for future releases.
+
+---
+
 ## 5. Data Structures
 
 ZEN provides four built-in data structure types: `Map`, `List`, fixed-size arrays, and `struct`. Each has distinct memory characteristics, mutability rules, and supported operations.
@@ -1555,7 +1667,7 @@ Map b = {
 }
 ```
 
-> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.1.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
+> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.2.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
 
 #### Field Access
 
@@ -1952,7 +2064,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.1.1, and methods cannot be called on a struct type directly — only on an instance.
+Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.2.1, and methods cannot be called on a struct type directly — only on an instance.
 
 ```zen
 Counter c
@@ -2693,6 +2805,7 @@ Only global symbols may be exported.
 | Global struct instance | `Person p` |
 | Initialized global struct instance | `Person p = { name: "ZEN" }` |
 | Static global array | `int arr[3] = [1, 2, 3]` |
+| enum | `Colors` |
 
 #### Non-Exportable Values
 
@@ -2717,23 +2830,46 @@ fn createPerson() Person {
   return user
 }
 
-export(Person, user, createPerson)
+enum Colors {
+  green,
+  red
+}
+
+export(Person, user, createPerson, Colors)
 ```
 
-#### Exported Files and Import Restriction
+---
 
-A file that exports identifiers must not itself contain any `import` statement. Circular or dependent module chains are not permitted in v1.1.1. This is a compile-time error.
+#### Exported Files and Imports
+
+Exported modules can also import other modules. Zen automatically resolves dependency chains and handles circular imports at compile time.
 
 ```zen
-import(utils) from "utils.zen"   # compile-time error: exported file cannot import
-export(a, add)
+# utils.zen
+import(math) from "math.zen"
+
+fn add(a int, b int) int {
+    return math.add(a, b)
+}
+
+export(add)
 ```
+
+**Rules**
+
+- Exported files may contain `import` statements.
+- Circular imports are supported and resolved automatically by the compiler.
+- Each module is compiled only once, even if imported multiple times.
+- If a file exports identifiers, it cannot contain top-level executable code.
+- Top-level variable initializers, expressions, loops, conditionals, function calls, and other executable statements are not permitted in exported modules.
+- Exported modules should only contain declarations such as `fn`, `struct`, `enum`, global constants/variables, `import`, and `export`.
+- Any executable logic should be placed inside functions and exported as needed.
 
 ---
 
 ### 10.2 Import
 
-The `import` keyword brings exported identifiers from another file into the current file's global scope.
+The `import` keyword brings exported identifiers from another file or an installed package into the current file's global scope.
 
 ```
 import_stmt
@@ -2743,9 +2879,12 @@ import_stmt
 #### Rules
 
 - All `import` statements must appear at the top of the file, before any declarations or statements.
-- Imported names must exactly match the names declared in the `export` statement of the target file.
-- The path must point to a `.zen` file. Paths may be relative to the current file or absolute depending on the environment.
+- Imported names must exactly match the names declared in the `export` statement of the target module.
+- Local modules must reference a `.zen` file.
+- Installed packages are imported by package name and **must not** include the `.zen` extension.
 - Imported identifiers are used directly by name — no namespace prefix is required.
+
+#### Importing a Local Module
 
 ```zen
 import(a, add, MAX) from "utils.zen"
@@ -2754,9 +2893,16 @@ int result = add(10, 20)
 int total = a + MAX
 ```
 
+#### Importing an Installed Package
+
+```zen
+import(get, post) from "http"
+import(format) from "colors"
+```
+
 #### Name Mismatch
 
-If an imported name does not exist in the target file's export list, the compiler raises an error.
+If an imported name does not exist in the target module's export list, the compiler raises an error.
 
 ```zen
 import(add, multiply) from "utils.zen"   # compile-time error if multiply is not exported
@@ -2764,11 +2910,12 @@ import(add, multiply) from "utils.zen"   # compile-time error if multiply is not
 
 #### Multiple Imports
 
-A file may import from multiple source files using separate `import` statements, all placed at the top.
+A file may import from multiple source files and installed packages using separate `import` statements.
 
 ```zen
 import(add, subtract) from "math.zen"
 import(greet) from "utils.zen"
+import(format) from "colors"
 
 int x = add(1, 2)
 greet("ZEN")
@@ -2782,13 +2929,16 @@ greet("ZEN")
 |---|---|
 | One `export` per file | Multiple export statements are a compile-time error |
 | Export at bottom | Required for variables; recommended for functions |
-| Static values only | Expressions and runtime-dependent values cannot be exported |
-| No import in exported file | An exporting file must not import anything |
-| Import at top | All imports must precede any other statements |
-| Direct name access | Imported identifiers are used directly, no namespace prefix |
+| Exported modules may import | Exporting files are allowed to import other modules and packages |
+| No top-level executable code | Exported modules cannot contain expressions, loops, conditionals, function calls, or other executable statements outside functions |
+| Import at top | All imports must precede any other declarations or statements |
+| Direct name access | Imported identifiers are used directly, with no namespace prefix |
 | Exact name match | Imported names must match the export list exactly |
-| `.zen` extension required | Import paths must reference `.zen` files |
+| Local modules | Local file imports must reference `.zen` files |
+| Installed packages | Installed packages are imported by package name without the `.zen` extension |
+| Circular imports | Supported and automatically resolved by the compiler |
 
+---
 
 ## 11. Standard Library
 
@@ -3145,6 +3295,87 @@ if (x < 0) {
 
 ---
 
+##### `sys.setEnv`
+
+Sets an environment variable for the current process.
+
+```
+sys.setEnv(key, value)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Environment variable name |
+| `value` | `string` | Value to assign |
+
+Returns `void`.
+
+```zen
+sys.setEnv("API_KEY", "123456")
+```
+
+---
+
+##### `sys.hasEnv`
+
+Checks whether an environment variable exists.
+
+```
+sys.hasEnv(key)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Environment variable name |
+
+Returns `bool`.
+
+```zen
+if (sys.hasEnv("API_KEY")) {
+    print("Found")
+}
+```
+
+---
+
+##### `sys.timestamp`
+
+Returns the current Unix timestamp.
+
+```
+sys.timestamp()
+```
+
+Returns `int`.
+
+```zen
+int ts = sys.timestamp()
+print(ts)
+```
+
+---
+
+##### `sys.execOutput`
+
+Executes a system command and returns its standard output.
+
+```
+sys.execOutput(command)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `command` | `string` | Command to execute |
+
+Returns `string`.
+
+```zen
+string out = sys.execOutput("pwd")
+print(out)
+```
+
+---
+
 ##### `sys.argv`
 
 Returns the command-line arguments passed to the program as a `List<string>`.
@@ -3442,9 +3673,7 @@ int result = fs.changeDir("../project")
 
 #### 11.3.3 `os`
 
-Operating system and hardware information. All `os` functions take no parameters.
-
----
+Operating system and hardware information.
 
 | Function | Returns | Description |
 |---|---|---|
@@ -3455,18 +3684,35 @@ Operating system and hardware information. All `os` functions take no parameters
 | `os.totalMemory()` | `int` | Total system RAM in bytes |
 | `os.freeMemory()` | `int` | Available RAM in bytes |
 | `os.usedMemory()` | `int` | Used RAM in bytes |
-| `os.processMemory()` | `int` | RAM used by the current ZEN process in bytes |
+| `os.processMemory()` | `int` | RAM used by the current Zen process in bytes |
 | `os.osName()` | `string` | Operating system name e.g. `"Linux"` |
 | `os.osVersion()` | `string` | OS version string |
 | `os.hostname()` | `string` | Machine hostname |
 | `os.username()` | `string` | Current logged-in username |
 | `os.uptime()` | `int` | System uptime in seconds |
 | `os.battery()` | `string` | Battery status string |
+| `os.exit(code)` | `void` | Terminates the current process with the specified exit code |
+| `os.pid()` | `int` | Returns the current process ID |
+| `os.parentPid()` | `int` | Returns the parent process ID |
+| `os.platform()` | `string` | Returns the current operating system platform |
+| `os.isWindows()` | `bool` | Returns `true` if running on Windows |
+| `os.isLinux()` | `bool` | Returns `true` if running on Linux |
+| `os.isMac()` | `bool` | Returns `true` if running on macOS |
+| `os.isAndroid()` | `bool` | Returns `true` if running on Android |
+| `os.homeDir()` | `string` | Returns the current user's home directory |
 
 ```zen
 screen(os.osName())
 screen(os.cpuCount())
+screen(os.platform())
+
+if (os.isLinux()) {
+    screen("Running on Linux")
+}
+
 int mem = os.freeMemory()
+screen(os.pid())
+screen(os.homeDir())
 ```
 
 ---
@@ -3716,8 +3962,6 @@ string res = http.delete("https://api.example.com/users/1")
 
 Foreign Function Interface (FFI) bindings to selected C standard library functions.
 
----
-
 ##### Available Functions
 
 | Function | Description |
@@ -3786,6 +4030,30 @@ int value = ffi.atoi("123")
 ```
 
 > FFI functions are thin wrappers around native C library functions. Their behavior follows the underlying platform implementation.
+
+---
+
+### 11.3.8 `httpServer`
+
+The `httpServer` namespace provides a built-in HTTP server for handling incoming HTTP requests.
+
+##### `httpServer.create`
+
+Creates a new HTTP server bound to the specified port.
+
+```
+httpServer.create(port)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `port` | `int` | Port number to listen on |
+
+Returns `HttpServer`.
+
+```zen
+HttpServer server = httpServer.create(8080)
+```
 
 ---
 
@@ -4629,7 +4897,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v1.1.1. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v1.2.1. All compilation uses `-O2` by default.
 
 ---
 
@@ -5186,7 +5454,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v1.1.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
+ZEN v1.2.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -5251,7 +5519,7 @@ The following names are reserved as built-in functions, standard library functio
 
 #### Namespace Identifiers
 
-`os` `fs` `sys` `time` `http` `net`
+`os` `fs` `sys` `time` `http` `net` `httpServer`
 
 ---
 
@@ -5417,7 +5685,7 @@ For bugs, contributions, or discussions:
 
 - Email: jishithmp534@gmail.com
 - GitHub: https://github.com/`Jishith-dev/Zen`
-- 
+- Github registry: https://github.com/`Jishith-dev/zen-registry`
 
 ## Disclaimer
 

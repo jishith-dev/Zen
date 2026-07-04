@@ -30,8 +30,9 @@ made all internal fn _ start prefix for internal zen llvm functions
 - Improved global string handling after opaque pointer migration.
 - Improved empty List type inference when type context exists.
 
+v1.2.1
 
-cli install github repo math is now dynamic. it takes default branch for github what user set.
+(cli install github repo math is now dynamic. it takes default branch for github what user set.
 
 set decription 50 char to 400
 
@@ -46,4 +47,56 @@ now support import and export modules in one file
 
 handled circular imports
 
-support lib import 
+support lib import) -- i committed this all . need bottom commit
+
+inbuilt struct HttpServer and HttpRequest and HttpResponse (not used HttpResonse noe but still its inbuilt for future reference)
+
+new namespace httpServer.
+
+httpServer.create() fn
+
+and HttpServer methods such as 
+listen(), next(), close()
+
+and HttpRequest props such as
+method path
+json() html() css() send() setHeader() redirect() status()
+
+several bug fixes
+
+added these namespace more functions:
+  "_sys_setEnv",
+  "_sys_hasEnv",
+  "_sys_timestamp",
+  "_sys_execOutput",
+  
+    // HTTP server
+  "_httpServer_create",
+  
+  "_os_exit",
+  "_os_pid",
+  "_os_parentPid",
+  "_os_platform",
+  "_os_isWindows",
+  "_os_isLinux",
+  "_os_isMac",
+  "_os_isAndroid",
+  "_os_homeDir",
+
+  new zen pkg cli :
+  
+  zen search <package name>
+  zen my_packages
+  zen kind <package name>
+  
+  introduced enumerator (enum)
+  
+  syntax: 
+  enum Color {
+    green,
+    red,
+    blue = 3
+  }
+  
+  must be constant integer
+  do not support multiple same fields

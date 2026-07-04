@@ -101,3 +101,66 @@ Generated `zen.json`:
 
 - `contains()` no longer performs struct literal comparisons
 - Various compiler, runtime, and standard library bug fixes
+
+
+## v1.2.1
+
+### Language
+
+- Introduced `enum` with constant integer values
+- Added support for importing and exporting within the same module
+- Added circular import detection and resolution
+- Added installed package imports (`import(...) from "package"`)
+- Exported modules can now import other modules and packages
+- Added built-in `HttpServer`, `HttpRequest`, and `HttpResponse` structs
+
+### Standard Library
+
+- Added `httpServer` namespace
+- Added `httpServer.create(port)`
+- Added `HttpServer.listen()`
+- Added `HttpServer.next()`
+- Added `HttpServer.close()`
+- Added `HttpRequest.method`
+- Added `HttpRequest.path`
+- Added `HttpRequest.json()`
+- Added `HttpRequest.html()`
+- Added `HttpRequest.css()`
+- Added `HttpRequest.send()`
+- Added `HttpRequest.setHeader()`
+- Added `HttpRequest.redirect()`
+- Added `HttpRequest.status()`
+- Added `sys.setEnv()`
+- Added `sys.hasEnv()`
+- Added `sys.timestamp()`
+- Added `sys.execOutput()`
+- Added `os.exit()`
+- Added `os.pid()`
+- Added `os.parentPid()`
+- Added `os.platform()`
+- Added `os.isWindows()`
+- Added `os.isLinux()`
+- Added `os.isMac()`
+- Added `os.isAndroid()`
+- Added `os.homeDir()`
+
+### Tooling
+
+- Added `zen recovery` for account recovery
+- Added `zen uninstall <package>`
+- Added `zen search <package>`
+- Added `zen kind <package>`
+- Added `zen mine`
+- `zen install` now automatically detects the repository's default Git branch
+- Increased package description limit from 50 to 400 characters
+- Migrated the package registry backend from JSON storage to PostgreSQL
+
+### Compiler & Runtime
+
+- Improved module dependency resolution
+- Improved import/export compilation
+- Improved HTTP runtime support
+
+### Fixes
+
+- Various compiler, runtime, CLI, package registry, and standard library bug fixes

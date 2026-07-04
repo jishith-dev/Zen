@@ -65,7 +65,7 @@ const NON_SCALAR_TYPES = ["string"];
 
 // keywords
 
-const KEYWORDS = ["if", "else if", "else", "loop", "break", "continue", "return", "fn", "const", "void", "while", "switch", "case", "default", "import", "export", "from", "struct", "auto", "List", "this", "do", "in", "of", "async", "await", "Map", "auto", "reactive"];
+const KEYWORDS = ["if", "else if", "else", "loop", "break", "continue", "return", "fn", "const", "void", "while", "switch", "case", "default", "import", "export", "from", "struct", "auto", "List", "this", "do", "in", "of", "async", "await", "Map", "auto", "reactive", "enum"];
 
 // lexer tokens
 
@@ -212,6 +212,13 @@ const BUILTIN_FUNCTIONS = [
   "_sys_color",
   "_sys_performance",
   "_sys_argv",
+  "_sys_setEnv",
+  "_sys_hasEnv",
+  "_sys_timestamp",
+  "_sys_execOutput",
+  
+  // HTTP server
+  "_httpServer_create",
   
   // FS
   "_fs_cwd",
@@ -241,6 +248,15 @@ const BUILTIN_FUNCTIONS = [
   "_os_username",
   "_os_uptime",
   "_os_battery",
+  "_os_exit",
+  "_os_pid",
+  "_os_parentPid",
+  "_os_platform",
+  "_os_isWindows",
+  "_os_isLinux",
+  "_os_isMac",
+  "_os_isAndroid",
+  "_os_homeDir",
   
   // NET
   "_net_online",
@@ -257,7 +273,7 @@ const BUILTIN_FUNCTIONS = [
   // HTTP
   "_http_get",
   "_http_post",
-  "_http_update",
+  "_http_put",
   "_http_patch",
   "_http_delete",
   
@@ -377,8 +393,21 @@ const NAMESPACE_MAP = {
     "hostname",
     "username",
     "uptime",
-    "battery"
+    "battery",
+    "exit",
+    "pid",
+    "parentPid",
+    "platform",
+    "isWindows",
+    "isLinux",
+    "isAndroid",
+    "isMac",
+    "homeDir"
   ],
+  
+  httpServer: [
+    "create"
+    ],
   
   fs: [
     "readFile",
@@ -400,7 +429,11 @@ const NAMESPACE_MAP = {
     "getEnv",
     "color",
     "performance",
-    "argv"
+    "argv",
+    "setEnv",
+    "hasEnv",
+    "timestamp",
+    "execOutput"
   ],
   
   time: [
@@ -416,7 +449,7 @@ const NAMESPACE_MAP = {
   http: [
     "get",
     "post",
-    "update",
+    "put",
     "delete",
     "patch"
   ],
@@ -575,6 +608,32 @@ const BUILTIN_MAP = {
     llvmName: "_sys_argv"
   },
   
+  setEnv: {
+    returnType: "void",
+    llvmName: "_sys_setEnv"
+  },
+
+  hasEnv: {
+    returnType: "bool",
+    llvmName: "_sys_hasEnv"
+  },
+
+  execOutput: {
+    returnType: "string",
+    llvmName: "_sys_execOutput"
+  },
+
+  timestamp: {
+    returnType: "int",
+    llvmName: "_sys_timestamp"
+  },
+  
+  create: {
+    returnType: "struct",
+    llvmName: "_httpServer_create"
+  },
+  
+  
   readFile: {
     returnType: "string",
     llvmName: "_fs_readFile"
@@ -700,6 +759,51 @@ const BUILTIN_MAP = {
     returnType: "string",
     llvmName: "_os_battery"
   },
+  
+  exit: {
+    returnType: "void",
+    llvmName: "_os_exit"
+  },
+
+  pid: {
+    returnType: "int",
+    llvmName: "_os_pid"
+  },
+
+  parentPid: {
+    returnType: "int",
+    llvmName: "_os_parentPid"
+  },
+
+  platform: {
+    returnType: "string",
+    llvmName: "_os_platform"
+  },
+
+  isWindows: {
+    returnType: "bool",
+    llvmName: "_os_isWindows"
+  },
+
+  isLinux: {
+    returnType: "bool",
+    llvmName: "_os_isLinux"
+  },
+
+  isMac: {
+    returnType: "bool",
+    llvmName: "_os_isMac"
+  },
+
+  isAndroid: {
+    returnType: "bool",
+    llvmName: "_os_isAndroid"
+  },
+  
+  homeDir: {
+    returnType: "string",
+    llvmName: "_os_homeDir"
+  },
 
   
   online: {
@@ -754,9 +858,9 @@ const BUILTIN_MAP = {
     llvmName: "_http_post"
   },
   
-  update: {
+  put: {
     returnType: "string",
-    llvmName: "_http_update"
+    llvmName: "_http_put"
   },
   
   patch: {
@@ -1110,6 +1214,7 @@ const ParserTypes = {
   MAP_LITERAL: "MAP_LITERAL",
   MAP_PROPERTY: "MAP_PROPERTY",
   SWITCH: "SWITCH",
+  ENUM: "ENUM",
   LOOP_IN: "LOOP_IN",
   LOOP_OF: "LOOP_OF",
   DO_WHILE: "DO_WHILE",
@@ -1347,9 +1452,80 @@ const OS_MAP = {
     "string",
     0,
     []
+  ],
+  
+  _os_exit: [
+    "_os_exit",
+    "void",
+    1,
+    ["int"]
+  ],
+
+  _os_pid: [
+    "_os_pid",
+    "int",
+    0,
+    []
+  ],
+
+  _os_parentPid: [
+    "_os_parentPid",
+    "int",
+    0,
+    []
+  ],
+
+  _os_platform: [
+    "_os_platform",
+    "string",
+    0,
+    []
+  ],
+
+  _os_isWindows: [
+    "_os_isWindows",
+    "bool",
+    0,
+    []
+  ],
+
+  _os_isLinux: [
+    "_os_isLinux",
+    "bool",
+    0,
+    []
+  ],
+
+  _os_isMac: [
+    "_os_isMac",
+    "bool",
+    0,
+    []
+  ],
+
+  _os_isAndroid: [
+    "_os_isAndroid",
+    "bool",
+    0,
+    []
+  ],
+  
+  _os_homeDir: [
+  "_os_homeDir",
+  "string",
+  0,
+  []
   ]
 };
 
+const HTTPSERVER_MAP = {
+  _httpServer_create: [
+    "_httpServer_create",
+    "struct",
+    1,
+    ["int"]
+    ]
+}
 
 const FILE_MAP = {
   
@@ -1476,6 +1652,34 @@ const SYS_MAP = {
     0,
     []
   ],
+  
+  _sys_setEnv: [
+    "_sys_setEnv",
+    "void",
+    2,
+    ["string", "string"]
+  ],
+
+  _sys_hasEnv: [
+    "_sys_hasEnv",
+    "bool",
+    1,
+    ["string"]
+  ],
+
+  _sys_execOutput: [
+    "_sys_execOutput",
+    "string",
+    1,
+    ["string"]
+  ],
+
+  _sys_timestamp: [
+    "_sys_timestamp",
+    "int",
+    0,
+    []
+  ],
 };
 
 
@@ -1560,8 +1764,8 @@ const HTTP_MAP = {
     ["string", "string"]
   ],
   
-  _http_update: [
-    "_http_update",
+  _http_put: [
+    "_http_put",
     "string",
     2,
     ["string", "string"]
@@ -1915,5 +2119,6 @@ export {
   RESERVED_FUNCTIONS,
   COMPOUND_OPERATORS,
   FFI_MAP,
-  PATH_MAP
+  PATH_MAP,
+  HTTPSERVER_MAP
 }

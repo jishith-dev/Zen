@@ -452,7 +452,7 @@ if (elemExpr.isStruct) {
           
           this.IRB.emitError(
             "ReferenceError",
-            `${namespace}.${node.field} does not exist`, node
+            `${namespace}.${node.field} does not exist`, node.object
           );
         }
         
@@ -467,6 +467,33 @@ if (elemExpr.isStruct) {
         
         return this.call.handleCall(callNode, true)
       }
+      
+      // enum
+      
+      if (base.type === "variable" && this.IRB.enums?.has(base.name)) {
+
+    const enumInfo = this.IRB.enums.get(base.name);
+
+    if (!enumInfo.members.has(node.field)) {
+        this.IRB.emitError(
+            "ReferenceError",
+            `Enum '${base.name}' has no member '${node.field}'`,
+            node
+        );
+    }
+
+    const value = enumInfo.members.get(node.field);
+
+    return {
+        ptr: value,
+        type: "int",
+        llvmType: "i32",
+        local: [],
+        global: [],
+        isVarRef: false,
+        isConstant: true
+    };
+}
       
       let object;
       
@@ -547,7 +574,303 @@ if (elemExpr.isStruct) {
             );
           }
           
+          if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+    const t = this.IRB.newTemp();
+    this.IRB.emit(`${t} = load ptr, ptr ${basePtr}`);
+    basePtr = t;
+}
+          
           const currentField = fields[i];
+          
+          
+                    // http struct
+          if (structName === "HttpServer" && currentField === "listen") {
+
+  const t = this.IRB.newTemp();
+  
+  this.IRB.declareOneTime("_httpServer_listen", "declare i32 @_httpServer_listen(ptr)")
+  
+this.IRB.emit(`${t} = call i32 @_httpServer_listen(ptr ${basePtr})`
+);
+
+return {
+  ptr: t,
+  type: "int",
+  llvmType: "i32",
+  local,
+  global: [],
+  isVarRef: false
+};
+}
+
+if (structName === "HttpServer" && currentField === "next") {
+
+  const t = this.IRB.newTemp();
+  
+  this.IRB.declareOneTime("_httpServer_next", "declare ptr @_httpServer_next(ptr)")
+  this.IRB.emit(
+    `${t} = call ptr @_httpServer_next(ptr ${basePtr})`
+  );
+
+  return {
+    ptr: t,
+    type: "HttpRequest",
+    llvmType: "ptr",
+    local,
+    isStruct: true,
+    global: [],
+    isVarRef: false,
+    isStruct: true
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "sendFile") {
+  const path = this.handleExpression(node.args[0]);
+  const type = this.handleExpression(node.args[1]);
+  this.IRB.emitExpr(path);
+  this.IRB.emitExpr(type);
+  this.IRB.declareOneTime("_httpServer_sendFile", "declare void @_httpServer_sendFile(ptr, ptr, ptr)");
+  this.IRB.emit(`call void @_httpServer_sendFile(ptr ${basePtr}, ptr ${path.ptr}, ptr ${type.ptr})`);
+  return { ptr: null, type: "void", llvmType: "void", local, global: [], isVarRef: false };
+}
+
+if (structName === "HttpRequest" && currentField === "send") {
+
+  const body = this.handleExpression(node.args[0]);
+  this.IRB.emitExpr(body);
+
+  this.IRB.declareOneTime(
+    "_httpServer_send",
+    "declare void @_httpServer_send(ptr, ptr)"
+  );
+
+  this.IRB.emit(
+    `call void @_httpServer_send(ptr ${basePtr}, ptr ${body.ptr})`
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "status") {
+
+  const code = this.handleExpression(node.args[0]);
+  this.IRB.emitExpr(code);
+
+  this.IRB.declareOneTime(
+    "_httpServer_status",
+    "declare void @_httpServer_status(ptr, i32)"
+  );
+
+  this.IRB.emit(
+    `call void @_httpServer_status(ptr ${basePtr}, i32 ${code.ptr})`
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "method") {
+  const t = this.IRB.newTemp();
+  this.IRB.declareOneTime("_httpServer_method", "declare ptr @_httpServer_method(ptr)");
+  this.IRB.emit(`${t} = call ptr @_httpServer_method(ptr ${basePtr})`);
+  return {
+    ptr: t,
+    type: "string",
+    llvmType: "ptr",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "path") {
+  const t = this.IRB.newTemp();
+  this.IRB.declareOneTime("_httpServer_path", "declare ptr @_httpServer_path(ptr)");
+  this.IRB.emit(`${t} = call ptr @_httpServer_path(ptr ${basePtr})`);
+  return {
+    ptr: t,
+    type: "string",
+    llvmType: "ptr",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "body") {
+  const t = this.IRB.newTemp();
+  this.IRB.declareOneTime("_httpServer_body", "declare ptr @_httpServer_body(ptr)");
+  this.IRB.emit(`${t} = call ptr @_httpServer_body(ptr ${basePtr})`);
+  return {
+    ptr: t,
+    type: "string",
+    llvmType: "ptr",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpServer" && currentField === "close") {
+
+  this.IRB.declareOneTime(
+    "_httpServer_close",
+    "declare void @_httpServer_close(ptr)"
+  );
+
+  this.IRB.emit(
+    `call void @_httpServer_close(ptr ${basePtr})`
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local,
+    global: [],
+    isVarRef: false
+  };
+}
+
+if (structName === "HttpRequest" && currentField === "json") {
+
+    const body = this.handleExpression(node.args[0]);
+    this.IRB.emitExpr(body);
+
+    this.IRB.declareOneTime(
+        "_httpServer_json",
+        "declare void @_httpServer_json(ptr, ptr)"
+    );
+
+    this.IRB.emit(
+        `call void @_httpServer_json(ptr ${basePtr}, ptr ${body.ptr})`
+    );
+
+    return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global: [],
+        isVarRef: false
+    };
+}
+
+if (structName === "HttpRequest" && currentField === "css") {
+
+    const body = this.handleExpression(node.args[0]);
+    this.IRB.emitExpr(body);
+
+    this.IRB.declareOneTime(
+        "_httpServer_css",
+        "declare void @_httpServer_css(ptr, ptr)"
+    );
+
+    this.IRB.emit(
+        `call void @_httpServer_css(ptr ${basePtr}, ptr ${body.ptr})`
+    );
+
+    return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global: [],
+        isVarRef: false
+    };
+}
+
+if (structName === "HttpRequest" && currentField === "html") {
+
+    const body = this.handleExpression(node.args[0]);
+    this.IRB.emitExpr(body);
+
+    this.IRB.declareOneTime(
+        "_httpServer_html",
+        "declare void @_httpServer_html(ptr, ptr)"
+    );
+
+    this.IRB.emit(
+        `call void @_httpServer_html(ptr ${basePtr}, ptr ${body.ptr})`
+    );
+
+    return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global: [],
+        isVarRef: false
+    };
+}
+
+if (structName === "HttpRequest" && currentField === "redirect") {
+
+    const url = this.handleExpression(node.args[0]);
+    this.IRB.emitExpr(url);
+
+    this.IRB.declareOneTime(
+        "_httpServer_redirect",
+        "declare void @_httpServer_redirect(ptr, ptr)"
+    );
+
+    this.IRB.emit(
+        `call void @_httpServer_redirect(ptr ${basePtr}, ptr ${url.ptr})`
+    );
+
+    return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global: [],
+        isVarRef: false
+    };
+}
+
+if (structName === "HttpRequest" && currentField === "setHeader") {
+
+    const name = this.handleExpression(node.args[0]);
+    const value = this.handleExpression(node.args[1]);
+
+    this.IRB.emitExpr(name);
+    this.IRB.emitExpr(value);
+
+    this.IRB.declareOneTime(
+        "_httpServer_setHeader",
+        "declare void @_httpServer_setHeader(ptr, ptr, ptr)"
+    );
+
+    this.IRB.emit(
+        `call void @_httpServer_setHeader(ptr ${basePtr}, ptr ${name.ptr}, ptr ${value.ptr})`
+    );
+
+    return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global: [],
+        isVarRef: false
+    };
+}
+
+
+          
+          
           
           const possibleMethod =
             `${structName}_${currentField}`;

@@ -8,11 +8,12 @@ import {
   HTTP_MAP,
   STD_FUNCTIONS,
   FFI_MAP,
-  PATH_MAP
+  PATH_MAP,
+  HTTPSERVER_MAP
 } from "../../config/config.js";
 
 export class Call {
-  constructor(IRB, expr, io, type, string, file, os, time, network, http, sys, ffi, path) {
+  constructor(IRB, expr, io, type, string, file, os, time, network, http, sys, ffi, path, httpServer) {
     this.IRB = IRB;
     this.io = io;
     this.type = type;
@@ -25,6 +26,7 @@ export class Call {
     this.sys = sys;
     this.ffi = ffi;
     this.path = path;
+    this.HTTPSERVER = httpServer;
   }
   
   setExpression(expr) {
@@ -512,6 +514,7 @@ local.push(
         const SYS = SYS_MAP[name];
         const FFI = FFI_MAP[name];
         const PATH = PATH_MAP[name];
+        const HTTPSERVER = HTTPSERVER_MAP[name];
         
         if (os) {
           return this.os.zenNativeOSCall(
@@ -593,6 +596,16 @@ local.push(
             PATH[1],
             PATH[2],
             PATH[3],
+            name
+          );
+        } else if (HTTPSERVER) {
+          return this.HTTPSERVER.zenHTTPSERVER(
+            node,
+            globalScope,
+            HTTPSERVER[0],
+            HTTPSERVER[1],
+            HTTPSERVER[2],
+            HTTPSERVER[3],
             name
           );
         }

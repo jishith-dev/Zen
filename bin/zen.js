@@ -15,16 +15,22 @@ class ZEN {
     this.args = process.argv.slice(2);
     this.command = this.args[0];
     this.optFlagFromCommand = this.args[2];
-    this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(this.optFlagFromCommand);
-    this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
+this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(this.optFlagFromCommand);
+
+if (this.optFlagFromCommand && !this.isValidOptFlag) {
+  console.error(`error: Unknown optimization level '${this.optFlagFromCommand}'`);
+  process.exit(1);
+}
+
+this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
     this.PROJECT_ROOT = null;
     this.moduleFiles = new ModuleFiles();
     this.COMPILER_ROOT = null;
     this.validCommands = new Set([
   "run", "build", "ir", "ast", "tokens", "clean", "init", "list", "whoami",
-  "publish", "install", "recovery", "uninstall", 
+  "publish", "install", "recovery", "mine", "search", "kind", "uninstall", 
   "signup", "login", "logout", "unpublish",
-  "--help", "-h", "help", "--version", "-v", "version"
+  "--help", "-h", "help", "--version", "-v", "version", "update"
 ]);
   }
 
@@ -149,26 +155,44 @@ class ZEN {
 Zen Programming Language v1.1.1
 
 Usage:
-  zen run <file>
-  zen build <file>
+  zen run <file> [-O0|-O1|-O2|-O3]
+  zen build <file> [-O0|-O1|-O2|-O3]
   zen ir <file>
   zen ast <file>
   zen tokens <file>
   zen clean <file>
+  zen update
+
+Project:
   zen init <project-name>
-  zen install <package-name>
-  zen uninstall <package-name>
+
+Packages:
+  zen install <package>
+  zen uninstall <package>
+  zen search <package>
+  zen kind <package>
+  zen mine
+  zen list
+  zen publish
+  zen unpublish <package>
+
+Account:
   zen signup
   zen login
-  zen whoami
   zen logout
-  zen publish
+  zen whoami
   zen recovery
-  zen list
-  zen unpublish <package>
+
+Other:
   zen --help
   zen --version
-`);
+
+Optimization Levels:
+  -O0    No optimization
+  -O1    Basic optimization
+  -O2    Recommended (default)
+  -O3    Maximum optimization    
+    `);
   }
   
   // auth
@@ -357,6 +381,15 @@ async handleList() {
 
     const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    
+    if (config.main) {
+  config.kind = "main";
+} else if (config.bin) {
+  config.kind = "lib";
+} else {
+  console.error("error: zen.json must contain either 'main' or 'bin'");
+  process.exit(1);
+}
 
     console.log(`Publishing ${config.name} v${config.version}...`);
 
@@ -735,6 +768,130 @@ async handleWhoami() {
   }
 }
 
+async handleSearch() {
+  const name = this.args[1];
+
+  if (!name) {
+    console.error("error: Usage zen search <package>");
+    process.exit(1);
+  }
+
+  try {
+    const res = await fetch(
+      `https://zen-registry-production.up.railway.app/api/search?name=${encodeURIComponent(name)}`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(`error: ${data.error}`);
+      process.exit(1);
+    }
+
+    if (!data.length) {
+      console.log("No packages found.");
+      return;
+    }
+
+    for (const pkg of data) {
+      console.log(`${pkg.name}@${pkg.latest}`);
+      console.log(`  ${pkg.description || "No description"}`);
+      console.log(`  by ${pkg.author}`);
+      console.log("");
+    }
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+async handleKind() {
+  const name = this.args[1];
+
+  if (!name) {
+    console.error("error: Usage zen kind <package>");
+    process.exit(1);
+  }
+
+  try {
+    const res = await fetch(
+      `https://zen-registry-production.up.railway.app/api/kind?name=${encodeURIComponent(name)}`
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(`error: ${data.error}`);
+      process.exit(1);
+    }
+
+    console.log(`${name}: ${data.kind}`);
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+async handleMine() {
+  try {
+    const authPath = path.join(os.homedir(), ".zen", "auth.json");
+
+    if (!fs.existsSync(authPath)) {
+      console.error("error: Not logged in");
+      process.exit(1);
+    }
+
+    const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+
+    const res = await fetch(
+      "https://zen-registry-production.up.railway.app/api/mine",
+      {
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(`error: ${data.error}`);
+      process.exit(1);
+    }
+
+    if (!data.length) {
+      console.log("You haven't published any packages.");
+      return;
+    }
+
+    for (const pkg of data) {
+      console.log(`${pkg.name}@${pkg.latest}`);
+      console.log(`  ${pkg.description || "No description"}`);
+      console.log(`  ${pkg.kind}`);
+      console.log("");
+    }
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+handleUpdate() {
+  try {
+    console.log("Updating Zen...");
+
+    execSync(
+      'curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash',
+      { stdio: "inherit", shell: true }
+    );
+
+    console.log("Zen updated successfully.");
+  } catch (err) {
+    console.error("error: Update failed.");
+    process.exit(1);
+  }
+}
+
   async main() {
     const command = this.command;
 
@@ -784,6 +941,11 @@ if (command === "list") {
   return;
 }
 
+if (command === "update") {
+  await this.handleUpdate();
+  return;
+}
+
 if (command === "recovery") {
   await this.handleRecovery();
   return;
@@ -803,6 +965,21 @@ if (command === "unpublish") {
       await this.handlePublish();
       return;
     }
+    
+    if (command === "search") {
+  await this.handleSearch();
+  return;
+}
+
+if (command === "kind") {
+  await this.handleKind();
+  return;
+}
+
+if (command === "mine") {
+  await this.handleMine();
+  return;
+}
 
     if (command === "install") {
       await this.handleInstall();
@@ -919,7 +1096,7 @@ if (command === "unpublish") {
       process.exit(1);
     }
 
-    this.run(`opt -O2 ${outLL} -S -o ${outOptLL}`);
+    this.run(`opt ${this.optFlag} ${outLL} -S -o ${outOptLL}`);
     this.run(`llc -filetype=obj -relocation-model=pic ${outOptLL} -o ${outO}`);
 
     const moduleObjs = [];
@@ -946,6 +1123,7 @@ if (command === "unpublish") {
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/listRuntime.c"),
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/mapRuntime.c"),
       path.join(this.COMPILER_ROOT, "src/codegen/runtime/curlRuntime.c"),
+      path.join(this.COMPILER_ROOT, "src/codegen/runtime/httpRuntime.c"),
     ];
 
     const outputExe = path.join(buildDir, this.moduleName);

@@ -132,6 +132,10 @@ export class Parser {
       return this.node(this.parseStruct());
     }
     
+    if (this.matchKeyword("enum")) {
+      return this.node(this.parseEnum());
+    }
+    
     if (this.matchKeyword("export")) {
       return this.node(this.parseExport());
     }
@@ -454,10 +458,10 @@ export class Parser {
     
     const name = this.expect("IDENTIFIER").value;
     
-    if (name === "byte") {
+    if (["byte","HttpServer", "HttpRequest", "HttpResponse"].includes(name)) {
   this.IRB.emitError(
     "TypeError",
-    "`byte` is a reserved primitive type and cannot be used as a struct name",
+    `'${name}' is a reserved struct type and cannot be used as a struct name`,
     this.lineAndColumn()
   );
 }
@@ -544,6 +548,49 @@ export class Parser {
       methods
     });
   }
+  
+  parseEnum() {
+  this.expectKeyword("enum");
+
+  const name = this.expect("IDENTIFIER").value;
+
+  this.expect("BLOCK_START");
+
+  const members = [];
+
+  while (!this.match("BLOCK_END")) {
+
+    if (this.match("NEWLINE")) {
+      this.advance();
+      continue;
+    }
+
+    const memberName = this.expect("IDENTIFIER").value;
+
+    let value = null;
+
+    if (this.match("ASSIGNMENT")) {
+      this.advance();
+      value = this.parseExpression();
+    }
+
+    members.push(this.node({
+      name: memberName,
+      value
+    }));
+
+    if (this.match("COMMA")) this.advance();
+    if (this.match("NEWLINE")) this.advance();
+  }
+
+  this.expect("BLOCK_END");
+
+  return this.node({
+    type: ParserTypes.ENUM,
+    name,
+    members
+  });
+}
   
   expectLessThan() {
     const t = this.current();

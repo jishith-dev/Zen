@@ -917,3 +917,150 @@ char* _path_normalize(const char* path) {
 
     return strdup(path);
 }
+
+void _os_exit(int code) {
+    exit(code);
+}
+
+int _os_pid(void) {
+    return (int)getpid();
+}
+
+int _os_parentPid(void) {
+    return (int)getppid();
+}
+
+char* _os_platform(void) {
+#if defined(__ANDROID__)
+    return strdup("android");
+#elif defined(__linux__)
+    return strdup("linux");
+#elif defined(__APPLE__)
+    return strdup("darwin");
+#elif defined(_WIN32)
+    return strdup("windows");
+#else
+    return strdup("unknown");
+#endif
+}
+
+bool _os_isWindows(void) {
+    char* p = _os_platform();
+    bool result = (strcmp(p, "windows") == 0);
+    free(p);
+    return result;
+}
+
+bool _os_isLinux(void) {
+    char* p = _os_platform();
+    bool result = (strcmp(p, "linux") == 0);
+    free(p);
+    return result;
+}
+
+bool _os_isMac(void) {
+    char* p = _os_platform();
+    bool result = (strcmp(p, "darwin") == 0);
+    free(p);
+    return result;
+}
+
+bool _os_isAndroid(void) {
+    char* p = _os_platform();
+    bool result = (strcmp(p, "android") == 0);
+    free(p);
+    return result;
+}
+
+void _sys_setEnv(char* name, char* value) {
+    setenv(name, value, 1); // 1 = overwrite if already set
+}
+
+bool _sys_hasEnv(char* name) {
+    return getenv(name) != NULL;
+}
+
+char* _sys_readLine(void) {
+    size_t bufsize = 256;
+    char* buffer = (char*)malloc(bufsize);
+    if (!buffer) {
+        return strdup("");
+    }
+
+    if (fgets(buffer, (int)bufsize, stdin) == NULL) {
+        free(buffer);
+        return strdup("");
+    }
+
+    // strip trailing newline, if present
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\n') {
+        buffer[len - 1] = '\0';
+        len--;
+    }
+    if (len > 0 && buffer[len - 1] == '\r') {
+        buffer[len - 1] = '\0';
+    }
+
+    return buffer;
+}
+
+char* _sys_execOutput(char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) {
+        return strdup("");
+    }
+
+    size_t capacity = 256;
+    size_t length = 0;
+    char* result = (char*)malloc(capacity);
+    if (!result) {
+        pclose(pipe);
+        return strdup("");
+    }
+    result[0] = '\0';
+
+    char chunk[256];
+    while (fgets(chunk, sizeof(chunk), pipe) != NULL) {
+        size_t chunkLen = strlen(chunk);
+
+        while (length + chunkLen + 1 > capacity) {
+            capacity *= 2;
+            char* newResult = (char*)realloc(result, capacity);
+            if (!newResult) {
+                free(result);
+                pclose(pipe);
+                return strdup("");
+            }
+            result = newResult;
+        }
+
+        memcpy(result + length, chunk, chunkLen);
+        length += chunkLen;
+        result[length] = '\0';
+    }
+
+    pclose(pipe);
+
+    if (length > 0 && result[length - 1] == '\n') {
+        result[length - 1] = '\0';
+    }
+
+    return result;
+}
+
+int _sys_timestamp(void) {
+    return (int)time(NULL);
+}
+
+char* _os_homeDir() {
+    const char *home = getenv("HOME");
+    if (!home) {
+        struct passwd *pw = getpwuid(getuid());
+        home = (pw && pw->pw_dir) ? pw->pw_dir : "";
+    }
+
+    char *out = malloc(strlen(home) + 1);
+    strcpy(out, home);
+    return out;
+}

@@ -58,6 +58,24 @@ if [ ${#missing[@]} -ne 0 ]; then
   exit 1
 fi
 
+info "Checking LLVM version..."
+
+LLC_VERSION=$(llc --version | head -n1 | grep -oE '[0-9]+(\.[0-9]+)?' | cut -d. -f1)
+
+if [ -z "$LLC_VERSION" ]; then
+  error "Unable to determine LLVM version."
+  exit 1
+fi
+
+if [ "$LLC_VERSION" -lt 20 ]; then
+  error "LLVM 20 or newer is required (found LLVM $LLC_VERSION)."
+  echo ""
+  echo "Please install LLVM 20 or later."
+  exit 1
+fi
+
+success "LLVM $LLC_VERSION detected."
+
 # CHECK CURL DEV HEADERS
 
 info "Checking for libcurl headers..."
@@ -129,6 +147,7 @@ info "Building runtime..."
 compile_c      src/codegen/runtime/runtime.c       src/codegen/runtime/runtime.o
 compile_c      src/codegen/runtime/listRuntime.c   src/codegen/runtime/listRuntime.o
 compile_c      src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o
+compile_c      src/codegen/runtime/httpRuntime.c    src/codegen/runtime/httpRuntime.o
 compile_c_curl src/codegen/runtime/curlRuntime.c   src/codegen/runtime/curlRuntime.o
 
 info "Verifying build artifacts..."
@@ -140,6 +159,7 @@ ARTIFACTS=(
   src/codegen/runtime/listRuntime.o
   src/codegen/runtime/mapRuntime.o
   src/codegen/runtime/curlRuntime.o
+  src/codegen/runtime/httpRuntime.o
 )
 
 for f in "${ARTIFACTS[@]}"; do
