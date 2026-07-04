@@ -152,7 +152,7 @@ this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
 
   help() {
     console.log(`
-Zen Programming Language v1.1.1
+Zen Programming Language v1.2.1
 
 Usage:
   zen run <file> [-O0|-O1|-O2|-O3]
@@ -901,7 +901,7 @@ handleUpdate() {
     }
 
     if (command === "--version" || command === "-v" || command === "version") {
-      console.log("Zen v1.1.1");
+      console.log("Zen v1.2.1");
       process.exit(0);
     }
 
