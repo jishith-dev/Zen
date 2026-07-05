@@ -12,6 +12,7 @@ class ZEN {
   constructor() {
     this.source = null;
     this.moduleName = null;
+    this.BACKEND_URL = "https://zen-registry.onrender.com";
     this.args = process.argv.slice(2);
     this.command = this.args[0];
     this.optFlagFromCommand = this.args[2];
@@ -224,7 +225,7 @@ async handleSignup() {
     }
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/signup",
+      `${this.BACKEND_URL}/api/signup`,
       {
         method: "POST",
         headers: {
@@ -275,7 +276,7 @@ async handleLogin() {
     rl.close();
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/login",
+      `${this.BACKEND_URL}/api/login`,
       {
         method: "POST",
         headers: {
@@ -318,7 +319,7 @@ async handleList() {
   const listPackages = async (page = 1) => {
     try {
       const res = await fetch(
-        `https://zen-registry-production.up.railway.app/api/list?page=${page}`
+        `${this.BACKEND_URL}/api/list?page=${page}`
       );
 
       if (!res.ok) {
@@ -394,7 +395,7 @@ async handleList() {
     console.log(`Publishing ${config.name} v${config.version}...`);
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/publish",
+      `${this.BACKEND_URL}/api/publish`,
       {
         method: "POST",
         headers: {
@@ -450,7 +451,7 @@ async handleUnpublish() {
     console.log(`Unpublishing ${packageName}...`);
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/unpublish",
+      `${this.BACKEND_URL}/api/unpublish`,
       {
         method: "DELETE",
         headers: {
@@ -540,7 +541,7 @@ async handleUninstall() {
     console.log(`Installing ${packageName}...`);
 
     const registryRes = await fetch(
-      `https://zen-registry-production.up.railway.app/api/packages.json?name=${packageName}`
+      `${this.BACKEND_URL}/api/packages.json?name=${packageName}`
     );
 
     if (!registryRes.ok) {
@@ -739,7 +740,7 @@ async handleWhoami() {
     }
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/recovery",
+      `${this.BACKEND_URL}/api/recovery`,
       {
         method: "POST",
         headers: {
@@ -778,7 +779,7 @@ async handleSearch() {
 
   try {
     const res = await fetch(
-      `https://zen-registry-production.up.railway.app/api/search?name=${encodeURIComponent(name)}`
+      `${this.BACKEND_URL}/api/search?name=${encodeURIComponent(name)}`
     );
 
     const data = await res.json();
@@ -815,7 +816,7 @@ async handleKind() {
 
   try {
     const res = await fetch(
-      `https://zen-registry-production.up.railway.app/api/kind?name=${encodeURIComponent(name)}`
+      `${this.BACKEND_URL}/api/kind?name=${encodeURIComponent(name)}`
     );
 
     const data = await res.json();
@@ -844,7 +845,7 @@ async handleMine() {
     const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
 
     const res = await fetch(
-      "https://zen-registry-production.up.railway.app/api/mine",
+      `${this.BACKEND_URL}/api/mine`,
       {
         headers: {
           Authorization: `Bearer ${auth.token}`
