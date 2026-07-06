@@ -61,7 +61,9 @@ export class Call {
         isVarRef: false,
         postOrPrefix: false,
         isList: valExpr?.isList,
-        generic: valExpr?.generic
+        generic: valExpr?.generic,
+        isStruct: valExpr?.isStruct,   
+        needsLoad: valExpr?.needsLoad
       };
     }
     

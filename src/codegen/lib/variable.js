@@ -490,8 +490,15 @@
         ptr = data.ptr;
       }
     }
+    
+    if (this.IRB.hasStruct(valExpr.type)) {
+  const size = this.IRB.getStruct(valExpr.type).byteSize;
+  this.IRB.declareOneTime("llvm.memcpy", "declare void @llvm.memcpy(ptr, ptr, i64, i1)");
+  this.IRB.emit(`call void @llvm.memcpy(ptr ${ptr}, ptr ${valExpr.ptr}, i64 ${size}, i1 false)`);
+} else {
+  this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
+}
 
-    this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
 
     const isConstant = isVarDecl ? node.isConstant : this.IRB.getVar(name, node).isConstant;
 

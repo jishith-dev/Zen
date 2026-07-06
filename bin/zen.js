@@ -18,11 +18,6 @@ class ZEN {
     this.optFlagFromCommand = this.args[2];
 this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(this.optFlagFromCommand);
 
-if (this.optFlagFromCommand && !this.isValidOptFlag) {
-  console.error(`error: Unknown optimization level '${this.optFlagFromCommand}'`);
-  process.exit(1);
-}
-
 this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
     this.PROJECT_ROOT = null;
     this.moduleFiles = new ModuleFiles();

@@ -883,15 +883,24 @@ if (structName === "HttpRequest" && currentField === "setHeader") {
 
   const args = [];
 
-  // implicit this
-  args.push(`ptr ${basePtr}`);
+// implicit this
+args.push(`ptr ${basePtr}`);
 
-  // method args
-  for (const argNode of (node.args || [])) {
-    const arg = this.handleExpression(argNode);
-    this.IRB.emitExpr(arg);
+// method args
+for (const argNode of (node.args || [])) {
+  const arg = this.handleExpression(argNode);
+  this.IRB.emitExpr(arg);
+
+  if (arg?.isStruct) {
+    args.push(`ptr ${arg.ptr}`);
+  } else if (arg.needsLoad) {
+    const tmp = this.IRB.newTemp();
+    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
+    args.push(`ptr ${tmp}`);
+  } else {
     args.push(`${arg.llvmType} ${arg.ptr}`);
   }
+}
 
   // void method
   if (fn.returnType.type === "void") {
