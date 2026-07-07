@@ -390,12 +390,12 @@ sizeOf(type) {
     );
   }
   
-  getStruct(name) {
+  getStruct(name, node) {
     if (this.structTable.has(name)) {
       return this.structTable.get(name);
     }
     
-    this.emitError("ReferenceError", `Struct '${name}' is not defined`)
+    this.emitError("ReferenceError", `Struct '${name}' is not defined`, node)
   }
   
   utf8LenWithNull(str) {
@@ -1104,37 +1104,61 @@ entry:
     this.emit(`call void @_screen_double(double ${val})`);
   }
   
-  toLLVMString(str) { // for screen string format 
-    
-    let result = "";
-    let len = 0;
-    
-    for (let i = 0; i < str.length; i++) {
-      const c = str[i];
-      
-      if (c === '\n') {
-        result += "\\0A";
-        len += 1;
-      } else if (c === '\t') {
+  
+  toLLVMString(str) {
+  let result = "";
+  let len = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+
+    switch (c) {
+      case '\0':
+        result += "\\00";
+        break;
+      case '\a':
+        result += "\\07";
+        break;
+      case '\b':
+        result += "\\08";
+        break;
+      case '\t':
         result += "\\09";
-        len += 1;
-      } else if (c === '\\') {
-        result += "\\5C";
-        len += 1;
-      } else if (c === '"') {
+        break;
+      case '\n':
+        result += "\\0A";
+        break;
+      case '\v':
+        result += "\\0B";
+        break;
+      case '\f':
+        result += "\\0C";
+        break;
+      case '\r':
+        result += "\\0D";
+        break;
+      case '"':
         result += "\\22";
-        len += 1;
-      } else {
+        break;
+      case '\\':
+        result += "\\5C";
+        break;
+      default:
         result += c;
-        len += 1;
-      }
     }
-    
-    result += "\\00"; // null terminator
-    len += 1;
-    
-    return { llvmStr: result, length: len };
+
+    len++;
   }
+
+  // Null terminator
+  result += "\\00";
+  len++;
+
+  return {
+    llvmStr: result,
+    length: len
+  };
+}
   
   emitScreenString(val, format) {
     this.formatMap = this.formatMap || new Map();

@@ -20,6 +20,10 @@
 #include <sys/sysinfo.h>
 #include <regex.h>
 
+void _time_sleep(int ms) {
+    usleep(ms * 1000);
+}
+
 int _zen_regex_match(const char* str, const char* pattern) {
   regex_t re;
   int ret = regcomp(&re, pattern, REG_EXTENDED);

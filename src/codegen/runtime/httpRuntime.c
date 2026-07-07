@@ -1,5 +1,4 @@
 // httpRuntime.c
-// Production-grade HTTP runtime for the Zen language.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -124,9 +123,7 @@ void _httpServer_close(HttpServer *server) {
 }
 
 /* Reads until CRLFCRLF is found (end of headers) or limits are hit.
-   Returns a heap buffer (caller frees) containing everything read so far
-   (headers + possibly some/all of the body), and sets *outLen.
-   Returns NULL on error / peer closed before headers completed. */
+   Returns a heap buffer (caller frees) containing everything read so far*/
 static char* readUntilHeadersEnd(socket_t fd, size_t *outLen, size_t *headerEnd) {
 
     size_t cap = RECV_CHUNK_SIZE;
@@ -218,7 +215,6 @@ static int findHeaderValue(const char *headerBlock, size_t headerBlockLen,
     return 0;
 }
 
-/* Bounded, truncation-safe append into req->headers. Never overflows. */
 static void appendResponseHeader(HttpRequest *req, const char *name, const char *value) {
 
     if (!req || !name || !value) return;
@@ -252,8 +248,6 @@ static void freeRequestFields(HttpRequest *req) {
     req->body = NULL;
 }
 
-/* Single source of truth for writing an HTTP response and tearing down
-   the connection. All public send-style functions route through this. */
 static void sendResponse(HttpRequest *req, int statusOverrideOrNeg,
                           const char *contentType,
                           const char *body, size_t bodyLen) {

@@ -1412,7 +1412,7 @@ for (const argNode of (node.args || [])) {
       // walk struct
       for (let i = 0; i < fields.length; i++) {
         
-        const structInfo = this.IRB.getStruct(structName);
+        const structInfo = this.IRB.getStruct(structName, node);
         
         const currentField = fields[i];
         
@@ -1495,7 +1495,7 @@ this.IRB.emit(
           this.IRB.emitError("ArrayError", `Array index must be a non-negative integer`, n.index)
         }
         const index = this.handleExpression(n.index);
-        
+      
         this.IRB.emitExpr(index);
         
         const ptr = this.IRB.newTemp();

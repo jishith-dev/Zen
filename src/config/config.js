@@ -814,7 +814,7 @@ const BUILTIN_MAP = {
   
   sleep: {
     returnType: "void",
-    llvmName: "zen_sleep"
+    llvmName: "_time_sleep"
   },
   
   time: {
@@ -1686,7 +1686,7 @@ const SYS_MAP = {
 const TIME_MAP = {
   
   _time_sleep: [
-    "zen_sleep",
+    "_time_sleep",
     "void",
     1,
     ["int"]
