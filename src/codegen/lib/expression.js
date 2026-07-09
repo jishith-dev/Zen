@@ -1706,19 +1706,35 @@ export class Expression {
 
       if (LNode?.isList) {
         this.IRB.emitError(
-          "TypeError",
-          "Binary operations on lists are not supported",
-          node?.left,
+            "TypeError",
+            "Binary operations on lists are not supported",
+            node?.left,
         );
-      }
+    }
+
+    if (LNode?.isStruct) {
+        this.IRB.emitError(
+            "TypeError",
+            "Binary operations on structs are not supported",
+            node?.left,
+        );
+    }
 
       if (RNode?.isList) {
         this.IRB.emitError(
-          "TypeError",
-          "Binary operations on lists are not supported",
-          node?.right,
+            "TypeError",
+            "Binary operations on lists are not supported",
+            node?.right,
         );
-      }
+    }
+
+    if (RNode?.isStruct) {
+        this.IRB.emitError(
+            "TypeError",
+            "Binary operations on structs are not supported",
+            node?.right,
+        );
+    }
 
       if (!LNode || !RNode)
         this.IRB.emitError(
@@ -1894,14 +1910,6 @@ export class Expression {
     const L = normalize(lType, lPtr, lKind);
     const R = normalize(rType, rPtr, rKind);
 
-    if (!L || !R) {
-      this.IRB.emitError(
-        "InternalError",
-        "normalize() returned undefined",
-        node,
-      );
-    }
-
     if (LOGICAL_OPS.includes(op)) {
       const result = this.IRB.newTemp();
 
@@ -1913,11 +1921,19 @@ export class Expression {
 
       if (LNode?.isList) {
         this.IRB.emitError(
-          "TypeError",
-          "Binary operations on lists are not supported",
-          node?.left,
+            "TypeError",
+            "Binary operations on lists are not supported",
+            node?.left,
         );
-      }
+    }
+
+    if (LNode?.isStruct) {
+        this.IRB.emitError(
+            "TypeError",
+            "Binary operations on structs are not supported",
+            node?.left,
+        );
+    }
 
       local.push(...(LNode.local || []));
       global.push(...(LNode.global || []));
@@ -1958,13 +1974,21 @@ export class Expression {
 
       const RNode = resolve(node.right);
 
-      if (RNode?.isList) {
+    if (RNode?.isList) {
         this.IRB.emitError(
-          "TypeError",
-          "Binary operations on lists are not supported",
-          node?.right,
+            "TypeError",
+            "Binary operations on lists are not supported",
+            node?.right,
         );
-      }
+    }
+
+    if (RNode?.isStruct) {
+        this.IRB.emitError(
+            "TypeError",
+            "Binary operations on structs are not supported",
+            node?.right,
+        );
+    }
 
       local.push(...(RNode.local || []));
       global.push(...(RNode.global || []));
