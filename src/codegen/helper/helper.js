@@ -2934,32 +2934,32 @@ end:
   }
 
   constEval(node, context) {
-    if (node.type === "int") return node.value;
+    if (node.type === "int") return Number(node.value);
 
     if (node.type === "BINARY_EXPRESSION") {
-      const l = this.constEval(node.left, context);
-      const r = this.constEval(node.right, context);
+        const l = this.constEval(node.left, context);
+        const r = this.constEval(node.right, context);
 
-      if (typeof l === "number" && typeof r === "number") {
-        switch (node.operator) {
-          case "+":
-            return l + r;
-          case "-":
-            return l - r;
-          case "*":
-            return l * r;
-          case "/":
-            return Math.floor(l / r);
+        if (typeof l === "number" && typeof r === "number") {
+            switch (node.operator) {
+                case "+":
+                    return l + r;
+                case "-":
+                    return l - r;
+                case "*":
+                    return l * r;
+                case "/":
+                    return Math.floor(l / r);
+            }
         }
-      }
     }
 
     this.emitError(
-      "ConstError",
-      `Cannot use a non-constant expression in '${context}'`,
-      node,
+        "ConstError",
+        `Cannot use a non-constant expression in '${context}'`,
+        node,
     );
-  }
+}
 
   generateScreenString(typeInfo) {
     if (!typeInfo) {

@@ -3,7 +3,7 @@
 List<string> books = []
 List<bool> isAvailable = []
 
-int n = trim(Int(input("Enter number of books: ")))
+int n = Int(input("Enter number of books: "))
 
 int i = 0
 
@@ -29,7 +29,7 @@ while (choice != 0) {
   screen("3. Show Books")
   screen("0. Exit")
 
-  choice = trim(Int(input("Enter choice:")))
+  choice = Int(input("Enter choice:"))
 
   // BORROW
   if (choice == 1) {

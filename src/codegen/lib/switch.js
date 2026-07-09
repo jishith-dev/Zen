@@ -29,6 +29,7 @@ export class Switch {
 
     for (let i = 0; i < node.cases.length; i++) {
       const caseNode = node.cases[i].value;
+      
       const caseConst = this.IRB.constEval(caseNode, "Switch Case");
 
       if (typeof caseConst !== "number") {
