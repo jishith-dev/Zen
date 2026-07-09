@@ -2,28 +2,37 @@ export class Struct {
   constructor(IRB, expr, fn) {
     this.IRB = IRB;
     this.expr = expr;
-    this.fn = fn
+    this.fn = fn;
   }
-  
-  
+
   registerStructMethods(structNode) {
     const structName = structNode.name;
     this.IRB.currentStruct = structName;
     for (const method of structNode.methods) {
-      
       const fnName = `${structName}_${method.name}`;
-      
-      const returnType = method.returnType === "void" ?
-          "void" : method.returnType.type;
-        
-        const isArrayRet = returnType === "void" ? false : returnType === "List" ? false : method.returnType?.dimensions.length > 0;
-        const retGeneric = returnType === "List" ? this.IRB.getDeepestGeneric(method.returnType.generic) : returnType;
-        const generic = returnType === "List" ? method.returnType : null;
-        
-        if (isArrayRet) this.IRB.emitError("SemanticError", `function ${name} cannot return array`, method);
-        
-        
-      
+
+      const returnType =
+        method.returnType === "void" ? "void" : method.returnType.type;
+
+      const isArrayRet =
+        returnType === "void"
+          ? false
+          : returnType === "List"
+            ? false
+            : method.returnType?.dimensions.length > 0;
+      const retGeneric =
+        returnType === "List"
+          ? this.IRB.getDeepestGeneric(method.returnType.generic)
+          : returnType;
+      const generic = returnType === "List" ? method.returnType : null;
+
+      if (isArrayRet)
+        this.IRB.emitError(
+          "SemanticError",
+          `function ${name} cannot return array`,
+          method,
+        );
+
       this.IRB.functions.set(fnName, {
         name: fnName,
         params: method.params,
@@ -31,481 +40,503 @@ export class Struct {
         isMethod: true,
         retGeneric,
         generic: generic,
-        struct: structName
+        struct: structName,
       });
     }
   }
-  
+
   generateMethods(node) {
     const name = node.name;
-    
+
     for (const method of node.methods) {
       method.structName = name;
       this.fn.handleFunction(method);
     }
   }
-  
-  
+
   struct(node, globalScope) {
-    
     const name = node.name;
     const fields = node.fields;
     const isMethod = node?.methods?.length > 0;
-    
+
     const layout = [];
     const fieldMap = {};
     const llvmFields = [];
-    
+
     let byteSize = 0;
     let maxAlign = 0;
-  
-    
+
     for (let i = 0; i < fields.length; i++) {
-      
       const f = fields[i];
-      
+
       let llvmType;
-      
+
       // ARRAY FIELD
       if (f.dimensions && f.dimensions.length > 0) {
-        
-        const dims = f.dimensions.map(d => d.value ?? d);
-        
+        const dims = f.dimensions.map((d) => d.value ?? d);
+
         const { full } = this.IRB.buildArrayType(
           this.IRB.getLLVMType(f.type),
-          dims
+          dims,
         );
-        
+
         llvmType = full;
       }
-      
+
       // NORMAL FIELD
       else {
         llvmType = this.IRB.getLLVMType(f.type);
       }
-      
+
       let type;
       if (f.type === "List") {
         type = this.IRB.getDeepestGeneric(f.generic);
       } else {
         type = f.type;
       }
-    
+
       layout.push({
         name: f.name,
         type: type,
         isList: f.type === "List",
         generic: {
           type: "List",
-          generic: f?.generic
+          generic: f?.generic,
         },
         llvmType,
         index: i,
-        dimensions: f.dimensions || []
+        dimensions: f.dimensions || [],
       });
-      
+
       fieldMap[f.name] = i;
       llvmFields.push(llvmType);
-      
     }
-    
-    this.IRB.globals.push(
-      `%${name} = type { ${llvmFields.join(", ")} }`
-    );
-    
-  
-    
+
+    this.IRB.globals.push(`%${name} = type { ${llvmFields.join(", ")} }`);
+
     this.IRB.setStruct(name, {
       isGlobal: globalScope,
       layout,
       fieldMap,
-      size: fields.length
+      size: fields.length,
     });
-    
-   this.IRB.getStruct(name).byteSize = this.IRB.sizeOf(name);
-   this.IRB.getStruct(name).align = this.IRB.alignOf(name);
-    
+
+    this.IRB.getStruct(name).byteSize = this.IRB.sizeOf(name);
+    this.IRB.getStruct(name).align = this.IRB.alignOf(name);
+
     if (isMethod) {
       this.registerStructMethods(node);
-      
-      this.IRB.setVar("this", this.IRB.createData({
-        ptr: "%this",
-        type: name,
-        llvmType: `%${name}*`,
-        isStruct: true
-      }));
-      
+
+      this.IRB.setVar(
+        "this",
+        this.IRB.createData({
+          ptr: "%this",
+          type: name,
+          llvmType: `%${name}*`,
+          isStruct: true,
+        }),
+      );
+
       this.generateMethods(node);
     }
-    
+
     return;
   }
-  
+  /*
   structRef(node, globalScope) {
-    
     const structName = node.struct_ref;
     const varName = node.name;
     const value = node.value;
-    
+
     const structInfo = this.IRB.getStruct(structName);
-    
+
     const llvmType = `%${structName}`;
-    
+
     let ptr;
     let isRet;
-    
+
     if (value?.type === "MAP_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      ptr= this.IRB.emitStructLiteral(structName, value);
-      
+      ptr = this.IRB.emitStructLiteral(structName, value);
     } else if (value === null) {
-    if (globalScope) {
-      ptr = this.IRB.newGlobalTemp();
-      this.IRB.globals.push(`${ptr} = global ${llvmType} zeroinitializer`);
+      
+      if (globalScope) {
+        ptr = this.IRB.newGlobalTemp();
+        this.IRB.globals.push(`${ptr} = global ${llvmType} zeroinitializer`);
+      } else {
+        this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+        ptr = this.IRB.newTemp();
+        this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+      }
+      
     } else {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      ptr = this.IRB.newTemp();
-      this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+
+      const expr = this.expr.handleExpression(value);
+      this.IRB.emitExpr(expr);
+
+      if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+        // opaque handle (HttpServer, HttpRequest, ...)
+        let tmp;
+        if (globalScope) {
+          tmp = this.IRB.newGlobalTemp();
+          this.IRB.globals.push(`${tmp} = global ptr null`);
+        } else {
+          tmp = this.IRB.newTemp();
+          this.IRB.emit(`${tmp} = alloca ptr`);
+        }
+        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
+        ptr = tmp;
+        isRet = false;
+      } else {
+        ptr = this.IRB.newTemp();
+        this.IRB.emit(`${ptr} = alloca ${llvmType}`);
+
+        this.IRB.declareOneTime(
+          "llvm.memcpy.p0.p0.i64",
+          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+        );
+
+        this.IRB.emit(
+          `call void @llvm.memcpy.p0.p0.i64(` +
+            `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`,
+        );
+
+        isRet = false;
+      }
     }
-    } else {
-    
-  this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
 
-  const expr = this.expr.handleExpression(value);
-  this.IRB.emitExpr(expr);
-  
-  if (structInfo.isBuiltin && structInfo.byteSize === 0) {
-    // opaque handle (HttpServer, HttpRequest, ...) 
-    let tmp;
-    if (globalScope) {
-      tmp = this.IRB.newGlobalTemp();
-      this.IRB.globals.push(`${tmp} = global ptr null`);
+    this.IRB.setVar(
+      varName,
+      this.IRB.createData({
+        ptr,
+        type: structName,
+        llvmType,
+        isStruct: true,
+        isGlobal: globalScope,
+        isVarRef: true,
+        needsLoad: true,
+        isRet,
+      }),
+    );
+  }*/
+
+  structRef(node, globalScope) {
+    const structName = node.struct_ref;
+    const varName = node.name;
+    const value = node.value;
+
+    const structInfo = this.IRB.getStruct(structName);
+    const llvmType = `%${structName}`;
+    const isOpaque = structInfo.isBuiltin && structInfo.byteSize === 0;
+
+    let ptr;
+    let isRet = false;
+
+    if (value?.type === "MAP_LITERAL") {
+      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+      ptr = this.IRB.emitStructLiteral(structName, value);
+    } else if (value === null) {
+      ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
     } else {
-      tmp = this.IRB.newTemp();
-      this.IRB.emit(`${tmp} = alloca ptr`);
+      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+      const expr = this.expr.handleExpression(value);
+      this.IRB.emitExpr(expr);
+
+      ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+
+      if (isOpaque) {
+        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${ptr}`);
+      } else {
+        this.IRB.declareOneTime(
+          "llvm.memcpy.p0.p0.i64",
+          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+        );
+        this.IRB.emit(
+          `call void @llvm.memcpy.p0.p0.i64(` +
+            `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`,
+        );
+      }
     }
-    this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
-    ptr = tmp;
-    isRet = false;
-  } else {
 
-  ptr = this.IRB.newTemp();
-  this.IRB.emit(`${ptr} = alloca ${llvmType}`);
-
-  this.IRB.declareOneTime(
-    "llvm.memcpy.p0.p0.i64",
-    "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
-  );
- 
-  this.IRB.emit(
-    `call void @llvm.memcpy.p0.p0.i64(` +
-    `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`
-  );
-
-  isRet = false;
+    this.IRB.setVar(
+      varName,
+      this.IRB.createData({
+        ptr,
+        type: structName,
+        llvmType,
+        isStruct: true,
+        isGlobal: globalScope,
+        isVarRef: true,
+        needsLoad: true,
+        isRet,
+      }),
+    );
   }
 
-    }
-    
-    this.IRB.setVar(varName, this.IRB.createData({
-      ptr,
-      type: structName,
-      llvmType,
-      isStruct: true,
-      isGlobal: globalScope,
-      isVarRef: true,
-      needsLoad: true,
-      isRet
-    }));
-    
-  }
-  
-  
   assignStruct(node, globalScope) {
-    
-  
-    
     const { base, fields } = this.IRB.resolveMemberChainAssign(node.object);
     const lastField = node.field;
-    
+
     let variable;
     if (base === "this") {
       variable = this.IRB.getVar("this");
     } else {
       variable = this.IRB.getVar(base);
     }
-    
-    
+
     if (variable?.isMap) {
-      
-      
-      
       const value = this.expr.handleExpression(node.value);
-      
+
       this.IRB.emitExpr(value);
-      
+
       let valuePtr = this.IRB.castToPtr(value);
-      
+
       // CHAIN RESOLUTION
-      
+
       let currentLayout = this.IRB.maps.get(base);
-      
+
       if (!currentLayout) {
         this.IRB.emitError(
           "InternalError",
           `Unknown map layout: ${base}`,
-          node
+          node,
         );
       }
-      
+
       // runtime pointer starts from ROOT object
       let currentPtr =
-        base === "this" ?
-        this.IRB.getVar("this").ptr :
-        this.IRB.getVar(base).ptr;
-      
+        base === "this"
+          ? this.IRB.getVar("this").ptr
+          : this.IRB.getVar(base).ptr;
+
       let needsLoad = variable.needsLoad;
-      
+
       // walk chain except last field
       for (let i = 0; i < fields.length; i++) {
-        
         const field = fields[i];
-        
+
         const meta = currentLayout[field];
-        
+
         if (!meta) {
           this.IRB.emitError(
             "ReferenceError",
-            `Cannot access '${field}' on undefined map`, node
+            `Cannot access '${field}' on undefined map`,
+            node,
           );
         }
-        
-      
-        
+
         const keyPtr = this.IRB.newGlobalString(field);
-        
+
         const temp = this.IRB.newTemp();
         let t;
-        
-        this.IRB.declareOneTime("zen_map_get", "declare ptr @_zen_map_get(ptr, ptr)");
-        
+
+        this.IRB.declareOneTime(
+          "zen_map_get",
+          "declare ptr @_zen_map_get(ptr, ptr)",
+        );
+
         if (needsLoad) {
-          t = this.IRB.newTemp()
-          this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`)
+          t = this.IRB.newTemp();
+          this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`);
           needsLoad = false;
         } else {
           t = currentPtr;
         }
         this.IRB.emit(
-          `${temp} = call ptr @_zen_map_get(ptr ${t}, ptr ${keyPtr.name})`
+          `${temp} = call ptr @_zen_map_get(ptr ${t}, ptr ${keyPtr.name})`,
         );
-        
+
         currentPtr = temp;
-        
+
         // LAYOUT WALK
-        
+
         if (meta.isMap) {
           currentLayout = meta.layout;
         }
-        
+
         // stop before last
         if (i === fields.length - 1) {
           break;
         }
       }
-      
-      
+
       const keyPtr = this.IRB.newGlobalString(node.field);
-      
-      
+
       let t;
-      
+
       if (needsLoad && !variable.fromParam) {
         t = this.IRB.newTemp();
-        this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`)
+        this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`);
       } else {
         t = currentPtr;
       }
       this.IRB.emit(
-        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr})`
+        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr})`,
       );
-      
-      // LAYOUT UPDATE 
-      
+
+      // LAYOUT UPDATE
+
       const entry = {
         type: value.type,
         llvmType: this.IRB.getLLVMType(value.type),
-        isMap: false
+        isMap: false,
       };
-      
+
       if (value?.isList) {
         Object.assign(entry, {
           type: "List",
           llvmType: "ptr",
           isList: true,
-          elementType: value.generic?.generic || "dynamic"
+          elementType: value.generic?.generic || "dynamic",
         });
       }
-      
+
       if (value?.isMap) {
         Object.assign(entry, {
           type: "Map",
           llvmType: "ptr",
           isMap: true,
-          layout: this.IRB.maps.get(value.type) || {}
+          layout: this.IRB.maps.get(value.type) || {},
         });
       }
-      
+
       currentLayout[node.field] = entry;
-      
+
       return;
     }
-    
+
     // struct assign
-    
+
     if (!variable || !variable.isStruct) {
-      this.IRB.emitError(
-        "ReferenceError",
-        `'${base}' is not a struct`,
-        node
-      );
+      this.IRB.emitError("ReferenceError", `'${base}' is not a struct`, node);
     }
-    
+
     let structName = variable.type;
     let basePtr = variable.ptr;
-    
-    // WALK THROUGH CHAIN  
-    
+
+    // WALK THROUGH CHAIN
+
     for (let i = 0; i < fields.length; i++) {
-      
       const structInfo = this.IRB.getStruct(structName);
       const fieldIndex = structInfo.fieldMap[fields[i]];
-      
+
       if (fieldIndex === undefined) {
         this.IRB.emitError(
           "ReferenceError",
           `Unknown field '${fields[i]}' in struct '${structName}'`,
-          node
+          node,
         );
       }
-      
+
       const ptr = this.IRB.newTemp();
-      
+
       this.IRB.emit(
-        `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
+        `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
       );
-      
+
       const fieldMeta = structInfo.layout[fieldIndex];
 
+      basePtr = ptr;
 
-  basePtr = ptr;
-
-  structName = fieldMeta.type;
+      structName = fieldMeta.type;
     }
-    
-    // FINAL FIELD  
-    
+
+    // FINAL FIELD
+
     const structInfo = this.IRB.getStruct(structName);
-    
+
     const fieldIndex = structInfo.fieldMap[lastField];
-    const isList = structInfo.layout[fieldIndex]?.isList
+    const isList = structInfo.layout[fieldIndex]?.isList;
     const fieldMeta = structInfo.layout[fieldIndex];
-    
+
     if (fieldIndex === undefined) {
       this.IRB.emitError(
         "ReferenceError",
         `Unknown field '${lastField}' in struct '${structName}'`,
-        node
+        node,
       );
     }
-    
+
     const isStructInfer = this.IRB.hasStruct(fieldMeta.type);
     const value = this.expr.handleExpression(node.value, false, fieldMeta.type);
-    
+
     const expected = fieldMeta?.type;
     const expectedIsList = fieldMeta?.isList;
     const fieldName = fieldMeta?.name;
-    
-    
+
     if (fieldMeta.llvmType?.startsWith("[")) {
       this.IRB.emitError(
         "SemanticError",
         `struct field '${structName}.${fieldName}' is a fixed-size array and cannot be assigned using an array literal; assign elements individually using index assignment`,
-        node
+        node,
       );
     }
-    
+
     // list mismatch
     if (expectedIsList !== !!value?.isList) {
       this.IRB.emitError(
         "TypeError",
         `cannot assign ${value?.isList ? "List" : value.type} to struct field '${structName}.${fieldName}' of type ${expectedIsList ? "List" : expected}`,
-        node
+        node,
       );
     }
-    
+
     // normal type mismatch
     if (!expectedIsList && expected !== value.type) {
       this.IRB.emitError(
         "TypeError",
         `cannot assign value of type '${value.type}' to struct field '${structName}.${fieldName}' of type '${expected}'`,
-        node
+        node,
       );
     }
-    
+
     this.IRB.emitExpr(value);
-    
+
     const rhs = value;
-    
+
     const finalPtr = this.IRB.newTemp();
-    
+
     this.IRB.emit(
-      `${finalPtr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`
+      `${finalPtr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
     );
-    
-    // STRUCT COPY  
-    
+
+    // STRUCT COPY
+
     const isStructCopy =
       rhs.isVarRef &&
       rhs.isStruct &&
       this.IRB.getStruct(rhs.type) &&
       rhs.type === structInfo.layout[fieldIndex].type;
-    
+
     if (isStructCopy) {
-      
       const dstPtr = finalPtr;
       const srcPtr = rhs.ptr;
-      
+
       const struct = this.IRB.getStruct(rhs.type);
       const size = struct.byteSize;
-      
+
       this.IRB.declareOneTime(
         "llvm.memcpy.p0.p0.i64",
-        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)"
+        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
       );
-      
+
       this.IRB.emit(
         `call void @llvm.memcpy.p0.p0.i64(` +
-        `ptr ${dstPtr}, ptr ${srcPtr}, i64 ${size}, i1 false)`
+          `ptr ${dstPtr}, ptr ${srcPtr}, i64 ${size}, i1 false)`,
       );
-      
+
       return;
     }
-    
-    // NORMAL VALUE STORE  
-    
-    const llvmType = this.IRB.getLLVMType(
-      structInfo.layout[fieldIndex].type
-    );
-    
+
+    // NORMAL VALUE STORE
+
+    const llvmType = this.IRB.getLLVMType(structInfo.layout[fieldIndex].type);
+
     if (llvmType === "ptr" || isList) {
-      this.IRB.emit(
-        `store ptr ${value.ptr}, ptr ${finalPtr}`
-      );
+      this.IRB.emit(`store ptr ${value.ptr}, ptr ${finalPtr}`);
     } else {
-      this.IRB.emit(
-        `store ${llvmType} ${value.ptr}, ptr ${finalPtr}`
-      );
+      this.IRB.emit(`store ${llvmType} ${value.ptr}, ptr ${finalPtr}`);
     }
   }
 }

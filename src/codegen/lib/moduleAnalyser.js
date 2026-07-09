@@ -25,8 +25,12 @@ export class Module {
     }
 
     if (this.loadingStack.has(source) || this.moduleFiles.isCompiling(source)) {
-  this.IRB.emitError("ImportError", `Circular import detected '${source}'`, node);
-}
+      this.IRB.emitError(
+        "ImportError",
+        `Circular import detected '${source}'`,
+        node,
+      );
+    }
 
     if (this.modules.has(source)) {
       this.resolveImports(imports, source);
@@ -39,7 +43,7 @@ export class Module {
     const file = this.IRB.loadFile(source, node);
 
     const moduleName = path.basename(source, ".zen");
-    
+
     const prevModule = this.IRB.moduleName;
 
     this.IRB.reset();
@@ -52,38 +56,39 @@ export class Module {
     const ast = parser.parse();
 
     const codegen = new CodeGen(ast, moduleName, this.moduleFiles);
-    
-    const { ir, symbolTable, functionTable, structTable } = codegen.generateLLVM();
-    
+
+    const { ir, symbolTable, functionTable, structTable } =
+      codegen.generateLLVM();
+
     this.IRB.moduleName = prevModule;
 
     const tables = {
       symbolTable: symbolTable[0],
       functionTable,
-      structTable
+      structTable,
     };
 
-    const exportNode = ast.find(n => n.type === "EXPORT");
+    const exportNode = ast.find((n) => n.type === "EXPORT");
     const exports = exportNode ? exportNode.names : [];
-    
+
     this.moduleFiles.IRB = this.IRB;
 
     this.collectExports(exports, moduleName, tables, node);
-    
+
     this.modules.set(source, {
       functions: this.extract(functionTable),
       variables: this.extract(symbolTable[0]),
-      structs: this.extract(structTable)
+      structs: this.extract(structTable),
     });
-    
+
     this.resolveImports(imports, source, tables, node);
 
     this.generatedModules.set(source, ir);
     const llPath = this.writeLLFile(source, ir);
     this.moduleFiles.add(llPath);
-    
+
     this.loadingStack.delete(source);
-this.moduleFiles.finishCompiling(source);
+    this.moduleFiles.finishCompiling(source);
   }
 
   collectExports(exports, moduleName, tables, node) {
@@ -106,7 +111,7 @@ this.moduleFiles.finishCompiling(source);
         this.IRB.emitError(
           "ExportError",
           `'${name}' not defined in ${moduleName}`,
-          node
+          node,
         );
       }
     }
@@ -125,7 +130,11 @@ this.moduleFiles.finishCompiling(source);
       seen.add(name);
 
       if (imported.has(name)) {
-        this.IRB.emitError("ImportError", `'${name}' already imported from ${source}`, node);
+        this.IRB.emitError(
+          "ImportError",
+          `'${name}' already imported from ${source}`,
+          node,
+        );
       }
 
       imported.add(name);
@@ -135,14 +144,16 @@ this.moduleFiles.finishCompiling(source);
 
         const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);
 
-        this.IRB.globals.push(`declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${fn.name}${types}`);
+        this.IRB.globals.push(
+          `declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${fn.name}${types}`,
+        );
         this.IRB.setFunction(name, fn);
         continue;
       }
-      
+
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
-        const fields = (s.layout || []).map(f => f.llvmType).join(", ");
+        const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
 
         this.IRB.globals.push(`%${name} = type { ${fields} }`);
 
@@ -152,7 +163,6 @@ this.moduleFiles.finishCompiling(source);
       }
 
       if (tables.symbolTable.has(name)) {
-        
         const v = tables.symbolTable.get(name);
 
         this.IRB.globals.push(`${v.ptr} = external global ${v.llvmType}`);
@@ -161,7 +171,11 @@ this.moduleFiles.finishCompiling(source);
         continue;
       }
 
-      this.IRB.emitError("ImportError", `'${name}' not exported from ${source}`, node);
+      this.IRB.emitError(
+        "ImportError",
+        `'${name}' not exported from ${source}`,
+        node,
+      );
     }
   }
 

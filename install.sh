@@ -145,6 +145,7 @@ info "Building runtime..."
 
 compile_c      src/codegen/runtime/runtime.c       src/codegen/runtime/runtime.o
 compile_c      src/codegen/runtime/listRuntime.c   src/codegen/runtime/listRuntime.o
+compile_c      src/codegen/runtime/jsonRuntime.c   src/codegen/runtime/jsonRuntime.o
 compile_c      src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o
 compile_c      src/codegen/runtime/httpRuntime.c    src/codegen/runtime/httpRuntime.o
 compile_c_curl src/codegen/runtime/curlRuntime.c   src/codegen/runtime/curlRuntime.o
@@ -159,6 +160,7 @@ ARTIFACTS=(
   src/codegen/runtime/mapRuntime.o
   src/codegen/runtime/curlRuntime.o
   src/codegen/runtime/httpRuntime.o
+  src/codegen/runtime/jsonRuntime.o
 )
 
 for f in "${ARTIFACTS[@]}"; do

@@ -4,56 +4,31 @@ const LLVM_TYPES_MAP = {
   int: "i32",
   double: "double",
   string: "ptr",
-  bool: "i1"
+  bool: "i1",
 };
 
 const ZEN_TYPES_MAP = {
-  "i32": "int",
-  "double": "double",
-  "ptr": "string",
-  "i1": "bool"
-}
+  i32: "int",
+  double: "double",
+  ptr: "string",
+  i1: "bool",
+};
 
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
 // operators
 
-const ASSIGNMENT_OPS = [
-  "=",
-  "+=",
-  "-=",
-  "*=",
-  "/=",
-  "%="
-];
+const ASSIGNMENT_OPS = ["=", "+=", "-=", "*=", "/=", "%="];
 
-const ARITHMETIC_OPS = [
-  "+",
-  "-",
-  "*",
-  "/",
-  "%"
-];
+const ARITHMETIC_OPS = ["+", "-", "*", "/", "%"];
 
-const UNARY_OPS = [
-  "++",
-  "--",
-  "!"
-];
+const UNARY_OPS = ["++", "--", "!"];
 
-const COMPARISON_OPS = [
-  "==",
-  "!=",
-  ">=",
-  "<=",
-  ">",
-  "<"
-];
+const COMPARISON_OPS = ["==", "!=", ">=", "<=", ">", "<"];
 
-const LOGICAL_OPS = [
-  "&&",
-  "||"
-];
+const BITWISE_OPS = ["^"];
+
+const LOGICAL_OPS = ["&&", "||"];
 
 const TYPES = ["int", "bool", "string", "double"];
 
@@ -65,7 +40,38 @@ const NON_SCALAR_TYPES = ["string"];
 
 // keywords
 
-const KEYWORDS = ["if", "else if", "else", "loop", "break", "continue", "return", "fn", "const", "void", "while", "switch", "case", "default", "import", "export", "from", "struct", "auto", "List", "this", "do", "in", "of", "async", "await", "Map", "auto", "reactive", "enum"];
+const KEYWORDS = [
+  "if",
+  "else if",
+  "else",
+  "loop",
+  "break",
+  "continue",
+  "return",
+  "fn",
+  "const",
+  "void",
+  "while",
+  "switch",
+  "case",
+  "default",
+  "import",
+  "export",
+  "from",
+  "struct",
+  "auto",
+  "List",
+  "this",
+  "do",
+  "in",
+  "of",
+  "async",
+  "await",
+  "Map",
+  "auto",
+  "reactive",
+  "enum",
+];
 
 // lexer tokens
 
@@ -102,7 +108,7 @@ const TokenTypes = {
   BLOCK_END: "BLOCK_END",
   COLON: "COLON",
   ARRAY: "ARRAY",
-  EOF: "EOF"
+  EOF: "EOF",
 };
 
 // global reserved functions
@@ -120,44 +126,89 @@ const RESERVED_FUNCTIONS = [
   "toInt",
   "length",
   // BASIC
-  "isEven", "isOdd", "isPositive", "isNegative",
-  "abs", "max", "min", "clamp", "sign",
-  
+  "isEven",
+  "isOdd",
+  "isPositive",
+  "isNegative",
+  "abs",
+  "max",
+  "min",
+  "clamp",
+  "sign",
+
   // MATH
-  "pow", "sqrt", "square", "cube",
-  
+  "pow",
+  "sqrt",
+  "square",
+  "cube",
+
   // ROUNDING
-  "floor", "ceil", "round", "toFixed",
+  "floor",
+  "ceil",
+  "round",
+  "toFixed",
   "mod",
-  
+
   // NUMBER THEORY
-  "gcd", "lcm", "factorial", "isPrime",
-  
+  "gcd",
+  "lcm",
+  "factorial",
+  "isPrime",
+
   // INTERPOLATION
-  "lerp", "normalize",
-  
+  "lerp",
+  "normalize",
+
   // UTILITY
   "between",
-  
+
   // STRING
-  "reverse", "indexOf", "slice", "charAt",
-  "replace", "contains",
-  "upperCase", "lowerCase",
-  "startsWith", "endsWith",
-  "trim", "splitAt",
-  "repeat", "padStart", "padEnd", "padCenter", "count",
-  "capitalize", "extName", "sin",
-  "cos", "tan", "log", "exp",
-  "random", "randomInt",
-  
-  "match", "json", "split",
-  "matchRegex"
-]
+  "reverse",
+  "indexOf",
+  "slice",
+  "charAt",
+  "replace",
+  "contains",
+  "upperCase",
+  "lowerCase",
+  "startsWith",
+  "endsWith",
+  "trim",
+  "splitAt",
+  "repeat",
+  "padStart",
+  "padEnd",
+  "padCenter",
+  "count",
+  "capitalize",
+  "extName",
+  "sin",
+  "cos",
+  "tan",
+  "log",
+  "exp",
+  "random",
+  "randomInt",
+
+  "match",
+  "json",
+  "split",
+  "matchRegex",
+];
+
+const BUILTIN_STRUCTS = [
+  "byte", // speacial
+  "HttpServer",
+  "HttpRequest",
+  "HttpResponse", // future
+  "Json",
+  "JsonArray",
+  "JsonObject",
+];
 
 // all built in functions
 
 const BUILTIN_FUNCTIONS = [
-  
   // CORE
   "screen",
   "input",
@@ -169,42 +220,78 @@ const BUILTIN_FUNCTIONS = [
   "toString",
   "toInt",
   "length",
-    // BASIC
-  "isEven", "isOdd", "isPositive", "isNegative",
-  "abs", "max", "min", "clamp", "sign",
-  
+  // BASIC
+  "isEven",
+  "isOdd",
+  "isPositive",
+  "isNegative",
+  "abs",
+  "max",
+  "min",
+  "clamp",
+  "sign",
+
   // MATH
-  "pow", "sqrt", "square", "cube",
-  
+  "pow",
+  "sqrt",
+  "square",
+  "cube",
+
   // ROUNDING
-  "floor", "ceil", "round", "toFixed",
+  "floor",
+  "ceil",
+  "round",
+  "toFixed",
   "mod",
-  
+
   // NUMBER THEORY
-  "gcd", "lcm", "factorial", "isPrime",
-  
+  "gcd",
+  "lcm",
+  "factorial",
+  "isPrime",
+
   // INTERPOLATION
-  "lerp", "normalize",
-  
+  "lerp",
+  "normalize",
+
   // UTILITY
   "between",
-  
+
   // STRING
-  "reverse", "indexOf", "slice", "charAt",
-  "replace", "contains",
-  "upperCase", "lowerCase",
-  "startsWith", "endsWith",
-  "trim", "splitAt", "split",
-  
-  "repeat", "padStart", "padEnd", "padCenter", "count",
-  "capitalize", "extName", "sin",
-  "cos", "tan", "log", "exp",
-  "random", "randomInt",
-  
-  "match", "json",
-  
+  "reverse",
+  "indexOf",
+  "slice",
+  "charAt",
+  "replace",
+  "contains",
+  "upperCase",
+  "lowerCase",
+  "startsWith",
+  "endsWith",
+  "trim",
+  "splitAt",
+  "split",
+
+  "repeat",
+  "padStart",
+  "padEnd",
+  "padCenter",
+  "count",
+  "capitalize",
+  "extName",
+  "sin",
+  "cos",
+  "tan",
+  "log",
+  "exp",
+  "random",
+  "randomInt",
+
+  "match",
+  "json",
+
   "matchRegex",
-  
+
   // SYS
   "_sys_exec",
   "_sys_panic",
@@ -214,12 +301,16 @@ const BUILTIN_FUNCTIONS = [
   "_sys_argv",
   "_sys_setEnv",
   "_sys_hasEnv",
-  "_sys_timestamp",
   "_sys_execOutput",
-  
+  "_sys_key",
+  "_sys_clipboard_set",
+  "_sys_clipboard_get",
+  "_sys_clipboard_clear",
+  "_sys_clipboard_hasText",
+
   // HTTP server
   "_httpServer_create",
-  
+
   // FS
   "_fs_cwd",
   "_fs_readFile",
@@ -232,7 +323,7 @@ const BUILTIN_FUNCTIONS = [
   "_fs_renameFile",
   "_fs_writeFileBytes",
   "_fs_readFileBytes",
-  
+
   // OS
   "_os_cpuCount",
   "_os_cpuArch",
@@ -257,10 +348,10 @@ const BUILTIN_FUNCTIONS = [
   "_os_isMac",
   "_os_isAndroid",
   "_os_homeDir",
-  
+
   // NET
   "_net_online",
-  
+
   // TIME
   "_time_sleep",
   "_time_time",
@@ -269,14 +360,16 @@ const BUILTIN_FUNCTIONS = [
   "_time_month",
   "_time_day",
   "_time_year",
-  
+  "_time_now",
+  "_time_format",
+
   // HTTP
   "_http_get",
   "_http_post",
   "_http_put",
   "_http_patch",
   "_http_delete",
-  
+
   // FFI
   "_ffi_printf",
   "_ffi_puts",
@@ -327,50 +420,86 @@ const BUILTIN_FUNCTIONS = [
   "_ffi_isalnum",
   "_ffi_ispunct",
   "_ffi_isxdigit",
-  
+
   // PATH
   "_path_basename",
   "_path_dirname",
   "_path_extname",
   "_path_join",
-  "_path_normalize"
-]
+  "_path_normalize",
+];
 
 // zen written std functions
 
 const STD_FUNCTIONS = [
   // BASIC
-  "isEven", "isOdd", "isPositive", "isNegative",
-  "abs", "max", "min", "clamp", "sign",
-  
+  "isEven",
+  "isOdd",
+  "isPositive",
+  "isNegative",
+  "abs",
+  "max",
+  "min",
+  "clamp",
+  "sign",
+
   // MATH
-  "pow", "sqrt", "square", "cube",
-  
+  "pow",
+  "sqrt",
+  "square",
+  "cube",
+
   // ROUNDING
-  "floor", "ceil", "round", "toFixed",
+  "floor",
+  "ceil",
+  "round",
+  "toFixed",
   "mod",
-  
+
   // NUMBER THEORY
-  "gcd", "lcm", "factorial", "isPrime",
-  
+  "gcd",
+  "lcm",
+  "factorial",
+  "isPrime",
+
   // INTERPOLATION
-  "lerp", "normalize",
-  
+  "lerp",
+  "normalize",
+
   // UTILITY
   "between",
-  
+
   // STRING
-  "reverse", "indexOf", "slice", "charAt",
-  "replace", "contains",
-  "upperCase", "lowerCase",
-  "startsWith", "endsWith",
-  "trim", "splitAt",
-  "repeat", "padStart", "padEnd", "padCenter", "count",
-  "capitalize", "extName", "sin",
-  "cos", "tan", "log", "exp",
-  "random", "randomInt",
-  
-  "match", "json", "split"
+  "reverse",
+  "indexOf",
+  "slice",
+  "charAt",
+  "replace",
+  "contains",
+  "upperCase",
+  "lowerCase",
+  "startsWith",
+  "endsWith",
+  "trim",
+  "splitAt",
+  "repeat",
+  "padStart",
+  "padEnd",
+  "padCenter",
+  "count",
+  "capitalize",
+  "extName",
+  "sin",
+  "cos",
+  "tan",
+  "log",
+  "exp",
+  "random",
+  "randomInt",
+
+  "match",
+  "json",
+  "split",
 ];
 
 const NON_STANDALONE_BUILTINS = [];
@@ -378,7 +507,6 @@ const NON_STANDALONE_BUILTINS = [];
 const VOID_BUILTIN_FUNCTIONS = ["screen", "panic", "sleep"];
 
 const NAMESPACE_MAP = {
-  
   os: [
     "cpuCount",
     "cpuArch",
@@ -402,13 +530,11 @@ const NAMESPACE_MAP = {
     "isLinux",
     "isAndroid",
     "isMac",
-    "homeDir"
+    "homeDir",
   ],
-  
-  httpServer: [
-    "create"
-    ],
-  
+
+  httpServer: ["create"],
+
   fs: [
     "readFile",
     "writeFile",
@@ -420,9 +546,9 @@ const NAMESPACE_MAP = {
     "cwd",
     "changeDir",
     "readFileBytes",
-    "writeFileBytes"
+    "writeFileBytes",
   ],
-  
+
   sys: [
     "exec",
     "panic",
@@ -432,10 +558,14 @@ const NAMESPACE_MAP = {
     "argv",
     "setEnv",
     "hasEnv",
-    "timestamp",
-    "execOutput"
+    "execOutput",
+    "key",
+    "clipboard_get",
+    "clipboard_set",
+    "clipboard_clear",
+    "clipboard_hasText",
   ],
-  
+
   time: [
     "sleep",
     "time",
@@ -443,80 +573,357 @@ const NAMESPACE_MAP = {
     "date",
     "day",
     "month",
-    "year"
+    "year",
+    "now",
+    "format",
   ],
-  
-  http: [
-    "get",
-    "post",
-    "put",
-    "delete",
-    "patch"
-  ],
-  
-  net: [
-    "online"
-  ],
-  
-  ffi: [
-  "printf",
-  "puts",
-  "putchar",
-  "getchar",
-  "strlen",
-  "strcmp",
-  "strncmp",
-  "pow",
-  "sqrt",
-  "fabs",
-  "floor",
-  "ceil",
-  "round",
-  "sin",
-  "cos",
-  "tan",
-  "log",
-  "exp",
-  "exit",
-  "system",
-  "abort",
-  "clock",
-  "rand",
-  "srand",
-  "abs",
-  "atoi",
-  "atof",
-  "toupper",
-  "tolower",
-  "isalpha",
-  "isdigit",
-  "isspace",
-  "fmod",
-  "log10",
-  "log2",
-  "atan",
-  "asin",
-  "acos",
-  "atan2",
-  "sinh",
-  "cosh",
-  "tanh",
-  "trunc",
-  "cbrt",
-  "isupper",
-  "islower",
-  "isalnum",
-  "ispunct",
-  "isxdigit"
-],
 
- path: [
-  "basename",
-  "dirname",
-  "extname",
-  "join",
-  "normalize"
-  ]
+  http: ["get", "post", "put", "delete", "patch"],
+
+  net: ["online"],
+
+  ffi: [
+    "printf",
+    "puts",
+    "putchar",
+    "getchar",
+    "strlen",
+    "strcmp",
+    "strncmp",
+    "pow",
+    "sqrt",
+    "fabs",
+    "floor",
+    "ceil",
+    "round",
+    "sin",
+    "cos",
+    "tan",
+    "log",
+    "exp",
+    "exit",
+    "system",
+    "abort",
+    "clock",
+    "rand",
+    "srand",
+    "abs",
+    "atoi",
+    "atof",
+    "toupper",
+    "tolower",
+    "isalpha",
+    "isdigit",
+    "isspace",
+    "fmod",
+    "log10",
+    "log2",
+    "atan",
+    "asin",
+    "acos",
+    "atan2",
+    "sinh",
+    "cosh",
+    "tanh",
+    "trunc",
+    "cbrt",
+    "isupper",
+    "islower",
+    "isalnum",
+    "ispunct",
+    "isxdigit",
+  ],
+
+  path: ["basename", "dirname", "extname", "join", "normalize"],
+};
+
+const BUILTIN_STRUCT_METHODS = {
+  Json: {
+    getInt: {
+      returnType: "int",
+      args: ["string"],
+      llvmName: "_zen_json_getInt",
+    },
+    getDouble: {
+      returnType: "double",
+      args: ["string"],
+      llvmName: "_zen_json_getDouble",
+    },
+    getString: {
+      returnType: "string",
+      args: ["string"],
+      llvmName: "_zen_json_getString",
+    },
+    getBool: {
+      returnType: "bool",
+      args: ["string"],
+      llvmName: "_zen_json_getBool",
+    },
+    getArray: {
+      returnType: "JsonArray",
+      args: ["string"],
+      llvmName: "_zen_json_getArray",
+    },
+    getObject: {
+      returnType: "JsonObject",
+      args: ["string"],
+      llvmName: "_zen_json_getObject",
+    },
+    has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
+
+    arrayLength: {
+      returnType: "int",
+      args: [],
+      llvmName: "_zen_json_arrayLength",
+    },
+    arrayGetInt: {
+      returnType: "int",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetInt",
+    },
+    arrayGetDouble: {
+      returnType: "double",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetDouble",
+    },
+    arrayGetBool: {
+      returnType: "bool",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetBool",
+    },
+    arrayGetString: {
+      returnType: "string",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetString",
+    },
+    arrayGetObject: {
+      returnType: "JsonObject",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetObject",
+    },
+    arrayGetArray: {
+      returnType: "JsonArray",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetArray",
+    },
+
+    parse: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_zen_json_parse",
+      storeResult: true,
+      hasReceiver: false,
+    },
+
+    free: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_json_free",
+    },
+
+    getRootArray: {
+      returnType: "JsonArray",
+      args: [],
+      llvmName: "_zen_json_getRootArray",
+    },
+
+    getRootObject: {
+      returnType: "JsonObject",
+      args: [],
+      llvmName: "_zen_json_getRootObject",
+    },
+  },
+
+  JsonObject: {
+    getInt: {
+      returnType: "int",
+      args: ["string"],
+      llvmName: "_zen_json_getInt",
+    },
+    getDouble: {
+      returnType: "double",
+      args: ["string"],
+      llvmName: "_zen_json_getDouble",
+    },
+    getString: {
+      returnType: "string",
+      args: ["string"],
+      llvmName: "_zen_json_getString",
+    },
+    getBool: {
+      returnType: "bool",
+      args: ["string"],
+      llvmName: "_zen_json_getBool",
+    },
+    getArray: {
+      returnType: "JsonArray",
+      args: ["string"],
+      llvmName: "_zen_json_getArray",
+    },
+    getObject: {
+      returnType: "JsonObject",
+      args: ["string"],
+      llvmName: "_zen_json_getObject",
+    },
+    has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
+
+    free: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_json_free",
+    },
+  },
+
+  JsonArray: {
+    arrayLength: {
+      returnType: "int",
+      args: [],
+      llvmName: "_zen_json_arrayLength",
+    },
+    arrayGetInt: {
+      returnType: "int",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetInt",
+    },
+    arrayGetDouble: {
+      returnType: "double",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetDouble",
+    },
+    arrayGetBool: {
+      returnType: "bool",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetBool",
+    },
+    arrayGetString: {
+      returnType: "string",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetString",
+    },
+    arrayGetObject: {
+      returnType: "JsonObject",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetObject",
+    },
+    arrayGetArray: {
+      returnType: "JsonArray",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetArray",
+    },
+
+    free: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_json_free",
+    },
+  },
+
+  HttpServer: {
+    listen: {
+      returnType: "int",
+      args: [],
+      llvmName: "_httpServer_listen",
+    },
+
+    next: {
+      returnType: "HttpRequest",
+      args: [],
+      llvmName: "_httpServer_next",
+    },
+
+    close: {
+      returnType: "void",
+      args: [],
+      llvmName: "_httpServer_close",
+    },
+  },
+
+  HttpRequest: {
+    sendFile: {
+      returnType: "void",
+      args: ["string", "string"],
+      llvmName: "_httpRequest_sendFile",
+    },
+
+    send: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_httpRequest_send",
+    },
+
+    status: {
+      returnType: "void",
+      args: ["int"],
+      llvmName: "_httpRequest_status",
+    },
+
+    method: {
+      returnType: "string",
+      args: [],
+      llvmName: "_httpRequest_method",
+    },
+
+    path: {
+      returnType: "string",
+      args: [],
+      llvmName: "_httpRequest_path",
+    },
+
+    body: {
+      returnType: "string",
+      args: [],
+      llvmName: "_httpRequest_body",
+    },
+
+    json: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_httpRequest_json",
+    },
+
+    css: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_httpRequest_css",
+    },
+
+    html: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_httpRequest_html",
+    },
+
+    redirect: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_httpRequest_redirect",
+    },
+
+    setHeader: {
+      returnType: "void",
+      args: ["string", "string"],
+      llvmName: "_httpRequest_setHeader",
+    },
+  },
+};
+
+const BUILTIN_STRUCT_PROPS = {
+  HttpRequest: {
+    method: {
+      returnType: "string",
+      llvmName: "_httpRequest_method",
+    },
+    path: {
+      returnType: "string",
+      llvmName: "_httpRequest_path",
+    },
+    body: {
+      returnType: "string",
+      llvmName: "_httpRequest_body",
+    },
+  },
 };
 
 // compiler written std functions schema
@@ -526,622 +933,645 @@ const NAMESPACE_MAP = {
 // }
 
 const BUILTIN_MAP = {
-  
   screen: {
     returnType: "void",
-    llvmName: "screen"
-  },
-  
-  input: {
-    returnType: "string", 
-    llvmName: "input"
-  },
-  
-  type: {
-    returnType: "string",
-    llvmName: "type"
-  },
-  
-  "Int": {
-    returnType: "int",
-    llvmName: "Int"
-  },
-  
-  "Double": {
-    returnType: "double",
-    llvmName: "Double"
-  },
-  
-  "Bool": {
-    returnType: "bool",
-    llvmName: "Bool"
-  },
-  
-  "String": {
-    returnType: "string",
-    llvmName: "String"
-  },
-  
-  toString: {
-    returnType: "string",
-    llvmName: "toString"
-  },
-  
-  toInt: {
-    returnType: "int",
-    llvmName: "toInt"
-  },
-  
-  length: {
-    returnType: "int",
-    llvmName: "length"
+    llvmName: "screen",
   },
 
-  
+  input: {
+    returnType: "string",
+    llvmName: "input",
+  },
+
+  type: {
+    returnType: "string",
+    llvmName: "type",
+  },
+
+  Int: {
+    returnType: "int",
+    llvmName: "Int",
+  },
+
+  Double: {
+    returnType: "double",
+    llvmName: "Double",
+  },
+
+  Bool: {
+    returnType: "bool",
+    llvmName: "Bool",
+  },
+
+  String: {
+    returnType: "string",
+    llvmName: "String",
+  },
+
+  toString: {
+    returnType: "string",
+    llvmName: "toString",
+  },
+
+  toInt: {
+    returnType: "int",
+    llvmName: "toInt",
+  },
+
+  length: {
+    returnType: "int",
+    llvmName: "length",
+  },
+
   panic: {
     returnType: "void",
-    llvmName: "_sys_panic"
+    llvmName: "_sys_panic",
   },
-  
+
   color: {
     returnType: "void",
-    llvmName: "_sys_color"
+    llvmName: "_sys_color",
   },
-  
+
   exec: {
     returnType: "int",
-    llvmName: "_sys_exec"
+    llvmName: "_sys_exec",
   },
-  
+
   getEnv: {
     returnType: "string",
-    llvmName: "_sys_getEnv"
+    llvmName: "_sys_getEnv",
   },
-  
+
   performance: {
     returnType: "double",
-    llvmName: "_sys_performance"
+    llvmName: "_sys_performance",
   },
-  
+
   argv: {
     returnType: "List",
-    llvmName: "_sys_argv"
+    llvmName: "_sys_argv",
   },
-  
+
   setEnv: {
     returnType: "void",
-    llvmName: "_sys_setEnv"
+    llvmName: "_sys_setEnv",
   },
 
   hasEnv: {
     returnType: "bool",
-    llvmName: "_sys_hasEnv"
+    llvmName: "_sys_hasEnv",
   },
 
   execOutput: {
     returnType: "string",
-    llvmName: "_sys_execOutput"
+    llvmName: "_sys_execOutput",
   },
 
-  timestamp: {
-    returnType: "int",
-    llvmName: "_sys_timestamp"
+  key: {
+    returnType: "string",
+    llvmName: "_sys_key",
   },
-  
+
+  clipboard_get: {
+    returnType: "string",
+    llvmName: "_sys_clipboard_get",
+  },
+
+  clipboard_set: {
+    returnType: "void",
+    llvmName: "_sys_clipboard_set",
+  },
+
+  clipboard_clear: {
+    returnType: "void",
+    llvmName: "_sys_clipboard_clear",
+  },
+
+  clipboard_hasText: {
+    returnType: "bool",
+    llvmName: "_sys_clipboard_hasText",
+  },
+
   create: {
     returnType: "struct",
-    llvmName: "_httpServer_create"
+    llvmName: "_httpServer_create",
   },
-  
-  
+
   readFile: {
     returnType: "string",
-    llvmName: "_fs_readFile"
+    llvmName: "_fs_readFile",
   },
-  
+
   writeFile: {
     returnType: "int",
-    llvmName: "_fs_writeFile"
+    llvmName: "_fs_writeFile",
   },
-  
+
   readFileBytes: {
     returnType: "byte",
-    llvmName: "_fs_readFileBytes"
+    llvmName: "_fs_readFileBytes",
   },
-  
+
   writeFileBytes: {
     returnType: "void",
-    llvmName: "_fs_writeFileBytes"
+    llvmName: "_fs_writeFileBytes",
   },
-  
+
   appendFile: {
     returnType: "int",
-    llvmName: "_fs_appendFile"
+    llvmName: "_fs_appendFile",
   },
-  
+
   exists: {
     returnType: "bool",
-    llvmName: "_fs_exists"
+    llvmName: "_fs_exists",
   },
-  
+
   deleteFile: {
     returnType: "int",
-    llvmName: "_fs_deleteFile"
+    llvmName: "_fs_deleteFile",
   },
-  
+
   renameFile: {
     returnType: "int",
-    llvmName: "_fs_renameFile"
+    llvmName: "_fs_renameFile",
   },
-  
+
   makeDir: {
     returnType: "int",
-    llvmName: "_fs_makeDir"
+    llvmName: "_fs_makeDir",
   },
-  
+
   cwd: {
     returnType: "string",
-    llvmName: "_fs_cwd"
+    llvmName: "_fs_cwd",
   },
-  
+
   changeDir: {
     returnType: "int",
-    llvmName: "_fs_changeDir"
+    llvmName: "_fs_changeDir",
   },
-  
-  
+
   cpuCount: {
     returnType: "int",
-    llvmName: "_os_cpuCount"
+    llvmName: "_os_cpuCount",
   },
-  
+
   cpuArch: {
     returnType: "string",
-    llvmName: "_os_cpuArch"
+    llvmName: "_os_cpuArch",
   },
-  
+
   cpuModel: {
     returnType: "string",
-    llvmName: "_os_cpuModel"
+    llvmName: "_os_cpuModel",
   },
-  
+
   cpuSpeed: {
     returnType: "double",
-    llvmName: "_os_cpuSpeed"
+    llvmName: "_os_cpuSpeed",
   },
-  
+
   totalMemory: {
     returnType: "int",
-    llvmName: "_os_totalMemory"
+    llvmName: "_os_totalMemory",
   },
-  
+
   freeMemory: {
     returnType: "int",
-    llvmName: "_os_freeMemory"
+    llvmName: "_os_freeMemory",
   },
-  
+
   usedMemory: {
     returnType: "int",
-    llvmName: "_os_usedMemory"
+    llvmName: "_os_usedMemory",
   },
-  
+
   processMemory: {
     returnType: "int",
-    llvmName: "_os_processMemory"
+    llvmName: "_os_processMemory",
   },
-  
+
   osName: {
     returnType: "string",
-    llvmName: "_os_osName"
+    llvmName: "_os_osName",
   },
-  
+
   osVersion: {
     returnType: "string",
-    llvmName: "_os_osVersion"
+    llvmName: "_os_osVersion",
   },
-  
+
   hostname: {
     returnType: "string",
-    llvmName: "_os_hostname"
+    llvmName: "_os_hostname",
   },
-  
+
   username: {
     returnType: "string",
-    llvmName: "_os_username"
+    llvmName: "_os_username",
   },
-  
+
   uptime: {
     returnType: "int",
-    llvmName: "_os_uptime"
+    llvmName: "_os_uptime",
   },
-  
+
   battery: {
     returnType: "string",
-    llvmName: "_os_battery"
+    llvmName: "_os_battery",
   },
-  
+
   exit: {
     returnType: "void",
-    llvmName: "_os_exit"
+    llvmName: "_os_exit",
   },
 
   pid: {
     returnType: "int",
-    llvmName: "_os_pid"
+    llvmName: "_os_pid",
   },
 
   parentPid: {
     returnType: "int",
-    llvmName: "_os_parentPid"
+    llvmName: "_os_parentPid",
   },
 
   platform: {
     returnType: "string",
-    llvmName: "_os_platform"
+    llvmName: "_os_platform",
   },
 
   isWindows: {
     returnType: "bool",
-    llvmName: "_os_isWindows"
+    llvmName: "_os_isWindows",
   },
 
   isLinux: {
     returnType: "bool",
-    llvmName: "_os_isLinux"
+    llvmName: "_os_isLinux",
   },
 
   isMac: {
     returnType: "bool",
-    llvmName: "_os_isMac"
+    llvmName: "_os_isMac",
   },
 
   isAndroid: {
     returnType: "bool",
-    llvmName: "_os_isAndroid"
-  },
-  
-  homeDir: {
-    returnType: "string",
-    llvmName: "_os_homeDir"
+    llvmName: "_os_isAndroid",
   },
 
-  
+  homeDir: {
+    returnType: "string",
+    llvmName: "_os_homeDir",
+  },
+
   online: {
     returnType: "bool",
-    llvmName: "_net_online"
+    llvmName: "_net_online",
   },
-  
-  
+
   sleep: {
     returnType: "void",
-    llvmName: "_time_sleep"
+    llvmName: "_time_sleep",
   },
-  
+
   time: {
     returnType: "string",
-    llvmName: "_time_time"
+    llvmName: "_time_time",
   },
-  
+
   millis: {
     returnType: "int",
-    llvmName: "_time_millis"
+    llvmName: "_time_millis",
   },
-  
+
   date: {
     returnType: "int",
-    llvmName: "_time_date"
+    llvmName: "_time_date",
   },
-  
+
   month: {
     returnType: "int",
-    llvmName: "_time_month"
+    llvmName: "_time_month",
   },
-  
+
   day: {
     returnType: "int",
-    llvmName: "_time_day"
+    llvmName: "_time_day",
   },
-  
+
   year: {
     returnType: "int",
-    llvmName: "_time_year"
+    llvmName: "_time_year",
   },
-  
-  
-  "get": {
+
+  now: {
+    returnType: "int",
+    llvmName: "_time_now",
+  },
+
+  format: {
+    returnType: "int",
+    llvmName: "_time_format",
+  },
+
+  get: {
     returnType: "string",
-    llvmName: "_http_get"
+    llvmName: "_http_get",
   },
-  
+
   post: {
     returnType: "string",
-    llvmName: "_http_post"
+    llvmName: "_http_post",
   },
-  
+
   put: {
     returnType: "string",
-    llvmName: "_http_put"
+    llvmName: "_http_put",
   },
-  
+
   patch: {
     returnType: "string",
-    llvmName: "_http_patch"
+    llvmName: "_http_patch",
   },
-  
-  "delete": {
+
+  delete: {
     returnType: "string",
-    llvmName: "_http_delete"
+    llvmName: "_http_delete",
   },
-  
+
   printf: {
     returnType: "int",
-    llvmName: "_ffi_printf"
+    llvmName: "_ffi_printf",
   },
 
   puts: {
     returnType: "int",
-    llvmName: "_ffi_puts"
+    llvmName: "_ffi_puts",
   },
 
   putchar: {
     returnType: "int",
-    llvmName: "_ffi_putchar"
+    llvmName: "_ffi_putchar",
   },
 
   getchar: {
     returnType: "int",
-    llvmName: "_ffi_getchar"
+    llvmName: "_ffi_getchar",
   },
 
   strlen: {
     returnType: "int",
-    llvmName: "_ffi_strlen"
+    llvmName: "_ffi_strlen",
   },
 
   strcmp: {
     returnType: "int",
-    llvmName: "_ffi_strcmp"
+    llvmName: "_ffi_strcmp",
   },
 
   strncmp: {
     returnType: "int",
-    llvmName: "_ffi_strncmp"
+    llvmName: "_ffi_strncmp",
   },
 
   pow: {
     returnType: "double",
-    llvmName: "_ffi_pow"
+    llvmName: "_ffi_pow",
   },
 
   sqrt: {
     returnType: "double",
-    llvmName: "_ffi_sqrt"
+    llvmName: "_ffi_sqrt",
   },
 
   fabs: {
     returnType: "double",
-    llvmName: "_ffi_fabs"
+    llvmName: "_ffi_fabs",
   },
 
   floor: {
     returnType: "double",
-    llvmName: "_ffi_floor"
+    llvmName: "_ffi_floor",
   },
 
   ceil: {
     returnType: "double",
-    llvmName: "_ffi_ceil"
+    llvmName: "_ffi_ceil",
   },
 
   round: {
     returnType: "double",
-    llvmName: "_ffi_round"
+    llvmName: "_ffi_round",
   },
 
   sin: {
     returnType: "double",
-    llvmName: "_ffi_sin"
+    llvmName: "_ffi_sin",
   },
 
   cos: {
     returnType: "double",
-    llvmName: "_ffi_cos"
+    llvmName: "_ffi_cos",
   },
 
   tan: {
     returnType: "double",
-    llvmName: "_ffi_tan"
+    llvmName: "_ffi_tan",
   },
 
   log: {
     returnType: "double",
-    llvmName: "_ffi_log"
+    llvmName: "_ffi_log",
   },
 
   exp: {
     returnType: "double",
-    llvmName: "_ffi_exp"
+    llvmName: "_ffi_exp",
   },
 
   exit: {
     returnType: "void",
-    llvmName: "_ffi_exit"
+    llvmName: "_ffi_exit",
   },
 
   system: {
     returnType: "int",
-    llvmName: "_ffi_system"
+    llvmName: "_ffi_system",
   },
 
   abort: {
     returnType: "void",
-    llvmName: "_ffi_abort"
+    llvmName: "_ffi_abort",
   },
 
   clock: {
     returnType: "int",
-    llvmName: "_ffi_clock"
+    llvmName: "_ffi_clock",
   },
 
   rand: {
     returnType: "int",
-    llvmName: "_ffi_rand"
+    llvmName: "_ffi_rand",
   },
 
   srand: {
     returnType: "void",
-    llvmName: "_ffi_srand"
+    llvmName: "_ffi_srand",
   },
 
   abs: {
     returnType: "int",
-    llvmName: "_ffi_abs"
+    llvmName: "_ffi_abs",
   },
 
   atoi: {
     returnType: "int",
-    llvmName: "_ffi_atoi"
+    llvmName: "_ffi_atoi",
   },
 
   atof: {
     returnType: "double",
-    llvmName: "_ffi_atof"
+    llvmName: "_ffi_atof",
   },
 
   toupper: {
     returnType: "int",
-    llvmName: "_ffi_toupper"
+    llvmName: "_ffi_toupper",
   },
 
   tolower: {
     returnType: "int",
-    llvmName: "_ffi_tolower"
+    llvmName: "_ffi_tolower",
   },
 
   isalpha: {
     returnType: "int",
-    llvmName: "_ffi_isalpha"
+    llvmName: "_ffi_isalpha",
   },
 
   isdigit: {
     returnType: "int",
-    llvmName: "_ffi_isdigit"
+    llvmName: "_ffi_isdigit",
   },
 
   isspace: {
     returnType: "int",
-    llvmName: "_ffi_isspace"
+    llvmName: "_ffi_isspace",
   },
 
   fmod: {
     returnType: "double",
-    llvmName: "_ffi_fmod"
+    llvmName: "_ffi_fmod",
   },
 
   log10: {
     returnType: "double",
-    llvmName: "_ffi_log10"
+    llvmName: "_ffi_log10",
   },
 
   log2: {
     returnType: "double",
-    llvmName: "_ffi_log2"
+    llvmName: "_ffi_log2",
   },
 
   atan: {
     returnType: "double",
-    llvmName: "_ffi_atan"
+    llvmName: "_ffi_atan",
   },
 
   asin: {
     returnType: "double",
-    llvmName: "_ffi_asin"
+    llvmName: "_ffi_asin",
   },
 
   acos: {
     returnType: "double",
-    llvmName: "_ffi_acos"
+    llvmName: "_ffi_acos",
   },
 
   atan2: {
     returnType: "double",
-    llvmName: "_ffi_atan2"
+    llvmName: "_ffi_atan2",
   },
 
   sinh: {
     returnType: "double",
-    llvmName: "_ffi_sinh"
+    llvmName: "_ffi_sinh",
   },
 
   cosh: {
     returnType: "double",
-    llvmName: "_ffi_cosh"
+    llvmName: "_ffi_cosh",
   },
 
   tanh: {
     returnType: "double",
-    llvmName: "_ffi_tanh"
+    llvmName: "_ffi_tanh",
   },
 
   trunc: {
     returnType: "double",
-    llvmName: "_ffi_trunc"
+    llvmName: "_ffi_trunc",
   },
 
   cbrt: {
     returnType: "double",
-    llvmName: "_ffi_cbrt"
+    llvmName: "_ffi_cbrt",
   },
 
   isupper: {
     returnType: "int",
-    llvmName: "_ffi_isupper"
+    llvmName: "_ffi_isupper",
   },
 
   islower: {
     returnType: "int",
-    llvmName: "_ffi_islower"
+    llvmName: "_ffi_islower",
   },
 
   isalnum: {
     returnType: "int",
-    llvmName: "_ffi_isalnum"
+    llvmName: "_ffi_isalnum",
   },
 
   ispunct: {
     returnType: "int",
-    llvmName: "_ffi_ispunct"
+    llvmName: "_ffi_ispunct",
   },
 
   isxdigit: {
     returnType: "int",
-    llvmName: "_ffi_isxdigit"
+    llvmName: "_ffi_isxdigit",
   },
-  
+
   basename: {
     returnType: "string",
-    llvmName: "_path_basename"
+    llvmName: "_path_basename",
   },
 
   dirname: {
     returnType: "string",
-    llvmName: "_path_dirname"
+    llvmName: "_path_dirname",
   },
 
   extname: {
     returnType: "string",
-    llvmName: "_path_extname"
+    llvmName: "_path_extname",
   },
 
   join: {
     returnType: "string",
-    llvmName: "_path_join"
+    llvmName: "_path_join",
   },
 
   normalize: {
     returnType: "string",
-    llvmName: "_path_normalize"
-  }
+    llvmName: "_path_normalize",
+  },
 };
 
 const OP_CODES = {
@@ -1150,15 +1580,16 @@ const OP_CODES = {
     "-": "sub",
     "*": "mul",
     "/": "sdiv",
-    "%": "srem"
+    "%": "srem",
+    "^": "xor",
   },
   double: {
     "+": "fadd",
     "-": "fsub",
     "*": "fmul",
     "/": "fdiv",
-    "%": "frem"
-  }
+    "%": "frem",
+  },
 };
 
 const cmpMap = {
@@ -1167,7 +1598,7 @@ const cmpMap = {
   ">": "sgt",
   "<": "slt",
   ">=": "sge",
-  "<=": "sle"
+  "<=": "sle",
 };
 
 const fcmpMap = {
@@ -1176,7 +1607,7 @@ const fcmpMap = {
   ">": "ogt",
   "<": "olt",
   ">=": "oge",
-  "<=": "ole"
+  "<=": "ole",
 };
 
 const FORMAT_MAP = {
@@ -1186,14 +1617,14 @@ const FORMAT_MAP = {
     varType: "ptr",
     decl: "scan_string",
     ir: '@.scan_string = private constant [6 x i8] c"%[^\\0A]\\00"',
-    zero: null
-  }
-}
+    zero: null,
+  },
+};
 
 const LOOKUP = {
   bool: 0,
   int: 1,
-  double: 2
+  double: 2,
 };
 
 const OPERATORS = [
@@ -1201,7 +1632,8 @@ const OPERATORS = [
   ...ARITHMETIC_OPS,
   ...UNARY_OPS,
   ...COMPARISON_OPS,
-  ...LOGICAL_OPS
+  ...LOGICAL_OPS,
+  ...BITWISE_OPS,
 ];
 
 // parser types
@@ -1247,7 +1679,7 @@ const ParserTypes = {
   CONDITIONAL: "CONDITIONAL",
   ARRAY: "ARRAY",
   ARRAY_ACCESS: "ARRAY_ACCESS",
-  DATA_TYPE: "DATA_TYPE"
+  DATA_TYPE: "DATA_TYPE",
 };
 
 // super globals schema
@@ -1260,59 +1692,55 @@ const GLOBAL_EXTERNAL = {
   SQRT2: { type: "double", mutable: false },
   LN2: { type: "double", mutable: false },
   LN10: { type: "double", mutable: false },
-  
+
   SEED: { type: "i32", mutable: true },
-  
+
   I32_MAX: { type: "i32", mutable: false },
   I32_MIN: { type: "i32", mutable: false },
-  
+
   F64_MAX: { type: "double", mutable: false },
   F64_MIN: { type: "double", mutable: false },
   F64_EPS: { type: "double", mutable: false },
-  
+
   INF: { type: "double", mutable: false },
   NEG_INF: { type: "double", mutable: false },
-  NAN: { type: "double", mutable: false }
+  NAN: { type: "double", mutable: false },
 };
 
 const STD_FUNCTIONS_SCHEMA = {
-  
   isEven: { ret: "i1", params: ["i32"] },
   isOdd: { ret: "i1", params: ["i32"] },
   isPositive: { ret: "i1", params: ["i32"] },
   isNegative: { ret: "i1", params: ["i32"] },
-  
+
   abs: { ret: "i32", params: ["i32"] },
   max: { ret: "i32", params: ["i32", "i32"] },
   min: { ret: "i32", params: ["i32", "i32"] },
   clamp: { ret: "i32", params: ["i32", "i32", "i32"] },
   sign: { ret: "i32", params: ["i32"] },
-  
+
   pow: { ret: "double", params: ["i32", "i32"] },
   sqrt: { ret: "i32", params: ["i32"] },
   square: { ret: "i32", params: ["i32"] },
   cube: { ret: "i32", params: ["i32"] },
-  
 
   floor: { ret: "i32", params: ["double"] },
   ceil: { ret: "i32", params: ["double"] },
   round: { ret: "i32", params: ["double"] },
   toFixed: { ret: "double", params: ["double", "i32"] },
-  
+
   mod: { ret: "i32", params: ["i32", "i32"] },
-  
+
   gcd: { ret: "i32", params: ["i32", "i32"] },
   lcm: { ret: "i32", params: ["i32", "i32"] },
   factorial: { ret: "double", params: ["i32"] },
   isPrime: { ret: "i1", params: ["i32"] },
-  
 
   lerp: { ret: "double", params: ["double", "double", "double"] },
   normalize: { ret: "double", params: ["double", "double", "double"] },
-  
 
   between: { ret: "i1", params: ["i32", "i32", "i32"] },
-  
+
   reverse: { ret: "ptr", params: ["ptr"] },
   indexOf: { ret: "i32", params: ["ptr", "ptr"] },
   slice: { ret: "ptr", params: ["ptr", "i32", "i32"] },
@@ -1328,691 +1756,238 @@ const STD_FUNCTIONS_SCHEMA = {
   split: { ret: "ptr", params: ["ptr", "ptr"] },
   repeat: { ret: "ptr", params: ["ptr", "i32"] },
   count: { ret: "i32", params: ["ptr", "ptr"] },
-  
+
   padStart: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
   padEnd: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
   padCenter: { ret: "ptr", params: ["ptr", "i32", "ptr"] },
-  
+
   capitalize: { ret: "ptr", params: ["ptr"] },
   extName: { ret: "ptr", params: ["ptr"] },
-  
+
   sin: { ret: "double", params: ["double"] },
   cos: { ret: "double", params: ["double"] },
   tan: { ret: "double", params: ["double"] },
-  
+
   log: { ret: "double", params: ["double"] },
   exp: { ret: "double", params: ["double"] },
-  
+
   randomInt: { ret: "i32", params: ["i32", "i32"] },
   random: { ret: "double", params: [] },
   match: { ret: "i1", params: ["ptr", "ptr"] },
-  json: { ret: "ptr", params: ["ptr", "ptr"] }
+  json: { ret: "ptr", params: ["ptr", "ptr"] },
 };
 
 /* zen native simlar Structure functions map
   struct: { name: [llvm binding name, return type, params count, [params]]}
   */
 
-
 const OS_MAP = {
-  
-  _os_cpuCount: [
-    "_os_cpuCount",
-    "int",
-    0,
-    []
-  ],
-  
-  _os_cpuArch: [
-    "_os_cpuArch",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_cpuModel: [
-    "_os_cpuModel",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_cpuSpeed: [
-    "_os_cpuSpeed",
-    "double",
-    0,
-    []
-  ],
-  
-  _os_totalMemory: [
-    "_os_totalMemory",
-    "int",
-    0,
-    []
-  ],
-  
-  _os_freeMemory: [
-    "_os_freeMemory",
-    "int",
-    0,
-    []
-  ],
-  
-  _os_usedMemory: [
-    "_os_usedMemory",
-    "int",
-    0,
-    []
-  ],
-  
-  _os_processMemory: [
-    "_os_processMemory",
-    "int",
-    0,
-    []
-  ],
-  
-  _os_osName: [
-    "_os_osName",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_osVersion: [
-    "_os_osVersion",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_username: [
-    "_os_username",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_hostname: [
-    "_os_hostname",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_uptime: [
-    "_os_uptime",
-    "double",
-    0,
-    []
-  ],
-  
-  _os_battery: [
-    "_os_battery",
-    "string",
-    0,
-    []
-  ],
-  
-  _os_exit: [
-    "_os_exit",
-    "void",
-    1,
-    ["int"]
-  ],
+  _os_cpuCount: ["_os_cpuCount", "int", 0, []],
 
-  _os_pid: [
-    "_os_pid",
-    "int",
-    0,
-    []
-  ],
+  _os_cpuArch: ["_os_cpuArch", "string", 0, []],
 
-  _os_parentPid: [
-    "_os_parentPid",
-    "int",
-    0,
-    []
-  ],
+  _os_cpuModel: ["_os_cpuModel", "string", 0, []],
 
-  _os_platform: [
-    "_os_platform",
-    "string",
-    0,
-    []
-  ],
+  _os_cpuSpeed: ["_os_cpuSpeed", "double", 0, []],
 
-  _os_isWindows: [
-    "_os_isWindows",
-    "bool",
-    0,
-    []
-  ],
+  _os_totalMemory: ["_os_totalMemory", "int", 0, []],
 
-  _os_isLinux: [
-    "_os_isLinux",
-    "bool",
-    0,
-    []
-  ],
+  _os_freeMemory: ["_os_freeMemory", "int", 0, []],
 
-  _os_isMac: [
-    "_os_isMac",
-    "bool",
-    0,
-    []
-  ],
+  _os_usedMemory: ["_os_usedMemory", "int", 0, []],
 
-  _os_isAndroid: [
-    "_os_isAndroid",
-    "bool",
-    0,
-    []
-  ],
-  
-  _os_homeDir: [
-  "_os_homeDir",
-  "string",
-  0,
-  []
-  ]
+  _os_processMemory: ["_os_processMemory", "int", 0, []],
+
+  _os_osName: ["_os_osName", "string", 0, []],
+
+  _os_osVersion: ["_os_osVersion", "string", 0, []],
+
+  _os_username: ["_os_username", "string", 0, []],
+
+  _os_hostname: ["_os_hostname", "string", 0, []],
+
+  _os_uptime: ["_os_uptime", "double", 0, []],
+
+  _os_battery: ["_os_battery", "string", 0, []],
+
+  _os_exit: ["_os_exit", "void", 1, ["int"]],
+
+  _os_pid: ["_os_pid", "int", 0, []],
+
+  _os_parentPid: ["_os_parentPid", "int", 0, []],
+
+  _os_platform: ["_os_platform", "string", 0, []],
+
+  _os_isWindows: ["_os_isWindows", "bool", 0, []],
+
+  _os_isLinux: ["_os_isLinux", "bool", 0, []],
+
+  _os_isMac: ["_os_isMac", "bool", 0, []],
+
+  _os_isAndroid: ["_os_isAndroid", "bool", 0, []],
+
+  _os_homeDir: ["_os_homeDir", "string", 0, []],
 };
 
 const HTTPSERVER_MAP = {
-  _httpServer_create: [
-    "_httpServer_create",
-    "struct",
-    1,
-    ["int"]
-    ]
-}
+  _httpServer_create: ["_httpServer_create", "struct", 1, ["int"]],
+};
 
 const FILE_MAP = {
-  
-  _fs_cwd: [
-    "_fs_cwd",
-    "string",
-    0,
-    []
-  ],
-  
-  _fs_readFile: [
-    "_fs_readFile",
-    "string",
-    1,
-    ["string"]
-  ],
-  
-  _fs_writeFile: [
-    "_fs_writeFile",
-    "int",
-    2,
-    ["string", "string"]
-  ],
-  
-  _fs_readFileBytes: [
-    "_fs_readFileBytes",
-    "byte",
-    1,
-    ["string"]
-  ],
-  
-  _fs_writeFileBytes: [
-    "_fs_writeFileBytes",
-    "void",
-    2,
-    ["string", "byte"]
-  ],
-  
-  _fs_exists: [
-    "_fs_exists",
-    "bool",
-    1,
-    ["string"]
-  ],
-  
-  _fs_deleteFile: [
-    "_fs_deleteFile",
-    "int",
-    1,
-    ["string"]
-  ],
-  
-  _fs_makeDir: [
-    "_fs_makeDir",
-    "int",
-    1,
-    ["string"]
-  ],
-  
-  _fs_appendFile: [
-    "_fs_appendFile",
-    "int",
-    2,
-    ["string", "string"]
-  ],
-  
-  _fs_changeDir: [
-    "_fs_changeDir",
-    "int",
-    1,
-    ["string"]
-  ],
-  
-  _fs_renameFile: [
-    "_fs_renameFile",
-    "int",
-    2,
-    ["string", "string"]
-  ]
-  
-};
+  _fs_cwd: ["_fs_cwd", "string", 0, []],
 
+  _fs_readFile: ["_fs_readFile", "string", 1, ["string"]],
+
+  _fs_writeFile: ["_fs_writeFile", "int", 2, ["string", "string"]],
+
+  _fs_readFileBytes: ["_fs_readFileBytes", "byte", 1, ["string"]],
+
+  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "byte"]],
+
+  _fs_exists: ["_fs_exists", "bool", 1, ["string"]],
+
+  _fs_deleteFile: ["_fs_deleteFile", "int", 1, ["string"]],
+
+  _fs_makeDir: ["_fs_makeDir", "int", 1, ["string"]],
+
+  _fs_appendFile: ["_fs_appendFile", "int", 2, ["string", "string"]],
+
+  _fs_changeDir: ["_fs_changeDir", "int", 1, ["string"]],
+
+  _fs_renameFile: ["_fs_renameFile", "int", 2, ["string", "string"]],
+};
 
 const SYS_MAP = {
-  
-  _sys_exec: [
-    "_sys_exec",
-    "int",
-    1,
-    ["string"]
-  ],
-  
-  _sys_panic: [
-    "_sys_panic",
-    "void",
-    1,
-    ["string"]
-  ],
-  
-  _sys_getEnv: [
-    "_sys_getEnv",
-    "string",
-    1,
-    ["string"]
-  ],
-  
-  _sys_color: [
-    "_sys_color",
-    "void",
-    1,
-    ["string"]
-  ],
-  
-  _sys_performance: [
-    "_sys_performance",
-    "double",
-    0,
-    []
-  ],
-  
-  _sys_argv: [
-    "_sys_argv",
-    "List",
-    0,
-    []
-  ],
-  
-  _sys_setEnv: [
-    "_sys_setEnv",
-    "void",
-    2,
-    ["string", "string"]
-  ],
+  _sys_exec: ["_sys_exec", "int", 1, ["string"]],
 
-  _sys_hasEnv: [
-    "_sys_hasEnv",
-    "bool",
-    1,
-    ["string"]
-  ],
+  _sys_panic: ["_sys_panic", "void", 1, ["string"]],
 
-  _sys_execOutput: [
-    "_sys_execOutput",
-    "string",
-    1,
-    ["string"]
-  ],
+  _sys_getEnv: ["_sys_getEnv", "string", 1, ["string"]],
 
-  _sys_timestamp: [
-    "_sys_timestamp",
-    "int",
-    0,
-    []
-  ],
+  _sys_color: ["_sys_color", "void", 1, ["string"]],
+
+  _sys_performance: ["_sys_performance", "double", 0, []],
+
+  _sys_argv: ["_sys_argv", "List", 0, []],
+
+  _sys_setEnv: ["_sys_setEnv", "void", 2, ["string", "string"]],
+
+  _sys_hasEnv: ["_sys_hasEnv", "bool", 1, ["string"]],
+
+  _sys_execOutput: ["_sys_execOutput", "string", 1, ["string"]],
+
+  _sys_key: ["_sys_key", "string", 0, []],
+
+  _sys_clipboard_get: ["_sys_clipboard_get", "string", 0, []],
+
+  _sys_clipboard_set: ["_sys_clipboard_set", "void", 1, ["string"]],
+
+  _sys_clipboard_clear: ["_sys_clipboard_clear", "void", 0, []],
+
+  _sys_clipboard_hasText: ["_sys_clipboard_hasText", "bool", 0, []],
 };
-
 
 const TIME_MAP = {
-  
-  _time_sleep: [
-    "_time_sleep",
-    "void",
-    1,
-    ["int"]
-  ],
-  
-  _time_time: [
-    "_time_time",
-    "string",
-    0,
-    []
-  ],
-  
-  _time_millis: [
-    "_time_millis",
-    "int",
-    0,
-    []
-  ],
-  
-  _time_date: [
-    "_time_date",
-    "int",
-    0,
-    []
-  ],
-  
-  _time_month: [
-    "_time_month",
-    "int",
-    0,
-    []
-  ],
-  
-  _time_day: [
-    "_time_day",
-    "int",
-    0,
-    []
-  ],
-  
-  _time_year: [
-    "_time_year",
-    "int",
-    0,
-    []
-  ]
-  
-};
+  _time_sleep: ["_time_sleep", "void", 1, ["int"]],
 
+  _time_time: ["_time_time", "string", 0, []],
+
+  _time_millis: ["_time_millis", "int", 0, []],
+
+  _time_date: ["_time_date", "int", 0, []],
+
+  _time_month: ["_time_month", "int", 0, []],
+
+  _time_day: ["_time_day", "int", 0, []],
+
+  _time_year: ["_time_year", "int", 0, []],
+
+  _time_now: ["_time_now", "int", 0, []],
+
+  _time_format: ["_time_format", "string", 1, ["int"]],
+};
 
 const NETWORK_MAP = {
-  
-  _net_online: [
-    "_net_online",
-    "bool",
-    0,
-    []
-  ]
+  _net_online: ["_net_online", "bool", 0, []],
 };
 
-
 const HTTP_MAP = {
-  
-  _http_get: [
-    "_http_get",
-    "string",
-    1,
-    ["string"]
-  ],
-  
-  _http_post: [
-    "_http_post",
-    "string",
-    2,
-    ["string", "string"]
-  ],
-  
-  _http_put: [
-    "_http_put",
-    "string",
-    2,
-    ["string", "string"]
-  ],
-  
-  _http_patch: [
-    "_http_patch",
-    "string",
-    2,
-    ["string", "string"]
-  ],
-  
-  _http_delete: [
-    "_http_delete",
-    "string",
-    1,
-    ["string"]
-  ]
-  
+  _http_get: ["_http_get", "string", 1, ["string"]],
+
+  _http_post: ["_http_post", "string", 2, ["string", "string"]],
+
+  _http_put: ["_http_put", "string", 2, ["string", "string"]],
+
+  _http_patch: ["_http_patch", "string", 2, ["string", "string"]],
+
+  _http_delete: ["_http_delete", "string", 1, ["string"]],
 };
 
 const FFI_MAP = {
+  _ffi_printf: ["_ffi_printf", "int", "INF", ["string"]],
 
-  _ffi_printf: [
-    "_ffi_printf",
-    "int",
-    "INF",
-    ["string"]
-  ],
+  _ffi_puts: ["_ffi_puts", "int", 1, ["string"]],
 
-  _ffi_puts: [
-    "_ffi_puts",
-    "int",
-    1,
-    ["string"]
-  ],
+  _ffi_putchar: ["_ffi_putchar", "int", 1, ["int"]],
 
-  _ffi_putchar: [
-    "_ffi_putchar",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_getchar: ["_ffi_getchar", "int", 0, []],
 
-  _ffi_getchar: [
-    "_ffi_getchar",
-    "int",
-    0,
-    []
-  ],
+  _ffi_strlen: ["_ffi_strlen", "int", 1, ["string"]],
 
-  _ffi_strlen: [
-    "_ffi_strlen",
-    "int",
-    1,
-    ["string"]
-  ],
+  _ffi_strcmp: ["_ffi_strcmp", "int", 2, ["string", "string"]],
 
-  _ffi_strcmp: [
-    "_ffi_strcmp",
-    "int",
-    2,
-    ["string", "string"]
-  ],
+  _ffi_strncmp: ["_ffi_strncmp", "int", 3, ["string", "string", "int"]],
 
-  _ffi_strncmp: [
-    "_ffi_strncmp",
-    "int",
-    3,
-    ["string", "string", "int"]
-  ],
+  _ffi_pow: ["_ffi_pow", "double", 2, ["double", "double"]],
 
-  _ffi_pow: [
-    "_ffi_pow",
-    "double",
-    2,
-    ["double", "double"]
-  ],
+  _ffi_sqrt: ["_ffi_sqrt", "double", 1, ["double"]],
 
-  _ffi_sqrt: [
-    "_ffi_sqrt",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_fabs: ["_ffi_fabs", "double", 1, ["double"]],
 
-  _ffi_fabs: [
-    "_ffi_fabs",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_floor: ["_ffi_floor", "double", 1, ["double"]],
 
-  _ffi_floor: [
-    "_ffi_floor",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_ceil: ["_ffi_ceil", "double", 1, ["double"]],
 
-  _ffi_ceil: [
-    "_ffi_ceil",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_round: ["_ffi_round", "double", 1, ["double"]],
 
-  _ffi_round: [
-    "_ffi_round",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_sin: ["_ffi_sin", "double", 1, ["double"]],
 
-  _ffi_sin: [
-    "_ffi_sin",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_cos: ["_ffi_cos", "double", 1, ["double"]],
 
-  _ffi_cos: [
-    "_ffi_cos",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_tan: ["_ffi_tan", "double", 1, ["double"]],
 
-  _ffi_tan: [
-    "_ffi_tan",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_log: ["_ffi_log", "double", 1, ["double"]],
 
-  _ffi_log: [
-    "_ffi_log",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_exp: ["_ffi_exp", "double", 1, ["double"]],
 
-  _ffi_exp: [
-    "_ffi_exp",
-    "double",
-    1,
-    ["double"]
-  ],
+  _ffi_exit: ["_ffi_exit", "void", 1, ["int"]],
 
-  _ffi_exit: [
-    "_ffi_exit",
-    "void",
-    1,
-    ["int"]
-  ],
+  _ffi_system: ["_ffi_system", "int", 1, ["string"]],
 
-  _ffi_system: [
-    "_ffi_system",
-    "int",
-    1,
-    ["string"]
-  ],
+  _ffi_abort: ["_ffi_abort", "void", 0, []],
 
-  _ffi_abort: [
-    "_ffi_abort",
-    "void",
-    0,
-    []
-  ],
+  _ffi_clock: ["_ffi_clock", "int", 0, []],
 
-  _ffi_clock: [
-    "_ffi_clock",
-    "int",
-    0,
-    []
-  ],
+  _ffi_rand: ["_ffi_rand", "int", 0, []],
 
-  _ffi_rand: [
-    "_ffi_rand",
-    "int",
-    0,
-    []
-  ],
+  _ffi_srand: ["_ffi_srand", "void", 1, ["int"]],
 
-  _ffi_srand: [
-    "_ffi_srand",
-    "void",
-    1,
-    ["int"]
-  ],
-  
-  _ffi_abs: [
-    "_ffi_abs",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_abs: ["_ffi_abs", "int", 1, ["int"]],
 
-  _ffi_atoi: [
-    "_ffi_atoi",
-    "int",
-    1,
-    ["string"]
-  ],
+  _ffi_atoi: ["_ffi_atoi", "int", 1, ["string"]],
 
-  _ffi_atof: [
-    "_ffi_atof",
-    "double",
-    1,
-    ["string"]
-  ],
+  _ffi_atof: ["_ffi_atof", "double", 1, ["string"]],
 
-  _ffi_toupper: [
-    "_ffi_toupper",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_toupper: ["_ffi_toupper", "int", 1, ["int"]],
 
-  _ffi_tolower: [
-    "_ffi_tolower",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_tolower: ["_ffi_tolower", "int", 1, ["int"]],
 
-  _ffi_isalpha: [
-    "_ffi_isalpha",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_isalpha: ["_ffi_isalpha", "int", 1, ["int"]],
 
-  _ffi_isdigit: [
-    "_ffi_isdigit",
-    "int",
-    1,
-    ["int"]
-  ],
+  _ffi_isdigit: ["_ffi_isdigit", "int", 1, ["int"]],
 
-  _ffi_isspace: [
-    "_ffi_isspace",
-    "int",
-    1,
-    ["int"]
-  ],
-  
+  _ffi_isspace: ["_ffi_isspace", "int", 1, ["int"]],
+
   _ffi_fmod: ["_ffi_fmod", "double", 2, ["double", "double"]],
   _ffi_log10: ["_ffi_log10", "double", 1, ["double"]],
   _ffi_log2: ["_ffi_log2", "double", 1, ["double"]],
@@ -2039,47 +2014,19 @@ const FFI_MAP = {
   _ffi_islower: ["_ffi_islower", "int", 1, ["int"]],
   _ffi_isalnum: ["_ffi_isalnum", "int", 1, ["int"]],
   _ffi_ispunct: ["_ffi_ispunct", "int", 1, ["int"]],
-  _ffi_isxdigit: ["_ffi_isxdigit", "int", 1, ["int"]]
-
+  _ffi_isxdigit: ["_ffi_isxdigit", "int", 1, ["int"]],
 };
 
 const PATH_MAP = {
+  _path_basename: ["_path_basename", "string", 1, ["string"]],
 
-  _path_basename: [
-    "_path_basename",
-    "string",
-    1,
-    ["string"]
-  ],
+  _path_dirname: ["_path_dirname", "string", 1, ["string"]],
 
-  _path_dirname: [
-    "_path_dirname",
-    "string",
-    1,
-    ["string"]
-  ],
+  _path_extname: ["_path_extname", "string", 1, ["string"]],
 
-  _path_extname: [
-    "_path_extname",
-    "string",
-    1,
-    ["string"]
-  ],
+  _path_join: ["_path_join", "string", 2, ["string", "string"]],
 
-  _path_join: [
-    "_path_join",
-    "string",
-    2,
-    ["string", "string"]
-  ],
-
-  _path_normalize: [
-    "_path_normalize",
-    "string",
-    1,
-    ["string"]
-  ]
-
+  _path_normalize: ["_path_normalize", "string", 1, ["string"]],
 };
 
 export {
@@ -2095,6 +2042,7 @@ export {
   UNARY_OPS,
   COMPARISON_OPS,
   LOGICAL_OPS,
+  BITWISE_OPS,
   OPERATORS,
   OP_CODES,
   LOOKUP,
@@ -2120,5 +2068,8 @@ export {
   COMPOUND_OPERATORS,
   FFI_MAP,
   PATH_MAP,
-  HTTPSERVER_MAP
-}
+  HTTPSERVER_MAP,
+  BUILTIN_STRUCT_METHODS,
+  BUILTIN_STRUCTS,
+  BUILTIN_STRUCT_PROPS,
+};

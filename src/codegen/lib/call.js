@@ -9,11 +9,26 @@ import {
   STD_FUNCTIONS,
   FFI_MAP,
   PATH_MAP,
-  HTTPSERVER_MAP
+  HTTPSERVER_MAP,
 } from "../../config/config.js";
 
 export class Call {
-  constructor(IRB, expr, io, type, string, file, os, time, network, http, sys, ffi, path, httpServer) {
+  constructor(
+    IRB,
+    expr,
+    io,
+    type,
+    string,
+    file,
+    os,
+    time,
+    network,
+    http,
+    sys,
+    ffi,
+    path,
+    httpServer,
+  ) {
     this.IRB = IRB;
     this.io = io;
     this.type = type;
@@ -28,29 +43,28 @@ export class Call {
     this.path = path;
     this.HTTPSERVER = httpServer;
   }
-  
+
   setExpression(expr) {
     this.expr = expr;
   }
-  
+
   handleCall(node, asStatement = false, globalScope) {
-    
     this.IRB.guardStackOp("CALL", node);
     this.IRB.enterFunction(node.name);
     const isMethodCall = !!node?.callee;
-    
+
     if (isMethodCall) {
       const fakeNode = {
         type: "MEMBER_ACCESS",
         field: node.callee.field,
         object: node.callee.object,
-        args: node.args
-      }
-      
+        args: node.args,
+      };
+
       const valExpr = this.expr.handleExpression(fakeNode);
-      
+
       this.IRB.emitExpr(valExpr);
-      
+
       return {
         ptr: valExpr.ptr,
         type: valExpr.type,
@@ -62,131 +76,123 @@ export class Call {
         postOrPrefix: false,
         isList: valExpr?.isList,
         generic: valExpr?.generic,
-        isStruct: valExpr?.isStruct,   
-        needsLoad: valExpr?.needsLoad
+        isStruct: valExpr?.isStruct,
+        needsLoad: valExpr?.needsLoad,
       };
     }
-    
+
     const name = node.name;
     let isStdFn = false;
-    
+
     if (STD_FUNCTIONS.includes(name)) {
       isStdFn = true;
       this.IRB.usedStdFunctions.add(name);
       if (!this.IRB.functions.has(name)) {
-        
         this.IRB.setStdlibFunctions(node);
       }
     }
-    
+
     let mangledName = isStdFn ? name : `zen_${name}`;
     if (this.IRB.stdlibMode) {
       mangledName = name;
-      } 
-    
+    }
+
     if (node.isInbuilt && !STD_FUNCTIONS.includes(name)) {
-      
       this.IRB.leaveFunction();
-      
+
       return this.handleBuiltInCall(node, globalScope);
     }
-    
+
     if (node.isAwait && !this.IRB.currentFunction.isAsync) {
       this.IRB.emitError(
         "SyntaxError",
-        "await can only be used inside async functions", node
+        "await can only be used inside async functions",
+        node,
       );
     }
-    
+
     const fn = this.IRB.getFunction(name, node);
     const isStruct = this.IRB.hasStruct(fn.returnType);
-    
-    
-const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
 
-    const hasRest = fn.params.some(p => p.isRest);
-    
+    const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
+
+    const hasRest = fn.params.some((p) => p.isRest);
+
     const finalArgs = [...node.args];
-    
+
     for (let i = finalArgs.length; i < fn.params.length; i++) {
-      
       const param = fn.params[i];
-      
+
       if (param.default) {
         finalArgs.push(param.default);
       }
     }
-    
+
     const args = [];
     let global = [];
     let local = [];
-    
 
-    
     for (let i = 0; i < finalArgs.length; i++) {
-  
-  const arg = finalArgs[i];
-  const param = fn.params[i];
-  
-  let val;
-  
-  if (arg.type === "MAP_LITERAL") {
-    
-    // Determine the expected struct type from the param's declared type
-    const paramType = param?.type?.type || param?.type;
-    
-    if (!paramType || !this.IRB.hasStruct(paramType)) {
-      this.IRB.emitError(
-        "TypeError",
-        `Cannot infer struct type for literal argument in call to '${node.name}'`,
-        node
-      );
+      const arg = finalArgs[i];
+      const param = fn.params[i];
+
+      let val;
+
+      if (arg.type === "MAP_LITERAL") {
+        // Determine the expected struct type from the param's declared type
+        const paramType = param?.type?.type || param?.type;
+
+        if (!paramType || !this.IRB.hasStruct(paramType)) {
+          this.IRB.emitError(
+            "TypeError",
+            `Cannot infer struct type for literal argument in call to '${node.name}'`,
+            node,
+          );
+        }
+
+        const ptr = this.IRB.emitStructLiteral(paramType, arg);
+
+        val = {
+          ptr,
+          type: paramType,
+          llvmType: `%${paramType}`,
+          isStruct: true,
+          local: [],
+          global: [],
+          isVarRef: false,
+        };
+      } else {
+        val = this.expr.handleExpression(arg, false);
+
+        if (val.type === "void") {
+          this.IRB.emitError(
+            "TypeError",
+            "void value used in expression",
+            node,
+          );
+        }
+
+        this.IRB.emitExpr(val);
+      }
+
+      args.push(val);
     }
-    
-    const ptr = this.IRB.emitStructLiteral(paramType, arg);
-    
-    val = {
-      ptr,
-      type: paramType,
-      llvmType: `%${paramType}`,
-      isStruct: true,
-      local: [],
-      global: [],
-      isVarRef: false
-    };
-    
-  } else {
-    
-    val = this.expr.handleExpression(arg, false);
-    
-    if (val.type === "void") {
-      this.IRB.emitError("TypeError", "void value used in expression", node);
-    }
-    
-    this.IRB.emitExpr(val);
-  }
-  
-  args.push(val);
-}
-    
-  
-    
+
     let restIndex = -1;
-    
+
     if (hasRest) {
-      restIndex = fn.params.findIndex(p => p.isRest);
+      restIndex = fn.params.findIndex((p) => p.isRest);
     }
-    
+
     this.IRB.validateCallArgs(fn, args, hasRest, restIndex, node);
-    
+
     let layout = null;
     if (fn.returnType === "Map") {
-      
       layout = fn.layout;
     }
-    
+
     let argStr = [];
-    
+
     // Map as param in functions are disabled in v1
     /*for (let i = 0; i < args.length; i++) {
       const a = args[i];
@@ -205,38 +211,34 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
       }
     }
     */
-    
+
     if (hasRest) {
-      
       this.IRB.declareOneTime(
         "zen_list_new",
-        "declare ptr @_zen_list_new(i64)"
+        "declare ptr @_zen_list_new(i64)",
       );
-      
+
       this.IRB.declareOneTime(
         "zen_list_push",
-        "declare void @_zen_list_push(ptr, ptr)"
+        "declare void @_zen_list_push(ptr, ptr)",
       );
-      
+
       this.IRB.declareOneTime(
         "ZenList",
-        `%ZenList = type { ptr, i32, i32, i64 }`
+        `%ZenList = type { ptr, i32, i32, i64 }`,
       );
-      
+
       const fixedArgs = args.slice(0, restIndex);
       const restArgs = args.slice(restIndex);
-      
+
       let argStr = [];
       let global = [];
       let local = [];
-      
-    
-      
+
       for (const a of fixedArgs) {
-        
         if (a.global?.length) global.push(...a.global);
         if (a.local?.length) local.push(...a.local);
-        
+
         if (a.isList) {
           const tmp = this.IRB.newTemp();
           local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
@@ -245,107 +247,101 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
           argStr.push(`${a.llvmType} ${a.ptr}`);
         }
       }
-      
+
       // REST TYPE VALIDATION
-      
+
       const first = restArgs[0];
       // declared rest param type
       const restParam = fn.params[restIndex];
-      
+
       // expected type from function signature
       const expectedType = restParam?.type?.type || restParam?.type;
-      
+
       const inferredType = first?.type;
-      
+
       if (!first) {
         this.IRB.emitError(
           "TypeError",
-          `Rest parameter expects at least 1 argument`, node
+          `Rest parameter expects at least 1 argument`,
+          node,
         );
       }
-      
+
       // declared type vs inferred type check
       if (expectedType && inferredType && expectedType !== inferredType) {
         this.IRB.emitError(
           "TypeError",
-          `Rest parameter expects ${expectedType} but got ${inferredType}`, node
+          `Rest parameter expects ${expectedType} but got ${inferredType}`,
+          node,
         );
       }
-      
+
       for (const a of restArgs) {
         const t = a.type;
-        
+
         if (expectedType && t !== expectedType) {
           this.IRB.emitError(
             "TypeError",
-            `Rest parameter expects ${expectedType} but got ${t}`, node
+            `Rest parameter expects ${expectedType} but got ${t}`,
+            node,
           );
         }
       }
-      
+
       const elementSize = this.IRB.sizeOf(inferredType);
       const llvmType = this.IRB.getLLVMType(inferredType);
       const listPtr = this.IRB.newTemp();
-      
-      local.push(
-        `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`
-      );
-      
+
+      local.push(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
+
       const count = restArgs.length;
-      
+
       for (let i = 0; i < count; i++) {
-        
         const a = restArgs[i];
-        
-        const tmp =
-          this.IRB.newTemp();
-        
+
+        const tmp = this.IRB.newTemp();
+
         local.push(`${tmp} = alloca ${llvmType}`);
-        
+
         local.push(`store ${llvmType} ${a.ptr}, ptr ${tmp}`);
-        
-        local.push(
-          `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`
-        );
+
+        local.push(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
       }
-      
+
       argStr.push(`ptr ${listPtr}`);
-      
-      
+
       let callTmp = null;
-      
+
       if (fn.returnType === "void" || isStruct) {
-        
         const tmp = this.IRB.newTemp();
         if (isStruct) {
           local.push(`${tmp} = alloca %${fn.returnType}`);
         }
-        
-        local.push(
-          `call void @${mangledName}(${argStr.join(", ")})`
-        );
-        
+
+        local.push(`call void @${mangledName}(${argStr.join(", ")})`);
       } else {
-        
         callTmp = this.IRB.newTemp();
-        
+
         local.push(
-          `${callTmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`
+          `${callTmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`,
         );
       }
-      
+
       if (asStatement) {
         this.IRB.emit(local.join("\n"));
         this.IRB.globals.push(global.join("\n"));
       }
       const isList = fn.returnType === "List";
-      
+
       const isMap = fn.returnType === "Map";
-      
+
       if (isList) {
-      this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
-    }
-      
+        this.IRB.declareOneTime(
+          "ZenList",
+          "%ZenList = type { ptr, i32, i32, i64 }",
+        );
+      }
+
       return {
         ptr: callTmp,
         type: isList ? fn.retGeneric : fn.returnType,
@@ -361,16 +357,13 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
         isList,
         isMap,
         isStruct,
-        isDirectCall: true
+        isDirectCall: true,
       };
     }
-    
-    
-    
-    // NORMAL CALL 
-    
+
+    // NORMAL CALL
+
     for (const a of args) {
-      
       if (a?.isStruct) {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
@@ -378,35 +371,27 @@ const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
         local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
         argStr.push(`ptr ${tmp}`);
       } else {
-          argStr.push(`${a.llvmType} ${a.ptr}`);
-        }
+        argStr.push(`${a.llvmType} ${a.ptr}`);
+      }
     }
-    
+
     if (fn.returnType === "void" || isStruct) {
-      
       const tmp = this.IRB.newTemp();
-        if (isStruct) {
-          
-          local.push(`${tmp} = alloca %${fn.returnType}`);
+      if (isStruct) {
+        local.push(`${tmp} = alloca %${fn.returnType}`);
 
-const args = [
-  `ptr sret(%${fn.returnType}) ${tmp}`,
-  ...argStr
-];
+        const args = [`ptr sret(%${fn.returnType}) ${tmp}`, ...argStr];
 
-local.push(
-  `call void @${mangledName}(${args.join(", ")})`
-);
-        } else {
-      
-      local.push(`call void @${mangledName}(${argStr.join(", ")})`);
-        }
-      
+        local.push(`call void @${mangledName}(${args.join(", ")})`);
+      } else {
+        local.push(`call void @${mangledName}(${argStr.join(", ")})`);
+      }
+
       if (asStatement) {
         this.IRB.emit(local.join("\n"));
         this.IRB.globals.push(global.join("\n"));
       }
-      
+
       return {
         ptr: isStruct ? tmp : null,
         type: isStruct ? fn.returnType : "void",
@@ -417,29 +402,32 @@ local.push(
         isVarRef: false,
         postOrPrefix: false,
         layout,
-        isStruct
+        isStruct,
       };
     }
-    
+
     const tmp = this.IRB.newTemp();
-    
+
     local.push(
-      `${tmp} = call ${llvmRetType} @${mangledName}(${argStr.join(", ")})`
+      `${tmp} = call ${llvmRetType} @${mangledName}(${argStr.join(", ")})`,
     );
-    
+
     if (asStatement) {
       this.IRB.emit(local.join("\n"));
       this.IRB.globals.push(global.join("\n"));
     }
-    
+
     const isList = fn.returnType === "List";
-    
+
     const isMap = fn.returnType === "Map";
-    
+
     if (isList) {
-      this.IRB.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }")
+      this.IRB.declareOneTime(
+        "ZenList",
+        "%ZenList = type { ptr, i32, i32, i64 }",
+      );
     }
-    
+
     return {
       ptr: tmp,
       type: isList ? fn.retGeneric : fn.returnType,
@@ -455,58 +443,56 @@ local.push(
       isList,
       isMap,
       isStruct,
-      isDirectCall: true
+      isDirectCall: true,
     };
   }
-  
-  
+
   // built in function routing
-  
+
   handleBuiltInCall(node, globalScope) {
-    
     this.IRB.guardStackOp("CALL", node);
-    
+
     const type = node?.type;
-    
+
     let name = node.name;
-    
+
     switch (name) {
-      case 'screen':
+      case "screen":
         this.io.screen(node);
         break;
-        
-      case 'input':
-       return this.io.input(node, globalScope);
-        
-      case 'type':
+
+      case "input":
+        return this.io.input(node, globalScope);
+
+      case "type":
         return this.type.type(node, globalScope);
-        
-      case 'Int':
+
+      case "Int":
         return this.type.Int(node, globalScope);
-        
-      case 'Double':
+
+      case "Double":
         return this.type.Double(node, globalScope);
-        
-      case 'Bool':
+
+      case "Bool":
         return this.type.Bool(node, globalScope);
-        
-      case 'String':
+
+      case "String":
         return this.type.StringCast(node, globalScope);
-        
-      case 'toString':
+
+      case "toString":
         return this.type.toString(node, globalScope);
-        
-      case 'toInt':
+
+      case "toInt":
         return this.type.toInt(node, globalScope);
-        
-      case 'length':
+
+      case "length":
         return this.string.length(node, globalScope);
-        
-      case 'matchRegex':
+
+      case "matchRegex":
         return this.string.matchRegex(node);
-        
-        // these are same pattern functions 
-        // unified
+
+      // these are same pattern functions
+      // unified
       case name: {
         const os = OS_MAP[name];
         const file = FILE_MAP[name];
@@ -517,7 +503,7 @@ local.push(
         const FFI = FFI_MAP[name];
         const PATH = PATH_MAP[name];
         const HTTPSERVER = HTTPSERVER_MAP[name];
-        
+
         if (os) {
           return this.os.zenNativeOSCall(
             node,
@@ -526,7 +512,7 @@ local.push(
             os[1],
             os[2],
             os[3],
-            name
+            name,
           );
         } else if (file) {
           return this.file.zenNativeFILECall(
@@ -536,10 +522,9 @@ local.push(
             file[1],
             file[2],
             file[3],
-            name
+            name,
           );
         } else if (time) {
-          
           return this.time.zenNativeTIMECall(
             node,
             globalScope,
@@ -547,7 +532,7 @@ local.push(
             time[1],
             time[2],
             time[3],
-            name
+            name,
           );
         } else if (NW) {
           return this.network.zenNativeNWCall(
@@ -557,18 +542,17 @@ local.push(
             NW[1],
             NW[2],
             NW[3],
-            name
+            name,
           );
         } else if (HTTP) {
-          return this.
-          http.zenNativeHTTPCall(
+          return this.http.zenNativeHTTPCall(
             node,
             globalScope,
             HTTP[0],
             HTTP[1],
             HTTP[2],
             HTTP[3],
-            name
+            name,
           );
         } else if (SYS) {
           return this.sys.zenNativeSYSCall(
@@ -578,7 +562,7 @@ local.push(
             SYS[1],
             SYS[2],
             SYS[3],
-            name
+            name,
           );
         } else if (FFI) {
           return this.ffi.zenFFI(
@@ -588,7 +572,7 @@ local.push(
             FFI[1],
             FFI[2],
             FFI[3],
-            name
+            name,
           );
         } else if (PATH) {
           return this.path.zenPATH(
@@ -598,7 +582,7 @@ local.push(
             PATH[1],
             PATH[2],
             PATH[3],
-            name
+            name,
           );
         } else if (HTTPSERVER) {
           return this.HTTPSERVER.zenHTTPSERVER(
@@ -608,14 +592,17 @@ local.push(
             HTTPSERVER[1],
             HTTPSERVER[2],
             HTTPSERVER[3],
-            name
+            name,
           );
         }
-        
       }
-      
+
       default:
-        this.IRB.emitError("InternalError", `unknown builtin function ${name}`, node);
+        this.IRB.emitError(
+          "InternalError",
+          `unknown builtin function ${name}`,
+          node,
+        );
     }
   }
 }

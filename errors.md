@@ -67,6 +67,48 @@ Common triggers:
 
 ---
 
+### JsonError
+
+Raised when a JSON operation fails at runtime.
+
+```
+[Zen  JsonError]
+  └── Invalid JSON: expected string key at position 1
+```
+
+```
+[Zen  JsonError]
+  └── Key 'age' not found in Json object
+```
+
+```
+[Zen  JsonError]
+  └── Expected int for key 'age'
+```
+
+```
+[Zen  JsonError]
+  └── Expected array for key 'users'
+```
+
+```
+[Zen  JsonError]
+  └── Expected object for key 'config'
+```
+
+```
+[Zen  JsonError]
+  └── Json array index 10 out of bounds (length 3)
+```
+
+Common triggers:
+- Parsing invalid JSON text
+- Accessing a key that does not exist
+- Reading a value using the wrong getter (for example, calling `getInt()` on a string)
+- Accessing an array element outside its bounds
+- Attempting to retrieve an object or array from a value of another TypeError
+
+---
 
 ### TypeError
 

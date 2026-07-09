@@ -3,25 +3,28 @@ export class Type {
     this.IRB = IRB;
     this.expr = expr;
   }
-  
+
   type(node) {
-    
     const args = node.args;
-    
+
     if (!args) {
-  this.IRB.emitError(
-    "SyntaxError",
-    `'type()' must be called as a function — did you forget '()'?`,
-    node
-  );
-}
-    
-    if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function type() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "SyntaxError",
+        `'type()' must be called as a function — did you forget '()'?`,
+        node,
+      );
     }
-    
+
+    if (args[0].length > 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function type() accept exactly 1 argument",
+        node,
+      );
+    }
+
     const expr = this.expr.handleExpression(args[0]);
-    
+
     let type;
     if (expr.llvmType.startsWith("[")) {
       type = `array<${expr.type}>`;
@@ -32,38 +35,50 @@ export class Type {
     } else {
       type = expr.type;
     }
-    
+
     const str = this.IRB.newGlobalString(type);
-    
-    this.IRB.emitExpr(expr)
-    
+
+    this.IRB.emitExpr(expr);
+
     return {
       ptr: expr.ptr,
       llvmType: "ptr",
       type: "string",
       isConstant: true,
       local: [],
-      global: []
-    }
+      global: [],
+    };
   }
-  
+
   Int(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Int() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Int() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    
+
     this.IRB.emitExpr(expr);
-    
-    if (expr?.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `Int() cannot cast array or Map or List to int`, node);
+
+    if (
+      expr?.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `Int() cannot cast array or Map or List to int`,
+        node,
+      );
     }
     const cast = this.IRB.castExpression(expr, "int");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "int",
@@ -71,27 +86,39 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
-  
+
   toInt(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Int() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Int() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    
-    this.IRB.emitExpr(expr)
-    
-    if (expr.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `toInt() cannot cast array or Map or List to int`, node);
+
+    this.IRB.emitExpr(expr);
+
+    if (
+      expr.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `toInt() cannot cast array or Map or List to int`,
+        node,
+      );
     }
     const cast = this.IRB.castExpression(expr, "int", "toInt");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "int",
@@ -99,26 +126,38 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
-  
+
   Double(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Double() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Double() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    if (expr.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `Double() cannot cast array or Map or List to double`, node);
+    if (
+      expr.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `Double() cannot cast array or Map or List to double`,
+        node,
+      );
     }
-    this.IRB.emitExpr(expr)
-    
+    this.IRB.emitExpr(expr);
+
     const cast = this.IRB.castExpression(expr, "double");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "double",
@@ -126,26 +165,38 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
-  
+
   Bool(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Bool() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Bool() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    if (expr.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `Bool() cannot cast array or Map or List to bool`, node);
+    if (
+      expr.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `Bool() cannot cast array or Map or List to bool`,
+        node,
+      );
     }
-    this.IRB.emitExpr(expr)
-    
+    this.IRB.emitExpr(expr);
+
     const cast = this.IRB.castExpression(expr, "bool");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "bool",
@@ -153,26 +204,38 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
-  
+
   StringCast(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Bool() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Bool() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    if (expr.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `String() cannot cast array or Map or List to string`, node);
+    if (
+      expr.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `String() cannot cast array or Map or List to string`,
+        node,
+      );
     }
-    this.IRB.emitExpr(expr)
-    
+    this.IRB.emitExpr(expr);
+
     const cast = this.IRB.castExpression(expr, "string");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "string",
@@ -180,26 +243,38 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
-  
+
   toString(node) {
-    
     const args = node.args;
-    
+
     if (args[0].length > 1) {
-      this.IRB.emitError("ArgumentError", "Function Bool() accept exactly 1 argument", node);
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Bool() accept exactly 1 argument",
+        node,
+      );
     }
-    
+
     const expr = this.expr.handleExpression(args[0]);
-    if (expr.llvmType.startsWith("[") || expr?.isMap || expr?.isList || expr?.isStruct) {
-      this.IRB.emitError("TypeError", `toString() cannot cast array or Map or List to string`, node);
+    if (
+      expr.llvmType.startsWith("[") ||
+      expr?.isMap ||
+      expr?.isList ||
+      expr?.isStruct
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `toString() cannot cast array or Map or List to string`,
+        node,
+      );
     }
-    this.IRB.emitExpr(expr)
-    
+    this.IRB.emitExpr(expr);
+
     const cast = this.IRB.castExpression(expr, "string", "toString");
-    this.IRB.emit(cast?.local.join("\n"))
+    this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
       type: "string",
@@ -207,7 +282,7 @@ export class Type {
       local: [],
       global: [],
       isConstant: true,
-      postOrPrefix: false
-    }
+      postOrPrefix: false,
+    };
   }
 }

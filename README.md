@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 1.2.1** · Stable · June 2026
+**Version 1.3.0** · Stable · July 2026
 
 **GitHub**: https://github.com/`Jishith-dev/Zen`
 **Contact**: jishithmp534@gmail.com
@@ -59,9 +59,9 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v1.2.1
+Current Version: v1.3.0
 
-### v1.2.1
+### v1.3.0
 
 - Dynamic GitHub default branch detection for `zen install`
 - Increased package description limit from 50 to 400 characters
@@ -71,13 +71,21 @@ Current Version: v1.2.1
 - Added support for importing and exporting modules in the same file
 - Added circular import handling
 - Added library imports
-- Introduced built-in `HttpServer`, `HttpRequest`, and `HttpResponse` structs
+- Introduced built-in `HttpServer`, `HttpRequest`, `HttpResponse`, `Json`, `JsonObject`, and `JsonArray` structs
 - Added `httpServer` namespace
 - Added `httpServer.create()`
 - Added `HttpServer.listen()`, `HttpServer.next()`, and `HttpServer.close()`
-- Added `HttpRequest.method` and `HttpRequest.path`
-- Added `HttpRequest.json()`, `html()`, `css()`, `send()`, `setHeader()`, `redirect()`, and `status()`
-- Added new system functions: `sys.setEnv()`, `sys.hasEnv()`, `sys.timestamp()`, `sys.execOutput()`
+- Added `HttpRequest.method`, `HttpRequest.path`, and `HttpRequest.body`
+- Added `HttpRequest.send()`, `json()`, `html()`, `css()`, `sendFile()`, `setHeader()`, `redirect()`, and `status()`
+- Added `Json.parse()`
+- Added `Json.getInt()`, `getDouble()`, `getString()`, `getBool()`, `getObject()`, `getArray()`, `has()`, `isNull()`, `arrayLength()`, `arrayGetInt()`, `arrayGetDouble()`, `arrayGetString()`, `arrayGetBool()`, `arrayGetObject()`, `arrayGetArray()`, and `free()`
+- Added bitwise XOR (`^`) operator
+- Added `sys.key()`
+- Added `sys.clipboard.get()`, `sys.clipboard.set()`, `sys.clipboard.clear()`, and `sys.clipboard.hasText()`
+- Moved `sys.timestamp()` to `time.now()`
+- Added `time.format()`
+- Added support for arbitrary-depth namespace member access
+- Added new system functions: `sys.setEnv()`, `sys.hasEnv()`, `sys.execOutput()`
 - Added new OS functions: `os.exit()`, `os.pid()`, `os.parentPid()`, `os.platform()`, `os.isWindows()`, `os.isLinux()`, `os.isMac()`, `os.isAndroid()`, and `os.homeDir()`
 - Added new package manager commands: `zen search`, `zen my_packages`, and `zen kind`
 - Introduced `enum` with constant integer values
@@ -159,6 +167,7 @@ zen ir <file>              # Generate LLVM IR
 zen ast <file>             # Print Abstract Syntax Tree
 zen tokens <file>          # Print lexer tokens
 zen clean <file>           # Remove build artifacts
+zen update                 # update latest zen without original install command.
 ```
 
 ### Project Management
@@ -475,18 +484,62 @@ print(Color.blue)    # 3
 
 ---
 
+## Semantics
+
+Zen distinguishes between **value semantics** and **reference semantics**.
+
+### Value Semantics
+
+User-defined structs use **value semantics**. Assigning a struct or passing it to a function creates a copy of the value.
+
+```zen
+Person a = ...
+Person b = a   # b is an independent copy
+```
+
+Primitive types (`int`, `double`, `bool`, `byte`, and `string`) also behave as values.
+
+### Reference Semantics
+
+The following built-in types use **reference semantics**:
+
+- `HttpServer`
+- `HttpRequest`
+- `HttpResponse`
+- `Json`
+- `JsonObject`
+- `JsonArray`
+- `List`
+- `Map`
+
+Assigning or passing one of these values copies only a reference to the underlying runtime object rather than duplicating the object itself. This is required because these types represent runtime-managed resources or dynamically allocated data.
+
+### Memory Management
+
+Primitive values (`int`, `double`, `bool`, and `byte`) require no manual memory management. They are stored in local or global storage managed by the compiler.
+
+String literals are emitted as LLVM global constants and likewise require no manual cleanup. Some runtime string operations (such as concatenation) may allocate temporary memory internally, but this is managed by the runtime and does not require the programmer to call `free()`. Future versions may introduce explicit ownership semantics for dynamically created strings if needed.
+
+Some reference-semantic built-in types allocate runtime resources and therefore provide a `free()` method. Examples include `Json`, `List`, and `Map`. Where a built-in type requires explicit cleanup, it is documented alongside that type's API.
+
+Attempting to use an object after it has been freed results in undefined behavior and may be diagnosed by the compiler or detected by the runtime where applicable.
+
+---
+
 ## Scope of This Specification
 
-Version 1.2.1 defines the **stable core** of the language:
+Version 1.3.0 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
 - Primitive and composite data types
-- Variable, reactive variable, enum, and map declarations
-- Function and struct definitions
+- Variable, reactive variable, enum, and struct declarations
+- Function definitions
 - Module import/export system
 - Control flow constructs
 - Built-in HTTP server API
+- Built-in JSON API
+- Built-in time, system, and operating system APIs
 - Compilation and evaluation model
 
 Future versions will continue expanding the standard library, language features, and compiler optimizations.
@@ -719,6 +772,7 @@ Operators are fixed-character sequences that form their own token type. ZEN defi
 | `*=` | Multiply and assign |
 | `/=` | Divide and assign |
 | `%=` | Modulo and assign |
+| `^` | Bitwise XOR |
 
 #### Arithmetic Operators
 
@@ -755,6 +809,12 @@ Operators are fixed-character sequences that form their own token type. ZEN defi
 |---|---|
 | `&&` | Logical AND |
 | `\|\|` | Logical OR |
+
+#### Bitwise Operators
+
+| Operator | Meaning |
+|---|---|
+| `^` | Bitwise XOR |
 
 ---
 
@@ -1559,6 +1619,15 @@ string n = p.getName()
 
 Zen provides several built-in structs that are available without importing any library.
 
+> **⚠️ Caution**
+>
+> Built-in structs use **reference semantics**, while user-defined structs use **value semantics**.
+>
+> Built-in structs (such as `HttpServer`, `HttpRequest`, `Json`, `JsonObject`, and `JsonArray`) represent runtime resources managed outside of Zen. Copying them would duplicate only the handle, not the underlying resource, so they are always passed and assigned by reference.
+>
+> User-defined structs, on the other hand, are ordinary data values and are copied on assignment or when passed to functions, providing predictable value semantics.
+
+
 ##### HttpServer
 
 Represents an HTTP server instance.
@@ -1584,23 +1653,88 @@ Represents an HTTP request and provides request information and response helpers
 ```zen
 req.method
 req.path
+req.body
 ```
 
 **Methods**
 
 ```zen
+req.send(...)
 req.json(...)
 req.html(...)
 req.css(...)
-req.send(...)
+req.sendFile(...)
+req.status(...)
 req.setHeader(...)
 req.redirect(...)
-req.status(...)
 ```
 
 ##### HttpResponse
 
 Reserved for future releases.
+
+##### Json
+
+Represents a parsed JSON document.
+
+```zen
+Json json
+
+json.parse("{\"name\":\"ZEN\",\"age\":1}")
+
+screen(json.getString("name"))
+screen(json.getInt("age"))
+
+json.free()
+```
+
+**Methods**
+
+```zen
+json.parse(...)
+json.getInt(...)
+json.getDouble(...)
+json.getString(...)
+json.getBool(...)
+json.getObject(...)
+json.getArray(...)
+json.has(...)
+json.isNull(...)
+json.arrayLength()
+json.arrayGetInt(...)
+json.arrayGetDouble(...)
+json.arrayGetString(...)
+json.arrayGetBool(...)
+json.arrayGetObject(...)
+json.arrayGetArray(...)
+json.free()
+```
+
+##### JsonObject
+
+Represents a JSON object returned from a `Json` or `JsonArray` instance.
+
+The same object access methods as `Json` are available.
+
+##### JsonArray
+
+Represents a JSON array returned from a `Json` or `JsonObject` instance.
+
+Supports array access methods such as:
+
+```zen
+array.arrayLength()
+array.arrayGetInt(...)
+array.arrayGetDouble(...)
+array.arrayGetString(...)
+array.arrayGetBool(...)
+array.arrayGetObject(...)
+array.arrayGetArray(...)
+```
+
+##### byte
+
+`byte` is a built-in special type used primarily with generic containers such as `List<byte>`. Although it is not a user-defined struct, it is treated as a built-in struct type for consistency with generic APIs.
 
 ---
 
@@ -1667,7 +1801,7 @@ Map b = {
 }
 ```
 
-> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.2.1 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
+> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.3.0 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
 
 #### Field Access
 
@@ -2064,7 +2198,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.2.1, and methods cannot be called on a struct type directly — only on an instance.
+Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.3.0, and methods cannot be called on a struct type directly — only on an instance.
 
 ```zen
 Counter c
@@ -3316,6 +3450,88 @@ sys.setEnv("API_KEY", "123456")
 
 ---
 
+---
+
+##### `sys.clipboard.get`
+
+Returns the current clipboard text.
+
+```
+sys.clipboard.get()
+```
+
+Returns `string`.
+
+> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
+
+```zen
+string text = sys.clipboard.get()
+
+screen(text)
+```
+
+---
+
+##### `sys.clipboard.set`
+
+Sets the system clipboard text.
+
+```
+sys.clipboard.set(text)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `text` | `string` | Text to copy to the clipboard |
+
+Returns `void`.
+
+> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
+
+```zen
+sys.clipboard.set("Hello from ZEN")
+```
+
+---
+
+##### `sys.clipboard.clear`
+
+Clears the system clipboard.
+
+```
+sys.clipboard.clear()
+```
+
+Returns `void`.
+
+> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
+
+```zen
+sys.clipboard.clear()
+```
+
+---
+
+##### `sys.clipboard.hasText`
+
+Checks whether the system clipboard currently contains text.
+
+```
+sys.clipboard.hasText()
+```
+
+Returns `bool`.
+
+> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
+
+```zen
+if (sys.clipboard.hasText()) {
+    screen(sys.clipboard.get())
+}
+```
+
+---
+
 ##### `sys.hasEnv`
 
 Checks whether an environment variable exists.
@@ -3334,23 +3550,6 @@ Returns `bool`.
 if (sys.hasEnv("API_KEY")) {
     print("Found")
 }
-```
-
----
-
-##### `sys.timestamp`
-
-Returns the current Unix timestamp.
-
-```
-sys.timestamp()
-```
-
-Returns `int`.
-
-```zen
-int ts = sys.timestamp()
-print(ts)
 ```
 
 ---
@@ -3764,6 +3963,46 @@ Returns `void`.
 
 ```zen
 time.sleep(1000)       # pause for 1 second
+```
+
+---
+
+##### `time.now`
+
+Returns the current Unix timestamp in milliseconds.
+
+```
+time.now()
+```
+
+Returns `int`.
+
+```zen
+int ts = time.now()
+
+screen(ts)
+```
+
+---
+
+##### `time.format`
+
+Formats a Unix timestamp (milliseconds) into a human-readable local date and time string.
+
+```
+time.format(timestamp)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `timestamp` | `int` | Unix timestamp in milliseconds |
+
+Returns `string`.
+
+```zen
+int ts = time.now()
+
+screen(time.format(ts))
 ```
 
 ---
@@ -4897,7 +5136,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v1.2.1. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v1.3.0. All compilation uses `-O2` by default.
 
 ---
 
@@ -5454,7 +5693,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v1.2.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
+ZEN v1.3.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -5533,12 +5772,13 @@ Operators are listed from highest to lowest precedence. Operators on the same ro
 | 2 | `++` `--` `!` `-` | Unary operators |
 | 3 | `*` `/` `%` | Multiplicative |
 | 4 | `+` `-` | Additive |
-| 5 | `<` `>` `<=` `>=` | Relational comparison |
-| 6 | `==` `!=` | Equality |
-| 7 | `&&` | Logical AND |
-| 8 | `\|\|` | Logical OR |
-| 9 | `? :` | Ternary |
-| 10 (lowest) | `=` `+=` `-=` `*=` `/=` `%=` | Assignment |
+| 5 | `^` | Bitwise XOR |
+| 6 | `<` `>` `<=` `>=` | Relational comparison |
+| 7 | `==` `!=` | Equality |
+| 8 | `&&` | Logical AND |
+| 9 | `\|\|` | Logical OR |
+| 10 | `? :` | Ternary |
+| 11 (lowest) | `=` `+=` `-=` `*=` `/=` `%=` | Assignment |
 
 ---
 

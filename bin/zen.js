@@ -16,18 +16,43 @@ class ZEN {
     this.args = process.argv.slice(2);
     this.command = this.args[0];
     this.optFlagFromCommand = this.args[2];
-this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(this.optFlagFromCommand);
+    this.isValidOptFlag = ["-O0", "-O1", "-O2", "-O3"].includes(
+      this.optFlagFromCommand,
+    );
 
-this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
+    this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
     this.PROJECT_ROOT = null;
     this.moduleFiles = new ModuleFiles();
     this.COMPILER_ROOT = null;
     this.validCommands = new Set([
-  "run", "build", "ir", "ast", "tokens", "clean", "init", "list", "whoami",
-  "publish", "install", "recovery", "mine", "search", "kind", "uninstall", 
-  "signup", "login", "logout", "unpublish",
-  "--help", "-h", "help", "--version", "-v", "version", "update"
-]);
+      "run",
+      "build",
+      "ir",
+      "ast",
+      "tokens",
+      "clean",
+      "init",
+      "list",
+      "whoami",
+      "publish",
+      "install",
+      "recovery",
+      "mine",
+      "search",
+      "kind",
+      "uninstall",
+      "signup",
+      "login",
+      "logout",
+      "unpublish",
+      "--help",
+      "-h",
+      "help",
+      "--version",
+      "-v",
+      "version",
+      "update",
+    ]);
   }
 
   setCompilerRoot() {
@@ -112,7 +137,9 @@ this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
     } else if (type === "remote") {
       this.source = await this.fetchRemote(input);
     } else {
-      console.error("error: Invalid input - expected .zen file, project dir, or URL");
+      console.error(
+        "error: Invalid input - expected .zen file, project dir, or URL",
+      );
       process.exit(1);
     }
   }
@@ -148,7 +175,7 @@ this.optFlag = this.isValidOptFlag ? this.optFlagFromCommand : "-O2";
 
   help() {
     console.log(`
-Zen Programming Language v1.2.1
+Zen Programming Language v1.3.0
 
 Usage:
   zen run <file> [-O0|-O1|-O2|-O3]
@@ -190,454 +217,450 @@ Optimization Levels:
   -O3    Maximum optimization    
     `);
   }
-  
+
   // auth
 
-async handleSignup() {
-  
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+  async handleSignup() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
 
-  const ask = (q) => new Promise(resolve => rl.question(q, resolve));
+    const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
-  try {
-    const username = (await ask("Username: ")).trim();
-    const password = await ask("Password: ");
-    const confirm = await ask("Confirm Password: ");
-
-    rl.close();
-
-    if (!username || !password) {
-      console.error("error: username and password required");
-      process.exit(1);
-    }
-
-    if (password !== confirm) {
-      console.error("error: passwords do not match");
-      process.exit(1);
-    }
-
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/signup`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          username,
-          password: password
-        })
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
-      process.exit(1);
-    }
-    
-  console.log("ZEN RECOVERY CODES");
-
-  data.codes.forEach((c, i) => {
-    console.log(`${i + 1}. ${c}`);
-  });
-
-  console.log("\nSave these codes. They will not be shown again.\n");
-
-   console.log(data.message);
-  } catch (err) {
-    rl.close();
-    console.error(`error: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-async handleLogin() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  const ask = (q) => new Promise(resolve => rl.question(q, resolve));
-
-  try {
-    const username = (await ask("Username: ")).trim();
-    const password = await ask("Password: ");
-
-    rl.close();
-
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/login`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          username,
-          password: password
-        })
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
-      process.exit(1);
-    }
-
-    const authDir = path.join(os.homedir(), ".zen");
-    fs.mkdirSync(authDir, { recursive: true });
-
-    fs.writeFileSync(
-      path.join(authDir, "auth.json"),
-      JSON.stringify({
-        username,
-        token: data.token
-      }, null, 2)
-    );
-
-    console.log("Logged in successfully.");
-  } catch (err) {
-    rl.close();
-    console.error(`error: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-async handleList() {
-  const listPackages = async (page = 1) => {
     try {
-      const res = await fetch(
-        `${this.BACKEND_URL}/api/list?page=${page}`
-      );
+      const username = (await ask("Username: ")).trim();
+      const password = await ask("Password: ");
+      const confirm = await ask("Confirm Password: ");
 
-      if (!res.ok) {
-        console.error("error: Failed to fetch packages");
+      rl.close();
+
+      if (!username || !password) {
+        console.error("error: username and password required");
         process.exit(1);
       }
 
-      const data = await res.json();
-      const { page: currentPage, total, hasMore, count, packages } = data;
+      if (password !== confirm) {
+        console.error("error: passwords do not match");
+        process.exit(1);
+      }
 
-      console.log(`\nPage ${currentPage} (showing ${count} of ${total} packages):\n`);
-      
-      packages.forEach((pkg) => {
-        console.log(`  ${pkg.name}@${pkg.latest}`);
-        if (pkg.description) console.log(`    ${pkg.description}`);
-        console.log(`    by ${pkg.author}\n`);
+      const res = await fetch(`${this.BACKEND_URL}/api/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password: password,
+        }),
       });
 
-      if (hasMore) {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
+      }
+
+      console.log("ZEN RECOVERY CODES");
+
+      data.codes.forEach((c, i) => {
+        console.log(`${i + 1}. ${c}`);
+      });
+
+      console.log("\nSave these codes. They will not be shown again.\n");
+
+      console.log(data.message);
+    } catch (err) {
+      rl.close();
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  async handleLogin() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+
+    try {
+      const username = (await ask("Username: ")).trim();
+      const password = await ask("Password: ");
+
+      rl.close();
+
+      const res = await fetch(`${this.BACKEND_URL}/api/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password: password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
+      }
+
+      const authDir = path.join(os.homedir(), ".zen");
+      fs.mkdirSync(authDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(authDir, "auth.json"),
+        JSON.stringify(
+          {
+            username,
+            token: data.token,
+          },
+          null,
+          2,
+        ),
+      );
+
+      console.log("Logged in successfully.");
+    } catch (err) {
+      rl.close();
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  async handleList() {
+    const listPackages = async (page = 1) => {
+      try {
+        const res = await fetch(`${this.BACKEND_URL}/api/list?page=${page}`);
+
+        if (!res.ok) {
+          console.error("error: Failed to fetch packages");
+          process.exit(1);
+        }
+
+        const data = await res.json();
+        const { page: currentPage, total, hasMore, count, packages } = data;
+
+        console.log(
+          `\nPage ${currentPage} (showing ${count} of ${total} packages):\n`,
+        );
+
+        packages.forEach((pkg) => {
+          console.log(`  ${pkg.name}@${pkg.latest}`);
+          if (pkg.description) console.log(`    ${pkg.description}`);
+          console.log(`    by ${pkg.author}\n`);
         });
 
-        rl.question("Show next batch? (y/n) ", (answer) => {
-          rl.close();
-          if (answer.toLowerCase() === "y") {
-            listPackages(currentPage + 1);
-          }
-        });
-      } else {
-        console.log("No more packages.");
+        if (hasMore) {
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+          });
+
+          rl.question("Show next batch? (y/n) ", (answer) => {
+            rl.close();
+            if (answer.toLowerCase() === "y") {
+              listPackages(currentPage + 1);
+            }
+          });
+        } else {
+          console.log("No more packages.");
+        }
+      } catch (err) {
+        console.error(`error: ${err.message}`);
+        process.exit(1);
       }
+    };
+
+    await listPackages();
+  }
+
+  async handlePublish() {
+    try {
+      const projectDir = process.cwd();
+      const configPath = path.join(projectDir, "zen.json");
+
+      if (!fs.existsSync(configPath)) {
+        console.error("error: zen.json not found");
+        process.exit(1);
+      }
+
+      const authPath = path.join(os.homedir(), ".zen", "auth.json");
+
+      if (!fs.existsSync(authPath)) {
+        console.error("error: Not logged in");
+        console.error("Run: zen login");
+        process.exit(1);
+      }
+
+      const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+      const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+      if (config.main) {
+        config.kind = "main";
+      } else if (config.bin) {
+        config.kind = "lib";
+      } else {
+        console.error("error: zen.json must contain either 'main' or 'bin'");
+        process.exit(1);
+      }
+
+      console.log(`Publishing ${config.name} v${config.version}...`);
+
+      const res = await fetch(`${this.BACKEND_URL}/api/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify(config),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
+      }
+
+      console.log(data.message);
     } catch (err) {
       console.error(`error: ${err.message}`);
       process.exit(1);
     }
-  };
-
-  await listPackages();
-}
-
-  async handlePublish() {
-  try {
-    const projectDir = process.cwd();
-    const configPath = path.join(projectDir, "zen.json");
-
-    if (!fs.existsSync(configPath)) {
-      console.error("error: zen.json not found");
-      process.exit(1);
-    }
-
-    const authPath = path.join(os.homedir(), ".zen", "auth.json");
-
-    if (!fs.existsSync(authPath)) {
-      console.error("error: Not logged in");
-      console.error("Run: zen login");
-      process.exit(1);
-    }
-
-    const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    
-    if (config.main) {
-  config.kind = "main";
-} else if (config.bin) {
-  config.kind = "lib";
-} else {
-  console.error("error: zen.json must contain either 'main' or 'bin'");
-  process.exit(1);
-}
-
-    console.log(`Publishing ${config.name} v${config.version}...`);
-
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/publish`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`
-        },
-        body: JSON.stringify(config)
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
-      process.exit(1);
-    }
-
-    console.log(data.message);
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
   }
-}
 
-async handleUnpublish() {
-  try {
-    const projectDir = process.cwd();
-    const configPath = path.join(projectDir, "zen.json");
+  async handleUnpublish() {
+    try {
+      const projectDir = process.cwd();
+      const configPath = path.join(projectDir, "zen.json");
 
-    if (!fs.existsSync(configPath)) {
-      console.error("error: zen.json not found");
-      process.exit(1);
-    }
+      if (!fs.existsSync(configPath)) {
+        console.error("error: zen.json not found");
+        process.exit(1);
+      }
 
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    const packageName = config.name;
+      const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      const packageName = config.name;
 
-    if (!packageName) {
-      console.error("error: Package name not found in zen.json");
-      process.exit(1);
-    }
+      if (!packageName) {
+        console.error("error: Package name not found in zen.json");
+        process.exit(1);
+      }
 
-    const authPath = path.join(os.homedir(), ".zen", "auth.json");
+      const authPath = path.join(os.homedir(), ".zen", "auth.json");
 
-    if (!fs.existsSync(authPath)) {
-      console.error("error: Not logged in");
-      console.error("Run: zen login");
-      process.exit(1);
-    }
+      if (!fs.existsSync(authPath)) {
+        console.error("error: Not logged in");
+        console.error("Run: zen login");
+        process.exit(1);
+      }
 
-    const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+      const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
 
-    console.log(`Unpublishing ${packageName}...`);
+      console.log(`Unpublishing ${packageName}...`);
 
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/unpublish`,
-      {
+      const res = await fetch(`${this.BACKEND_URL}/api/unpublish`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${auth.token}`
+          Authorization: `Bearer ${auth.token}`,
         },
-        body: JSON.stringify({ name: packageName })
+        body: JSON.stringify({ name: packageName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
       }
-    );
 
-    const data = await res.json();
+      console.log(data.message);
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
+  }
 
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
+  async handleLogout() {
+    try {
+      const authPath = path.join(os.homedir(), ".zen", "auth.json");
+
+      if (!fs.existsSync(authPath)) {
+        console.error("error: Not logged in");
+        process.exit(1);
+      }
+
+      fs.rmSync(authPath, { force: true });
+
+      console.log("Logged out successfully.");
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  async handleUninstall() {
+    const packageName = this.args[1];
+
+    if (!packageName) {
+      console.error("error: Usage zen uninstall <package-name>");
       process.exit(1);
     }
 
-    console.log(data.message);
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
-  }
-}
+    try {
+      // Check current directory
+      let installDir = path.join(process.cwd(), packageName);
 
-async handleLogout() {
-  try {
-    const authPath = path.join(os.homedir(), ".zen", "auth.json");
+      // If not there, check ~/.zen/packages/
+      if (!fs.existsSync(installDir)) {
+        installDir = path.join(
+          process.env.HOME || process.env.USERPROFILE,
+          ".zen",
+          "packages",
+          packageName,
+        );
+      }
 
-    if (!fs.existsSync(authPath)) {
-      console.error("error: Not logged in");
+      if (!fs.existsSync(installDir)) {
+        console.error(`error: Package '${packageName}' not installed`);
+        process.exit(1);
+      }
+
+      fs.rmSync(installDir, { recursive: true, force: true });
+      console.log(`Uninstalled ${packageName}`);
+    } catch (err) {
+      console.error(`error: Uninstall failed: ${err.message}`);
       process.exit(1);
     }
-
-    fs.rmSync(authPath, { force: true });
-
-    console.log("Logged out successfully.");
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
   }
-}
-
-async handleUninstall() {
-  const packageName = this.args[1];
-
-  if (!packageName) {
-    console.error("error: Usage zen uninstall <package-name>");
-    process.exit(1);
-  }
-
-  try {
-    // Check current directory
-    let installDir = path.join(process.cwd(), packageName);
-    
-    // If not there, check ~/.zen/packages/
-    if (!fs.existsSync(installDir)) {
-      installDir = path.join(
-        process.env.HOME || process.env.USERPROFILE,
-        ".zen",
-        "packages",
-        packageName
-      );
-    }
-
-    if (!fs.existsSync(installDir)) {
-      console.error(`error: Package '${packageName}' not installed`);
-      process.exit(1);
-    }
-
-    fs.rmSync(installDir, { recursive: true, force: true });
-    console.log(`Uninstalled ${packageName}`);
-  } catch (err) {
-    console.error(`error: Uninstall failed: ${err.message}`);
-    process.exit(1);
-  }
-}
 
   async handleInstall() {
-  const packageName = this.args[1];
+    const packageName = this.args[1];
 
-  if (!packageName) {
-    console.error("error: Usage zen install <package-name>");
-    process.exit(1);
-  }
-
-  try {
-    console.log(`Installing ${packageName}...`);
-
-    const registryRes = await fetch(
-      `${this.BACKEND_URL}/api/packages.json?name=${packageName}`
-    );
-
-    if (!registryRes.ok) {
-  const error = await registryRes.json();
-  console.error(`error: ${error.error}`);
-  process.exit(1);
-}
-
-    const pkg = await registryRes.json();
-
-    if (!pkg?.repo) {
-      console.error(`error: Package '${packageName}' not found`);
+    if (!packageName) {
+      console.error("error: Usage zen install <package-name>");
       process.exit(1);
     }
 
-    const repoUrl = new URL(pkg.repo);
-    const [owner, repo] = repoUrl.pathname.slice(1).split("/");
+    try {
+      console.log(`Installing ${packageName}...`);
 
-    const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-const repoData = await repoRes.json();
-
-const branch = repoData.default_branch;
-
-const configRes = await fetch(
-  `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/zen.json`
-);
-
-    if (!configRes.ok) {
-      console.error("error: Failed to fetch zen.json");
-      process.exit(1);
-    }
-
-    const config = await configRes.json();
-
-    const isRunnable = !!config.main;
-    const isLibrary = !!config.bin;
-
-    let installDir;
-
-    if (isRunnable) {
-      installDir = path.join(process.cwd(), packageName);
-    } else if (isLibrary) {
-      installDir = path.join(
-        process.env.HOME || process.env.USERPROFILE,
-        ".zen",
-        "packages",
-        packageName
+      const registryRes = await fetch(
+        `${this.BACKEND_URL}/api/packages.json?name=${packageName}`,
       );
-    } else {
-      console.error("error: invalid package type");
+
+      if (!registryRes.ok) {
+        const error = await registryRes.json();
+        console.error(`error: ${error.error}`);
+        process.exit(1);
+      }
+
+      const pkg = await registryRes.json();
+
+      if (!pkg?.repo) {
+        console.error(`error: Package '${packageName}' not found`);
+        process.exit(1);
+      }
+
+      const repoUrl = new URL(pkg.repo);
+      const [owner, repo] = repoUrl.pathname.slice(1).split("/");
+
+      const repoRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}`,
+      );
+      const repoData = await repoRes.json();
+
+      const branch = repoData.default_branch;
+
+      const configRes = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/zen.json`,
+      );
+
+      if (!configRes.ok) {
+        console.error("error: Failed to fetch zen.json");
+        process.exit(1);
+      }
+
+      const config = await configRes.json();
+
+      const isRunnable = !!config.main;
+      const isLibrary = !!config.bin;
+
+      let installDir;
+
+      if (isRunnable) {
+        installDir = path.join(process.cwd(), packageName);
+      } else if (isLibrary) {
+        installDir = path.join(
+          process.env.HOME || process.env.USERPROFILE,
+          ".zen",
+          "packages",
+          packageName,
+        );
+      } else {
+        console.error("error: invalid package type");
+        process.exit(1);
+      }
+
+      if (fs.existsSync(installDir)) {
+        // Check if update needed
+        const localConfigPath = path.join(installDir, "zen.json");
+        const localConfig = JSON.parse(
+          fs.readFileSync(localConfigPath, "utf8"),
+        );
+
+        if (localConfig.version === pkg.latest) {
+          console.log(`Already installed at ${installDir} (latest)`);
+          return;
+        }
+
+        console.log(
+          `Updating ${packageName} from v${localConfig.version} to v${pkg.latest}...`,
+        );
+        execSync(`cd ${installDir} && git pull`, { stdio: "inherit" });
+        console.log(`Updated to v${pkg.latest}`);
+        return;
+      }
+
+      fs.mkdirSync(installDir, { recursive: true });
+      console.log(`Cloning ${owner}/${repo}...`);
+      execSync(
+        `git clone https://github.com/${owner}/${repo}.git ${installDir}`,
+        { stdio: "inherit" },
+      );
+
+      console.log(`Installed ${packageName} v${pkg.latest}`);
+      console.log(`Location: ${installDir}`);
+    } catch (err) {
+      console.error(`error: Install failed: ${err.message}`);
       process.exit(1);
     }
-
-    if (fs.existsSync(installDir)) {
-  // Check if update needed
-  const localConfigPath = path.join(installDir, "zen.json");
-  const localConfig = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
-  
-  if (localConfig.version === pkg.latest) {
-    console.log(`Already installed at ${installDir} (latest)`);
-    return;
   }
 
-  console.log(`Updating ${packageName} from v${localConfig.version} to v${pkg.latest}...`);
-  execSync(`cd ${installDir} && git pull`, { stdio: "inherit" });
-  console.log(`Updated to v${pkg.latest}`);
-  return;
-}
+  async handleWhoami() {
+    try {
+      const authPath = path.join(os.homedir(), ".zen", "auth.json");
 
-fs.mkdirSync(installDir, { recursive: true });
-console.log(`Cloning ${owner}/${repo}...`);
-execSync(
-  `git clone https://github.com/${owner}/${repo}.git ${installDir}`,
-  { stdio: "inherit" }
-);
+      if (!fs.existsSync(authPath)) {
+        console.error("error: Not logged in");
+        process.exit(1);
+      }
 
-console.log(`Installed ${packageName} v${pkg.latest}`);
-console.log(`Location: ${installDir}`);
-
-  } catch (err) {
-    console.error(`error: Install failed: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-async handleWhoami() {
-  try {
-    const authPath = path.join(os.homedir(), ".zen", "auth.json");
-
-    if (!fs.existsSync(authPath)) {
-      console.error("error: Not logged in");
+      const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+      console.log(`Logged in as: ${auth.username}`);
+    } catch (err) {
+      console.error(`error: ${err.message}`);
       process.exit(1);
     }
-
-    const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
-    console.log(`Logged in as: ${auth.username}`);
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
   }
-}
 
   async handleInit() {
     try {
@@ -663,10 +686,7 @@ async handleWhoami() {
       fs.mkdirSync(projDir, { recursive: true });
 
       const mainFile = isLibrary ? "lib.zen" : "main.zen";
-      fs.writeFileSync(
-        path.join(projDir, mainFile),
-        `screen("Hello Zen")\n`
-      );
+      fs.writeFileSync(path.join(projDir, mainFile), `screen("Hello Zen")\n`);
 
       const config = {
         name: projectName,
@@ -674,12 +694,12 @@ async handleWhoami() {
         author: "your-github-username",
         repo: `https://github.com/your-username/zen-${projectName}`,
         description: "",
-        ...(isLibrary ? { bin: mainFile } : { main: mainFile })
+        ...(isLibrary ? { bin: mainFile } : { main: mainFile }),
       };
 
       fs.writeFileSync(
         path.join(projDir, "zen.json"),
-        JSON.stringify(config, null, 2)
+        JSON.stringify(config, null, 2),
       );
 
       console.log(`Project '${projectName}' created successfully`);
@@ -707,197 +727,196 @@ async handleWhoami() {
       process.exit(1);
     }
   }
-  
+
   async handleRecovery() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
 
-  const ask = (q) => new Promise(resolve => rl.question(q, resolve));
+    const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
-  try {
-    const username = (await ask("Username: ")).trim();
-    const recoveryCode = (await ask("Recovery code: ")).trim();
-    const newPassword = await ask("New password: ");
-    const confirm = await ask("Confirm password: ");
+    try {
+      const username = (await ask("Username: ")).trim();
+      const recoveryCode = (await ask("Recovery code: ")).trim();
+      const newPassword = await ask("New password: ");
+      const confirm = await ask("Confirm password: ");
 
-    rl.close();
+      rl.close();
 
-    if (!username || !recoveryCode || !newPassword) {
-      console.error("error: All fields required");
-      process.exit(1);
-    }
+      if (!username || !recoveryCode || !newPassword) {
+        console.error("error: All fields required");
+        process.exit(1);
+      }
 
-    if (newPassword !== confirm) {
-      console.error("error: Passwords do not match");
-      process.exit(1);
-    }
+      if (newPassword !== confirm) {
+        console.error("error: Passwords do not match");
+        process.exit(1);
+      }
 
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/recovery`,
-      {
+      const res = await fetch(`${this.BACKEND_URL}/api/recovery`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           username,
           recoveryCode,
-          newPassword
-        })
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
       }
-    );
 
-    const data = await res.json();
+      console.log(data.message);
+    } catch (err) {
+      rl.close();
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
+  }
 
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
+  async handleSearch() {
+    const name = this.args[1];
+
+    if (!name) {
+      console.error("error: Usage zen search <package>");
       process.exit(1);
     }
 
-    console.log(data.message);
-  } catch (err) {
-    rl.close();
-    console.error(`error: ${err.message}`);
-    process.exit(1);
+    try {
+      const res = await fetch(
+        `${this.BACKEND_URL}/api/search?name=${encodeURIComponent(name)}`,
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
+      }
+
+      if (!data.length) {
+        console.log("No packages found.");
+        return;
+      }
+
+      for (const pkg of data) {
+        console.log(`${pkg.name}@${pkg.latest}`);
+        console.log(`  ${pkg.description || "No description"}`);
+        console.log(`  by ${pkg.author}`);
+        console.log("");
+      }
+    } catch (err) {
+      console.error(`error: ${err.message}`);
+      process.exit(1);
+    }
   }
-}
 
-async handleSearch() {
-  const name = this.args[1];
+  async handleKind() {
+    const name = this.args[1];
 
-  if (!name) {
-    console.error("error: Usage zen search <package>");
-    process.exit(1);
-  }
-
-  try {
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/search?name=${encodeURIComponent(name)}`
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
+    if (!name) {
+      console.error("error: Usage zen kind <package>");
       process.exit(1);
     }
 
-    if (!data.length) {
-      console.log("No packages found.");
-      return;
-    }
+    try {
+      const res = await fetch(
+        `${this.BACKEND_URL}/api/kind?name=${encodeURIComponent(name)}`,
+      );
 
-    for (const pkg of data) {
-      console.log(`${pkg.name}@${pkg.latest}`);
-      console.log(`  ${pkg.description || "No description"}`);
-      console.log(`  by ${pkg.author}`);
-      console.log("");
-    }
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
-  }
-}
+      const data = await res.json();
 
-async handleKind() {
-  const name = this.args[1];
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
+      }
 
-  if (!name) {
-    console.error("error: Usage zen kind <package>");
-    process.exit(1);
-  }
-
-  try {
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/kind?name=${encodeURIComponent(name)}`
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
+      console.log(`${name}: ${data.kind}`);
+    } catch (err) {
+      console.error(`error: ${err.message}`);
       process.exit(1);
     }
-
-    console.log(`${name}: ${data.kind}`);
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
   }
-}
 
-async handleMine() {
-  try {
-    const authPath = path.join(os.homedir(), ".zen", "auth.json");
+  async handleMine() {
+    try {
+      const authPath = path.join(os.homedir(), ".zen", "auth.json");
 
-    if (!fs.existsSync(authPath)) {
-      console.error("error: Not logged in");
-      process.exit(1);
-    }
+      if (!fs.existsSync(authPath)) {
+        console.error("error: Not logged in");
+        process.exit(1);
+      }
 
-    const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+      const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
 
-    const res = await fetch(
-      `${this.BACKEND_URL}/api/mine`,
-      {
+      const res = await fetch(`${this.BACKEND_URL}/api/mine`, {
         headers: {
-          Authorization: `Bearer ${auth.token}`
-        }
+          Authorization: `Bearer ${auth.token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(`error: ${data.error}`);
+        process.exit(1);
       }
-    );
 
-    const data = await res.json();
+      if (!data.length) {
+        console.log("You haven't published any packages.");
+        return;
+      }
 
-    if (!res.ok) {
-      console.error(`error: ${data.error}`);
+      for (const pkg of data) {
+        console.log(`${pkg.name}@${pkg.latest}`);
+        console.log(`  ${pkg.description || "No description"}`);
+        console.log(`  ${pkg.kind}`);
+        console.log("");
+      }
+    } catch (err) {
+      console.error(`error: ${err.message}`);
       process.exit(1);
     }
-
-    if (!data.length) {
-      console.log("You haven't published any packages.");
-      return;
-    }
-
-    for (const pkg of data) {
-      console.log(`${pkg.name}@${pkg.latest}`);
-      console.log(`  ${pkg.description || "No description"}`);
-      console.log(`  ${pkg.kind}`);
-      console.log("");
-    }
-  } catch (err) {
-    console.error(`error: ${err.message}`);
-    process.exit(1);
   }
-}
 
-handleUpdate() {
-  try {
-    console.log("Updating Zen...");
+  handleUpdate() {
+    try {
+      console.log("Updating Zen...");
 
-    execSync(
-      'curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash',
-      { stdio: "inherit", shell: true }
-    );
+      execSync(
+        "curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash",
+        { stdio: "inherit", shell: true },
+      );
 
-    console.log("Zen updated successfully.");
-  } catch (err) {
-    console.error("error: Update failed.");
-    process.exit(1);
+      console.log("Zen updated successfully.");
+    } catch (err) {
+      console.error("error: Update failed.");
+      process.exit(1);
+    }
   }
-}
 
   async main() {
     const command = this.command;
 
-    if (!command || command === "--help" || command === "-h" || command === "help") {
+    if (
+      !command ||
+      command === "--help" ||
+      command === "-h" ||
+      command === "help"
+    ) {
       this.help();
       process.exit(0);
     }
 
     if (command === "--version" || command === "-v" || command === "version") {
-      console.log("Zen v1.2.1");
+      console.log("Zen v1.3.0 (latest)");
       process.exit(0);
     }
 
@@ -911,71 +930,71 @@ handleUpdate() {
       await this.handleInit();
       return;
     }
-    
+
     if (command === "signup") {
-  await this.handleSignup();
-  return;
-}
+      await this.handleSignup();
+      return;
+    }
 
-if (command === "login") {
-  await this.handleLogin();
-  return;
-}
+    if (command === "login") {
+      await this.handleLogin();
+      return;
+    }
 
-if (command === "logout") {
-  await this.handleLogout();
-  return;
-}
+    if (command === "logout") {
+      await this.handleLogout();
+      return;
+    }
 
-if (command === "whoami") {
-  await this.handleWhoami();
-  return;
-}
+    if (command === "whoami") {
+      await this.handleWhoami();
+      return;
+    }
 
-if (command === "list") {
-  await this.handleList();
-  return;
-}
+    if (command === "list") {
+      await this.handleList();
+      return;
+    }
 
-if (command === "update") {
-  await this.handleUpdate();
-  return;
-}
+    if (command === "update") {
+      await this.handleUpdate();
+      return;
+    }
 
-if (command === "recovery") {
-  await this.handleRecovery();
-  return;
-}
+    if (command === "recovery") {
+      await this.handleRecovery();
+      return;
+    }
 
-if (command === "uninstall") {
-  await this.handleUninstall();
-  return;
-}
+    if (command === "uninstall") {
+      await this.handleUninstall();
+      return;
+    }
 
-if (command === "unpublish") {
-  await this.handleUnpublish();
-  return;
-}
+    if (command === "unpublish") {
+      await this.handleUnpublish();
+      return;
+    }
 
     if (command === "publish") {
       await this.handlePublish();
       return;
     }
-    
+
     if (command === "search") {
-  await this.handleSearch();
-  return;
-}
+      await this.handleSearch();
+      return;
+    }
 
-if (command === "kind") {
-  await this.handleKind();
-  return;
-}
+    if (command === "kind") {
+      await this.handleKind();
+      return;
+    }
 
-if (command === "mine") {
-  await this.handleMine();
-  return;
-}
+    if (command === "mine") {
+      await this.handleMine();
+      return;
+    }
 
     if (command === "install") {
       await this.handleInstall();
@@ -996,32 +1015,39 @@ if (command === "mine") {
 
     let IRBuilder;
     try {
-      IRBuilder = (await import(
-        pathToFileURL(path.join(this.COMPILER_ROOT, "src/codegen/helper/helper.js")).href
-      )).IRBuilder;
+      IRBuilder = (
+        await import(
+          pathToFileURL(
+            path.join(this.COMPILER_ROOT, "src/codegen/helper/helper.js"),
+          ).href
+        )
+      ).IRBuilder;
     } catch (err) {
       console.error("error: Failed to load IRBuilder" + err);
       process.exit(1);
     }
 
     const IRB = new IRBuilder(this.moduleName);
-    
+
     await this.setSource(file, IRB);
 
     let Lexer;
     try {
-      Lexer = (await import(
-        pathToFileURL(path.join(this.COMPILER_ROOT, "src/lexer/lexer.js")).href
-      )).Lexer;
+      Lexer = (
+        await import(
+          pathToFileURL(path.join(this.COMPILER_ROOT, "src/lexer/lexer.js"))
+            .href
+        )
+      ).Lexer;
     } catch (err) {
       console.error("error: Failed to load Lexer");
       process.exit(1);
     }
 
     const lexer = new Lexer(this.source, IRB);
-    
+
     const tokens = lexer.tokenize();
-    
+
     if (command === "tokens") {
       console.log(JSON.stringify(tokens, null, 2));
       process.exit(0);
@@ -1029,9 +1055,12 @@ if (command === "mine") {
 
     let Parser;
     try {
-      Parser = (await import(
-        pathToFileURL(path.join(this.COMPILER_ROOT, "src/parser/parser.js")).href
-      )).Parser;
+      Parser = (
+        await import(
+          pathToFileURL(path.join(this.COMPILER_ROOT, "src/parser/parser.js"))
+            .href
+        )
+      ).Parser;
     } catch (err) {
       console.error("error: Failed to load Parser");
       process.exit(1);
@@ -1047,19 +1076,22 @@ if (command === "mine") {
 
     let CodeGen;
     try {
-      CodeGen = (await import(
-        pathToFileURL(path.join(this.COMPILER_ROOT, "src/codegen/codegen.js")).href
-      )).CodeGen;
+      CodeGen = (
+        await import(
+          pathToFileURL(path.join(this.COMPILER_ROOT, "src/codegen/codegen.js"))
+            .href
+        )
+      ).CodeGen;
     } catch (err) {
       console.error("error: Failed to load CodeGen");
       process.exit(1);
     }
-    
+
     this.moduleFiles.startCompiling(file);
 
     const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles);
     const llvm = codegen.generateLLVM();
-    
+
     this.moduleFiles.finishCompiling(file);
 
     if (!llvm) {
@@ -1073,7 +1105,7 @@ if (command === "mine") {
     }
 
     const moduleFiles = this.moduleFiles.moduleFiles;
-    
+
     const buildDir = this.buildDir();
 
     if (command === "clean") {
@@ -1109,34 +1141,57 @@ if (command === "mine") {
       }
     }
 
-    const stdlibObjs =  [
-      path.join(this.COMPILER_ROOT, "src/zen_stdlib/constants.ll"),
-      path.join(this.COMPILER_ROOT, "src/zen_stdlib/zen_stdlib_opt.ll"),
+    // runtime
+
+    const runtimeDir = path.join(this.COMPILER_ROOT, "src/codegen/runtime");
+
+    const runtimeFiles = [
+      "runtime",
+      "listRuntime",
+      "mapRuntime",
+      "curlRuntime",
+      "httpRuntime",
+      "jsonRuntime",
     ];
 
-    const runtimeObjs =  [
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/runtime.c"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/listRuntime.c"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/mapRuntime.c"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/curlRuntime.c"),
-      path.join(this.COMPILER_ROOT, "src/codegen/runtime/httpRuntime.c"),
+    const runtimeObjs = runtimeFiles.map((name) => {
+      const obj = path.join(runtimeDir, `${name}.o`);
+      const src = path.join(runtimeDir, `${name}.c`);
+      
+      return fs.existsSync(obj) ? obj : src;
+    });
+
+    // std lib
+
+    const stdlibDir = path.join(this.COMPILER_ROOT, "src/zen_stdlib");
+
+    const stdlibObjs = [
+      fs.existsSync(path.join(stdlibDir, "constants.o"))
+        ? path.join(stdlibDir, "constants.o")
+        : path.join(stdlibDir, "constants.ll"),
+
+      fs.existsSync(path.join(stdlibDir, "zen_stdlib_opt.o"))
+        ? path.join(stdlibDir, "zen_stdlib_opt.o")
+        : path.join(stdlibDir, "zen_stdlib_opt.ll"),
     ];
 
     const outputExe = path.join(buildDir, this.moduleName);
-    
-    this.run([
-      "clang",
-      outO,
-      ...moduleObjs,
-      ...stdlibObjs,
-      ...runtimeObjs,
-      this.optFlag,
-      "-Wno-override-module",
-      "-lcurl",
-      "-lm",
-      "-o",
-      outputExe,
-    ].join(" "));
+
+    this.run(
+      [
+        "clang",
+        outO,
+        ...moduleObjs,
+        ...stdlibObjs,
+        ...runtimeObjs,
+        this.optFlag,
+        "-Wno-override-module",
+        "-lcurl",
+        "-lm",
+        "-o",
+        outputExe,
+      ].join(" "),
+    );
 
     if (command === "build") {
       console.log(`Build successful: ${outputExe}`);

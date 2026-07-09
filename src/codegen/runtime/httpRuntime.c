@@ -398,46 +398,46 @@ HttpRequest* _httpServer_next(HttpServer *server) {
     return req;
 }
 
-void _httpServer_status(HttpRequest *req, int status) {
+void _httpRequest_status(HttpRequest *req, int status) {
     if (!req) return;
     req->status = status;
 }
 
-void _httpServer_setHeader(HttpRequest *req, const char *name, const char *value) {
+void _httpRequest_setHeader(HttpRequest *req, const char *name, const char *value) {
     appendResponseHeader(req, name, value);
 }
 
-void _httpServer_send(HttpRequest *req, const char *body) {
+void _httpRequest_send(HttpRequest *req, const char *body) {
     if (!req) return;
     size_t bodyLen = body ? strlen(body) : 0;
     sendResponse(req, -1, "text/plain; charset=UTF-8", body, bodyLen);
 }
 
-void _httpServer_json(HttpRequest *req, const char *json) {
+void _httpRequest_json(HttpRequest *req, const char *json) {
     if (!req) return;
     size_t bodyLen = json ? strlen(json) : 0;
     sendResponse(req, -1, "application/json", json, bodyLen);
 }
 
-void _httpServer_html(HttpRequest *req, const char *html) {
+void _httpRequest_html(HttpRequest *req, const char *html) {
     if (!req) return;
     size_t bodyLen = html ? strlen(html) : 0;
     sendResponse(req, -1, "text/html; charset=UTF-8", html, bodyLen);
 }
 
-void _httpServer_css(HttpRequest *req, const char *css) {
+void _httpRequest_css(HttpRequest *req, const char *css) {
     if (!req) return;
     size_t bodyLen = css ? strlen(css) : 0;
     sendResponse(req, -1, "text/css", css, bodyLen);
 }
 
-void _httpServer_redirect(HttpRequest *req, const char *url) {
+void _httpRequest_redirect(HttpRequest *req, const char *url) {
     if (!req) return;
     appendResponseHeader(req, "Location", url ? url : "/");
     sendResponse(req, 302, "text/plain; charset=UTF-8", "", 0);
 }
 
-void _httpServer_sendFile(HttpRequest *req, const char *path, const char *contentType) {
+void _httpRequest_sendFile(HttpRequest *req, const char *path, const char *contentType) {
 
     if (!req) return;
 
@@ -482,6 +482,6 @@ void _httpServer_sendFile(HttpRequest *req, const char *path, const char *conten
     free(buf);
 }
 
-const char* _httpServer_method(HttpRequest *req) { return (req && req->method) ? req->method : ""; }
-const char* _httpServer_path(HttpRequest *req)   { return (req && req->path)   ? req->path   : ""; }
-const char* _httpServer_body(HttpRequest *req)   { return (req && req->body)   ? req->body   : ""; }
+const char* _httpRequest_method(HttpRequest *req) { return (req && req->method) ? req->method : ""; }
+const char* _httpRequest_path(HttpRequest *req)   { return (req && req->path)   ? req->path   : ""; }
+const char* _httpRequest_body(HttpRequest *req)   { return (req && req->body)   ? req->body   : ""; }

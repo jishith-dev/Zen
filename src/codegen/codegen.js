@@ -1,31 +1,31 @@
-import { IRBuilder } from './helper/helper.js';
-import { Conditional } from './lib/conditional.js';
-import { Block } from './lib/block.js';
-import { Variable } from './lib/variable.js';
-import { Loop } from './lib/loop.js';
-import { Ternary } from './lib/ternary.js';
-import { HandleFunction } from './lib/function.js';
-import { Call } from './lib/call.js';
-import { Switch } from './lib/switch.js';
-import { Module } from './lib/moduleAnalyser.js';
-import { Expression } from './lib/expression.js';
-import { Enum } from './lib/enum.js';
-import { ZenMap } from './lib/map.js';
-import { ZenList } from './lib/list.js';
-import { Struct } from './lib/struct.js';
-import { Type } from './lib/builtins/type/type.js';
-import { ZenHttp } from './lib/builtins/http/http.js';
-import { ZenSys } from './lib/builtins/sys/sys.js';
-import { OS } from './lib/builtins/os/os.js';
-import { Time } from './lib/builtins/time/time.js';
-import { ZenNetwork } from './lib/builtins/network/network.js';
-import { ZenHttpServer } from './lib/builtins/httpServer/httpServer.js';
-import { InferType } from './infer/infer.js';
-import { ZenFileSystem } from './lib/builtins/fileSystem/file.js';
-import { IO } from './lib/builtins/io/io.js';
-import { ZenString } from './lib/builtins/string/string.js';
-import { FFI } from './lib/builtins/ffi/ffi.js';
-import { PATH } from './lib/builtins/path/path.js';
+import { IRBuilder } from "./helper/helper.js";
+import { Conditional } from "./lib/conditional.js";
+import { Block } from "./lib/block.js";
+import { Variable } from "./lib/variable.js";
+import { Loop } from "./lib/loop.js";
+import { Ternary } from "./lib/ternary.js";
+import { HandleFunction } from "./lib/function.js";
+import { Call } from "./lib/call.js";
+import { Switch } from "./lib/switch.js";
+import { Module } from "./lib/moduleAnalyser.js";
+import { Expression } from "./lib/expression.js";
+import { Enum } from "./lib/enum.js";
+import { ZenMap } from "./lib/map.js";
+import { ZenList } from "./lib/list.js";
+import { Struct } from "./lib/struct.js";
+import { Type } from "./lib/builtins/type/type.js";
+import { ZenHttp } from "./lib/builtins/http/http.js";
+import { ZenSys } from "./lib/builtins/sys/sys.js";
+import { OS } from "./lib/builtins/os/os.js";
+import { Time } from "./lib/builtins/time/time.js";
+import { ZenNetwork } from "./lib/builtins/network/network.js";
+import { ZenHttpServer } from "./lib/builtins/httpServer/httpServer.js";
+import { InferType } from "./infer/infer.js";
+import { ZenFileSystem } from "./lib/builtins/fileSystem/file.js";
+import { IO } from "./lib/builtins/io/io.js";
+import { ZenString } from "./lib/builtins/string/string.js";
+import { FFI } from "./lib/builtins/ffi/ffi.js";
+import { PATH } from "./lib/builtins/path/path.js";
 
 import {
   SCALAR_TYPES,
@@ -35,14 +35,14 @@ import {
   BUILTIN_FUNCTIONS,
   BUILTIN_MAP,
   RESERVED_FUNCTIONS,
-  COMPOUND_OPERATORS
-} from '../config/config.js';
+  COMPOUND_OPERATORS,
+} from "../config/config.js";
 
 export class CodeGen {
   constructor(ast, moduleName, moduleFiles) {
     this.ast = ast;
     this.moduleName = moduleName;
-    
+
     this.IRB = new IRBuilder(this.moduleName);
     this.expr = new Expression(this.IRB);
     this.time = new Time(this.IRB, this.expr);
@@ -56,22 +56,37 @@ export class CodeGen {
     this.path = new PATH(this.IRB, this.expr);
     this.module = new Module(this.IRB, moduleFiles);
     this.ternary = new Ternary(this.IRB, this.expr);
-    this.expr.setTernary(this.ternary)
+    this.expr.setTernary(this.ternary);
     this.os = new OS(this.IRB, this.expr);
     this.http = new ZenHttp(this.IRB, this.expr);
     this.sys = new ZenSys(this.IRB, this.expr);
     this.list = new ZenList(this.IRB, this.expr, this.infer);
     this.IRB.setCall(this.expr);
-    
+
     this.io = new IO(this.IRB, this.expr);
-    
+
     this.type = new Type(this.IRB, this.expr);
     this.string = new ZenString(this.IRB, this.expr);
-    this.call = new Call(this.IRB, this.expr, this.io, this.type, this.string, this.file, this.os, this.time, this.network, this.http, this.sys, this.ffi, this.path, this.httpServer);
-    
+    this.call = new Call(
+      this.IRB,
+      this.expr,
+      this.io,
+      this.type,
+      this.string,
+      this.file,
+      this.os,
+      this.time,
+      this.network,
+      this.http,
+      this.sys,
+      this.ffi,
+      this.path,
+      this.httpServer,
+    );
+
     this.expr.setCall(this.call);
     this.call.setExpression(this.expr);
-    
+
     this.block = new Block(this.IRB, this);
     this.switch = new Switch(this.IRB, this.expr, this.block);
     this.conditional = new Conditional(this.IRB, this.expr, this.block);
@@ -80,38 +95,35 @@ export class CodeGen {
     this.variable = new Variable(this.IRB, this.expr, this.call, this.infer);
     this.loop = new Loop(this.IRB, this.expr, this.variable, this.block);
   }
-  
+
   // main entry
   generateLLVM() {
-    
-    
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
-    
+
     this.IRB.initBuiltInStructs();
-    
-    const haveExport = this.ast.find(f => f.type === "EXPORT");
-    const haveImport = this.ast.find(f => f.type === "IMPORT");
-    
+
+    const haveExport = this.ast.find((f) => f.type === "EXPORT");
+    const haveImport = this.ast.find((f) => f.type === "IMPORT");
+
     if (haveExport) {
       this.IRB.haveExport = true;
     }
-    
+
     for (const node of this.ast) {
-      
       if (node.type === "EXPORT") {
         this.IRB.exported = true;
       }
-      
+
       if (node.type === "IMPORT") {
         this.module.moduleAnalyser(node);
       }
     }
-    
+
     if (!this.IRB.stdlibMode) {
-    if (!this.IRB.exported) {
-    this.IRB.functionBuff.push(`
+      if (!this.IRB.exported) {
+        this.IRB.functionBuff.push(`
 define void @_assignSeed () {
   entry:
 
@@ -119,239 +131,263 @@ define void @_assignSeed () {
   store i32 %t0, ptr @SEED
   ret void
 }
-    `)
-    this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
+    `);
+        this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
+      }
     }
-    }
-    
+
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.emit(`define i32 @main(i32 %argc, ptr %argv) { \nentry:\n${this.IRB.stdlibMode ? "" : "call void @_assignSeed()"}`);
+      this.IRB.emit(
+        `define i32 @main(i32 %argc, ptr %argv) { \nentry:\n${this.IRB.stdlibMode ? "" : "call void @_assignSeed()"}`,
+      );
     }
-    
+
     // set builtins
     this.IRB.registerBuiltins(BUILTIN_MAP);
-    
-    // function hoisting 
-    
+
+    // function hoisting
+
     for (const node of this.ast) {
       if (node.type === "FUNCTION_DECLARATION") {
-        
         if (!this.IRB.stdlibMode) {
-          const stdlibSet = new Set([
-            ...RESERVED_FUNCTIONS
-          ]);
-          
+          const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
+
           if (stdlibSet.has(node.name)) {
             this.IRB.emitError(
               "ReservedFunctionError",
-              `${node.name} is a reserved function name`, node
+              `${node.name} is a reserved function name`,
+              node,
             );
           }
         }
-        
-        const returnType = node.returnType === "void" ?
-          "void" : node.returnType.type;
-        
-        const isArrayRet = returnType === "void" ? false : returnType === "List" ? false : node.returnType?.dimensions.length > 0;
-        const retGeneric = returnType === "List" ? this.IRB.getDeepestGeneric(node.returnType.generic) : returnType;
+
+        const returnType =
+          node.returnType === "void" ? "void" : node.returnType.type;
+
+        const isArrayRet =
+          returnType === "void"
+            ? false
+            : returnType === "List"
+              ? false
+              : node.returnType?.dimensions.length > 0;
+        const retGeneric =
+          returnType === "List"
+            ? this.IRB.getDeepestGeneric(node.returnType.generic)
+            : returnType;
         const generic = returnType === "List" ? node.returnType : null;
-        
-        if (isArrayRet) this.IRB.emitError("SemanticError", `function ${name} cannot return array`, node);
-        
-        const data = { name: node.name, returnType, params: node.params, retGeneric, generic }
-        
+
+        if (isArrayRet)
+          this.IRB.emitError(
+            "SemanticError",
+            `function ${name} cannot return array`,
+            node,
+          );
+
+        const data = {
+          name: node.name,
+          returnType,
+          params: node.params,
+          retGeneric,
+          generic,
+        };
+
         this.IRB.setFunction(`${node.name}`, data, node);
-        
       }
     }
-    
+
     for (const node of this.ast) this.dispatch(node);
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
       this.IRB.emit("ret i32 0 \n}");
     }
-    
+
     if (!this.IRB.DEBUG_IR) {
       for (const [name, meta] of Object.entries(GLOBAL_EXTERNAL)) {
-        
         const kind = meta.mutable ? "global" : "constant";
-        
-        this.IRB.globals.unshift(
-          `@${name} = external ${kind} ${meta.type}`
-        );
+
+        this.IRB.globals.unshift(`@${name} = external ${kind} ${meta.type}`);
       }
-      
+
       if (!this.IRB.stdlibMode) {
         for (const [name, fn] of Object.entries(STD_FUNCTIONS_SCHEMA)) {
-          
           if (!this.IRB.usedStdFunctions?.has(name)) continue;
-          
+
           const params = fn.params.join(", ");
-          
-          this.IRB.globals.unshift(
-            `declare ${fn.ret} @${name}(${params})`
-          );
+
+          this.IRB.globals.unshift(`declare ${fn.ret} @${name}(${params})`);
         }
       }
-      
     }
-    
+
     return {
       ir: this.IRB.getIR() || "",
       modules: this.module.moduleFiles || [],
       symbolTable: this.IRB.symbolTable || [],
       functionTable: this.IRB.functions || [],
-      structTable: this.IRB.structTable || []
-    }
-    
+      structTable: this.IRB.structTable || [],
+    };
   }
-  
+
   dispatch(node, globalScope = true, fromInsideBlock = false) {
     // if its direct node dont again hoist function. we can toggle this in src/codegen/lib/block.js
-    
-    // block level function hoisting 
+
+    // block level function hoisting
     if (fromInsideBlock) {
       if (node.type === "FUNCTION_DECLARATION") {
-        
-        const stdlibSet = new Set([
-          ...RESERVED_FUNCTIONS
-        ]);
-        
+        const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
+
         if (stdlibSet.has(node.name)) {
           this.IRB.emitError(
             "ReservedFunctionError",
-            `${node.name} is a reserved function name`, node
+            `${node.name} is a reserved function name`,
+            node,
           );
         }
-        
-        const returnType = node.returnType === "void" ?
-          "void" : node.returnType.type
-        
-        const isArrayRet = returnType === "void" ? false : returnType === "List" ? false : node.returnType?.dimensions.length > 0;
-        const retGeneric = returnType === "List" ? this.IRB.getDeepestGeneric(node.returnType.generic) : returnType;
+
+        const returnType =
+          node.returnType === "void" ? "void" : node.returnType.type;
+
+        const isArrayRet =
+          returnType === "void"
+            ? false
+            : returnType === "List"
+              ? false
+              : node.returnType?.dimensions.length > 0;
+        const retGeneric =
+          returnType === "List"
+            ? this.IRB.getDeepestGeneric(node.returnType.generic)
+            : returnType;
         const generic = returnType === "List" ? node.returnType : null;
-        if (isArrayRet) this.IRB.emitError("SemanticError", `function ${name} cannot return array`, node);
-        
-        const data = { name: node.name, returnType, params: node.params, generic }
-        
+        if (isArrayRet)
+          this.IRB.emitError(
+            "SemanticError",
+            `function ${name} cannot return array`,
+            node,
+          );
+
+        const data = {
+          name: node.name,
+          returnType,
+          params: node.params,
+          generic,
+        };
+
         this.IRB.setFunction(`${node.name}`, data);
       }
     }
-    
+
     const type = node.type;
-    
+
     switch (type) {
-      case 'VARIABLE_DECLARATION':
+      case "VARIABLE_DECLARATION":
         this.handleVariable(node, globalScope);
         break;
-        
-      case 'VARIABLE_REFERENCE':
+
+      case "VARIABLE_REFERENCE":
         this.handleVariableRef(node, globalScope);
         break;
-        
-      case 'CONDITIONAL':
+
+      case "CONDITIONAL":
         this.conditional.conditional(node);
         break;
-        
-      case 'LOOP':
+
+      case "LOOP":
         this.loop.loop(node);
         break;
-        
-      case 'LOOP_OF':
+
+      case "LOOP_OF":
         this.loop.loopOf(node);
         break;
-        
-     /* case 'LOOP_IN':
+
+      /* case 'LOOP_IN':
         this.loop.loopIn(node);
         break;
       */
-      
+
       case "STRUCT":
         this.struct.struct(node, globalScope);
         break;
-        
-      case 'WHILE_LOOP':
+
+      case "WHILE_LOOP":
         this.loop.whileLoop(node);
         break;
-        
-      case 'DO_WHILE':
+
+      case "DO_WHILE":
         this.loop.doWhileLoop(node);
         break;
-        
-      case 'SWITCH':
+
+      case "SWITCH":
         this.switch.handleSwitch(node);
         break;
-        
-        // ignore these import and export. handled in module analyzer
-      case 'IMPORT':
-        return 
-        
-      case 'EXPORT':
-        return 
-        
-      case 'RETURN':
+
+      // ignore these import and export. handled in module analyzer
+      case "IMPORT":
+        return;
+
+      case "EXPORT":
+        return;
+
+      case "RETURN":
         this.fn.handleReturn(node);
         break;
-        
-      case 'ENUM': 
+
+      case "ENUM":
         this.enum.handleEnum(node);
         break;
-        
-      case 'MAP_DECLARATION':
+
+      case "MAP_DECLARATION":
         this.map.handleMap(node, globalScope);
         break;
-        
-      case 'BREAK':
+
+      case "BREAK":
         this.loop.handleBreak();
         break;
-        
-      case 'CONTINUE':
+
+      case "CONTINUE":
         this.loop.handleContinue();
         break;
-        
-      case 'FUNCTION_DECLARATION':
+
+      case "FUNCTION_DECLARATION":
         this.fn.handleFunction(node);
         break;
-        
-      case 'BLOCK':
+
+      case "BLOCK":
         this.block.block(node, false);
         break;
-        
-      case 'CALL':
+
+      case "CALL":
         this.call.handleCall(node, true);
         break;
-        
+
       default:
         this.IRB.emitError("InternalError", `Unknown node type ${type}`, node);
     }
   }
-  
-  // variable declaration rooting 
-  
+
+  // variable declaration rooting
+
   handleVariable(node, globalScope) {
-    
     let type = node.dataType;
     if (type === "auto") {
       type = this.infer.infer(node);
       node.dataType = type;
     }
-    
+
     const isCall = node?.value?.type === "CALL";
     const isTernary = node?.value?.type === "TERNARY";
     const isArrayAccess = node?.value?.type === "ARRAY_ACCESS";
     const isStruct = node?.struct_ref;
     const isList = node.isList;
-    
+
     if (isList) {
       this.list.list(node, globalScope);
-      return
+      return;
     }
-    
+
     if (isTernary) {
-      
       const t = this.ternary.ternary(node.value);
-      
+
       const isStruct = this.IRB.hasStruct(t.type);
-      
+
       if (isStruct) {
         this.struct.structRef(node, globalScope);
         return;
@@ -359,111 +395,116 @@ define void @_assignSeed () {
       const name = node.name;
       this.IRB.guardGlobal(name, node);
       this.IRB.guardStackOp("TERNARY", node);
-      const gName = this.IRB.newGlobalTemp()
+      const gName = this.IRB.newGlobalTemp();
       const lName = this.IRB.newTemp();
-      
+
       if (globalScope) {
-        
         if (t.isList) {
           this.IRB.emitError(
             "TypeError",
-            `${node.name} expect ${t.type} but got 'List'`, node
+            `${node.name} expect ${t.type} but got 'List'`,
+            node,
           );
         }
-        
+
         const initialValue = this.IRB.initialValue(node.dataType);
-        
-        this.IRB.globals.push(`${gName} = global ${t.llvmType} ${initialValue}`);
-        
+
+        this.IRB.globals.push(
+          `${gName} = global ${t.llvmType} ${initialValue}`,
+        );
+
         this.IRB.emit(`store ${t.llvmType} ${t.ptr}, ptr ${gName}`);
       } else {
         this.IRB.emit(`${lName} = alloca ${t.llvmType}`);
-        
+
         this.IRB.emit(`store ${t.llvmType} ${t.ptr}, ptr ${lName}`);
       }
-      
-      this.IRB.setVar(name, this.IRB.createData({
-        ptr: globalScope ? gName : lName,
-        llvmType: t.llvmType,
-        type: t.type,
-        isConstant: node.isConstant,
-        isGlobal: globalScope,
-        needsLoad: true
-      }));
+
+      this.IRB.setVar(
+        name,
+        this.IRB.createData({
+          ptr: globalScope ? gName : lName,
+          llvmType: t.llvmType,
+          type: t.type,
+          isConstant: node.isConstant,
+          isGlobal: globalScope,
+          needsLoad: true,
+        }),
+      );
       return;
     }
-    
+
     if (isStruct) {
       this.struct.structRef(node, globalScope);
       return;
     }
-    
+
     const isArray = node?.isArray;
-    
+
     if (isArray) {
       this.variable.arrayVariable(node, globalScope);
       return;
     }
-    
+
     if (isArrayAccess) {
       this.variable.arrayAccessVariable(node, globalScope);
       return;
     }
-    
+
     if (isCall) {
-      
       if (VOID_BUILTIN_FUNCTIONS.includes(node.value.name)) {
-        this.IRB.emitError("TypeError", `${node.value.name}() void function cannot be used in expression`, node);
+        this.IRB.emitError(
+          "TypeError",
+          `${node.value.name}() void function cannot be used in expression`,
+          node,
+        );
       }
-      
+
       this.variable.callVariable(node, globalScope);
-      
     } else if (SCALAR_TYPES.includes(type)) {
-      
       this.variable.scalarVariable(node, globalScope);
-      
     } else if (type === "string") {
       this.variable.stringVariable(node, globalScope);
     }
   }
-  
+
   handleVariableRef(node, globalScope) {
     const isUnary = node.expression.type === "UNARY_EXPRESSION";
     const isMemberAssign = node.expression.type === "MEMBER_ASSIGNMENT";
     const isTernary = node.expression.type === "TERNARY";
-    
+
     if (COMPOUND_OPERATORS.includes(node.expression.operator)) {
       const normalisedNode = this.IRB.normalizeCompound(node);
-      
-      const isMemberAssign = normalisedNode.expression.type === "MEMBER_ASSIGNMENT";
-      
+
+      const isMemberAssign =
+        normalisedNode.expression.type === "MEMBER_ASSIGNMENT";
+
       if (isMemberAssign) {
-        // inside redirect to map assign or struct 
+        // inside redirect to map assign or struct
         this.struct.assignStruct(normalisedNode.expression, globalScope);
         return;
       }
-      
+
       return this.variable.variableReference(normalisedNode);
     }
-    
+
     if (isTernary) {
       this.ternary.ternary(node.expression);
       return;
     }
-    
+
     const isMemberAccess = node?.object?.name;
-    
+
     if (isMemberAssign) {
       // inside redirect ro map assign
       this.struct.assignStruct(node.expression, globalScope);
       return;
     }
-    
+
     if (isUnary) {
       return this.variable.handleUnary(node.expression);
     }
-    
+
     return this.variable.variableReference(node);
   }
-  
 }

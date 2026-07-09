@@ -100,3 +100,243 @@ added these namespace more functions:
   
   must be constant integer
   do not support multiple same fields
+  
+  ---
+  
+  Internal Development Notes — July 7
+
+Added Features
+
+System / Time
+
+- Added "sys.key()".
+- Removed "sys.timestamp".
+- Added "time.now".
+- Added "time.format".
+
+Operators
+
+- Added new operator: "^".
+
+Namespace System
+
+- Added support for unlimited-depth member access in namespaces.
+
+Example:
+
+namespace.a.b.c()
+
+Clipboard API
+
+Added:
+
+- "sys.clipboard.get()"
+- "sys.clipboard.set()"
+- "sys.clipboard.clear()"
+- "sys.clipboard.hasText()"
+
+Note:
+
+- Clipboard support is not fully compatible across all platforms.
+- Use with caution.
+
+---
+
+JSON System
+
+New Builtin Structs
+
+Added:
+
+- "Json"
+- "JsonArray"
+- "JsonObject"
+
+All JSON-related structs are implemented as opaque reference types.
+
+Json.parse()
+
+"Json.parse()" follows existing ZEN struct conventions.
+
+Example:
+
+Json j
+j.parse(text)
+
+It fills an existing "Json" instance in place.
+
+It is not a static constructor-style API.
+
+---
+
+Json Methods
+
+Added typed JSON accessors:
+
+Value Access
+
+- "getInt()"
+- "getDouble()"
+- "getString()"
+- "getBool()"
+
+Object / Array Access
+
+- "getObject()"
+- "getArray()"
+
+Validation
+
+- "has()"
+- "isNull()"
+
+Array Operations
+
+- "arrayLength()"
+- "arrayGetInt()"
+- "arrayGetDouble()"
+- "arrayGetBool()"
+- "arrayGetString()"
+- "arrayGetObject()"
+- "arrayGetArray()"
+
+Memory
+
+- "free()"
+
+---
+
+JSON Design Decisions
+
+No Generic get()
+
+A generic API like:
+
+json.get<int>("age")
+
+was intentionally avoided.
+
+Reason:
+
+- Requires generic syntax support in method calls.
+- Complicates parser design.
+- Complicates type inference.
+- Does not match existing builtin naming conventions.
+
+Instead, JSON uses explicit typed methods:
+
+json.getInt("age")
+json.getString("name")
+
+This matches existing APIs such as:
+
+toInt()
+toString()
+
+---
+
+JSON Error Handling
+
+All JSON failures use:
+
+zen_error("JsonError", ...)
+
+Handled cases:
+
+- Missing keys.
+- Wrong value type.
+- Invalid JSON syntax.
+- Array out-of-bounds access.
+
+This keeps JSON errors consistent with other runtime errors:
+
+- ClipboardError
+- MemoryError
+
+---
+
+JSON Memory Model
+
+"JsonObject" and "JsonArray" returned from:
+
+- "getObject()"
+- "getArray()"
+- "arrayGetObject()"
+- "arrayGetArray()"
+
+are views into the parent JSON tree.
+
+They are not deep copies.
+
+Example:
+
+Json child = json.getObject("user")
+
+The parent must remain alive while the child is used.
+
+Calling:
+
+json.free()
+
+while child references are active causes a use-after-free.
+
+This follows the same manual memory contract as:
+
+List.free()
+
+---
+
+Runtime Implementation
+
+JSON runtime:
+
+- Custom recursive-descent parser.
+- No external dependencies.
+- Self-contained "_zen_json_*" runtime implementation.
+- Uses opaque "ZenJson*" backing storage.
+
+---
+
+Builtin Struct Semantics
+
+All builtin structs now follow reference semantics.
+
+Examples:
+
+- "Json"
+- "JsonArray"
+- "JsonObject"
+- "HttpServer"
+- "HttpRequest"
+
+Opaque structs are runtime-managed objects represented as pointers.
+
+---
+
+Compiler Improvements
+
+- Added support for opaque builtin struct allocation.
+- Fixed reference storage handling for opaque structs.
+- Improved builtin method dispatch and validation.
+
+---
+
+Design Notes
+
+The temporary "Map" / "Maap" experiment was discarded.
+
+Reason:
+
+- Runtime dynamic keys conflict with ZEN's static type system.
+- APIs like:
+
+map.getList<int>()
+
+would require:
+
+- Generic parsing.
+- Nested generic type handling.
+- Runtime type metadata.
+- More complex compiler semantics.
+
+JSON already provides dynamic data handling, so keeping typed collections and using JSON for dynamic structures gives a cleaner language design.

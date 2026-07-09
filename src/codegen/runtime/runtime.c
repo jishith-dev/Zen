@@ -20,6 +20,86 @@
 #include <sys/sysinfo.h>
 #include <regex.h>
 
+#include <termios.h>
+#include <fcntl.h>
+
+// clipboard API (not fully support)
+
+static void zen_error(const char *type, const char *msg) {
+    fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
+    exit(1);
+}
+
+#ifdef __APPLE__
+#define COPY_CMD  "pbcopy"
+#define PASTE_CMD "pbpaste"
+#else
+static const char *copy_cmd(void) {
+    if (getenv("WAYLAND_DISPLAY")) return "wl-copy 2>/dev/null";
+    return "xclip -selection clipboard 2>/dev/null";
+}
+
+static const char *paste_cmd(void) {
+    if (getenv("WAYLAND_DISPLAY")) return "wl-paste -n 2>/dev/null";
+    return "xclip -selection clipboard -o 2>/dev/null";
+}
+#endif
+
+char *_sys_clipboard_get(void) {
+#ifdef __APPLE__
+    FILE *fp = popen(PASTE_CMD, "r");
+#else
+    FILE *fp = popen(paste_cmd(), "r");
+#endif
+    if (!fp) zen_error("ClipboardError", "Failed to read from clipboard");
+
+    size_t cap = 256, len = 0;
+    char *buf = malloc(cap);
+    if (!buf) zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
+
+    int ch;
+    while ((ch = fgetc(fp)) != EOF) {
+        if (len + 1 >= cap) {
+            cap *= 2;
+            char *tmp = realloc(buf, cap);
+            if (!tmp) zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
+            buf = tmp;
+        }
+        buf[len++] = (char)ch;
+    }
+    buf[len] = '\0';
+
+    pclose(fp);
+    return buf;
+}
+
+void _sys_clipboard_set(const char *text) {
+    if (!text) zen_error("ClipboardError", "Cannot set clipboard to null text");
+
+#ifdef __APPLE__
+    FILE *fp = popen(COPY_CMD, "w");
+#else
+    FILE *fp = popen(copy_cmd(), "w");
+#endif
+    if (!fp) zen_error("ClipboardError", "Failed to write to clipboard");
+
+    fputs(text, fp);
+    pclose(fp);
+}
+
+void _sys_clipboard_clear(void) {
+    _sys_clipboard_set("");
+}
+
+int _sys_clipboard_hasText(void) {
+    char *text = _sys_clipboard_get();
+    int has = text[0] != '\0';
+    free(text);
+    return has;
+}
+
+// ----
+
 void _time_sleep(int ms) {
     usleep(ms * 1000);
 }
@@ -1053,8 +1133,33 @@ char* _sys_execOutput(char* cmd) {
     return result;
 }
 
-int _sys_timestamp(void) {
+int _time_now(void) {
     return (int)time(NULL);
+}
+
+char* _time_format(int t) {
+    time_t timestamp = (time_t)t;
+
+    struct tm *tm_info = localtime(&timestamp);
+
+    if (!tm_info) {
+        return NULL;
+    }
+
+    char *buffer = malloc(32);
+
+    if (!buffer) {
+        return NULL;
+    }
+
+    strftime(
+        buffer,
+        32,
+        "%Y-%m-%d %H:%M:%S",
+        tm_info
+    );
+
+    return buffer;
 }
 
 char* _os_homeDir() {
@@ -1067,4 +1172,38 @@ char* _os_homeDir() {
     char *out = malloc(strlen(home) + 1);
     strcpy(out, home);
     return out;
+}
+
+char* _sys_key() {
+    static char key[2] = "";
+
+    struct termios oldt, newt;
+
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+
+    newt.c_lflag &= ~(ICANON | ECHO);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    int ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    if (ch == EOF) {
+        key[0] = '\0';
+        return key;
+    }
+
+    if (ch == '\n' || ch == '\r') {
+        return "enter";
+    }
+
+    key[0] = (char)ch;
+    key[1] = '\0';
+    return key;
 }

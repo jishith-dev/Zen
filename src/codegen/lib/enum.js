@@ -4,12 +4,11 @@ export class Enum {
   }
 
   handleEnum(node) {
-
     if (this.IRB.enums.has(node.name)) {
       this.IRB.emitError(
         "EnumError",
         `Enum '${node.name}' already exists`,
-        node
+        node,
       );
     }
 
@@ -21,7 +20,7 @@ export class Enum {
         this.IRB.emitError(
           "EnumError",
           `Duplicate enum member '${member.name}'`,
-          member
+          member,
         );
       }
 
@@ -34,7 +33,7 @@ export class Enum {
           this.IRB.emitError(
             "EnumError",
             `Enum value for '${member.name}' must be a constant integer`,
-            member
+            member,
           );
         }
 
@@ -49,7 +48,7 @@ export class Enum {
     this.IRB.enums.set(node.name, {
       type: "enum",
       name: node.name,
-      members
+      members,
     });
   }
 }
