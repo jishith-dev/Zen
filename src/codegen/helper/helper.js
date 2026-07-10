@@ -1039,7 +1039,7 @@ exitScope() {
 
   validateCallArgs(fn, args, isRest, restIndex = null, node) {
     const params = fn.params;
-
+    
     // NORMAL CALL
 
     if (!isRest) {

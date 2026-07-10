@@ -5,6 +5,7 @@ export class HandleFunction {
     this.expr = expr;
     this.infer = infer;
     this.haveBareRet = false;
+    this.hasRet = false;
   }
 
   collectReturns(node) {
@@ -94,7 +95,10 @@ export class HandleFunction {
     if (node.value.length === 0) {
       this.haveBareRet = true;
       this.IRB.emit(`ret void`);
+      this.hasRet = false;
       return;
+    } else {
+      this.hasRet = true;
     }
 
     const currentFunction = this.IRB.currentFunction;
@@ -534,6 +538,14 @@ export class HandleFunction {
     }
 
     this.block.block(node.body, false);
+    
+    if (returnType === "void" && this.hasRet) {
+      this.IRB.emitError(
+  "TypeError",
+  `Function '${name}' has a void return type and cannot return a value`,
+  node
+);
+    }
 
     if (!this.hasGuaranteedReturn(node.body)) {
       if (returnType === "int") {

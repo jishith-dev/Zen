@@ -23,12 +23,91 @@
 #include <termios.h>
 #include <fcntl.h>
 
-// clipboard API (not fully support)
+// expirimental
+#include <pthread.h>
+
+#define ZEN_MAX_THREADS 1024
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
     exit(1);
 }
+
+typedef void (*ZenThreadFn)(void);
+
+typedef struct {
+    ZenThreadFn fn;
+} ZenThreadData;
+
+static pthread_t zen_threads[ZEN_MAX_THREADS];
+static int zen_thread_count = 0;
+
+static void *_zen_thread_runner(void *arg) {
+    ZenThreadData *data = (ZenThreadData *)arg;
+
+    data->fn();
+
+    free(data);
+    return NULL;
+}
+
+void _zen_thread(ZenThreadFn fn) {
+    if (zen_thread_count >= ZEN_MAX_THREADS) {
+        zen_error(
+            "ThreadError",
+            "Maximum thread limit exceeded"
+        );
+    }
+
+    ZenThreadData *data = malloc(sizeof(ZenThreadData));
+
+    if (!data) {
+        zen_error(
+            "MemoryError",
+            "Failed to allocate thread context"
+        );
+    }
+
+    data->fn = fn;
+
+    int result = pthread_create(
+        &zen_threads[zen_thread_count],
+        NULL,
+        _zen_thread_runner,
+        data
+    );
+
+    if (result != 0) {
+        free(data);
+
+        zen_error(
+            "ThreadError",
+            "Failed to create thread"
+        );
+    }
+
+    zen_thread_count++;
+}
+
+void _threads_waitAll() {
+    for (int i = 0; i < zen_thread_count; i++) {
+        int result = pthread_join(
+            zen_threads[i],
+            NULL
+        );
+
+        if (result != 0) {
+            zen_error(
+                "ThreadError",
+                "Failed to join thread"
+            );
+        }
+    }
+
+    zen_thread_count = 0;
+}
+
+// clipboard API (not fully support)
 
 #ifdef __APPLE__
 #define COPY_CMD  "pbcopy"

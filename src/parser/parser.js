@@ -170,13 +170,17 @@ export class Parser {
       });
     }
 
-    if (this.matchKeyword("fn") || this.matchKeyword("async")) {
+    if (this.matchKeyword("fn") || this.matchKeyword("async") || this.matchKeyword("thread")) {
       let isAsync = false; // default mode
+      let isThread = false;
       const insideMethod = false;
       if (this.matchKeyword("async")) {
         isAsync = true;
+      } else if (this.matchKeyword("thread")) {
+        isThread = true;
       }
-      return this.node(this.parseFunction(insideMethod, isAsync));
+      
+      return this.node(this.parseFunction(insideMethod, isAsync, isThread));
     }
 
     if (this.matchKeyword("while")) {
@@ -482,9 +486,13 @@ export class Parser {
       }
 
       let isAsyncMethod = false;
-
+      let isThreadfn = false;
+      
       if (this.matchKeyword("async")) {
         isAsyncMethod = true;
+        this.advance();
+      } else if (this.matchKeyword("thread")) {
+        isThreadfn = true;
         this.advance();
       }
 
@@ -493,7 +501,7 @@ export class Parser {
       // METHOD DETECTION
 
       if (this.match("LEFT_PARENTHESIS")) {
-        const method = this.parseFunction(true, isAsyncMethod);
+        const method = this.parseFunction(true, isAsyncMethod, isThreadfn);
         method.name = nameToken.value;
         method.isMethod = true;
         methods.push(method);
@@ -874,14 +882,16 @@ export class Parser {
     });
   }
 
-  parseFunction(isInsideMethod = false, isAsyncFn = false) {
+  parseFunction(isInsideMethod = false, isAsyncFn = false, isThread = false) {
     let isAsync = isAsyncFn;
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
         this.advance();
-      }
+      } else if (this.matchKeyword("thread")) this.advance();
+      
       this.expectKeyword("fn");
     }
+    
 
     let name;
 
@@ -996,6 +1006,7 @@ export class Parser {
       type: ParserTypes.FUNCTION_DECLARATION,
       name,
       isAsync: isAsyncFn,
+      isThread,
       params,
       returnType,
       body,

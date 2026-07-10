@@ -1084,6 +1084,7 @@ Optimization Levels:
       ).CodeGen;
     } catch (err) {
       console.error("error: Failed to load CodeGen");
+      console.log(err)
       process.exit(1);
     }
 

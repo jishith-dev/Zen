@@ -41,6 +41,8 @@ export class Struct {
         retGeneric,
         generic: generic,
         struct: structName,
+        isAsync: method.isAsync,
+        isThread: method.isThread
       });
     }
   }

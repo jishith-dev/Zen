@@ -20,6 +20,7 @@ import { OS } from "./lib/builtins/os/os.js";
 import { Time } from "./lib/builtins/time/time.js";
 import { ZenNetwork } from "./lib/builtins/network/network.js";
 import { ZenHttpServer } from "./lib/builtins/httpServer/httpServer.js";
+import { Thread } from "./lib/builtins/thread/thread.js";
 import { InferType } from "./infer/infer.js";
 import { ZenFileSystem } from "./lib/builtins/fileSystem/file.js";
 import { IO } from "./lib/builtins/io/io.js";
@@ -49,6 +50,7 @@ export class CodeGen {
     this.map = new ZenMap(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
+    this.thread = new Thread(this.IRB, this.expr);
     this.httpServer = new ZenHttpServer(this.IRB, this.expr);
     this.infer = new InferType(this.IRB, this.expr);
     this.enum = new Enum(this.IRB);
@@ -82,6 +84,7 @@ export class CodeGen {
       this.ffi,
       this.path,
       this.httpServer,
+      this.thread
     );
 
     this.expr.setCall(this.call);
@@ -176,12 +179,32 @@ define void @_assignSeed () {
             : returnType;
         const generic = returnType === "List" ? node.returnType : null;
 
-        if (isArrayRet)
-          this.IRB.emitError(
+        if (isArrayRet) {
+           this.IRB.emitError(
             "SemanticError",
             `function ${name} cannot return array`,
             node,
           );
+        }
+        
+            // thread fn CHECK
+            
+            if (node.isThread) {
+  
+    if (node.params.length > 0) {
+  this.IRB.emitError(
+    "ThreadError",
+    "Thread functions cannot accept arguments yet", node.params
+  );
+}
+        
+        if (returnType !== "void") {
+  this.IRB.emitError(
+    "ThreadError",
+    "Thread functions must have a void return type", node
+  );
+}
+}
 
         const data = {
           name: node.name,
@@ -189,6 +212,7 @@ define void @_assignSeed () {
           params: node.params,
           retGeneric,
           generic,
+          isThread: node.isThread
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);
@@ -233,14 +257,16 @@ define void @_assignSeed () {
     // block level function hoisting
     if (fromInsideBlock) {
       if (node.type === "FUNCTION_DECLARATION") {
-        const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
+        if (!this.IRB.stdlibMode) {
+          const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
 
-        if (stdlibSet.has(node.name)) {
-          this.IRB.emitError(
-            "ReservedFunctionError",
-            `${node.name} is a reserved function name`,
-            node,
-          );
+          if (stdlibSet.has(node.name)) {
+            this.IRB.emitError(
+              "ReservedFunctionError",
+              `${node.name} is a reserved function name`,
+              node,
+            );
+          }
         }
 
         const returnType =
@@ -257,21 +283,43 @@ define void @_assignSeed () {
             ? this.IRB.getDeepestGeneric(node.returnType.generic)
             : returnType;
         const generic = returnType === "List" ? node.returnType : null;
+
         if (isArrayRet)
           this.IRB.emitError(
             "SemanticError",
             `function ${name} cannot return array`,
             node,
           );
+          
+        
+      if (node.isThread) {
+  
+    if (node.params.length > 0) {
+  this.IRB.emitError(
+    "ThreadError",
+    "Thread functions cannot accept arguments yet", node.params
+  );
+}
+        
+        if (returnType !== "void") {
+  this.IRB.emitError(
+    "ThreadError",
+    "Thread functions must have a void return type", node
+  );
+}
+}
+    
 
         const data = {
           name: node.name,
           returnType,
           params: node.params,
+          retGeneric,
           generic,
+          isThread: node.isThread
         };
 
-        this.IRB.setFunction(`${node.name}`, data);
+        this.IRB.setFunction(`${node.name}`, data, node);
       }
     }
 

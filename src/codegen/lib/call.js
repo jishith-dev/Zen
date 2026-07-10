@@ -10,6 +10,7 @@ import {
   FFI_MAP,
   PATH_MAP,
   HTTPSERVER_MAP,
+  THREAD_MAP
 } from "../../config/config.js";
 
 export class Call {
@@ -28,6 +29,7 @@ export class Call {
     ffi,
     path,
     httpServer,
+    thread
   ) {
     this.IRB = IRB;
     this.io = io;
@@ -42,6 +44,7 @@ export class Call {
     this.ffi = ffi;
     this.path = path;
     this.HTTPSERVER = httpServer;
+    this.THREAD = thread;
   }
 
   setExpression(expr) {
@@ -384,7 +387,19 @@ export class Call {
 
         local.push(`call void @${mangledName}(${args.join(", ")})`);
       } else {
+        
+        if (fn.isThread) {
+
+       this.IRB.declareOneTime("_zen_thread", "declare void @_zen_thread(ptr)");
+          
+        local.push(`call void @_zen_thread(ptr @${mangledName})`);
+          
+        } else {
+        
         local.push(`call void @${mangledName}(${argStr.join(", ")})`);
+        
+        }
+        
       }
 
       if (asStatement) {
@@ -492,8 +507,10 @@ export class Call {
         return this.string.matchRegex(node);
 
       // these are same pattern functions
-      // unified
+      // for future modification and semantic understanding of compiler internal we keep this now.
+      
       case name: {
+        
         const os = OS_MAP[name];
         const file = FILE_MAP[name];
         const time = TIME_MAP[name];
@@ -503,6 +520,7 @@ export class Call {
         const FFI = FFI_MAP[name];
         const PATH = PATH_MAP[name];
         const HTTPSERVER = HTTPSERVER_MAP[name];
+        const THREAD = THREAD_MAP[name];
 
         if (os) {
           return this.os.zenNativeOSCall(
@@ -594,6 +612,16 @@ export class Call {
             HTTPSERVER[3],
             name,
           );
+        } else if (THREAD){
+          return this.THREAD.zenTHREAD(
+            node,
+            globalScope,
+            THREAD[0],
+            THREAD[1],
+            THREAD[2],
+            THREAD[3],
+            name,
+            );
         }
       }
 

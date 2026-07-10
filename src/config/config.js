@@ -71,6 +71,7 @@ const KEYWORDS = [
   "auto",
   "reactive",
   "enum",
+  "thread"
 ];
 
 // lexer tokens
@@ -310,6 +311,9 @@ const BUILTIN_FUNCTIONS = [
 
   // HTTP server
   "_httpServer_create",
+  
+  // THREAD
+  "_threads_waitAll",
 
   // FS
   "_fs_cwd",
@@ -539,6 +543,8 @@ const NAMESPACE_MAP = {
   ],
 
   httpServer: ["create"],
+  
+  threads: ["waitAll"],
 
   fs: [
     "readFile",
@@ -1117,6 +1123,13 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "_fs_changeDir",
   },
+  
+  
+  waitAll: {
+    returnType: "void",
+    llvmName: "_threads_waitAll"
+  },
+  
 
   cpuCount: {
     returnType: "int",
@@ -1863,6 +1876,10 @@ const HTTPSERVER_MAP = {
   _httpServer_create: ["_httpServer_create", "struct", 1, ["int"]],
 };
 
+const THREAD_MAP = {
+  _threads_waitAll: ["_threads_waitAll", "void", 0, []],
+};
+
 const FILE_MAP = {
   _fs_cwd: ["_fs_cwd", "string", 0, []],
 
@@ -2109,6 +2126,7 @@ export {
   FFI_MAP,
   PATH_MAP,
   HTTPSERVER_MAP,
+  THREAD_MAP,
   BUILTIN_STRUCT_METHODS,
   BUILTIN_STRUCTS,
   BUILTIN_STRUCT_PROPS,

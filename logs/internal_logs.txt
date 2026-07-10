@@ -356,3 +356,5 @@ added more functions to http namespace
  new Features:
  
  - thread fn
+ - no param or return allowed only void ret.
+ - for shared state or variable may leads to race condition, so be careful to use.
