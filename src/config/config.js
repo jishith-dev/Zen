@@ -369,6 +369,11 @@ const BUILTIN_FUNCTIONS = [
   "_http_put",
   "_http_patch",
   "_http_delete",
+  "_http_urlEncode",
+  "_http_urlDecode",
+  "_http_setHeader",
+  "_http_clearHeaders",
+  "_http_lastStatus",
 
   // FFI
   "_ffi_printf",
@@ -578,7 +583,7 @@ const NAMESPACE_MAP = {
     "format",
   ],
 
-  http: ["get", "post", "put", "delete", "patch"],
+  http: ["get", "post", "put", "delete", "patch", "urlEncode", "urlDecode", "setHeader", "clearHeaders", "lastStatus"],
 
   net: ["online"],
 
@@ -1302,6 +1307,31 @@ const BUILTIN_MAP = {
     returnType: "string",
     llvmName: "_http_delete",
   },
+  
+  urlEncode: {
+  returnType: "string",
+  llvmName: "_http_urlEncode",
+},
+
+urlDecode: {
+  returnType: "string",
+  llvmName: "_http_urlDecode",
+},
+
+setHeader: {
+  returnType: "void",
+  llvmName: "_http_setHeader",
+},
+
+clearHeaders: {
+  returnType: "void",
+  llvmName: "_http_clearHeaders",
+},
+
+lastStatus: {
+  returnType: "int",
+  llvmName: "_http_lastStatus",
+},
 
   printf: {
     returnType: "int",
@@ -1921,6 +1951,16 @@ const HTTP_MAP = {
   _http_patch: ["_http_patch", "string", 2, ["string", "string"]],
 
   _http_delete: ["_http_delete", "string", 1, ["string"]],
+  
+  _http_urlEncode: ["_http_urlEncode", "string", 1, ["string"]],
+  
+  _http_urlDecode: ["_http_urlDecode", "string", 1, ["string"]],
+
+_http_setHeader: ["_http_setHeader", "void", 2, ["string", "string"]],
+
+_http_clearHeaders: ["_http_clearHeaders", "void", 0, []],
+
+_http_lastStatus: ["_http_lastStatus", "int", 0, []],
 };
 
 const FFI_MAP = {

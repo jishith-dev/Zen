@@ -340,3 +340,19 @@ would require:
 - More complex compiler semantics.
 
 JSON already provides dynamic data handling, so keeping typed collections and using JSON for dynamic structures gives a cleaner language design.
+
+---
+
+july 10
+
+fixed major bug 
+added more functions to http namespace
+ - urlEncode
+ - urlDecode
+ - setHeader
+ - clearHeaders
+ - lastStatus
+ 
+ new Features:
+ 
+ - thread fn

@@ -29,6 +29,7 @@ typedef struct {
 } ZenJsonObject;
 
 struct ZenJson {
+    int freed;
     ZenJsonType type;
     union {
         int b;
@@ -45,9 +46,19 @@ static void zen_error(const char *type, const char *msg) {
     exit(1);
 }
 
+static void json_check_alive(ZenJson *j) {
+    if (!j)
+        zen_error("MemoryError", "Json is null");
+
+    if (j->freed)
+        zen_error("MemoryError", "Use-after-free: Json has already been freed");
+}
+
 static ZenJson *json_new(ZenJsonType type) {
     ZenJson *j = malloc(sizeof(ZenJson));
     if (!j) zen_error("MemoryError", "Failed to allocate memory for Json node");
+    
+    j->freed = 0; // alive state
     j->type = type;
     return j;
 }
@@ -360,12 +371,14 @@ static void expect_type(ZenJson *j, ZenJsonType want, const char *key, const cha
 }
 
 int _zen_json_getInt(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     expect_type(v, ZEN_JSON_INT, key, "int");
     return v->as.i;
 }
 
 double _zen_json_getDouble(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     if (v->type == ZEN_JSON_INT) return (double)v->as.i;
     expect_type(v, ZEN_JSON_DOUBLE, key, "double");
@@ -373,12 +386,14 @@ double _zen_json_getDouble(ZenJson *obj, const char *key) {
 }
 
 int _zen_json_getBool(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     expect_type(v, ZEN_JSON_BOOL, key, "bool");
     return v->as.b;
 }
 
 char *_zen_json_getString(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     expect_type(v, ZEN_JSON_STRING, key, "string");
 
@@ -390,18 +405,21 @@ char *_zen_json_getString(ZenJson *obj, const char *key) {
 }
 
 ZenJson *_zen_json_getArray(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     expect_type(v, ZEN_JSON_ARRAY, key, "array");
     return v;
 }
 
 ZenJson *_zen_json_getObject(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     ZenJson *v = json_lookup(obj, key);
     expect_type(v, ZEN_JSON_OBJECT, key, "object");
     return v;
 }
 
 int _zen_json_has(ZenJson *obj, const char *key) {
+    json_check_alive(obj);
     if (obj->type != ZEN_JSON_OBJECT) return 0;
 
     for (size_t i = 0; i < obj->as.obj.count; i++) {
@@ -411,10 +429,12 @@ int _zen_json_has(ZenJson *obj, const char *key) {
 }
 
 int _zen_json_isNull(ZenJson *obj) {
+    json_check_alive(obj);
     return obj->type == ZEN_JSON_NULL;
 }
 
 int _zen_json_arrayLength(ZenJson *arr) {
+    json_check_alive(arr);
     if (arr->type != ZEN_JSON_ARRAY) zen_error("JsonError", "Value is not a Json array");
     return (int)arr->as.arr.count;
 }
@@ -430,12 +450,14 @@ static ZenJson *array_at(ZenJson *arr, int index) {
 }
 
 int _zen_json_arrayGetInt(ZenJson *arr, int index) {
+    json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type != ZEN_JSON_INT) zen_error("JsonError", "Expected int in Json array");
     return v->as.i;
 }
 
 double _zen_json_arrayGetDouble(ZenJson *arr, int index) {
+   json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type == ZEN_JSON_INT) return (double)v->as.i;
     if (v->type != ZEN_JSON_DOUBLE) zen_error("JsonError", "Expected double in Json array");
@@ -443,12 +465,14 @@ double _zen_json_arrayGetDouble(ZenJson *arr, int index) {
 }
 
 int _zen_json_arrayGetBool(ZenJson *arr, int index) {
+   json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type != ZEN_JSON_BOOL) zen_error("JsonError", "Expected bool in Json array");
     return v->as.b;
 }
 
-char *_zen_json_arrayGetString(ZenJson *arr, int index) {
+char *_zen_json_arrayGetString(ZenJson *arr, int index)  {
+    json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type != ZEN_JSON_STRING) zen_error("JsonError", "Expected string in Json array");
 
@@ -460,19 +484,23 @@ char *_zen_json_arrayGetString(ZenJson *arr, int index) {
 }
 
 ZenJson *_zen_json_arrayGetObject(ZenJson *arr, int index) {
+   json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type != ZEN_JSON_OBJECT) zen_error("JsonError", "Expected object in Json array");
     return v;
 }
 
 ZenJson *_zen_json_arrayGetArray(ZenJson *arr, int index) {
+  json_check_alive(arr);
     ZenJson *v = array_at(arr, index);
     if (v->type != ZEN_JSON_ARRAY) zen_error("JsonError", "Expected array in Json array");
     return v;
 }
 
 void _zen_json_free(ZenJson *j) {
-    if (!j) return;
+    if (!j || j->freed) return;
+    
+    j->freed = 1; // freed update flag
 
     switch (j->type) {
         case ZEN_JSON_STRING:
@@ -502,6 +530,7 @@ void _zen_json_free(ZenJson *j) {
 // root accessor
 
 ZenJson *_zen_json_getRootArray(ZenJson *json) {
+   json_check_alive(json);
     if (json->type != ZEN_JSON_ARRAY) {
         zen_error("JsonError", "Root value is not a Json array");
     }
@@ -511,6 +540,7 @@ ZenJson *_zen_json_getRootArray(ZenJson *json) {
 
 
 ZenJson *_zen_json_getRootObject(ZenJson *json) {
+  json_check_alive(json);
     if (json->type != ZEN_JSON_OBJECT) {
         zen_error("JsonError", "Root value is not a Json object");
     }

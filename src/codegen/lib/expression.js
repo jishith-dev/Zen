@@ -84,8 +84,11 @@ export class Expression {
     // variable reference
 
     if (node.type === "variable") {
+      const currentFreed =
+      this.IRB.freedVars[this.IRB.freedVars.length - 1];
+  
       // check for freed memory
-      if (this.IRB.freedVars.has(node.name)) {
+      if (currentFreed.has(node.name)) {
         this.IRB.emitError(
           "MemoryError",
           `use-after-free: '${node.name}' is no longer valid`,

@@ -368,7 +368,7 @@ export class Call {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
-        local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+        local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
         argStr.push(`ptr ${tmp}`);
       } else {
         argStr.push(`${a.llvmType} ${a.ptr}`);

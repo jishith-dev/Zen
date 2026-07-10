@@ -38,7 +38,7 @@ export class IRBuilder {
     this.maps = new Map();
     this.JsonParseMap = new Map();
 
-    this.freedVars = new Set();
+    this.freedVars = [new Set()];
     this.freedFields = new Map();
 
     this.cachedStrings = new Map();
@@ -68,7 +68,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -638,11 +638,13 @@ export class IRBuilder {
 
   enterScope() {
     this.symbolTable.push(new Map());
-  }
+    this.freedVars.push(new Set());
+}
 
-  exitScope() {
+exitScope() {
     this.symbolTable.pop();
-  }
+    this.freedVars.pop();
+}
 
   hasVar(name) {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
@@ -2792,10 +2794,12 @@ end:
           this.emit(`call void @_zen_list_free(ptr ${listPtr})`);
           this.emit(`store ptr null, ptr ${object.ptr}`);
 
-          this.freedVars.add(node.object.name);
+          this.freedVars[this.freedVars.length - 1].add(node.object.name);
 
           if (!this.freedFields.has(object.name)) {
-            this.freedFields.set(object.name, new Set());
+             this.freedFields.set(object.name, new Set());
+            
+
             this.freedFields.get(object.name).add(freeField);
           }
         } else {
@@ -3306,15 +3310,18 @@ end:
     const method = BUILTIN_STRUCT_METHODS?.[structName]?.[methodName];
 
     if (!method) {
-      this.emitError(
-        "InternalError",
-        `Unknown builtin method '${structName}.${methodName}()'. This is a compiler bug. Please report it.`,
-        node,
-      );
+  this.emitError(
+    "ReferenceError",
+    `'${structName}' has no method '${methodName}()'`,
+    node,
+  );
     }
 
     // Use-after-free
-    if (this.freedVars.has(object.name)) {
+      const currentFreed =
+      this.freedVars[this.freedVars.length - 1];
+
+    if (currentFreed.has(object.name)) {
       this.emitError(
         "MemoryError",
         `'${object.name}' has already been freed and cannot be used`,
@@ -3328,6 +3335,7 @@ end:
       methodName !== "parse" &&
       !this.JsonParseMap.has(object.name)
     ) {
+      
       this.emitError(
         "SemanticError",
         `'Json.${methodName}()' can only be used after 'Json.parse()'`,
@@ -3366,14 +3374,14 @@ end:
     }
 
     // Semantic state
+
     if (methodName === "parse") {
       this.JsonParseMap.set(object.name, true);
-      this.freedVars.delete(object.name);
+      currentFreed.delete(object.name);
     }
 
     if (methodName === "free") {
-      this.freedVars.add(object.name);
-      this.JsonParseMap.delete(object.name);
+      currentFreed.add(object.name);
     }
 
     const isStruct = this.hasStruct(method.returnType);
@@ -3439,7 +3447,7 @@ end:
     this.emit(
       `${temp} = call ${llvmReturn} @${fnName}(${callArgs.join(", ")})`,
     );
-
+    
     return {
       ptr: temp,
       type: method.returnType,
@@ -3447,8 +3455,7 @@ end:
       local: [],
       global: [],
       isVarRef: false,
-      isStruct,
-      needsLoad: !isStruct,
+      isStruct
     };
   }
 
@@ -3457,14 +3464,17 @@ end:
 
     if (!prop) {
       this.emitError(
-        "InternalError",
-        `Unknown builtin property '${structName}.${propName}'. This is a compiler bug. Please report it.`,
-        node,
-      );
+    "ReferenceError",
+    `'${structName}' has no property '${methodName}'`,
+    node,
+  );
     }
 
+      const currentFreed =
+      this.freedVars[this.freedVars.length - 1];
+
     // Use-after-free
-    if (this.freedVars.has(object.name)) {
+    if (currentFreed.has(object.name)) {
       this.emitError(
         "MemoryError",
         `'${object.name}' has already been freed and cannot be used`,
