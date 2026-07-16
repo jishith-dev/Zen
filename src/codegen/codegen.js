@@ -20,6 +20,7 @@ import { OS } from "./lib/builtins/os/os.js";
 import { Time } from "./lib/builtins/time/time.js";
 import { ZenNetwork } from "./lib/builtins/network/network.js";
 import { ZenHttpServer } from "./lib/builtins/httpServer/httpServer.js";
+import { DEBUG } from "./lib/builtins/debug/debug.js";
 import { Thread } from "./lib/builtins/thread/thread.js";
 import { InferType } from "./infer/infer.js";
 import { ZenFileSystem } from "./lib/builtins/fileSystem/file.js";
@@ -37,6 +38,7 @@ import {
   BUILTIN_MAP,
   RESERVED_FUNCTIONS,
   COMPOUND_OPERATORS,
+  BUILTIN_STRUCT_ABI,
 } from "../config/config.js";
 
 export class CodeGen {
@@ -51,6 +53,7 @@ export class CodeGen {
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
     this.thread = new Thread(this.IRB, this.expr);
+    this.debug = new DEBUG(this.IRB, this.expr);
     this.httpServer = new ZenHttpServer(this.IRB, this.expr);
     this.infer = new InferType(this.IRB, this.expr);
     this.enum = new Enum(this.IRB);
@@ -67,11 +70,12 @@ export class CodeGen {
 
     this.io = new IO(this.IRB, this.expr);
 
-    this.type = new Type(this.IRB, this.expr);
+    this.type = new Type(this.IRB, this.expr, this.infer);
     this.string = new ZenString(this.IRB, this.expr);
     this.call = new Call(
       this.IRB,
       this.expr,
+      this.moduleName,
       this.io,
       this.type,
       this.string,
@@ -84,7 +88,8 @@ export class CodeGen {
       this.ffi,
       this.path,
       this.httpServer,
-      this.thread
+      this.thread,
+      this.debug,
     );
 
     this.expr.setCall(this.call);
@@ -93,7 +98,15 @@ export class CodeGen {
     this.block = new Block(this.IRB, this);
     this.switch = new Switch(this.IRB, this.expr, this.block);
     this.conditional = new Conditional(this.IRB, this.expr, this.block);
-    this.fn = new HandleFunction(this.IRB, this.expr, this.block, this.infer);
+    this.fn = new HandleFunction(
+      this.IRB,
+      this.expr,
+      this.block,
+      this.infer,
+      moduleFiles,
+      this.moduleName,
+      BUILTIN_STRUCT_ABI,
+    );
     this.struct = new Struct(this.IRB, this.expr, this.fn);
     this.variable = new Variable(this.IRB, this.expr, this.call, this.infer);
     this.loop = new Loop(this.IRB, this.expr, this.variable, this.block);
@@ -167,6 +180,16 @@ define void @_assignSeed () {
         const returnType =
           node.returnType === "void" ? "void" : node.returnType.type;
 
+        if (node.isDeclaration) {
+          if (returnType === "auto") {
+            this.IRB.emitError(
+              "SemanticError",
+              `function declaration '${node.name}' cannot use auto inference`,
+              node,
+            );
+          }
+        }
+
         const isArrayRet =
           returnType === "void"
             ? false
@@ -180,31 +203,32 @@ define void @_assignSeed () {
         const generic = returnType === "List" ? node.returnType : null;
 
         if (isArrayRet) {
-           this.IRB.emitError(
+          this.IRB.emitError(
             "SemanticError",
             `function ${name} cannot return array`,
             node,
           );
         }
-        
-            // thread fn CHECK
-            
-            if (node.isThread) {
-  
-    if (node.params.length > 0) {
-  this.IRB.emitError(
-    "ThreadError",
-    "Thread functions cannot accept arguments yet", node.params
-  );
-}
-        
-        if (returnType !== "void") {
-  this.IRB.emitError(
-    "ThreadError",
-    "Thread functions must have a void return type", node
-  );
-}
-}
+
+        // thread fn CHECK
+
+        if (node.isThread) {
+          if (node.params.length > 0) {
+            this.IRB.emitError(
+              "ThreadError",
+              "Thread functions cannot accept arguments yet",
+              node.params,
+            );
+          }
+
+          if (returnType !== "void") {
+            this.IRB.emitError(
+              "ThreadError",
+              "Thread functions must have a void return type",
+              node,
+            );
+          }
+        }
 
         const data = {
           name: node.name,
@@ -212,7 +236,11 @@ define void @_assignSeed () {
           params: node.params,
           retGeneric,
           generic,
-          isThread: node.isThread
+          hasVarArgs: node.params.some((r) => r.isRest),
+          nativeReturnABI: BUILTIN_STRUCT_ABI.includes(returnType),
+          isThread: node.isThread,
+          isDeclaration: node.isDeclaration,
+          isExtern: node.isExtern,
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);
@@ -221,7 +249,7 @@ define void @_assignSeed () {
 
     for (const node of this.ast) this.dispatch(node);
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.emit("ret i32 0 \n}");
+      this.IRB.emit("ret i32 0 \n}\n");
     }
 
     if (!this.IRB.DEBUG_IR) {
@@ -272,6 +300,16 @@ define void @_assignSeed () {
         const returnType =
           node.returnType === "void" ? "void" : node.returnType.type;
 
+        if (node.isDeclaration) {
+          if (returnType === "auto") {
+            this.IRB.emitError(
+              "SemanticError",
+              `function declaration '${node.name}' cannot use auto inference`,
+              node,
+            );
+          }
+        }
+
         const isArrayRet =
           returnType === "void"
             ? false
@@ -284,31 +322,33 @@ define void @_assignSeed () {
             : returnType;
         const generic = returnType === "List" ? node.returnType : null;
 
-        if (isArrayRet)
+        if (isArrayRet) {
           this.IRB.emitError(
             "SemanticError",
             `function ${name} cannot return array`,
             node,
           );
-          
-        
-      if (node.isThread) {
-  
-    if (node.params.length > 0) {
-  this.IRB.emitError(
-    "ThreadError",
-    "Thread functions cannot accept arguments yet", node.params
-  );
-}
-        
-        if (returnType !== "void") {
-  this.IRB.emitError(
-    "ThreadError",
-    "Thread functions must have a void return type", node
-  );
-}
-}
-    
+        }
+
+        // thread fn CHECK
+
+        if (node.isThread) {
+          if (node.params.length > 0) {
+            this.IRB.emitError(
+              "ThreadError",
+              "Thread functions cannot accept arguments yet",
+              node.params,
+            );
+          }
+
+          if (returnType !== "void") {
+            this.IRB.emitError(
+              "ThreadError",
+              "Thread functions must have a void return type",
+              node,
+            );
+          }
+        }
 
         const data = {
           name: node.name,
@@ -316,7 +356,11 @@ define void @_assignSeed () {
           params: node.params,
           retGeneric,
           generic,
-          isThread: node.isThread
+          hasVarArgs: node.params.some((r) => r.isRest),
+          nativeReturnABI: BUILTIN_STRUCT_ABI.includes(returnType),
+          isThread: node.isThread,
+          isDeclaration: node.isDeclaration,
+          isExtern: node.isExtern,
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);

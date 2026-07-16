@@ -5,7 +5,7 @@ export class InferType {
     this.numericTypes = ["int", "double", "bool"];
   }
 
-  infer(node) {
+  infer(node, context = "normal") {
     if (!node) {
       this.IRB.emitError("InternalError", "Invalid AST node", node);
     }
@@ -43,13 +43,13 @@ export class InferType {
           );
         }
 
-        if (data.isList) {
+        if (data.isList && context === "fnret") {
           this.IRB.emitError(
             "TypeError",
             `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
             node,
           );
-        } else if (data.isStruct) {
+        } else if (data.isStruct && context === "fnret") {
           this.IRB.emitError(
             "TypeError",
             `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
@@ -100,17 +100,13 @@ export class InferType {
         };
       }
 
-      case "ARRAY": {
-        this.IRB.emitError("SemanticError", `List not allowed inference`, node);
-      }
-
       case "ARRAY_ACCESS": {
         const data = this.IRB.getVar(node.array.name, node);
         const type = data.type;
 
         const isList = data?.generic?.generic.type === "List";
 
-        if (isList) {
+        if (isList && context === "fnret") {
           this.IRB.emitError(
             "TypeError",
             `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -118,7 +114,7 @@ export class InferType {
           );
         }
 
-        if (data?.isStruct) {
+        if (data?.isStruct && context === "fnret") {
           this.IRB.emitError(
             "TypeError",
             `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
@@ -168,7 +164,7 @@ export class InferType {
 
               currentType = fieldInfo.type;
 
-              if (fieldInfo.isList) {
+              if (fieldInfo.isList && context === "fnret") {
                 this.IRB.emitError(
                   "TypeError",
                   `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -176,7 +172,7 @@ export class InferType {
                 );
               }
 
-              if (this.IRB.hasStruct(fieldInfo.type)) {
+              if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
                 this.IRB.emitError(
                   "TypeError",
                   `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
@@ -210,7 +206,7 @@ export class InferType {
 
           fieldInfo = structInfo.layout[fieldIndex];
 
-          if (fieldInfo.isList) {
+          if (fieldInfo.isList && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -218,7 +214,7 @@ export class InferType {
             );
           }
 
-          if (this.IRB.hasStruct(fieldInfo.type)) {
+          if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
@@ -246,7 +242,7 @@ export class InferType {
 
           const fn = this.IRB.getFunction(fullMethodName);
 
-          if (fn.returnType === "List") {
+          if (fn.returnType === "List" && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -254,18 +250,10 @@ export class InferType {
             );
           }
 
-          if (this.IRB.hasStruct(fn.returnType)) {
+          if (this.IRB.hasStruct(fn.returnType) && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
-              node,
-            );
-          }
-
-          if (!fn) {
-            this.IRB.emitError(
-              "ReferenceError",
-              `Method '${fullMethodName}' is not defined`,
               node,
             );
           }
@@ -279,7 +267,7 @@ export class InferType {
         if (node.name) {
           const fn = this.IRB.getFunction(node.name);
 
-          if (fn.returnType === "List") {
+          if (fn.returnType === "List" && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -287,18 +275,10 @@ export class InferType {
             );
           }
 
-          if (this.IRB.hasStruct(fn.returnType)) {
+          if (this.IRB.hasStruct(fn.returnType) && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
-              node,
-            );
-          }
-
-          if (!fn) {
-            this.IRB.emitError(
-              "ReferenceError",
-              `Function '${node.name}' is not defined`,
               node,
             );
           }

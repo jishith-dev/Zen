@@ -14,6 +14,15 @@ const ZEN_TYPES_MAP = {
   i1: "bool",
 };
 
+const TYPE_MAP = {
+  int: 1,
+  bool: 2,
+  double: 3,
+  string: 4,
+  List: 5,
+  map: 6,
+};
+
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
 // operators
@@ -33,6 +42,8 @@ const LOGICAL_OPS = ["&&", "||"];
 const TYPES = ["int", "bool", "string", "double"];
 
 const SCALAR_TYPES = ["int", "bool", "double"];
+
+const PRIMITIVE_TYPES = ["int", "double", "bool", "string"];
 
 const speacialTypes = ["byte"]; // only use inside List<T>
 
@@ -71,7 +82,8 @@ const KEYWORDS = [
   "auto",
   "reactive",
   "enum",
-  "thread"
+  "thread",
+  "extern",
 ];
 
 // lexer tokens
@@ -81,6 +93,7 @@ const TokenTypes = {
   ASSIGNMENT: "ASSIGNMENT",
   REACTIVE: "REACTIVE",
   DOLLAR: "DOLLAR",
+  COMMENT: "COMMENT",
   TEMPLATE_STRING: "TEMPLATE_STRING",
   OPERATOR: "OPERATOR",
   CONSTANT: "CONSTANT",
@@ -126,6 +139,8 @@ const RESERVED_FUNCTIONS = [
   "toString",
   "toInt",
   "length",
+  "sizeOf",
+
   // BASIC
   "isEven",
   "isOdd",
@@ -205,7 +220,10 @@ const BUILTIN_STRUCTS = [
   "Json",
   "JsonArray",
   "JsonObject",
+  "Ptr",
 ];
+
+const BUILTIN_STRUCT_ABI = ["Ptr"];
 
 // all built in functions
 
@@ -221,6 +239,8 @@ const BUILTIN_FUNCTIONS = [
   "toString",
   "toInt",
   "length",
+  "sizeOf",
+
   // BASIC
   "isEven",
   "isOdd",
@@ -311,9 +331,11 @@ const BUILTIN_FUNCTIONS = [
 
   // HTTP server
   "_httpServer_create",
-  
+
   // THREAD
   "_threads_waitAll",
+
+  "_debug_pretty",
 
   // FS
   "_fs_cwd",
@@ -543,8 +565,10 @@ const NAMESPACE_MAP = {
   ],
 
   httpServer: ["create"],
-  
+
   threads: ["waitAll"],
+
+  debug: ["pretty"],
 
   fs: [
     "readFile",
@@ -589,7 +613,18 @@ const NAMESPACE_MAP = {
     "format",
   ],
 
-  http: ["get", "post", "put", "delete", "patch", "urlEncode", "urlDecode", "setHeader", "clearHeaders", "lastStatus"],
+  http: [
+    "get",
+    "post",
+    "put",
+    "delete",
+    "patch",
+    "urlEncode",
+    "urlDecode",
+    "setHeader",
+    "clearHeaders",
+    "lastStatus",
+  ],
 
   net: ["online"],
 
@@ -918,6 +953,104 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_httpRequest_setHeader",
     },
   },
+
+  Ptr: {
+    storeInt: {
+      returnType: "void",
+      args: ["int"],
+      llvmName: "_zen_ptr_storeInt",
+    },
+
+    loadInt: {
+      returnType: "int",
+      args: [],
+      llvmName: "_zen_ptr_loadInt",
+    },
+
+    storeDouble: {
+      returnType: "void",
+      args: ["double"],
+      llvmName: "_zen_ptr_storeDouble",
+    },
+
+    loadDouble: {
+      returnType: "double",
+      args: [],
+      llvmName: "_zen_ptr_loadDouble",
+    },
+
+    storeBool: {
+      returnType: "void",
+      args: ["bool"],
+      llvmName: "_zen_ptr_storeBool",
+    },
+
+    loadBool: {
+      returnType: "bool",
+      args: [],
+      llvmName: "_zen_ptr_loadBool",
+    },
+
+    storeString: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_zen_ptr_storeString",
+    },
+
+    loadString: {
+      returnType: "string",
+      args: [],
+      llvmName: "_zen_ptr_loadString",
+    },
+
+    storePtr: {
+      returnType: "void",
+      args: ["Ptr"],
+      llvmName: "_zen_ptr_storePtr",
+    },
+
+    loadPtr: {
+      returnType: "Ptr",
+      args: [],
+      llvmName: "_zen_ptr_loadPtr",
+    },
+
+    isNull: {
+      returnType: "bool",
+      args: [],
+      llvmName: "_zen_ptr_isNull",
+    },
+
+    offset: {
+      returnType: "Ptr",
+      args: ["int"],
+      llvmName: "_zen_ptr_offset",
+    },
+
+    copyFrom: {
+      returnType: "void",
+      args: ["Ptr", "int"],
+      llvmName: "_zen_ptr_copyFrom",
+    },
+
+    copyTo: {
+      returnType: "void",
+      args: ["Ptr", "int"],
+      llvmName: "_zen_ptr_copyTo",
+    },
+
+    fill: {
+      returnType: "void",
+      args: ["int", "int"],
+      llvmName: "_zen_ptr_fill",
+    },
+
+    free: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_ptr_free",
+    },
+  },
 };
 
 const BUILTIN_STRUCT_PROPS = {
@@ -992,6 +1125,11 @@ const BUILTIN_MAP = {
   length: {
     returnType: "int",
     llvmName: "length",
+  },
+
+  sizeOf: {
+    returnType: "int",
+    llvmName: "sizeOf",
   },
 
   panic: {
@@ -1123,13 +1261,16 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "_fs_changeDir",
   },
-  
-  
+
   waitAll: {
     returnType: "void",
-    llvmName: "_threads_waitAll"
+    llvmName: "_threads_waitAll",
   },
-  
+
+  pretty: {
+    returnType: "string",
+    llvmName: "debug_pretty",
+  },
 
   cpuCount: {
     returnType: "int",
@@ -1320,31 +1461,31 @@ const BUILTIN_MAP = {
     returnType: "string",
     llvmName: "_http_delete",
   },
-  
+
   urlEncode: {
-  returnType: "string",
-  llvmName: "_http_urlEncode",
-},
+    returnType: "string",
+    llvmName: "_http_urlEncode",
+  },
 
-urlDecode: {
-  returnType: "string",
-  llvmName: "_http_urlDecode",
-},
+  urlDecode: {
+    returnType: "string",
+    llvmName: "_http_urlDecode",
+  },
 
-setHeader: {
-  returnType: "void",
-  llvmName: "_http_setHeader",
-},
+  setHeader: {
+    returnType: "void",
+    llvmName: "_http_setHeader",
+  },
 
-clearHeaders: {
-  returnType: "void",
-  llvmName: "_http_clearHeaders",
-},
+  clearHeaders: {
+    returnType: "void",
+    llvmName: "_http_clearHeaders",
+  },
 
-lastStatus: {
-  returnType: "int",
-  llvmName: "_http_lastStatus",
-},
+  lastStatus: {
+    returnType: "int",
+    llvmName: "_http_lastStatus",
+  },
 
   printf: {
     returnType: "int",
@@ -1687,6 +1828,7 @@ const ParserTypes = {
   BINARY_EXPRESSION: "BINARY_EXPRESSION",
   MAP_DECLARATION: "MAP_DECLARATION",
   MAP_LITERAL: "MAP_LITERAL",
+  COMMENT: "COMMENT",
   MAP_PROPERTY: "MAP_PROPERTY",
   SWITCH: "SWITCH",
   ENUM: "ENUM",
@@ -1880,6 +2022,10 @@ const THREAD_MAP = {
   _threads_waitAll: ["_threads_waitAll", "void", 0, []],
 };
 
+const DEBUG_MAP = {
+  _debug_pretty: ["debug_pretty", "string", 1, ["List, Map, struct"]], // any
+};
+
 const FILE_MAP = {
   _fs_cwd: ["_fs_cwd", "string", 0, []],
 
@@ -1968,16 +2114,16 @@ const HTTP_MAP = {
   _http_patch: ["_http_patch", "string", 2, ["string", "string"]],
 
   _http_delete: ["_http_delete", "string", 1, ["string"]],
-  
+
   _http_urlEncode: ["_http_urlEncode", "string", 1, ["string"]],
-  
+
   _http_urlDecode: ["_http_urlDecode", "string", 1, ["string"]],
 
-_http_setHeader: ["_http_setHeader", "void", 2, ["string", "string"]],
+  _http_setHeader: ["_http_setHeader", "void", 2, ["string", "string"]],
 
-_http_clearHeaders: ["_http_clearHeaders", "void", 0, []],
+  _http_clearHeaders: ["_http_clearHeaders", "void", 0, []],
 
-_http_lastStatus: ["_http_lastStatus", "int", 0, []],
+  _http_lastStatus: ["_http_lastStatus", "int", 0, []],
 };
 
 const FFI_MAP = {
@@ -2127,7 +2273,11 @@ export {
   PATH_MAP,
   HTTPSERVER_MAP,
   THREAD_MAP,
+  DEBUG_MAP,
   BUILTIN_STRUCT_METHODS,
   BUILTIN_STRUCTS,
   BUILTIN_STRUCT_PROPS,
+  TYPE_MAP,
+  BUILTIN_STRUCT_ABI,
+  PRIMITIVE_TYPES,
 };

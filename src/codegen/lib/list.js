@@ -62,7 +62,7 @@ export class ZenList {
         );
       }
 
-      if (isActualList && !el.type === "variable") {
+      if (isActualList && el.type !== "variable") {
         for (const child of el.elements) {
           validateDepth(child, generic.generic);
         }
@@ -136,21 +136,32 @@ export class ZenList {
       }
 
       // NORMAL VALUE
-
       const expr = this.expr.handleExpression(element);
-
       this.IRB.emitExpr(expr);
 
+      if (expr.isStruct) {
+        const structName = expr.type;
+        const structSize = this.IRB.sizeOf(structName);
+
+        this.IRB.declareOneTime(
+          "llvm.memcpy.p0.p0.i64",
+          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+        );
+
+        const tmp = this.IRB.newTemp();
+        this.IRB.emit(`${tmp} = alloca %${structName}`);
+        this.IRB.emit(
+          `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${structSize}, i1 false)`,
+        );
+        this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+        return;
+      }
+
       const actualGeneric = generic.type === "List" ? generic.generic : generic;
-
       const elementLLVM = this.IRB.getListElementLLVM(generic);
-
       const tmp = this.IRB.newTemp();
-
       this.IRB.emit(`${tmp} = alloca ${elementLLVM}`);
-
       this.IRB.emit(`store ${elementLLVM} ${expr.ptr}, ptr ${tmp}`);
-
       this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     };
 
@@ -234,7 +245,6 @@ export class ZenList {
           return;
         }
 
-        // Unpack UNARY_EXPRESSION for the type check
         let actualType = el.type;
         if (el.type === "UNARY_EXPRESSION" && el.operator === "-") {
           actualType = el.argument.type;

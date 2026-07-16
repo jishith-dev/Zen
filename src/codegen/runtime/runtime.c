@@ -1286,3 +1286,69 @@ char* _sys_key() {
     key[1] = '\0';
     return key;
 }
+
+// Ptr 
+
+void _zen_ptr_storeInt(void *p, int value) {
+    *(int *)p = value;
+}
+
+int _zen_ptr_loadInt(void *p) {
+    return *(int *)p;
+}
+
+void _zen_ptr_storeDouble(void *p, double value) {
+    *(double *)p = value;
+}
+
+double _zen_ptr_loadDouble(void *p) {
+    return *(double *)p;
+}
+
+void _zen_ptr_storeBool(void *p, bool value) {
+    *(bool *)p = value;
+}
+
+bool _zen_ptr_loadBool(void *p) {
+    return *(bool *)p;
+}
+
+void _zen_ptr_storeString(void *p, char *value) {
+    *(char **)p = value;
+}
+
+char *_zen_ptr_loadString(void *p) {
+    return *(char **)p;
+}
+
+void _zen_ptr_storePtr(void *p, void *value) {
+    *(void **)p = value;
+}
+
+void *_zen_ptr_loadPtr(void *p) {
+    return *(void **)p;
+}
+
+bool _zen_ptr_isNull(void *p) {
+    return p == NULL;
+}
+
+void *_zen_ptr_offset(void *p, int bytes) {
+    return (void *)((char *)p + bytes);
+}
+
+void _zen_ptr_copyFrom(void *dst, void *src, int bytes) {
+    memcpy(dst, src, (size_t)bytes);
+}
+
+void _zen_ptr_copyTo(void *src, void *dst, int bytes) {
+    memcpy(dst, src, (size_t)bytes);
+}
+
+void _zen_ptr_fill(void *p, int value, int bytes) {
+    memset(p, value, (size_t)bytes);
+}
+
+void _zen_ptr_free(void *p) {
+    free(p);
+}

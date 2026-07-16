@@ -42,7 +42,7 @@ export class Struct {
         generic: generic,
         struct: structName,
         isAsync: method.isAsync,
-        isThread: method.isThread
+        isThread: method.isThread,
       });
     }
   }
@@ -70,6 +70,14 @@ export class Struct {
 
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
+
+      if (f.type === "Map") {
+        this.IRB.emitError(
+          "TypeError",
+          `Map is not allowed as a struct field`,
+          node,
+        );
+      }
 
       let llvmType;
 
@@ -119,6 +127,7 @@ export class Struct {
     this.IRB.setStruct(name, {
       isGlobal: globalScope,
       layout,
+      isOpaque: false,
       fieldMap,
       size: fields.length,
     });
@@ -144,84 +153,6 @@ export class Struct {
 
     return;
   }
-  /*
-  structRef(node, globalScope) {
-    const structName = node.struct_ref;
-    const varName = node.name;
-    const value = node.value;
-
-    const structInfo = this.IRB.getStruct(structName);
-
-    const llvmType = `%${structName}`;
-
-    let ptr;
-    let isRet;
-
-    if (value?.type === "MAP_LITERAL") {
-      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      ptr = this.IRB.emitStructLiteral(structName, value);
-    } else if (value === null) {
-      
-      if (globalScope) {
-        ptr = this.IRB.newGlobalTemp();
-        this.IRB.globals.push(`${ptr} = global ${llvmType} zeroinitializer`);
-      } else {
-        this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-        ptr = this.IRB.newTemp();
-        this.IRB.emit(`${ptr} = alloca ${llvmType}`);
-      }
-      
-    } else {
-      this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-
-      const expr = this.expr.handleExpression(value);
-      this.IRB.emitExpr(expr);
-
-      if (structInfo.isBuiltin && structInfo.byteSize === 0) {
-        // opaque handle (HttpServer, HttpRequest, ...)
-        let tmp;
-        if (globalScope) {
-          tmp = this.IRB.newGlobalTemp();
-          this.IRB.globals.push(`${tmp} = global ptr null`);
-        } else {
-          tmp = this.IRB.newTemp();
-          this.IRB.emit(`${tmp} = alloca ptr`);
-        }
-        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
-        ptr = tmp;
-        isRet = false;
-      } else {
-        ptr = this.IRB.newTemp();
-        this.IRB.emit(`${ptr} = alloca ${llvmType}`);
-
-        this.IRB.declareOneTime(
-          "llvm.memcpy.p0.p0.i64",
-          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
-        );
-
-        this.IRB.emit(
-          `call void @llvm.memcpy.p0.p0.i64(` +
-            `ptr ${ptr}, ptr ${expr.ptr}, i64 ${structInfo.byteSize}, i1 false)`,
-        );
-
-        isRet = false;
-      }
-    }
-
-    this.IRB.setVar(
-      varName,
-      this.IRB.createData({
-        ptr,
-        type: structName,
-        llvmType,
-        isStruct: true,
-        isGlobal: globalScope,
-        isVarRef: true,
-        needsLoad: true,
-        isRet,
-      }),
-    );
-  }*/
 
   structRef(node, globalScope) {
     const structName = node.struct_ref;
@@ -230,7 +161,7 @@ export class Struct {
 
     const structInfo = this.IRB.getStruct(structName);
     const llvmType = `%${structName}`;
-    const isOpaque = structInfo.isBuiltin && structInfo.byteSize === 0;
+    const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
 
     let ptr;
     let isRet = false;
@@ -243,6 +174,7 @@ export class Struct {
     } else {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       const expr = this.expr.handleExpression(value);
+
       this.IRB.emitExpr(expr);
 
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
@@ -267,6 +199,7 @@ export class Struct {
         ptr,
         type: structName,
         llvmType,
+        isConstant: node.isConstant,
         isStruct: true,
         isGlobal: globalScope,
         isVarRef: true,
@@ -283,6 +216,9 @@ export class Struct {
     let variable;
     if (base === "this") {
       variable = this.IRB.getVar("this");
+    } else if (typeof base === "object") {
+      variable = this.expr.handleExpression(base);
+      this.IRB.emitExpr(variable);
     } else {
       variable = this.IRB.getVar(base);
     }
@@ -373,8 +309,36 @@ export class Struct {
       } else {
         t = currentPtr;
       }
-      this.IRB.emit(
-        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr})`,
+
+      let depth = 0;
+      let deepestType = 0;
+      let typeId;
+      const TYPE_MAP = {
+        int: 1,
+        bool: 2,
+        double: 3,
+        string: 4,
+        List: 5,
+        map: 6,
+      };
+      if (value?.isList) {
+        depth = this.getListDepth(value.generic);
+
+        const deepest = this.getDeepestGeneric(value.generic);
+
+        deepestType = TYPE_MAP[deepest];
+      }
+
+      if (value?.isList) {
+        typeId = TYPE_MAP.List;
+      } else if (value?.isMap) {
+        typeId = TYPE_MAP.map;
+      } else {
+        typeId = TYPE_MAP[value.type];
+      }
+
+      this.emit(
+        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr}, i32 ${typeId}, i32 ${depth}, i32 ${deepestType})`,
       );
 
       // LAYOUT UPDATE

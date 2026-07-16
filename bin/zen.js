@@ -1084,7 +1084,7 @@ Optimization Levels:
       ).CodeGen;
     } catch (err) {
       console.error("error: Failed to load CodeGen");
-      console.log(err)
+      console.log(err);
       process.exit(1);
     }
 
@@ -1092,6 +1092,15 @@ Optimization Levels:
 
     const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles);
     const llvm = codegen.generateLLVM();
+
+    for (const [name, node] of this.moduleFiles.declFunctions) {
+      if (!this.moduleFiles.defFunctions.has(name)) {
+        IRB.emitError(
+          "DeclarationError",
+          `function '${name}' was declared but never defined`,
+        );
+      }
+    }
 
     this.moduleFiles.finishCompiling(file);
 
@@ -1158,7 +1167,7 @@ Optimization Levels:
     const runtimeObjs = runtimeFiles.map((name) => {
       const obj = path.join(runtimeDir, `${name}.o`);
       const src = path.join(runtimeDir, `${name}.c`);
-      
+
       return fs.existsSync(obj) ? obj : src;
     });
 

@@ -7,10 +7,11 @@ import {
 import { Lexer } from "../lexer/lexer.js";
 
 export class Parser {
-  constructor(tokens, IRB) {
+  constructor(tokens, IRB, options = { preserveComments: false }) {
     this.tokens = tokens;
     this.pos = 0;
     this.IRB = IRB;
+    this.options = options;
   }
 
   // HELPERS
@@ -110,11 +111,31 @@ export class Parser {
 
   parseStatement() {
     if (
+      this.matchKeyword("const") &&
+      this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+      this.tokens[this.pos + 2]?.type === "IDENTIFIER"
+    ) {
+      this.advance(); // const
+      return this.node(this.parseStructVariableDeclaration(true));
+    }
+
+    if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
+      return this.node(this.parseStructVariableDeclaration(false));
+    }
+
+    if (
       this.match("TYPE") ||
       this.matchKeyword("auto") ||
-      this.matchKeyword("reactive")
+      this.matchKeyword("reactive") ||
+      this.matchKeyword("const")
     ) {
       return this.node(this.parseVariableDeclaration());
+    }
+
+    if (this.options.preserveComments) {
+      if (this.match("COMMENT")) {
+        return this.parseComment();
+      }
     }
 
     if (this.matchKeyword("switch")) {
@@ -170,17 +191,28 @@ export class Parser {
       });
     }
 
-    if (this.matchKeyword("fn") || this.matchKeyword("async") || this.matchKeyword("thread")) {
+    if (
+      this.matchKeyword("fn") ||
+      this.matchKeyword("async") ||
+      this.matchKeyword("thread") ||
+      this.matchKeyword("extern")
+    ) {
       let isAsync = false; // default mode
       let isThread = false;
       const insideMethod = false;
+      let isExtern = false;
+
       if (this.matchKeyword("async")) {
         isAsync = true;
       } else if (this.matchKeyword("thread")) {
         isThread = true;
+      } else if (this.matchKeyword("extern")) {
+        isExtern = true;
       }
-      
-      return this.node(this.parseFunction(insideMethod, isAsync, isThread));
+
+      return this.node(
+        this.parseFunction(insideMethod, isAsync, isThread, isExtern),
+      );
     }
 
     if (this.matchKeyword("while")) {
@@ -238,23 +270,6 @@ export class Parser {
       return this.node(this.parseExpression());
     }
 
-    if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
-      const struct_ref = this.advance().value;
-      const name = this.advance().value;
-
-      let value = null;
-      if (this.current().value === "=") {
-        this.advance();
-        value = this.node(this.parseExpression());
-      }
-      return this.node({
-        type: ParserTypes.VARIABLE_DECLARATION,
-        struct_ref,
-        name,
-        value,
-      });
-    }
-
     if (this.match("IDENTIFIER")) {
       if (this.tokens[this.pos + 1].type === "NEWLINE") {
         this.IRB.emitError(
@@ -279,7 +294,35 @@ export class Parser {
     });
   }
 
-  parseMap() {
+  parseStructVariableDeclaration(isConst = false) {
+    const struct_ref = this.advance().value;
+    const name = this.advance().value;
+
+    let value = null;
+    if (this.current().value === "=") {
+      this.advance();
+      value = this.node(this.parseExpression());
+    }
+
+    return this.node({
+      type: ParserTypes.VARIABLE_DECLARATION,
+      struct_ref,
+      name,
+      value,
+      isConstant: isConst,
+    });
+  }
+
+  parseComment() {
+    const token = this.advance();
+
+    return {
+      type: ParserTypes.COMMENT,
+      value: token.value,
+    };
+  }
+
+  parseMap(isConstant = false) {
     this.expectKeyword("Map");
 
     const name = this.expect("IDENTIFIER").value;
@@ -301,6 +344,7 @@ export class Parser {
     return this.node({
       type: ParserTypes.MAP_DECLARATION,
       name,
+      isConstant,
       value,
     });
   }
@@ -487,70 +531,45 @@ export class Parser {
 
       let isAsyncMethod = false;
       let isThreadfn = false;
-      
+
       if (this.matchKeyword("async")) {
         isAsyncMethod = true;
         this.advance();
       } else if (this.matchKeyword("thread")) {
         isThreadfn = true;
         this.advance();
+      } else if (this.matchKeyword("fn")) {
+        this.IRB.emitError(
+          "SyntaxError",
+          "method should be declared without 'fn' keyword",
+          this.lineAndColumn(),
+        );
       }
 
-      const nameToken = this.expect("IDENTIFIER");
+      // METHOD
+      if (this.match("IDENTIFIER") && this.peek("LEFT_PARENTHESIS")) {
+        const nameToken = this.advance();
 
-      // METHOD DETECTION
-
-      if (this.match("LEFT_PARENTHESIS")) {
         const method = this.parseFunction(true, isAsyncMethod, isThreadfn);
+
         method.name = nameToken.value;
         method.isMethod = true;
+
         methods.push(method);
         continue;
       }
 
-      // FIELD PARSE
+      // FIELD
+      const typeNode = this.parseType();
+      const nameToken = this.expect("IDENTIFIER");
 
-      if (this.match("IDENTIFIER")) {
-        // fixed-size array type: arr[10]
-        const baseType = this.advance().value;
-        const dimensions = [];
-
-        while (this.match("LBRACKET")) {
-          this.advance();
-
-          if (this.match("RBRACKET")) {
-            this.IRB.emitError(
-              "ArrayError",
-              "Array size missing",
-              this.lineAndColumn(),
-            );
-          }
-
-          const size = this.parseExpression();
-
-          this.expect("RBRACKET");
-
-          dimensions.push(size);
-        }
-
-        fields.push({
+      fields.push(
+        this.node({
           name: nameToken.value,
-          type: baseType,
-          dimensions,
-        });
-      } else {
-        // int, bool, string, double, List, Map
-        const typeNode = this.parseType();
+          ...typeNode,
+        }),
+      );
 
-        fields.push(
-          this.node({
-            name: nameToken.value,
-            ...typeNode,
-          }),
-        );
-      }
-
-      // formatting support
       if (this.match("NEWLINE")) this.advance();
       if (this.match("COMMA")) this.advance();
     }
@@ -673,13 +692,9 @@ export class Parser {
     });
   }
 
-  parseList() {
+  parseList(isConstant = false) {
     const generic = this.parseListGeneric();
-    let isConstant = false;
-    if (this.matchKeyword("const")) {
-      isConstant = true;
-      this.advance();
-    }
+
     const name = this.expect("IDENTIFIER").value;
 
     let value = null;
@@ -825,6 +840,11 @@ export class Parser {
     if (this.matchKeyword("List")) {
       return this.parseListGeneric();
     }
+
+    if (this.matchKeyword("fn")) {
+      return this.parseFnParam();
+    }
+
     if (this.matchKeyword("Map")) {
       this.advance();
 
@@ -882,23 +902,97 @@ export class Parser {
     });
   }
 
-  parseFunction(isInsideMethod = false, isAsyncFn = false, isThread = false) {
+  parseFnParam() {
+    this.expectKeyword("fn");
+
+    const name = this.expect("IDENTIFIER").value;
+
+    this.expect("LEFT_PARENTHESIS");
+
+    const params = [];
+
+    while (!this.match("RIGHT_PARENTHESIS")) {
+      this.skipNewlines();
+
+      const type = this.parseType();
+
+      if (this.match("IDENTIFIER")) {
+        this.IRB.emitError(
+          "SyntaxError",
+          "Callback type parameters cannot have names. Use 'fn cb(int, int) int'",
+          this.lineAndColumn(),
+        );
+      }
+
+      let isRest = false;
+      if (this.match("ELLIPSIS")) {
+        this.advance();
+        isRest = true;
+      }
+
+      params.push({
+        type,
+        isRest,
+        dimensions: type.dimensions,
+      });
+
+      this.skipNewlines();
+
+      if (this.match("COMMA")) {
+        this.advance();
+      }
+    }
+
+    this.expect("RIGHT_PARENTHESIS");
+
+    let returnType = {
+      type: "void",
+      dimensions: [],
+    };
+
+    if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
+      if (this.matchKeyword("void")) {
+        returnType = {
+          type: this.expectKeyword("void").value,
+          dimensions: [],
+        };
+      } else {
+        returnType = this.parseType(true);
+      }
+    }
+
+    return {
+      type: "Function",
+      name,
+      params,
+      returnType,
+      dimensions: [],
+    };
+  }
+
+  parseFunction(
+    isInsideMethod = false,
+    isAsyncFn = false,
+    isThread = false,
+    isExtern = false,
+  ) {
     let isAsync = isAsyncFn;
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
         this.advance();
-      } else if (this.matchKeyword("thread")) this.advance();
-      
+      } else if (this.matchKeyword("thread")) {
+        this.advance();
+      } else if (this.matchKeyword("extern")) this.advance();
+
       this.expectKeyword("fn");
     }
-    
 
     let name;
 
     if (!isInsideMethod) {
       name = this.expect("IDENTIFIER").value;
       if (!this.IRB.stdlibMode) {
-        if (name.startsWith("_")) {
+        if (name.startsWith("_") && !isExtern) {
           this.IRB.emitError(
             "NamingError",
             `Illegal identifier '${name}'. '_' prefix is reserved for Zen internal symbols`,
@@ -914,7 +1008,31 @@ export class Parser {
 
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
+
+      let isConstant = false;
+
+      if (this.matchKeyword("const")) {
+        isConstant = true;
+        this.advance();
+      }
+
       const t = this.parseType();
+
+      if (isConstant && t.type === "Function") {
+        this.IRB.emitError(
+          "TypeError",
+          "function callback parameters cannot be declared as 'const'",
+          this.lineAndColumn(),
+        );
+      }
+
+      let name;
+
+      if (t.type === "Function") {
+        name = t.name;
+      } else {
+        name = this.expect("IDENTIFIER").value;
+      }
 
       // Zen v1 limitation:
       // Map parameters are temporarily disabled.
@@ -926,7 +1044,6 @@ export class Parser {
         );
       }
 
-      const name = this.expect("IDENTIFIER").value;
       this.skipNewlines();
       let isRest = false;
 
@@ -938,6 +1055,7 @@ export class Parser {
       let param = {
         type: t,
         name,
+        isConstant,
         dimensions: t.dimensions,
         isRest,
       };
@@ -1000,13 +1118,35 @@ export class Parser {
       returnType = this.parseType(true);
     }
 
-    const body = this.parseBlock();
+    let body;
+    let isDeclaration = false;
+    if (this.match("NEWLINE")) {
+      if (isInsideMethod)
+        this.IRB.emitError(
+          "SemanticError",
+          `method '${name}' doesn't support declaration`,
+          this.lineAndColumn(),
+        );
+      body = null;
+      isDeclaration = true;
+    } else {
+      if (isExtern)
+        this.IRB.emitError(
+          "SemanticError",
+          `Function '${name}' doesn't support a body. extern requires declaration only`,
+          this.lineAndColumn(),
+        );
+      body = this.parseBlock();
+      isDeclaration = false;
+    }
 
     return this.node({
       type: ParserTypes.FUNCTION_DECLARATION,
       name,
       isAsync: isAsyncFn,
       isThread,
+      isDeclaration,
+      isExtern,
       params,
       returnType,
       body,
@@ -1225,13 +1365,6 @@ export class Parser {
   }
 
   parseVariableDeclaration() {
-    let haveReactive = false;
-    if (this.matchKeyword("reactive")) {
-      haveReactive = true;
-      this.advance();
-    }
-    const dataType = this.advance().value;
-
     let isConst = false;
 
     if (this.match("KEYWORD")) {
@@ -1241,6 +1374,31 @@ export class Parser {
         isConst = true;
       }
     }
+
+    let haveReactive = false;
+    if (this.matchKeyword("reactive")) {
+      haveReactive = true;
+      this.advance();
+    }
+
+    if (haveReactive && isConst) {
+      this.IRB.emitError(
+        "SyntaxError",
+        "variable cannot be both 'const' and 'reactive'",
+        this.lineAndColumn(),
+      );
+    }
+
+    // redirect to List or Map so const works there too.
+    if (this.current().value === "List") {
+      return this.parseList(isConst);
+    }
+
+    if (this.current().value === "Map") {
+      return this.parseMap(isConst);
+    }
+
+    const dataType = this.advance().value;
 
     const name = this.expect("IDENTIFIER").value;
 

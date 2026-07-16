@@ -11,7 +11,7 @@ export class Block {
       this.IRB.enterScope();
 
       for (const stmt of blockNode.body || []) {
-        this.codegen.dispatch(stmt, globalScope, true); // third param: flag for if its inside any block to prevent double function hoisting
+        this.codegen.dispatch(stmt, false, true); // third param: flag for if its inside any block to prevent double function hoisting
       }
 
       this.IRB.exitScope();

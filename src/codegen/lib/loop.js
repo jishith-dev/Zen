@@ -50,7 +50,7 @@ export class Loop {
 
     this.IRB.emit(`${bodyLabel}:`);
 
-    this.block.block(node.body, false);
+    this.block.block(node.body);
 
     this.IRB.emit(`br label %${updateLabel}`);
 
@@ -135,7 +135,7 @@ export class Loop {
     // body
     this.IRB.emit(`${bodyLabel}:`);
 
-    this.block.block(body, false);
+    this.block.block(body);
 
     // loop back to condition
     this.IRB.emit(`br label %${condLabel}`);
@@ -169,7 +169,7 @@ export class Loop {
 
     this.IRB.emit(`${bodyLabel}:`);
 
-    this.block.block(body, false);
+    this.block.block(body);
 
     this.IRB.emit(`br label %${condLabel}`);
 
@@ -356,7 +356,7 @@ export class Loop {
       });
     }
 
-    this.block.block(body, false);
+    this.block.block(body);
 
     this.IRB.emit(`br label %${incLabel}`);
 

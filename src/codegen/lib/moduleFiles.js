@@ -1,7 +1,11 @@
+// compiler global state instance
+
 export class ModuleFiles {
   constructor() {
     this.moduleFiles = new Set();
     this.inProgress = new Set();
+    this.defFunctions = new Map();
+    this.declFunctions = new Map();
   }
 
   add(file) {

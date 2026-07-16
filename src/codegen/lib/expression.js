@@ -9,6 +9,7 @@ import {
   SCALAR_TYPES,
   BUILTIN_FUNCTIONS,
   BUILTIN_STRUCTS,
+  PRIMITIVE_TYPES,
 } from "../../config/config.js";
 
 export class Expression {
@@ -84,9 +85,8 @@ export class Expression {
     // variable reference
 
     if (node.type === "variable") {
-      const currentFreed =
-      this.IRB.freedVars[this.IRB.freedVars.length - 1];
-  
+      const currentFreed = this.IRB.freedVars[this.IRB.freedVars.length - 1];
+
       // check for freed memory
       if (currentFreed.has(node.name)) {
         this.IRB.emitError(
@@ -152,6 +152,9 @@ export class Expression {
         isStruct: data?.isStruct,
         isListAccess: data?.isListAccess,
         isRet: data?.isRet,
+        isFunction: data?.isFunction,
+        params: data?.params,
+        returnType: data?.returnType,
       };
     }
 
@@ -299,9 +302,8 @@ export class Expression {
           isListLiteral: true,
           isList: true,
           generic: {
-            generic: {
-              type: structName,
-            },
+            type: "List",
+            generic: { type: ContextType },
           },
         };
       }
@@ -363,7 +365,7 @@ export class Expression {
           global,
           isListLiteral: true,
           isList: true,
-          generic: { generic: { type: structName } },
+          generic: { type: "List", generic: { type: structName } },
         };
       }
 
@@ -402,9 +404,8 @@ export class Expression {
         isListLiteral: true,
         isList: true,
         generic: {
-          generic: {
-            type: first.type,
-          },
+          type: "List",
+          generic: elemExpr.isList ? elemExpr.generic : { type: elemExpr.type },
         },
       };
     }
@@ -490,6 +491,20 @@ export class Expression {
 
       this.IRB.emitExpr(object);
 
+      if (
+        PRIMITIVE_TYPES.includes(object.type) &&
+        !object.isList &&
+        !object.isMap &&
+        !object.isStruct
+      ) {
+        this.IRB.emitError(
+          "TypeError",
+          `'${object.type}' has no property or method '${fields[0]}'`,
+          node,
+        );
+      }
+
+      // struct chain
       if (object.isStruct) {
         let structName = object.type;
         let basePtr = object.ptr;
@@ -543,6 +558,21 @@ export class Expression {
             );
           }
 
+          if (!this.IRB.hasStruct(structName)) {
+            if (node?.args && i === fields.length - 1) {
+              this.IRB.emitError(
+                "TypeError",
+                `field '${fields[i]}' is not callable`,
+                node,
+              );
+            }
+            this.IRB.emitError(
+              "ReferenceError",
+              `Cannot access field '${fields[i]}' on non-struct type '${structName}'`,
+              node,
+            );
+          }
+
           const structInfo = this.IRB.getStruct(structName);
 
           if (!structInfo) {
@@ -553,11 +583,7 @@ export class Expression {
             );
           }
 
-          if (
-            structInfo.isBuiltin &&
-            structInfo.byteSize === 0 &&
-            object.needsLoad
-          ) {
+          if (structInfo.isBuiltin && structInfo.isOpaque && object.needsLoad) {
             const t = this.IRB.newTemp();
             this.IRB.emit(`${t} = load ptr, ptr ${basePtr}`);
             basePtr = t;
@@ -600,6 +626,14 @@ export class Expression {
           const isMethod = this.IRB.functions.has(possibleMethod);
 
           if (isMethod) {
+            if (!Array.isArray(node?.args)) {
+              this.IRB.emitError(
+                "TypeError",
+                `method '${currentField}' must be called with '()'`,
+                node,
+              );
+            }
+
             const fn = this.IRB.getFunction(possibleMethod);
 
             const args = [];
@@ -684,7 +718,9 @@ export class Expression {
           }
 
           // FIELD USED AS METHOD CHECK
-          if (node?.args) {
+          const isLastField = i === fields.length - 1;
+
+          if (isLastField && node?.args) {
             const fieldIndex = structInfo.fieldMap[currentField];
 
             if (fieldIndex !== undefined) {
@@ -721,8 +757,6 @@ export class Expression {
         }
 
         // STRUCT FIELD TYPES
-
-        const finalType = fieldInfo.llvmType;
 
         const isList = fieldInfo.isList;
 
@@ -1703,41 +1737,49 @@ export class Expression {
     let lKind = null;
     let rKind = null;
 
+    if (node.type === "ASSIGNMENT") {
+      this.IRB.emitError(
+        "SemanticError",
+        `'${node.name}' cannot be used in an expression context`,
+        node,
+      );
+    }
+
     if (!LOGICAL_OPS.includes(op)) {
       let LNode = resolve(node.left);
       let RNode = resolve(node.right);
 
       if (LNode?.isList) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on lists are not supported",
-            node?.left,
+          "TypeError",
+          "Binary operations on lists are not supported",
+          node?.left,
         );
-    }
+      }
 
-    if (LNode?.isStruct) {
+      if (LNode?.isStruct) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on structs are not supported",
-            node?.left,
+          "TypeError",
+          "Binary operations on structs are not supported",
+          node?.left,
         );
-    }
+      }
 
       if (RNode?.isList) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on lists are not supported",
-            node?.right,
+          "TypeError",
+          "Binary operations on lists are not supported",
+          node?.right,
         );
-    }
+      }
 
-    if (RNode?.isStruct) {
+      if (RNode?.isStruct) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on structs are not supported",
-            node?.right,
+          "TypeError",
+          "Binary operations on structs are not supported",
+          node?.right,
         );
-    }
+      }
 
       if (!LNode || !RNode)
         this.IRB.emitError(
@@ -1924,19 +1966,19 @@ export class Expression {
 
       if (LNode?.isList) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on lists are not supported",
-            node?.left,
+          "TypeError",
+          "Binary operations on lists are not supported",
+          node?.left,
         );
-    }
+      }
 
-    if (LNode?.isStruct) {
+      if (LNode?.isStruct) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on structs are not supported",
-            node?.left,
+          "TypeError",
+          "Binary operations on structs are not supported",
+          node?.left,
         );
-    }
+      }
 
       local.push(...(LNode.local || []));
       global.push(...(LNode.global || []));
@@ -1977,21 +2019,21 @@ export class Expression {
 
       const RNode = resolve(node.right);
 
-    if (RNode?.isList) {
+      if (RNode?.isList) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on lists are not supported",
-            node?.right,
+          "TypeError",
+          "Binary operations on lists are not supported",
+          node?.right,
         );
-    }
+      }
 
-    if (RNode?.isStruct) {
+      if (RNode?.isStruct) {
         this.IRB.emitError(
-            "TypeError",
-            "Binary operations on structs are not supported",
-            node?.right,
+          "TypeError",
+          "Binary operations on structs are not supported",
+          node?.right,
         );
-    }
+      }
 
       local.push(...(RNode.local || []));
       global.push(...(RNode.global || []));

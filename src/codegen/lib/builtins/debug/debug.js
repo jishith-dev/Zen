@@ -1,9 +1,9 @@
-export class Thread {
+export class DEBUG {
   constructor(IRB, expr) {
     this.IRB = IRB;
     this.expr = expr;
   }
-  zenTHREAD(
+  zenDEBUG(
     node,
     globalScope,
     funcName,
@@ -30,6 +30,10 @@ export class Thread {
         `Function ${name} accept exactly ${paramCount} argument(s)`,
         node,
       );
+    }
+
+    if (funcName === "debug_pretty") {
+      return this.pretty(node);
     }
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
@@ -102,5 +106,89 @@ export class Thread {
       global: [],
       postOrPrefix: false,
     };
+  }
+
+  pretty(node) {
+    const arg = node.args[0];
+    const expr = this.expr.handleExpression(arg);
+
+    if (!expr?.isMap && !expr?.isList && !expr?.isStruct) {
+      this.IRB.emitError(
+        "TypeError",
+        `Function debug.pretty() expects a Map, List<T>, or struct, but got ${expr.type}`,
+        arg,
+      );
+    }
+
+    this.IRB.emitExpr(expr);
+
+    // Struct
+    if (expr.isStruct) {
+      const printFn = this.IRB.getOrBuildStructPrinter(expr.type);
+      this.IRB.emit(`call void @${printFn}(ptr ${expr.ptr}, i32 0)`);
+      return;
+    }
+
+    let t;
+    if (expr?.needsLoad) {
+      t = this.IRB.newTemp();
+      this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+    } else {
+      t = expr.ptr;
+    }
+
+    // List
+    if (expr.isList) {
+      const depth = this.IRB.getListDepth(expr.generic);
+      const deepestType = this.IRB.getDeepestGeneric(expr.generic);
+
+      // List of structs
+      if (this.IRB.hasStruct(deepestType)) {
+        const printFn = this.IRB.getOrBuildStructPrinter(deepestType);
+
+        this.IRB.declareOneTime(
+          "_debug_pretty_list_struct",
+          "declare void @_debug_pretty_list_struct(ptr, i32, ptr)",
+        );
+
+        this.IRB.emit(
+          `call void @_debug_pretty_list_struct(ptr ${t}, i32 ${depth}, ptr @${printFn})`,
+        );
+
+        return;
+      }
+
+      this.IRB.declareOneTime(
+        "_debug_pretty_list",
+        "declare void @_debug_pretty_list(ptr, i32, i32)",
+      );
+
+      const type_map = {
+        int: 1,
+        bool: 2,
+        double: 3,
+        string: 4,
+      };
+
+      const tv = type_map[deepestType];
+
+      this.IRB.emit(
+        `call void @_debug_pretty_list(ptr ${t}, i32 ${depth}, i32 ${tv})`,
+      );
+
+      return;
+    }
+
+    // Map
+    if (expr.isMap) {
+      this.IRB.declareOneTime(
+        "_debug_pretty_map",
+        "declare void @_debug_pretty_map(ptr, i32)",
+      );
+
+      this.IRB.emit(`call void @_debug_pretty_map(ptr ${t}, i32 0)`);
+
+      return;
+    }
   }
 }

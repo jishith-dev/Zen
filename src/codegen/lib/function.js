@@ -1,11 +1,14 @@
 export class HandleFunction {
-  constructor(IRB, expr, block, infer) {
+  constructor(IRB, expr, block, infer, g, moduleName, abi) {
     this.IRB = IRB;
     this.block = block;
     this.expr = expr;
     this.infer = infer;
+    this.globalState = g;
     this.haveBareRet = false;
     this.hasRet = false;
+    this.moduleName = moduleName;
+    this.BUILTIN_STRUCT_ABI = abi;
   }
 
   collectReturns(node) {
@@ -16,7 +19,7 @@ export class HandleFunction {
         if (!node.value) {
           this.IRB.currentFunction.returnTypes.push("void");
         } else {
-          const type = this.infer.infer(node.value);
+          const type = this.infer.infer(node.value, "fnret");
 
           this.IRB.currentFunction.returnTypes.push(type);
         }
@@ -103,11 +106,12 @@ export class HandleFunction {
 
     const currentFunction = this.IRB.currentFunction;
     const name = currentFunction.name;
-    const first = this.IRB.currentFunction.returnTypes[0];
 
     // infer block
     if (this.IRB.currentFunction.returnType === "auto") {
       this.collectReturns(this.IRB.currentFunction.bodyAst);
+
+      const first = this.IRB.currentFunction.returnTypes[0];
 
       const totalReturns = currentFunction.returnTypes.length;
 
@@ -127,7 +131,7 @@ export class HandleFunction {
 
       const retType = first;
 
-      const fn = this.IRB.getFunction(name);
+      const fn = this.IRB.resolveFunction(name);
 
       // update return type
 
@@ -136,9 +140,11 @@ export class HandleFunction {
       this.IRB.currentFunction.returnType = retType;
 
       if (node.value.type === "CALL") {
-        const fn = this.IRB.getFunction(node.value.name);
+        const fn = this.IRB.resolveFunction(node.value.name);
 
-        fn.returnType.type = retType;
+        if (fn) {
+          fn.returnType = retType;
+        }
       }
       const llvmReturnType = this.IRB.getLLVMType(retType);
 
@@ -159,8 +165,11 @@ export class HandleFunction {
       return;
     }
 
-    // STRUCT RETURN
-    if (this.IRB.hasStruct(funcType)) {
+    const isStruct = this.IRB.hasStruct(funcType);
+    const isNativeABI = this.BUILTIN_STRUCT_ABI.includes(funcType);
+
+    if (isStruct && !isNativeABI) {
+      // STRUCT RETURN
       const params = this.IRB.currentFunction.params;
       const struct = this.IRB.getStruct(funcType);
 
@@ -293,6 +302,19 @@ export class HandleFunction {
       );
     }
 
+    if (isNativeABI) {
+      let value = expr.ptr;
+
+      if (expr.needsLoad) {
+        const tmp = this.IRB.newTemp();
+        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+        value = tmp;
+      }
+
+      this.IRB.emit(`ret ptr ${value}`);
+      return;
+    }
+
     this.IRB.emit(`ret ${expr.llvmType} ${expr.ptr}`);
   }
 
@@ -308,6 +330,13 @@ export class HandleFunction {
     this.haveBareRet = false;
 
     this.IRB.funcTempCounter = 0; // reset counter per function
+
+    const isDecl = node.isDeclaration;
+    const isExtern = node.isExtern;
+
+    if (node.body !== null) this.globalState.defFunctions.set(node.name, true);
+    if (isDecl && !isExtern)
+      this.globalState.declFunctions.set(node.name, true);
 
     if (this.IRB.currentFunction !== null) {
       this.IRB.emitError(
@@ -330,10 +359,12 @@ export class HandleFunction {
       mangledName = name;
     } else {
       name = node.name;
-      if (this.IRB.stdlibMode) {
+      if (isExtern) {
+        mangledName = name;
+      } else if (this.IRB.stdlibMode) {
         mangledName = name;
       } else {
-        mangledName = `zen_${name}`;
+        mangledName = `zen_${this.moduleName}_${name}`;
       }
     }
 
@@ -345,12 +376,14 @@ export class HandleFunction {
       listGeneric = this.IRB.getDeepestGeneric(node.returnType.generic);
     }
 
-    if (returnType !== "void" && !this.hasGuaranteedReturn(node.body)) {
-      this.IRB.emitError(
-        "SemanticError",
-        `not all code paths return a value`,
-        node,
-      );
+    if (!isDecl) {
+      if (returnType !== "void" && !this.hasGuaranteedReturn(node.body)) {
+        this.IRB.emitError(
+          "SemanticError",
+          `not all code paths return a value`,
+          node,
+        );
+      }
     }
 
     let llvmReturnType =
@@ -358,7 +391,9 @@ export class HandleFunction {
 
     const isSret = this.IRB.hasStruct(returnType);
 
-    if (isSret) {
+    if (isSret && this.BUILTIN_STRUCT_ABI.includes(returnType)) {
+      llvmReturnType = "ptr";
+    } else if (isSret) {
       llvmReturnType = "void";
     }
 
@@ -366,11 +401,37 @@ export class HandleFunction {
 
     this.IRB.currentFunction = true; // make currentFunction true for getting sequential temp count for params
 
-    const { ir, params: paramData } = this.IRB.buildParams(
-      params,
-      isMethod,
-      returnType,
-    );
+    const {
+      ir,
+      params: paramData,
+      types,
+    } = this.IRB.buildParams(params, isMethod, returnType, isExtern);
+
+    if (isDecl && isExtern) {
+      this.IRB.currentFunction = prevFunction;
+      this.IRB.declareOneTime(
+        name,
+        `declare ${llvmReturnType} @${name} ${types}`,
+      );
+      return;
+    }
+
+    if (isDecl) {
+      this.IRB.currentFunction = prevFunction;
+
+      const fn = this.IRB.functions.get(name);
+
+      // A definition exists in this module, so don't emit a declare.
+      if (!fn.isDeclaration) {
+        return;
+      }
+
+      this.IRB.declareOneTime(
+        mangledName,
+        `declare ${llvmReturnType} @${mangledName} ${types}`,
+      );
+      return;
+    }
 
     this.IRB.currentFunction = {
       name,
@@ -422,7 +483,7 @@ export class HandleFunction {
             llvmType: p.llvmType,
             generic: p.generic,
             type: deepestType,
-            isConstant: false,
+            isConstant: p.isConstant,
             isGlobal: false,
             isList: true,
             fromParam: true,
@@ -436,10 +497,24 @@ export class HandleFunction {
             ptr: p.ptr,
             llvmType: p.llvmType,
             type: p.type,
-            isConstant: false,
+            isConstant: p.isConstant,
             isGlobal: false,
             fromParam: true,
             isStruct: true,
+          }),
+        );
+      } else if (p?.isStruct && this.BUILTIN_STRUCT_ABI.includes(p.type)) {
+        this.IRB.setVar(
+          p.name,
+          this.IRB.createData({
+            ptr: p.ptr,
+            llvmType: "ptr",
+            type: p.type,
+            isConstant: p.isConstant,
+            isGlobal: false,
+            fromParam: true,
+            isStruct: true,
+            needsLoad: false,
           }),
         );
       } else if (p?.isStruct) {
@@ -465,7 +540,7 @@ export class HandleFunction {
             ptr: localPtr,
             llvmType: p.llvmType,
             type: p.type,
-            isConstant: false,
+            isConstant: p.isConstant,
             isGlobal: false,
             fromParam: true,
             isStruct: true,
@@ -484,13 +559,36 @@ export class HandleFunction {
             llvmType: "ptr",
             type: p.type,
             generic: { generic: { type: p.type } },
-            isConstant: false,
+            isConstant: p.isConstant,
             isGlobal: false,
             isList: true,
             needsLoad: false,
             fromParam: true,
           }),
         );
+      } else if (p?.isFunction) {
+        const returnType = p.returnType.type;
+
+        const retGeneric =
+          returnType === "List"
+            ? this.IRB.getDeepestGeneric(p.returnType.generic)
+            : returnType;
+
+        const generic = returnType === "List" ? p.returnType : null;
+
+        this.IRB.functionParamTable.set(p.name, {
+          name: p.name,
+          returnType,
+          params: p.params,
+          retGeneric,
+          generic,
+          type: "Function",
+          isFunction: true,
+          ptr: p.temp,
+          llvmType: "ptr",
+          isFunctionParam: true,
+          isThread: false,
+        });
       }
       // Map as fn param is disabled in v1
       /* else if (p.isMap) {
@@ -524,7 +622,7 @@ export class HandleFunction {
             ptr,
             llvmType: p.llvmType,
             type: p.type,
-            isConstant: false,
+            isConstant: p.isConstant,
             isGlobal: false,
             needsLoad: true,
             fromParam: true,
@@ -537,14 +635,14 @@ export class HandleFunction {
       this.IRB.emit(local.join("\n"));
     }
 
-    this.block.block(node.body, false);
-    
+    this.block.block(node.body);
+
     if (returnType === "void" && this.hasRet) {
       this.IRB.emitError(
-  "TypeError",
-  `Function '${name}' has a void return type and cannot return a value`,
-  node
-);
+        "TypeError",
+        `Function '${name}' has a void return type and cannot return a value`,
+        node,
+      );
     }
 
     if (!this.hasGuaranteedReturn(node.body)) {
@@ -555,6 +653,8 @@ export class HandleFunction {
       } else if (returnType === "double") {
         this.IRB.emit("ret double 0.0");
       } else if (returnType === "string") {
+        this.IRB.emit("ret ptr null");
+      } else if (this.BUILTIN_STRUCT_ABI.includes(returnType)) {
         this.IRB.emit("ret ptr null");
       } else {
         this.IRB.emit("ret void");
@@ -568,5 +668,6 @@ export class HandleFunction {
     this.IRB.functionBuff.push(this.IRB.currentFunction.body.join("\n"));
 
     this.IRB.currentFunction = prevFunction;
+    this.hasRet = false; // reset state
   }
 }

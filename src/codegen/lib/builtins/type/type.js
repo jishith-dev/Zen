@@ -1,7 +1,8 @@
 export class Type {
-  constructor(IRB, expr) {
+  constructor(IRB, expr, infer) {
     this.IRB = IRB;
     this.expr = expr;
+    this.infer = infer;
   }
 
   type(node) {
@@ -283,6 +284,29 @@ export class Type {
       global: [],
       isConstant: true,
       postOrPrefix: false,
+    };
+  }
+
+  sizeOf(node) {
+    if (node.args.length !== 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function sizeOf() accepts exactly 1 argument",
+        node,
+      );
+    }
+
+    const type = this.infer.infer(node.args[0]);
+    const size = this.IRB.sizeOf(type);
+
+    return {
+      ptr: `${size}`,
+      type: "int",
+      llvmType: "i32",
+      local: [],
+      global: [],
+      isConstant: true,
+      needsLoad: false,
     };
   }
 }

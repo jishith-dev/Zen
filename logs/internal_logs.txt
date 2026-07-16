@@ -11,7 +11,7 @@ empty initialised global struct instance also can be exported and imported
 new builtin function called matchRegex() introduced. real posix ere regex.
 added new list methods 'join' and 'indexOf'
 new namespace function ffi.fn.
-made function name mangling
+made function name mangling - zen_{module_name}_name style
 several bug fixes
 
 introduced new List generic called 'byte' 
@@ -353,8 +353,61 @@ added more functions to http namespace
  - clearHeaders
  - lastStatus
  
+ added timeout for requests
+ 
  new Features:
  
  - thread fn
  - no param or return allowed only void ret.
  - for shared state or variable may leads to race condition, so be careful to use.
+ - new namespace `threads` and one new method threads.waitAll()
+ 
+ - added function accept fn param (callback)
+ - changed struct schema style :
+    old: name string (IDENTIFIER <T>)
+    new: string name (<T> IDENTIFIER)
+    
+    Reason: to consistent with fn param style
+    
+  new namespace debug.
+  
+  methods: pretty()
+  
+  added function declarations 
+  added extern keyword so it can declare forign functions so it avoids mangling names
+  
+  added inbuilt struct called Ptr for pointer works.
+  
+  methods:
+  p.storeInt(int value)
+p.loadInt() int
+
+p.storeDouble(double value)
+p.loadDouble() double
+
+p.storeBool(bool value)
+p.loadBool() bool
+
+p.storeString(string value)
+p.loadString() string
+
+p.storePtr(Ptr value)
+p.loadPtr() Ptr
+
+p.isNull() bool
+p.offset(int bytes) Ptr
+
+p.copyFrom(Ptr src, int bytes)
+p.copyTo(Ptr dst, int bytes)
+p.fill(int value, int bytes)
+
+p.free(p)
+
+uodate doc screen() to accept format in second param
+
+updated const syntax: 
+  old: int const x
+  new: const int x
+  
+added new command zen fmt file /*? /**? --no-comments (? = optional, /* = "non recursive, /** = recursive)
+

@@ -350,9 +350,26 @@ export class Variable {
         }
       }
 
-      this.IRB.emit(
-        `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${expr.raw}`,
-      );
+      if (this.IRB.hasStruct(valExpr.type)) {
+        const struct = this.IRB.getStruct(valExpr.type);
+
+        if (struct.isBuiltin && struct.isOpaque) {
+          this.IRB.emit(`store ptr ${valExpr.ptr}, ptr ${expr.raw}`);
+        } else {
+          this.IRB.declareOneTime(
+            "llvm.memcpy.p0.p0.i64",
+            "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+          );
+
+          this.IRB.emit(
+            `call void @llvm.memcpy.p0.p0.i64(ptr ${expr.raw}, ptr ${valExpr.ptr}, i64 ${struct.byteSize}, i1 false)`,
+          );
+        }
+      } else {
+        this.IRB.emit(
+          `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${expr.raw}`,
+        );
+      }
       return;
     }
 
@@ -382,14 +399,38 @@ export class Variable {
     }
 
     if (orgData?.isStruct) {
+      if (orgData.isConstant) {
+        this.IRB.emitError(
+          "ConstError",
+          `Cannot reassign constant '${name}'`,
+          node,
+        );
+      }
+
       this.IRB.bindLineColumn(node);
 
       let srcPtr;
+
+      if (!expression?.value) {
+        this.IRB.emitError(
+          "SyntaxError",
+          `struct '${orgData.type}' property '${expression.field}' should have Right hand Assignment`,
+          node,
+        );
+      }
 
       if (expression.value.type === "MAP_LITERAL") {
         srcPtr = this.IRB.emitStructLiteral(orgData.type, expression.value);
       } else {
         const rhs = this.expr.handleExpression(expression.value);
+
+        if (!this.IRB.hasStruct(rhs.type)) {
+          this.IRB.emitError(
+            "TypeError",
+            `right-hand side must be a struct, got '${rhs.type}'`,
+            node,
+          );
+        }
 
         srcPtr = rhs.ptr;
       }
@@ -398,7 +439,7 @@ export class Variable {
 
       // BUILTIN POINTER STRUCT
       // Json, JsonArray, JsonObject, etc.
-      if (struct?.isBuiltin && struct.byteSize === 0) {
+      if (struct?.isBuiltin && struct.isOpaque) {
         let t = this.IRB.newTemp();
         if (orgData.needsLoad) {
           this.IRB.emit(`${t} = load ptr, ptr ${srcPtr}`);
@@ -532,7 +573,7 @@ export class Variable {
 
       if (this.IRB.hasStruct(valExpr.type)) {
         const structInfo = this.IRB.getStruct(valExpr.type);
-        if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+        if (structInfo.isBuiltin && structInfo.isOpaque) {
           this.IRB.emit(`store ptr ${valExpr.ptr}, ptr ${ptr}`);
         } else {
           const size = structInfo.byteSize;
@@ -579,6 +620,8 @@ export class Variable {
     this.IRB.bindLineColumn(node);
 
     const val = this.expr.handleExpression(node.value, globalScope);
+
+    this.IRB.emitExpr(val);
 
     // void check
     if (val?.returnType === "void") {
@@ -629,18 +672,26 @@ export class Variable {
         this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
       } else {
         const structInfo = this.IRB.getStruct(val.type);
-        if (structInfo.isBuiltin && structInfo.byteSize === 0) {
+        if (structInfo.isBuiltin && structInfo.isOpaque) {
           // opaque handle (HttpServer, HttpRequest, ...)
-          let tmp;
-          if (globalScope) {
-            tmp = this.IRB.newGlobalTemp();
-            this.IRB.globals.push(`${tmp} = global ptr null`);
+
+          if (isVarDecl) {
+            let tmp;
+
+            if (globalScope) {
+              tmp = this.IRB.newGlobalTemp();
+              this.IRB.globals.push(`${tmp} = global ptr null`);
+            } else {
+              tmp = this.IRB.newTemp();
+              this.IRB.emit(`${tmp} = alloca ptr`);
+            }
+
+            this.IRB.emit(`store ptr ${val.ptr}, ptr ${tmp}`);
+            ptr = tmp;
           } else {
-            tmp = this.IRB.newTemp();
-            this.IRB.emit(`${tmp} = alloca ptr`);
+            // Assignment reuse existing storage
+            this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
           }
-          this.IRB.emit(`store ptr ${val.ptr}, ptr ${tmp}`);
-          ptr = tmp;
         } else {
           const size = this.IRB.getStruct(val.type).byteSize;
 
@@ -720,6 +771,7 @@ export class Variable {
 
   arrayAccessVariable(node, globalScope) {
     const { name, isConstant, value } = node;
+
     let dataType = node.dataType;
     if (dataType === "auto") {
       dataType = this.infer.infer(node);
@@ -742,7 +794,26 @@ export class Variable {
 
     this.IRB.emitExpr(expr);
 
-    this.IRB.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${ptr}`);
+    if (this.IRB.hasStruct(expr.type)) {
+      const structInfo = this.IRB.getStruct(expr.type);
+
+      if (structInfo.isBuiltin && structInfo.isOpaque) {
+        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${ptr}`);
+      } else {
+        const size = structInfo.byteSize;
+
+        this.IRB.declareOneTime(
+          "llvm.memcpy",
+          "declare void @llvm.memcpy(ptr, ptr, i64, i1)",
+        );
+
+        this.IRB.emit(
+          `call void @llvm.memcpy(ptr ${ptr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`,
+        );
+      }
+    } else {
+      this.IRB.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${ptr}`);
+    }
 
     this.IRB.setVar(
       name,
@@ -758,262 +829,6 @@ export class Variable {
       }),
     );
   }
-
-  /* handleMemberArrayReassign(exprNode) {
-      
-      const { b, indices } = this.IRB.getArrayChain(exprNode);
-      
-      // resolve base
-      
-      let basePtr;
-      let llvmType;
-      
-      if (b.type === "MEMBER_ACCESS") {
-        const { base: root, fields } =
-        this.IRB.resolveMemberChainAssign(b);
-        
-        const varInfo = this.IRB.getVar(root, exprNode);
-        
-        // map inside list reassignment handling 
-        
-        if (varInfo.isMap) {
-          
-          this.IRB.declareOneTime(
-            "zen_map_set",
-            "declare void @_zen_map_set(ptr, ptr, ptr)"
-          );
-          
-          this.IRB.declareOneTime(
-            "zen_map_get",
-            "declare void @_zen_map_get(ptr, ptr)"
-          );
-          const baseExpr = this.expr.handleExpression(b);
-          
-          this.IRB.emitExpr(baseExpr);
-          
-          let currentPtr = baseExpr.ptr;
-          
-          for (let i = 0; i < indices.length; i++) {
-            
-            const v = indices[i];
-            
-            const indexExpr = this.expr.handleExpression(v);
-            
-            this.IRB.emitExpr(indexExpr);
-            
-            const isLast = i === indices.length - 1;
-            
-            // MAP KEY ACCESS
-            
-            if (v.type === "string") {
-              
-              this.IRB.declareOneTime(
-                "zen_map_get",
-                "declare ptr @_zen_map_get(ptr, ptr)"
-              );
-              
-              const tmp = this.IRB.newTemp();
-              
-              this.IRB.emit(
-                `${tmp} = call ptr @_zen_map_get(ptr ${currentPtr}, ptr ${indexExpr.ptr})`
-              );
-              
-            
-              
-              if (!isLast) {
-                
-                const loaded = this.IRB.newTemp();
-                
-                this.IRB.emit(
-                  `${loaded} = load ptr, ptr ${tmp}`
-                );
-                
-                currentPtr = loaded;
-              }
-              
-              else {
-                currentPtr = tmp;
-              }
-            }
-            
-            // LIST INDEX ACCESS
-            
-            else {
-              
-              this.IRB.declareOneTime(
-                "zen_list_get",
-                "declare ptr @_zen_list_get(ptr, i32)"
-              );
-              
-              const tmp = this.IRB.newTemp();
-              
-              this.IRB.emit(
-                `${tmp} = call ptr @_zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
-              );
-              
-              if (!isLast) {
-                
-                const loaded = this.IRB.newTemp();
-                
-                this.IRB.emit(
-                  `${loaded} = load ptr, ptr ${tmp}`
-                );
-                
-                currentPtr = loaded;
-              }
-              
-              // keep slot ptr for store
-              else {
-                currentPtr = tmp;
-              }
-            }
-          }
-          
-          const valueExpr = this.expr.handleExpression(exprNode.value);
-          
-          this.IRB.emitExpr(valueExpr);
-          
-          this.IRB.emit(
-            `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${currentPtr}`
-          );
-          
-          return;
-        }
-        
-        
-        basePtr = varInfo.ptr;
-        let structName = varInfo.type;
-        
-        // walk struct chain
-        for (let f of fields) {
-          
-          const structInfo = this.IRB.getStruct(structName);
-          
-          if (!structInfo) {
-            this.IRB.emitError("TypeError", `Cannot access field '${f}' on non-struct type '${structName}'`, exprNode)
-          }
-          
-          const idx = structInfo.fieldMap[f];
-          
-          const isList = structInfo.layout[idx]?.isList;
-          
-          
-          if (isList) {
-            
-            const baseExpr = this.expr.handleExpression(b);
-            
-            this.IRB.emitExpr(baseExpr);
-            
-            const t = this.IRB.newTemp()
-            this.IRB.emit(`${t} = load ptr, ptr ${baseExpr.ptr}`)
-            
-            let currentPtr = t;
-            
-            let tmp
-            for (let i = 0; i < indices.length; i++) {
-              
-              const v = indices[i];
-              
-              const indexExpr = this.expr.handleExpression(v);
-              
-              this.IRB.emitExpr(indexExpr);
-              
-              // LIST INDEX ACCESS
-              
-              this.IRB.declareOneTime(
-                "zen_list_get",
-                "declare ptr @_zen_list_get(ptr, i32)"
-              );
-              
-              tmp = this.IRB.newTemp();
-              
-              this.IRB.emit(
-                `${tmp} = call ptr @_zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`
-              );
-              
-              
-              const loaded = this.IRB.newTemp();
-              
-              this.IRB.emit(
-                `${loaded} = load ptr, ptr ${tmp}`
-              );
-              
-              currentPtr = loaded;
-              
-            }
-            
-            const valueExpr = this.expr.handleExpression(exprNode.value);
-            
-            this.IRB.emitExpr(valueExpr);
-            
-            this.IRB.emit(
-              `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${tmp}`
-            );
-            
-            return;
-            
-          }
-          
-          if (idx === undefined) {
-            this.IRB.emitError("ReferenceError", `Field '${f}' does not exist in struct '${structName}'`, exprNode)
-          }
-          
-          const ptr = this.IRB.newTemp();
-          
-          this.IRB.emit(
-            `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${idx}`
-          );
-          
-          basePtr = ptr;
-          
-          const fieldInfo = structInfo.layout[idx];
-          
-          structName = fieldInfo.type;
-          llvmType = fieldInfo.llvmType;
-        }
-        
-      } else if (b.type === "variable") {
-        
-        const varInfo = this.IRB.getVar(b.name, node);
-        basePtr = varInfo.ptr;
-        llvmType = varInfo.llvmType;
-        
-      } else {
-        this.IRB.emitError("TypeError", `Invalid assignment target — expected an array variable`, exprNode)
-      }
-      
-      
-      
-      let currentPtr = basePtr;
-      let currentType = llvmType;
-      
-      for (let idxNode of indices) {
-        
-        const idxExpr = this.expr.handleExpression(idxNode);
-        
-        this.IRB.emitExpr(idxExpr);
-        
-        const elemPtr = this.IRB.newTemp();
-        
-        this.IRB.emit(
-          `${elemPtr} = getelementptr ${currentType}, ${currentType}* ${currentPtr}, i32 0, i32 ${idxExpr.ptr}`
-        );
-        
-        // shrink type: eg [2 x [2 x i32]] [2 x i32] - i32
-        currentType = this.IRB.getArrayElementType(currentType);
-        
-        currentPtr = elemPtr;
-      }
-      
-      
-      const valExpr = this.expr.handleExpression(exprNode.value);
-      
-      this.IRB.emitExpr(valExpr);
-      
-      this.IRB.emit(
-        `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${currentPtr}`
-      );
-    }*/
 
   handleMemberArrayReassign(exprNode) {
     const { b, indices } = this.IRB.getArrayChain(exprNode);
@@ -1184,9 +999,26 @@ export class Variable {
 
           this.IRB.emitExpr(valueExpr);
 
-          this.IRB.emit(
-            `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${tmp}`,
-          );
+          if (this.IRB.hasStruct(valueExpr.type)) {
+            const struct = this.IRB.getStruct(valueExpr.type);
+
+            if (struct.isBuiltin && struct.isOpaque) {
+              this.IRB.emit(`store ptr ${valueExpr.ptr}, ptr ${tmp}`);
+            } else {
+              this.IRB.declareOneTime(
+                "llvm.memcpy.p0.p0.i64",
+                "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+              );
+
+              this.IRB.emit(
+                `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${valueExpr.ptr}, i64 ${struct.byteSize}, i1 false)`,
+              );
+            }
+          } else {
+            this.IRB.emit(
+              `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${tmp}`,
+            );
+          }
 
           return;
         }

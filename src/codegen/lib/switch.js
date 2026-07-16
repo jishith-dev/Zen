@@ -29,7 +29,7 @@ export class Switch {
 
     for (let i = 0; i < node.cases.length; i++) {
       const caseNode = node.cases[i].value;
-      
+
       const caseConst = this.IRB.constEval(caseNode, "Switch Case");
 
       if (typeof caseConst !== "number") {
@@ -69,7 +69,7 @@ export class Switch {
         body: c.statements,
       };
 
-      this.block.block(blockNode, false);
+      this.block.block(blockNode);
 
       // implicit break
       this.IRB.emit(`br label %${endLabel}`);
@@ -81,7 +81,7 @@ export class Switch {
 
     if (node.defaultCase) {
       for (const stmt of node.defaultCase.statements) {
-        this.block.block(stmt, false);
+        this.block.block(stmt);
       }
     }
 

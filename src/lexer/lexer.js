@@ -15,7 +15,13 @@ import {
 const SORTED_OPERATORS = [...OPERATORS].sort((a, b) => b.length - a.length);
 
 export class Lexer {
-  constructor(source, IRB, offsetLine = 1, offsetColumn = 1) {
+  constructor(
+    source,
+    IRB,
+    offsetLine = 1,
+    offsetColumn = 1,
+    options = { preserveComments: false },
+  ) {
     this.source = source;
     this.pos = 0;
     this.currentChar = this.source[this.pos] || null;
@@ -23,6 +29,7 @@ export class Lexer {
     this.line = offsetLine;
     this.column = offsetColumn;
     this.IRB = IRB;
+    this.options = options;
   }
 
   lineAndColumn() {
@@ -307,21 +314,44 @@ export class Lexer {
   }
 
   skipComment() {
+    let value = "";
+
     while (this.currentChar !== null && this.currentChar !== "\n") {
+      if (this.options.preserveComments) {
+        value += this.currentChar;
+      }
       this.advance();
     }
+
+    if (this.options.preserveComments) {
+      this.addToken(TokenTypes.COMMENT, value);
+    }
+
     this.advance();
   }
 
   skipMultiLineComment() {
+    let value = "";
+
+    if (this.options.preserveComments) value += this.currentChar; // "/"
     this.advance();
+    if (this.options.preserveComments) value += this.currentChar; // "*"
     this.advance();
+
     while (this.currentChar !== null) {
       if (this.currentChar === "*" && this.peek() === "/") {
+        if (this.options.preserveComments) value += "*/";
         this.advance();
         this.advance();
+
+        if (this.options.preserveComments) {
+          this.addTokenAt(TokenTypes.COMMENT, value);
+        }
+
         return;
       }
+
+      if (this.options.preserveComments) value += this.currentChar;
       this.advance();
     }
 

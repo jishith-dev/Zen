@@ -28,7 +28,7 @@ export class IO {
       );
     }
 
-    let format = "%s\n";
+    let format = null;
     let arg = args[0];
 
     // format override
@@ -42,11 +42,6 @@ export class IO {
       }
 
       format = args[1].value;
-
-      // safety: must contain %s
-      if (!format.includes("%s")) {
-        format = format + "%s";
-      }
     }
 
     let expr = null;
@@ -99,19 +94,30 @@ export class IO {
 
     switch (type) {
       case "int":
-        this.IRB.emitScreenInt(valuePtr);
+        this.IRB.emitScreenInt(valuePtr, format || "%d\n");
         break;
 
       case "double":
-        this.IRB.emitScreenDouble(valuePtr);
+        this.IRB.emitScreenDouble(valuePtr, format || "%lf\n");
         break;
 
       case "bool":
+        if (format !== null) {
+          this.IRB.emitError(
+            "ArgumentError",
+            "screen() format string is not supported for bool",
+            node,
+          );
+        }
         this.IRB.emitScreenBool(valuePtr);
         break;
 
       case "string":
-        this.IRB.emitScreenString(valuePtr, format);
+        let strFormat = format || "%s\n";
+        if (!strFormat.includes("%s")) {
+          strFormat = strFormat + "%s";
+        }
+        this.IRB.emitScreenString(valuePtr, strFormat);
         break;
 
       default:

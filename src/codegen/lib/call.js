@@ -10,13 +10,16 @@ import {
   FFI_MAP,
   PATH_MAP,
   HTTPSERVER_MAP,
-  THREAD_MAP
+  THREAD_MAP,
+  DEBUG_MAP,
+  BUILTIN_STRUCT_ABI,
 } from "../../config/config.js";
 
 export class Call {
   constructor(
     IRB,
     expr,
+    moduleName,
     io,
     type,
     string,
@@ -29,9 +32,11 @@ export class Call {
     ffi,
     path,
     httpServer,
-    thread
+    thread,
+    debug,
   ) {
     this.IRB = IRB;
+    this.moduleName = moduleName;
     this.io = io;
     this.type = type;
     this.string = string;
@@ -45,6 +50,7 @@ export class Call {
     this.path = path;
     this.HTTPSERVER = httpServer;
     this.THREAD = thread;
+    this.DEBUG = debug;
   }
 
   setExpression(expr) {
@@ -53,7 +59,7 @@ export class Call {
 
   handleCall(node, asStatement = false, globalScope) {
     this.IRB.guardStackOp("CALL", node);
-    this.IRB.enterFunction(node.name);
+
     const isMethodCall = !!node?.callee;
 
     if (isMethodCall) {
@@ -95,14 +101,7 @@ export class Call {
       }
     }
 
-    let mangledName = isStdFn ? name : `zen_${name}`;
-    if (this.IRB.stdlibMode) {
-      mangledName = name;
-    }
-
     if (node.isInbuilt && !STD_FUNCTIONS.includes(name)) {
-      this.IRB.leaveFunction();
-
       return this.handleBuiltInCall(node, globalScope);
     }
 
@@ -114,8 +113,34 @@ export class Call {
       );
     }
 
-    const fn = this.IRB.getFunction(name, node);
-    const isStruct = this.IRB.hasStruct(fn.returnType);
+    const fn = this.IRB.resolveFunction(name, node);
+
+    const isFunctionParam = !!fn.isFunctionParam;
+
+    const isExternVariadic = fn.isExtern && fn.hasVarArgs;
+
+    const isExternDecl = fn.isExtern;
+
+    let mangledName;
+
+    switch (true) {
+      case isFunctionParam:
+        mangledName = null;
+        break;
+      case isExternDecl:
+        mangledName = name;
+        break;
+      case this.IRB.stdlibMode:
+        mangledName = name;
+        break;
+      case isStdFn:
+        mangledName = name;
+        break;
+      default:
+        mangledName = `zen_${this.moduleName}_${name}`;
+    }
+
+    const isStruct = fn.isStructReturn || this.IRB.hasStruct(fn.returnType);
 
     const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
 
@@ -215,6 +240,42 @@ export class Call {
     }
     */
 
+    if (hasRest && isExternVariadic) {
+      for (const a of args) {
+        if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
+          argStr.push(`${a.llvmType} ${tmp}`);
+        } else {
+          argStr.push(`${a.llvmType} ${a.ptr}`);
+        }
+      }
+
+      // LLVM vararg call
+      const tmp = fn.returnType === "void" ? null : this.IRB.newTemp();
+
+      if (tmp) {
+        local.push(
+          `${tmp} = call ${llvmRetType} @${mangledName}(${argStr.join(", ")})`,
+        );
+      } else {
+        local.push(`call void @${mangledName}(${argStr.join(", ")})`);
+      }
+
+      if (asStatement) {
+        this.IRB.emit(local.join("\n"));
+        this.IRB.globals.push(global.join("\n"));
+      }
+
+      return {
+        ptr: tmp,
+        type: fn.returnType,
+        llvmType: llvmRetType,
+        local: asStatement ? [] : local,
+        global: asStatement ? [] : local,
+      };
+    }
+
     if (hasRest) {
       this.IRB.declareOneTime(
         "zen_list_new",
@@ -242,13 +303,34 @@ export class Call {
         if (a.global?.length) global.push(...a.global);
         if (a.local?.length) local.push(...a.local);
 
-        if (a.isList) {
+        if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
+          let value = a.ptr;
+
+          if (a.needsLoad) {
+            const tmp = this.IRB.newTemp();
+            local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+            value = tmp;
+          }
+
+          argStr.push(`ptr ${value}`);
+        } else if (a?.isStruct) {
+          argStr.push(`ptr ${a.ptr}`);
+        } else if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
+          argStr.push(`ptr ${tmp}`);
+        } else {
+          argStr.push(`${a.llvmType} ${a.ptr}`);
+        }
+
+        /*  if (a.isList) {
           const tmp = this.IRB.newTemp();
           local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
           argStr.push(`ptr ${tmp}`);
         } else {
           argStr.push(`${a.llvmType} ${a.ptr}`);
         }
+        */
       }
 
       // REST TYPE VALIDATION
@@ -301,7 +383,10 @@ export class Call {
 
       for (let i = 0; i < count; i++) {
         const a = restArgs[i];
-
+        if (a.isList) {
+          argStr.push(`ptr ${a.ptr}`);
+          continue;
+        }
         const tmp = this.IRB.newTemp();
 
         local.push(`${tmp} = alloca ${llvmType}`);
@@ -316,17 +401,40 @@ export class Call {
       let callTmp = null;
 
       if (fn.returnType === "void" || isStruct) {
-        const tmp = this.IRB.newTemp();
-        if (isStruct) {
-          local.push(`${tmp} = alloca %${fn.returnType}`);
-        }
+        if (isStruct && fn.nativeReturnABI) {
+          const tmp = this.IRB.newTemp();
 
-        local.push(`call void @${mangledName}(${argStr.join(", ")})`);
+          local.push(
+            `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${callArgs.join(", ")})`,
+          );
+          return {
+            ptr: tmp,
+            type: fn.returnType,
+            llvmType: "ptr",
+            isStruct: true,
+            local: local,
+            global: global,
+          };
+        } else if (isStruct) {
+          const tmp = this.IRB.newTemp();
+
+          local.push(`${tmp} = alloca %${fn.returnType}`);
+
+          local.push(
+            `call void @${mangledName}(ptr sret(%${fn.returnType}) ${tmp}, ${argStr.join(", ")})`,
+          );
+        } else {
+          const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
+          local.push(`call void ${target}(${argStr.join(", ")})`);
+        }
       } else {
         callTmp = this.IRB.newTemp();
 
+        const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
         local.push(
-          `${callTmp} = call ${llvmRetType} @${name}(${argStr.join(", ")})`,
+          `${callTmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`,
         );
       }
 
@@ -367,7 +475,17 @@ export class Call {
     // NORMAL CALL
 
     for (const a of args) {
-      if (a?.isStruct) {
+      if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
+        let value = a.ptr;
+
+        if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+          value = tmp;
+        }
+
+        argStr.push(`ptr ${value}`);
+      } else if (a?.isStruct) {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
@@ -379,27 +497,61 @@ export class Call {
     }
 
     if (fn.returnType === "void" || isStruct) {
-      const tmp = this.IRB.newTemp();
-      if (isStruct) {
+      // STRUCT RETURN
+
+      if (isStruct && fn.nativeReturnABI) {
+        const tmp = this.IRB.newTemp();
+
+        local.push(
+          `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${argStr.join(", ")})`,
+        );
+
+        if (asStatement) {
+          this.IRB.emit(local.join("\n"));
+          this.IRB.globals.push(global.join("\n"));
+        }
+
+        return {
+          ptr: tmp,
+          type: fn.returnType,
+          llvmType: "ptr",
+          isStruct: true,
+          local: asStatement ? [] : local,
+          global: asStatement ? [] : global,
+        };
+      } else if (isStruct) {
+        const tmp = this.IRB.newTemp();
+
         local.push(`${tmp} = alloca %${fn.returnType}`);
 
-        const args = [`ptr sret(%${fn.returnType}) ${tmp}`, ...argStr];
+        const callArgs = [`ptr sret(%${fn.returnType}) ${tmp}`, ...argStr];
 
-        local.push(`call void @${mangledName}(${args.join(", ")})`);
-      } else {
-        
-        if (fn.isThread) {
+        local.push(
+          `call void ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${callArgs.join(", ")})`,
+        );
 
-       this.IRB.declareOneTime("_zen_thread", "declare void @_zen_thread(ptr)");
-          
+        return {
+          ptr: tmp,
+          type: fn.returnType,
+          llvmType: "ptr",
+          isStruct: true,
+          local: local,
+          global: global,
+        };
+      }
+
+      // VOID RETURN
+      if (fn.isThread) {
+        this.IRB.declareOneTime(
+          "_zen_thread",
+          "declare void @_zen_thread(ptr)",
+        );
+
         local.push(`call void @_zen_thread(ptr @${mangledName})`);
-          
-        } else {
-        
-        local.push(`call void @${mangledName}(${argStr.join(", ")})`);
-        
-        }
-        
+      } else {
+        const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
+        local.push(`call void ${target}(${argStr.join(", ")})`);
       }
 
       if (asStatement) {
@@ -408,24 +560,24 @@ export class Call {
       }
 
       return {
-        ptr: isStruct ? tmp : null,
-        type: isStruct ? fn.returnType : "void",
-        llvmType: isStruct ? "ptr" : "void",
+        ptr: null,
+        type: "void",
+        llvmType: "void",
         local: asStatement ? [] : local,
         global: asStatement ? [] : global,
         endLabel: null,
         isVarRef: false,
         postOrPrefix: false,
         layout,
-        isStruct,
+        isStruct: false,
       };
     }
 
     const tmp = this.IRB.newTemp();
 
-    local.push(
-      `${tmp} = call ${llvmRetType} @${mangledName}(${argStr.join(", ")})`,
-    );
+    const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
+    local.push(`${tmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`);
 
     if (asStatement) {
       this.IRB.emit(local.join("\n"));
@@ -503,14 +655,16 @@ export class Call {
       case "length":
         return this.string.length(node, globalScope);
 
+      case "sizeOf":
+        return this.type.sizeOf(node, globalScope);
+
       case "matchRegex":
         return this.string.matchRegex(node);
 
       // these are same pattern functions
       // for future modification and semantic understanding of compiler internal we keep this now.
-      
+
       case name: {
-        
         const os = OS_MAP[name];
         const file = FILE_MAP[name];
         const time = TIME_MAP[name];
@@ -521,6 +675,7 @@ export class Call {
         const PATH = PATH_MAP[name];
         const HTTPSERVER = HTTPSERVER_MAP[name];
         const THREAD = THREAD_MAP[name];
+        const DEBUG = DEBUG_MAP[name];
 
         if (os) {
           return this.os.zenNativeOSCall(
@@ -612,7 +767,7 @@ export class Call {
             HTTPSERVER[3],
             name,
           );
-        } else if (THREAD){
+        } else if (THREAD) {
           return this.THREAD.zenTHREAD(
             node,
             globalScope,
@@ -621,7 +776,17 @@ export class Call {
             THREAD[2],
             THREAD[3],
             name,
-            );
+          );
+        } else if (DEBUG) {
+          return this.DEBUG.zenDEBUG(
+            node,
+            globalScope,
+            DEBUG[0],
+            DEBUG[1],
+            DEBUG[2],
+            DEBUG[3],
+            name,
+          );
         }
       }
 

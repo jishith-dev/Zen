@@ -84,6 +84,7 @@ export class ZenMap {
         type: "Map",
         llvmType: "ptr",
         isMap: true,
+        isConstant: node.isConstant,
         isGlobal: globalScope,
         layout,
         needsLoad: true,
