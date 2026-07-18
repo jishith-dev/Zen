@@ -69,11 +69,6 @@ export class IO {
 
     // derived types (safe guards)
     if (expr) {
-      if (expr.isMap) {
-        valuePtr = this.IRB.newGlobalString("Map").name;
-        type = "string";
-      }
-
       if (expr.isArray) {
         valuePtr = this.IRB.newGlobalString("<array>").name;
         type = "string";

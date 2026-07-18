@@ -10,7 +10,6 @@ import { Switch } from "./lib/switch.js";
 import { Module } from "./lib/moduleAnalyser.js";
 import { Expression } from "./lib/expression.js";
 import { Enum } from "./lib/enum.js";
-import { ZenMap } from "./lib/map.js";
 import { ZenList } from "./lib/list.js";
 import { Struct } from "./lib/struct.js";
 import { Type } from "./lib/builtins/type/type.js";
@@ -39,6 +38,7 @@ import {
   RESERVED_FUNCTIONS,
   COMPOUND_OPERATORS,
   BUILTIN_STRUCT_ABI,
+  BUILTIN_STRUCTS
 } from "../config/config.js";
 
 export class CodeGen {
@@ -49,7 +49,6 @@ export class CodeGen {
     this.IRB = new IRBuilder(this.moduleName);
     this.expr = new Expression(this.IRB);
     this.time = new Time(this.IRB, this.expr);
-    this.map = new ZenMap(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
     this.thread = new Thread(this.IRB, this.expr);
@@ -106,6 +105,7 @@ export class CodeGen {
       moduleFiles,
       this.moduleName,
       BUILTIN_STRUCT_ABI,
+      BUILTIN_STRUCTS
     );
     this.struct = new Struct(this.IRB, this.expr, this.fn);
     this.variable = new Variable(this.IRB, this.expr, this.call, this.infer);
@@ -424,10 +424,6 @@ define void @_assignSeed () {
 
       case "ENUM":
         this.enum.handleEnum(node);
-        break;
-
-      case "MAP_DECLARATION":
-        this.map.handleMap(node, globalScope);
         break;
 
       case "BREAK":

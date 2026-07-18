@@ -57,6 +57,14 @@ export class Call {
     this.expr = expr;
   }
 
+  // A struct returns/passes as a raw `ptr` (no sret, no alloca-by-value)
+  // if it's either opaque (unsized, e.g. Map/Json) OR explicitly listed
+  // in BUILTIN_STRUCT_ABI (sized, but designed to be passed as ptr, e.g. Ptr).
+  isPtrReturn(typeName) {
+    const struct = this.IRB.hasStruct(typeName) ? this.IRB.getStruct(typeName) : false;
+    return !!struct?.isOpaque || BUILTIN_STRUCT_ABI.includes(typeName);
+  }
+
   handleCall(node, asStatement = false, globalScope) {
     this.IRB.guardStackOp("CALL", node);
 
@@ -68,6 +76,7 @@ export class Call {
         field: node.callee.field,
         object: node.callee.object,
         args: node.args,
+        generic: node.generic,
       };
 
       const valExpr = this.expr.handleExpression(fakeNode);
@@ -83,6 +92,7 @@ export class Call {
         endLabel: null,
         isVarRef: false,
         postOrPrefix: false,
+        isDirectCall: valExpr?.isDirectCall,
         isList: valExpr?.isList,
         generic: valExpr?.generic,
         isStruct: valExpr?.isStruct,
@@ -142,6 +152,8 @@ export class Call {
 
     const isStruct = fn.isStructReturn || this.IRB.hasStruct(fn.returnType);
 
+    const isNativeABI = isStruct && this.isPtrReturn(fn.returnType);
+
     const llvmRetType = isStruct ? "void" : this.IRB.getLLVMType(fn.returnType);
 
     const hasRest = fn.params.some((p) => p.isRest);
@@ -166,7 +178,7 @@ export class Call {
 
       let val;
 
-      if (arg.type === "MAP_LITERAL") {
+      if (arg.type === "STRUCT_LITERAL") {
         // Determine the expected struct type from the param's declared type
         const paramType = param?.type?.type || param?.type;
 
@@ -178,13 +190,15 @@ export class Call {
           );
         }
 
-        const ptr = this.IRB.emitStructLiteral(paramType, arg);
+        const s = this.IRB.emitStructLiteral(paramType, arg);
+        const isOpaqueArg = this.isPtrReturn(paramType);
 
         val = {
-          ptr,
+          ptr: s.ptr,
           type: paramType,
-          llvmType: `%${paramType}`,
+          llvmType: isOpaqueArg ? "ptr" : `%${paramType}`,
           isStruct: true,
+          needsLoad: s.needsLoad,
           local: [],
           global: [],
           isVarRef: false,
@@ -214,31 +228,7 @@ export class Call {
 
     this.IRB.validateCallArgs(fn, args, hasRest, restIndex, node);
 
-    let layout = null;
-    if (fn.returnType === "Map") {
-      layout = fn.layout;
-    }
-
     let argStr = [];
-
-    // Map as param in functions are disabled in v1
-    /*for (let i = 0; i < args.length; i++) {
-      const a = args[i];
-      const param = fn.params[i];
-      
-    
-      if (param?.isMap || param?.type.type === "Map") {
-        const argNode = finalArgs[i];
-        const argName = argNode?.name; 
-        const layoutt = this.IRB.maps.get(argName);
-        layout = layoutt;
-        if (layout) {
-          
-          this.IRB.maps.set(param.name, layoutt); 
-        }
-      }
-    }
-    */
 
     if (hasRest && isExternVariadic) {
       for (const a of args) {
@@ -322,15 +312,6 @@ export class Call {
         } else {
           argStr.push(`${a.llvmType} ${a.ptr}`);
         }
-
-        /*  if (a.isList) {
-          const tmp = this.IRB.newTemp();
-          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
-          argStr.push(`ptr ${tmp}`);
-        } else {
-          argStr.push(`${a.llvmType} ${a.ptr}`);
-        }
-        */
       }
 
       // REST TYPE VALIDATION
@@ -401,17 +382,18 @@ export class Call {
       let callTmp = null;
 
       if (fn.returnType === "void" || isStruct) {
-        if (isStruct && fn.nativeReturnABI) {
+        if (isNativeABI) {
           const tmp = this.IRB.newTemp();
 
           local.push(
-            `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${callArgs.join(", ")})`,
+            `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${argStr.join(", ")})`,
           );
           return {
             ptr: tmp,
             type: fn.returnType,
             llvmType: "ptr",
             isStruct: true,
+            needsLoad: false,
             local: local,
             global: global,
           };
@@ -444,8 +426,6 @@ export class Call {
       }
       const isList = fn.returnType === "List";
 
-      const isMap = fn.returnType === "Map";
-
       if (isList) {
         this.IRB.declareOneTime(
           "ZenList",
@@ -463,10 +443,8 @@ export class Call {
         endLabel: null,
         isVarRef: false,
         postOrPrefix: false,
-        layout,
         needsLoad: false,
         isList,
-        isMap,
         isStruct,
         isDirectCall: true,
       };
@@ -475,6 +453,7 @@ export class Call {
     // NORMAL CALL
 
     for (const a of args) {
+      
       if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
         let value = a.ptr;
 
@@ -486,7 +465,15 @@ export class Call {
 
         argStr.push(`ptr ${value}`);
       } else if (a?.isStruct) {
-        argStr.push(`ptr ${a.ptr}`);
+        
+        let v = a.ptr;
+        if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+          v = tmp;
+        }
+        
+        argStr.push(`ptr ${v}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
         local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
@@ -499,7 +486,7 @@ export class Call {
     if (fn.returnType === "void" || isStruct) {
       // STRUCT RETURN
 
-      if (isStruct && fn.nativeReturnABI) {
+      if (isNativeABI) {
         const tmp = this.IRB.newTemp();
 
         local.push(
@@ -516,6 +503,7 @@ export class Call {
           type: fn.returnType,
           llvmType: "ptr",
           isStruct: true,
+          needsLoad: false,
           local: asStatement ? [] : local,
           global: asStatement ? [] : global,
         };
@@ -568,7 +556,6 @@ export class Call {
         endLabel: null,
         isVarRef: false,
         postOrPrefix: false,
-        layout,
         isStruct: false,
       };
     }
@@ -585,8 +572,6 @@ export class Call {
     }
 
     const isList = fn.returnType === "List";
-
-    const isMap = fn.returnType === "Map";
 
     if (isList) {
       this.IRB.declareOneTime(
@@ -605,10 +590,8 @@ export class Call {
       isVarRef: false,
       generic: fn.returnType === "List" ? fn.generic : null,
       postOrPrefix: false,
-      layout,
       needsLoad: false, // call not need load
       isList,
-      isMap,
       isStruct,
       isDirectCall: true,
     };

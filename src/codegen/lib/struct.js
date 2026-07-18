@@ -166,9 +166,12 @@ export class Struct {
     let ptr;
     let isRet = false;
 
-    if (value?.type === "MAP_LITERAL") {
+    if (value?.type === "STRUCT_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      ptr = this.IRB.emitStructLiteral(structName, value);
+
+      let t = this.IRB.emitStructLiteral(structName, value, globalScope);
+
+      ptr = t.ptr;
     } else if (value === null) {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
     } else {
@@ -180,7 +183,15 @@ export class Struct {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
 
       if (isOpaque) {
-        this.IRB.emit(`store ptr ${expr.ptr}, ptr ${ptr}`);
+        let valuePtr = expr.ptr;
+
+        if (expr.needsLoad) {
+          const loaded = this.IRB.newTemp();
+          this.IRB.emit(`${loaded} = load ptr, ptr ${expr.ptr}`);
+          valuePtr = loaded;
+        }
+
+        this.IRB.emit(`store ptr ${valuePtr}, ptr ${ptr}`);
       } else {
         this.IRB.declareOneTime(
           "llvm.memcpy.p0.p0.i64",
@@ -221,155 +232,6 @@ export class Struct {
       this.IRB.emitExpr(variable);
     } else {
       variable = this.IRB.getVar(base);
-    }
-
-    if (variable?.isMap) {
-      const value = this.expr.handleExpression(node.value);
-
-      this.IRB.emitExpr(value);
-
-      let valuePtr = this.IRB.castToPtr(value);
-
-      // CHAIN RESOLUTION
-
-      let currentLayout = this.IRB.maps.get(base);
-
-      if (!currentLayout) {
-        this.IRB.emitError(
-          "InternalError",
-          `Unknown map layout: ${base}`,
-          node,
-        );
-      }
-
-      // runtime pointer starts from ROOT object
-      let currentPtr =
-        base === "this"
-          ? this.IRB.getVar("this").ptr
-          : this.IRB.getVar(base).ptr;
-
-      let needsLoad = variable.needsLoad;
-
-      // walk chain except last field
-      for (let i = 0; i < fields.length; i++) {
-        const field = fields[i];
-
-        const meta = currentLayout[field];
-
-        if (!meta) {
-          this.IRB.emitError(
-            "ReferenceError",
-            `Cannot access '${field}' on undefined map`,
-            node,
-          );
-        }
-
-        const keyPtr = this.IRB.newGlobalString(field);
-
-        const temp = this.IRB.newTemp();
-        let t;
-
-        this.IRB.declareOneTime(
-          "zen_map_get",
-          "declare ptr @_zen_map_get(ptr, ptr)",
-        );
-
-        if (needsLoad) {
-          t = this.IRB.newTemp();
-          this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`);
-          needsLoad = false;
-        } else {
-          t = currentPtr;
-        }
-        this.IRB.emit(
-          `${temp} = call ptr @_zen_map_get(ptr ${t}, ptr ${keyPtr.name})`,
-        );
-
-        currentPtr = temp;
-
-        // LAYOUT WALK
-
-        if (meta.isMap) {
-          currentLayout = meta.layout;
-        }
-
-        // stop before last
-        if (i === fields.length - 1) {
-          break;
-        }
-      }
-
-      const keyPtr = this.IRB.newGlobalString(node.field);
-
-      let t;
-
-      if (needsLoad && !variable.fromParam) {
-        t = this.IRB.newTemp();
-        this.IRB.emit(`${t} = load ptr, ptr ${currentPtr}`);
-      } else {
-        t = currentPtr;
-      }
-
-      let depth = 0;
-      let deepestType = 0;
-      let typeId;
-      const TYPE_MAP = {
-        int: 1,
-        bool: 2,
-        double: 3,
-        string: 4,
-        List: 5,
-        map: 6,
-      };
-      if (value?.isList) {
-        depth = this.getListDepth(value.generic);
-
-        const deepest = this.getDeepestGeneric(value.generic);
-
-        deepestType = TYPE_MAP[deepest];
-      }
-
-      if (value?.isList) {
-        typeId = TYPE_MAP.List;
-      } else if (value?.isMap) {
-        typeId = TYPE_MAP.map;
-      } else {
-        typeId = TYPE_MAP[value.type];
-      }
-
-      this.emit(
-        `call void @_zen_map_set(ptr ${t}, ptr ${keyPtr.name}, ptr ${valuePtr}, i32 ${typeId}, i32 ${depth}, i32 ${deepestType})`,
-      );
-
-      // LAYOUT UPDATE
-
-      const entry = {
-        type: value.type,
-        llvmType: this.IRB.getLLVMType(value.type),
-        isMap: false,
-      };
-
-      if (value?.isList) {
-        Object.assign(entry, {
-          type: "List",
-          llvmType: "ptr",
-          isList: true,
-          elementType: value.generic?.generic || "dynamic",
-        });
-      }
-
-      if (value?.isMap) {
-        Object.assign(entry, {
-          type: "Map",
-          llvmType: "ptr",
-          isMap: true,
-          layout: this.IRB.maps.get(value.type) || {},
-        });
-      }
-
-      currentLayout[node.field] = entry;
-
-      return;
     }
 
     // struct assign

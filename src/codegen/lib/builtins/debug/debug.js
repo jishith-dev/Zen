@@ -112,7 +112,7 @@ export class DEBUG {
     const arg = node.args[0];
     const expr = this.expr.handleExpression(arg);
 
-    if (!expr?.isMap && !expr?.isList && !expr?.isStruct) {
+    if (!expr?.type === "Map" && !expr?.isList && !expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `Function debug.pretty() expects a Map, List<T>, or struct, but got ${expr.type}`,
@@ -180,7 +180,7 @@ export class DEBUG {
     }
 
     // Map
-    if (expr.isMap) {
+    if (expr.type === "Map") {
       this.IRB.declareOneTime(
         "_debug_pretty_map",
         "declare void @_debug_pretty_map(ptr, i32)",

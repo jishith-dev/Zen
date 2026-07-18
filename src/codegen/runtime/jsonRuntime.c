@@ -29,7 +29,6 @@ typedef struct {
 } ZenJsonObject;
 
 struct ZenJson {
-  int freed;
   ZenJsonType type;
   union {
     int b;
@@ -49,9 +48,6 @@ static void zen_error(const char *type, const char *msg) {
 static void json_check_alive(ZenJson *j) {
   if (!j)
     zen_error("MemoryError", "Json is null");
-
-  if (j->freed)
-    zen_error("MemoryError", "Use-after-free: Json has already been freed");
 }
 
 static ZenJson *json_new(ZenJsonType type) {
@@ -59,7 +55,6 @@ static ZenJson *json_new(ZenJsonType type) {
   if (!j)
     zen_error("MemoryError", "Failed to allocate memory for Json node");
 
-  j->freed = 0; // alive state
   j->type = type;
   return j;
 }
@@ -561,10 +556,8 @@ ZenJson *_zen_json_arrayGetArray(ZenJson *arr, int index) {
 }
 
 void _zen_json_free(ZenJson *j) {
-  if (!j || j->freed)
+  if (!j)
     return;
-
-  j->freed = 1; // freed update flag
 
   switch (j->type) {
   case ZEN_JSON_STRING:

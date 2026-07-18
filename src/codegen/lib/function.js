@@ -1,5 +1,5 @@
 export class HandleFunction {
-  constructor(IRB, expr, block, infer, g, moduleName, abi) {
+  constructor(IRB, expr, block, infer, g, moduleName, abi, S) {
     this.IRB = IRB;
     this.block = block;
     this.expr = expr;
@@ -9,6 +9,15 @@ export class HandleFunction {
     this.hasRet = false;
     this.moduleName = moduleName;
     this.BUILTIN_STRUCT_ABI = abi;
+    this.BUILTIN_STRUCTS = S;
+  }
+
+  // A struct returns/passes as a raw `ptr` (no sret, no alloca-by-value)
+  // if it's either opaque (unsized, e.g. Map/Json) OR explicitly listed
+  // in BUILTIN_STRUCT_ABI (sized, but designed to be passed as ptr, e.g. Ptr).
+  isPtrReturn(typeName) {
+    const struct = this.IRB.hasStruct(typeName) ? this.IRB.getStruct(typeName) : false;
+    return !!struct?.isOpaque || this.BUILTIN_STRUCT_ABI.includes(typeName);
   }
 
   collectReturns(node) {
@@ -166,16 +175,16 @@ export class HandleFunction {
     }
 
     const isStruct = this.IRB.hasStruct(funcType);
-    const isNativeABI = this.BUILTIN_STRUCT_ABI.includes(funcType);
+    const isNativeABI = this.isPtrReturn(funcType);
 
     if (isStruct && !isNativeABI) {
-      // STRUCT RETURN
+      // STRUCT RETURN (sret, value semantics)
       const params = this.IRB.currentFunction.params;
       const struct = this.IRB.getStruct(funcType);
 
       let expr = null;
 
-      if (node.value.type === "MAP_LITERAL") {
+      if (node.value.type === "STRUCT_LITERAL") {
         expr = {
           isStruct: true,
           type: funcType,
@@ -183,7 +192,13 @@ export class HandleFunction {
 
         const ptr = this.IRB.emitStructLiteral(funcType, node.value);
 
-        expr.ptr = ptr;
+        if (ptr.needsLoad) {
+          const t = this.IRB.newTemp();
+          this.IRB.emit(`${t} = load ptr, ptr ${ptr.ptr}`);
+          ptr.ptr = t;
+        }
+
+        expr.ptr = ptr.ptr;
       } else {
         expr = this.expr.handleExpression(node.value);
         this.IRB.emitExpr(expr);
@@ -231,6 +246,21 @@ export class HandleFunction {
       this.IRB.emit("ret void");
       return;
     }
+    
+    if (isStruct && isNativeABI && node.value.type === "STRUCT_LITERAL") {
+      const ptr = this.IRB.emitStructLiteral(funcType, node.value);
+
+      let value = ptr.ptr;
+
+      if (ptr.needsLoad) {
+        const t = this.IRB.newTemp();
+        this.IRB.emit(`${t} = load ptr, ptr ${ptr.ptr}`);
+        value = t;
+      }
+
+      this.IRB.emit(`ret ptr ${value}`);
+      return;
+    }
 
     let listGeneric = this.IRB.currentFunction.listGeneric; // list return have type context. so pass it to handleExpression
 
@@ -265,31 +295,6 @@ export class HandleFunction {
         this.IRB.emit(`ret ptr ${t}`);
       }
 
-      return;
-    }
-
-    if (expr.isMap) {
-      if (node.value.type !== "variable") {
-        this.IRB.emitError(
-          "SemanticError",
-          "only Map reference can return",
-          node,
-        );
-      }
-      let loaded;
-
-      if (expr.needsLoad) {
-        loaded = this.IRB.newTemp();
-
-        this.IRB.emit(`${loaded} = load ptr, ptr ${expr.ptr}`);
-      } else {
-        loaded = expr.ptr;
-      }
-      this.IRB.emit(`ret ptr ${loaded}`);
-
-      const layout = expr.layout;
-
-      this.IRB.functions.get(name).layout = layout;
       return;
     }
 
@@ -391,7 +396,7 @@ export class HandleFunction {
 
     const isSret = this.IRB.hasStruct(returnType);
 
-    if (isSret && this.BUILTIN_STRUCT_ABI.includes(returnType)) {
+    if (isSret && this.isPtrReturn(returnType)) {
       llvmReturnType = "ptr";
     } else if (isSret) {
       llvmReturnType = "void";
@@ -504,6 +509,7 @@ export class HandleFunction {
           }),
         );
       } else if (p?.isStruct && this.BUILTIN_STRUCT_ABI.includes(p.type)) {
+        // sized-but-ptr-ABI structs (e.g. Ptr) — always a raw ptr, no load needed
         this.IRB.setVar(
           p.name,
           this.IRB.createData({
@@ -522,6 +528,29 @@ export class HandleFunction {
 
         const localPtr = `%${p.name}.addr`;
 
+        if (struct?.isBuiltin && struct.isOpaque) {
+          // reference semantics — param value is already a ptr, just store it
+          local.push(`${localPtr} = alloca ptr`);
+          local.push(`store ptr ${p.ptr}, ptr ${localPtr}`);
+
+          this.IRB.setVar(
+            p.name,
+            this.IRB.createData({
+              ptr: localPtr,
+              llvmType: "ptr",
+              type: p.type,
+              isConstant: p.isConstant,
+              isGlobal: false,
+              fromParam: true,
+              isStruct: true,
+              needsLoad: true,
+            }),
+          );
+
+          continue;
+        }
+
+        // existing value-struct path (unchanged)
         local.push(`${localPtr} = alloca %${p.type}`);
 
         this.IRB.declareOneTime(
@@ -589,21 +618,7 @@ export class HandleFunction {
           isFunctionParam: true,
           isThread: false,
         });
-      }
-      // Map as fn param is disabled in v1
-      /* else if (p.isMap) {
-        this.IRB.setVar(p.name, this.IRB.createData({
-          ptr: p.ptr,
-          llvmType: "ptr",
-          type: "ptr",
-          isConstant: false,
-          isGlobal: false,
-          isMap: true,
-          fromParam: true,
-          needsLoad: false
-        }));
-      } */
-      else {
+      } else {
         let ptr = `%${p.name}.addr`;
 
         // alloca
@@ -611,9 +626,6 @@ export class HandleFunction {
 
         // store incoming param (p.temp)
         local.push(`store ${p.llvmType} ${p.temp}, ptr ${ptr}`);
-
-        // const t = this.IRB.newTemp()
-        // local.push(`${t} = load ${p.llvmType}, ptr ${ptr}`);
 
         // update symbol table
         this.IRB.setVar(
@@ -654,7 +666,7 @@ export class HandleFunction {
         this.IRB.emit("ret double 0.0");
       } else if (returnType === "string") {
         this.IRB.emit("ret ptr null");
-      } else if (this.BUILTIN_STRUCT_ABI.includes(returnType)) {
+      } else if (this.isPtrReturn(returnType)) {
         this.IRB.emit("ret ptr null");
       } else {
         this.IRB.emit("ret void");

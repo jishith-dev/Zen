@@ -98,7 +98,7 @@ export class Parser {
       const stmt = this.parseStatement();
       if (stmt) body.push(stmt);
 
-      //  consume statement separator
+      //  consume statement sparator
       if (this.match("NEWLINE")) {
         this.advance();
       }
@@ -227,7 +227,8 @@ export class Parser {
     if (
       this.matchKeyword("await") &&
       this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-      this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS"
+      (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+        this.tokens[this.pos + 2]?.value === "<")
     ) {
       this.advance();
 
@@ -243,8 +244,13 @@ export class Parser {
       );
     }
 
-    if (this.match("IDENTIFIER") && this.peek("LEFT_PARENTHESIS")) {
+    if (
+      this.match("IDENTIFIER") &&
+      (this.peek("LEFT_PARENTHESIS") ||
+        this.tokens[this.pos + 1]?.value === "<")
+    ) {
       const name = this.current().value;
+
       this.advance();
       return this.node(this.parseCall(name, false));
     }
@@ -336,7 +342,7 @@ export class Parser {
     } else {
       // sugar: Map a => Map a = {}
       value = {
-        type: "MAP_LITERAL",
+        type: "STRUCT_LITERAL",
         properties: [],
       };
     }
@@ -411,7 +417,7 @@ export class Parser {
     this.expect("BLOCK_END");
 
     return this.node({
-      type: ParserTypes.MAP_LITERAL,
+      type: ParserTypes.STRUCT_LITERAL,
       properties,
     });
   }
@@ -842,7 +848,7 @@ export class Parser {
     }
 
     if (this.matchKeyword("fn")) {
-      return this.parseFnParam();
+      return this.parseFParam();
     }
 
     if (this.matchKeyword("Map")) {
@@ -1034,16 +1040,6 @@ export class Parser {
         name = this.expect("IDENTIFIER").value;
       }
 
-      // Zen v1 limitation:
-      // Map parameters are temporarily disabled.
-
-      if (t.type === "Map") {
-        this.IRB.emitError(
-          "SemanticError",
-          "Map values cannot be used as function parameters.",
-        );
-      }
-
       this.skipNewlines();
       let isRest = false;
 
@@ -1206,32 +1202,6 @@ export class Parser {
         body,
       });
     }
-
-    // LOOP IN (MAP)
-    // loop (key in map)
-    /*
-    if (isLoopIn) {
-      
-      const keyName = this.expect("IDENTIFIER").value;
-      
-      this.expectKeyword("in");
-      
-      const iterable = this.parseExpression();
-      this.expect("RIGHT_PARENTHESIS");
-      
-      const body =
-        this.match("BLOCK_START") ?
-        this.parseBlock() :
-        this.parseStatement();
-      
-      return this.node({
-        type: ParserTypes.LOOP_IN,
-        keyName,
-        iterable,
-        body
-      });
-    }
-    */
 
     // loop (init, condition, update)
 
@@ -1765,6 +1735,12 @@ export class Parser {
         continue;
       }
 
+      if (this.current()?.value === "<") {
+        this.advance(); // <
+        expr.generic = this.parseListGeneric();
+        this.advance(); // >
+      }
+
       if (this.match("LEFT_PARENTHESIS")) {
         this.advance();
 
@@ -1795,6 +1771,7 @@ export class Parser {
 
         expr = {
           type: ParserTypes.CALL,
+          generic: expr.generic,
           callee: expr,
           isAwait,
           args,
@@ -1918,9 +1895,28 @@ export class Parser {
     if (token.type === "IDENTIFIER") {
       this.advance();
 
-      // function call
-      if (this.match("LEFT_PARENTHESIS")) {
-        return this.parseCall(token.value, false);
+      if (
+        this.matchKeyword("await") &&
+        this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+        (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+          this.tokens[this.pos + 2]?.value === "<")
+      ) {
+        this.advance();
+
+        const name = this.current().value;
+
+        this.advance();
+
+        return this.node(
+          this.parseCall(
+            name,
+            true, // isAwait
+          ),
+        );
+      }
+
+      if (this.match("LEFT_PARENTHESIS") || this.current()?.value === "<") {
+        return this.node(this.parseCall(token.value, false));
       }
 
       return this.node({
@@ -1993,6 +1989,24 @@ export class Parser {
   // FUNCTION CALL
 
   parseCall(name, isAwait = false) {
+    let generic = null;
+
+    if (this.current().value === "<") {
+      this.advance();
+
+      generic = this.parseListGeneric();
+
+      if (this.current().value === ">") {
+        this.advance();
+      } else {
+        this.IRB.emitError(
+          "SyntaxError",
+          "Expected '>' after generic type",
+          this.lineAndColumn(),
+        );
+      }
+    }
+
     this.expect("LEFT_PARENTHESIS");
     this.skipNewlines();
     const args = [];
@@ -2016,6 +2030,7 @@ export class Parser {
       isInbuilt: BUILTIN_FUNCTIONS.includes(name),
       type: ParserTypes.CALL,
       name,
+      generic,
       isAwait,
       args,
     });

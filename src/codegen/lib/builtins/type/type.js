@@ -29,8 +29,6 @@ export class Type {
     let type;
     if (expr.llvmType.startsWith("[")) {
       type = `array<${expr.type}>`;
-    } else if (expr.isMap) {
-      type = "Map";
     } else if (expr.isList) {
       type = this.IRB.generateScreenString(expr?.generic);
     } else {
@@ -66,12 +64,7 @@ export class Type {
 
     this.IRB.emitExpr(expr);
 
-    if (
-      expr?.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr?.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `Int() cannot cast array or Map or List to int`,
@@ -106,12 +99,7 @@ export class Type {
 
     this.IRB.emitExpr(expr);
 
-    if (
-      expr.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `toInt() cannot cast array or Map or List to int`,
@@ -143,12 +131,7 @@ export class Type {
     }
 
     const expr = this.expr.handleExpression(args[0]);
-    if (
-      expr.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `Double() cannot cast array or Map or List to double`,
@@ -182,12 +165,7 @@ export class Type {
     }
 
     const expr = this.expr.handleExpression(args[0]);
-    if (
-      expr.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `Bool() cannot cast array or Map or List to bool`,
@@ -221,12 +199,7 @@ export class Type {
     }
 
     const expr = this.expr.handleExpression(args[0]);
-    if (
-      expr.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `String() cannot cast array or Map or List to string`,
@@ -260,12 +233,7 @@ export class Type {
     }
 
     const expr = this.expr.handleExpression(args[0]);
-    if (
-      expr.llvmType.startsWith("[") ||
-      expr?.isMap ||
-      expr?.isList ||
-      expr?.isStruct
-    ) {
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
         `toString() cannot cast array or Map or List to string`,

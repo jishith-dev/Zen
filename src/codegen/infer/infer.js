@@ -55,9 +55,6 @@ export class InferType {
             `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
             node,
           );
-        } else if (data.isMap) {
-          node.inferredType = "Map";
-          return "Map";
         } else {
           node.inferredType = type;
         }
@@ -122,12 +119,6 @@ export class InferType {
           );
         }
 
-        if (data.isMap) {
-          const index = node.index.value;
-          let type = this.IRB.maps.get(node.array.name)[index].type;
-          return type;
-        }
-
         return type;
       }
 
@@ -137,95 +128,44 @@ export class InferType {
         if (base.type === "variable") {
           const varInfo = this.IRB.getVar(base.name, node);
 
-          if (varInfo.type === "Map" || varInfo.isMap) {
-            let currentLayout = this.IRB.maps.get(base.name);
+          // STRUCT ACCESS
+          let currentType;
+          if (base.value === "this") {
+            currentType = this.IRB.currentStruct;
+          } else {
+            currentType = this.IRB.getVar(base.name, node).type;
+          }
 
-            if (!currentLayout) {
+          let fieldInfo;
+
+          for (const field of fields) {
+            const structInfo = this.IRB.getStruct(currentType);
+
+            const fieldIndex = structInfo.fieldMap[field];
+
+            fieldInfo = structInfo.layout[fieldIndex];
+
+            if (fieldInfo.isList && context === "fnret") {
               this.IRB.emitError(
-                "InternalError",
-                `Unknown Map '${base.name}' layout`,
+                "TypeError",
+                `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
                 node,
               );
             }
 
-            let currentType = "Map";
-            let fieldInfo;
-
-            for (const field of fields) {
-              if (!currentLayout[field]) {
-                this.IRB.emitError(
-                  "ReferenceError",
-                  `Unknown map field '${field}'`,
-                  node,
-                );
-              }
-
-              fieldInfo = currentLayout[field];
-
-              currentType = fieldInfo.type;
-
-              if (fieldInfo.isList && context === "fnret") {
-                this.IRB.emitError(
-                  "TypeError",
-                  `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
-                  node,
-                );
-              }
-
-              if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
-                this.IRB.emitError(
-                  "TypeError",
-                  `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
-                  node,
-                );
-              }
-
-              if (fieldInfo.isMap) {
-                currentLayout = fieldInfo.layout;
-              }
+            if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
+              this.IRB.emitError(
+                "TypeError",
+                `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
+                node,
+              );
             }
 
-            return currentType;
-          }
-        }
-
-        // STRUCT ACCESS
-        let currentType;
-        if (base.value === "this") {
-          currentType = this.IRB.currentStruct;
-        } else {
-          currentType = this.IRB.getVar(base.name, node).type;
-        }
-
-        let fieldInfo;
-
-        for (const field of fields) {
-          const structInfo = this.IRB.getStruct(currentType);
-
-          const fieldIndex = structInfo.fieldMap[field];
-
-          fieldInfo = structInfo.layout[fieldIndex];
-
-          if (fieldInfo.isList && context === "fnret") {
-            this.IRB.emitError(
-              "TypeError",
-              `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
-              node,
-            );
+            currentType = fieldInfo.type;
           }
 
-          if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
-            this.IRB.emitError(
-              "TypeError",
-              `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
-              node,
-            );
-          }
-
-          currentType = fieldInfo.type;
+          return fieldInfo.type;
         }
-
-        return fieldInfo.type;
       }
 
       case "CALL": {
@@ -322,7 +262,7 @@ export class InferType {
         return firstType;
       }
 
-      case "MAP_LITERAL": {
+      case "STRUCT_LITERAL": {
         this.IRB.emitError(
           "TypeError",
           `cannot infer 'auto' return type from a bare struct literal — specify an explicit return type`,

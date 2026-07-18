@@ -78,7 +78,6 @@ const KEYWORDS = [
   "of",
   "async",
   "await",
-  "Map",
   "auto",
   "reactive",
   "enum",
@@ -221,6 +220,7 @@ const BUILTIN_STRUCTS = [
   "JsonArray",
   "JsonObject",
   "Ptr",
+  "Map",
 ];
 
 const BUILTIN_STRUCT_ABI = ["Ptr"];
@@ -1051,6 +1051,88 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_zen_ptr_free",
     },
   },
+
+  Map: {
+    getInt: {
+      returnType: "int",
+      args: ["string"],
+      llvmName: "zen_map_get_int",
+    },
+    getBool: {
+      returnType: "bool",
+      args: ["string"],
+      llvmName: "zen_map_get_bool",
+    },
+    getDouble: {
+      returnType: "double",
+      args: ["string"],
+      llvmName: "zen_map_get_double",
+    },
+    getString: {
+      returnType: "string",
+      args: ["string"],
+      llvmName: "zen_map_get_string",
+    },
+    getMap: {
+      returnType: "Map",
+      args: ["string"],
+      llvmName: "zen_map_get_map",
+    },
+
+    getList: {
+      returnType: "List",
+      args: ["string"],
+      llvmName: "zen_map_get_list",
+      generic: true,
+    },
+
+    setInt: {
+      returnType: "void",
+      args: ["string", "int"],
+      llvmName: "zen_map_set_int",
+    },
+    setBool: {
+      returnType: "void",
+      args: ["string", "bool"],
+      llvmName: "zen_map_set_bool",
+    },
+    setDouble: {
+      returnType: "void",
+      args: ["string", "double"],
+      llvmName: "zen_map_set_double",
+    },
+    setString: {
+      returnType: "void",
+      args: ["string", "string"],
+      llvmName: "zen_map_set_string",
+    },
+    setMap: {
+      returnType: "void",
+      args: ["string", "Map"],
+      llvmName: "zen_map_set_map",
+    },
+    setList: {
+      returnType: "void",
+      args: ["string", "List"],
+      llvmName: "zen_map_set_list",
+    },
+
+    has: {
+      returnType: "bool",
+      args: ["string"],
+      llvmName: "_zen_map_has",
+    },
+    remove: {
+      returnType: "void",
+      args: ["string"],
+      llvmName: "_zen_map_remove",
+    },
+    free: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_map_free",
+    },
+  },
 };
 
 const BUILTIN_STRUCT_PROPS = {
@@ -1827,7 +1909,7 @@ const OPERATORS = [
 const ParserTypes = {
   BINARY_EXPRESSION: "BINARY_EXPRESSION",
   MAP_DECLARATION: "MAP_DECLARATION",
-  MAP_LITERAL: "MAP_LITERAL",
+  STRUCT_LITERAL: "STRUCT_LITERAL",
   COMMENT: "COMMENT",
   MAP_PROPERTY: "MAP_PROPERTY",
   SWITCH: "SWITCH",

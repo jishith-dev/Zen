@@ -162,15 +162,41 @@ void _zen_list_remove(ZenList *list, int index) {
   list->size--;
 }
 
-void _zen_list_clear(ZenList *list) { list->size = 0; }
-
 void _zen_list_free(ZenList *list) {
 
-  if (list->data != NULL) {
-    free(list->data);
+  if (!list)
+    return;
+
+  if (list->depth > 1 && list->data) {
+
+    for (int i = 0; i < list->size; i++) {
+      ZenList *child = ((ZenList **)list->data)[i];
+
+      if (child)
+        _zen_list_free(child);
+    }
   }
 
+  free(list->data);
   free(list);
+}
+
+void _zen_list_clear(ZenList *list) {
+
+  if (!list)
+    return;
+
+  if (list->depth > 1 && list->data) {
+
+    for (int i = 0; i < list->size; i++) {
+      ZenList *child = ((ZenList **)list->data)[i];
+
+      if (child)
+        _zen_list_free(child);
+    }
+  }
+
+  list->size = 0;
 }
 
 ZenList *zen_va_ints(int count, va_list args) {

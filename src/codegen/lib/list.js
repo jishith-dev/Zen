@@ -40,7 +40,7 @@ export class ZenList {
       const expectsList = generic.type === "List";
       let isActualList = el.type === "ARRAY" || el.type === "LIST_LITERAL";
 
-      if (el.type !== "ARRAY" && el.type !== "MAP_LITERAL") {
+      if (el.type !== "ARRAY" && el.type !== "STRUCT_LITERAL") {
         isActualList = this.expr.handleExpression(el)?.isList;
       }
 
@@ -78,14 +78,24 @@ export class ZenList {
     const pushRecursive = (listPtr, element, generic) => {
       // STRUCT
 
-      if (element.type === "MAP_LITERAL") {
-        const structName = this.IRB.getDeepestGeneric(generic);
-        const structPtr = this.IRB.emitStructLiteral(structName, element);
-        this.IRB.emit(
-          `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr})`,
-        );
-        return;
-      }
+      if (element.type === "STRUCT_LITERAL") {
+  const structName = this.IRB.getDeepestGeneric(generic);
+  const structPtr = this.IRB.emitStructLiteral(structName, element);
+
+  const struct = this.IRB.getStruct(structName);
+  const isOpaqueElement = struct?.isBuiltin && struct?.isOpaque;
+
+  if (!isOpaqueElement && structPtr.needsLoad) {
+    const t = this.IRB.newTemp();
+    this.IRB.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+    structPtr.ptr = t;
+  }
+
+  this.IRB.emit(
+    `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+  );
+  return;
+}
 
       // NESTED LIST
 
@@ -140,8 +150,24 @@ export class ZenList {
       this.IRB.emitExpr(expr);
 
       if (expr.isStruct) {
-        const structName = expr.type;
-        const structSize = this.IRB.sizeOf(structName);
+        const struct = this.IRB.getStruct(expr.type);
+
+        if (struct.isBuiltin && struct.isOpaque) {
+  let p = expr.ptr;
+
+  if (!expr.needsLoad) {
+    const tmp = this.IRB.newTemp();
+    this.IRB.emit(`${tmp} = alloca ptr`);
+    this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
+    p = tmp;
+  }
+
+  // if needsLoad==true, expr.ptr is already the address of the pointer
+  this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
+  return;
+}
+
+        const structSize = this.IRB.sizeOf(expr.type);
 
         this.IRB.declareOneTime(
           "llvm.memcpy.p0.p0.i64",
@@ -149,7 +175,7 @@ export class ZenList {
         );
 
         const tmp = this.IRB.newTemp();
-        this.IRB.emit(`${tmp} = alloca %${structName}`);
+        this.IRB.emit(`${tmp} = alloca %${expr.type}`);
         this.IRB.emit(
           `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${structSize}, i1 false)`,
         );
@@ -182,7 +208,7 @@ export class ZenList {
       const isValidList = expr.isList;
 
       if (!isValidList) {
-        const got = expr.isMap ? "Map" : expr.isStruct ? "Struct" : expr.type;
+        const got = expr.isStruct ? "Struct" : expr.type;
 
         this.IRB.emitError(
           "TypeError",
@@ -221,7 +247,7 @@ export class ZenList {
       rootList = listTemp;
 
       const validate = (el, expectedType) => {
-        if (el.type === "MAP_LITERAL") {
+        if (el.type === "STRUCT_LITERAL") {
           const structDef = this.IRB.getStruct(expectedType);
 
           if (!structDef) {

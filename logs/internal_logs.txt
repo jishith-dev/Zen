@@ -343,6 +343,8 @@ JSON already provides dynamic data handling, so keeping typed collections and us
 
 ---
 
+v2.0.0 (major release) (stable - freezed syntax for compatability)
+
 july 10
 
 fixed major bug 
@@ -409,5 +411,76 @@ updated const syntax:
   old: int const x
   new: const int x
   
+added formatting tool
+  
 added new command zen fmt file /*? /**? --no-comments (? = optional, /* = "non recursive, /** = recursive)
+
+ 
+Map Design Change Note
+
+Map is no longer a data type
+
+The "Map" type has been removed from ZEN's data type system.
+
+Previously:
+
+- "Map" was treated as a dedicated data structure/type.
+
+Now:
+
+- "Map" is implemented as a built-in struct.
+- It follows the same model as other built-in structs.
+- Map values are opaque runtime-managed objects.
+
+Map Literal Support
+
+Map supports struct-style literals:
+
+{
+    name: "Jishith",
+    age: 25,
+    skills: ["LLVM", "Compiler"]
+}
+
+Map literals can be passed directly, returned from functions, stored in lists, and used as arguments.
+
+Dynamic Fields
+
+Unlike normal structs, Map fields are not fixed at compile time.
+
+Fields are free to add:
+
+{
+    name: "Alice",
+    age: 20,
+    country: "India"
+}
+
+A Map can contain different keys depending on usage.
+
+Map Methods
+
+Supported operations:
+
+- "setInt(key, value)"
+- "getInt(key)"
+- "setDouble(key, value)"
+- "getDouble(key)"
+- "setBool(key, value)"
+- "getBool(key)"
+- "setString(key, value)"
+- "getString(key)"
+- "setList(key, value)"
+- "getList(key)"
+- "setMap(key, value)"
+- "getMap(key)"
+- "remove(key)"
+- "has(key)"
+- "free()"
+
+Runtime Model
+
+Map uses an opaque runtime representation internally.
+
+Users interact through methods only; memory layout and storage are managed by the runtime.
 

@@ -208,12 +208,12 @@ export class Fmt {
         this.visitMap(node);
         break;
 
-      case ParserTypes.MAP_LITERAL:
-        this.visitMapLiteral(node);
+      case ParserTypes.STRUCT_LITERAL:
+        this.visitStructLiteral(node);
         break;
 
       case ParserTypes.MAP_PROPERTY:
-        this.visitMapProperty(node);
+        this.visitStructProperty(node);
         break;
 
       case ParserTypes.BREAK:
@@ -483,14 +483,7 @@ export class Fmt {
     this.write("}");
   }
 
-  visitMap(node) {
-    this.write("Map ");
-    this.write(node.name);
-    this.write(" = ");
-    this.visit(node.value);
-  }
-
-  visitMapLiteral(node) {
+  visitStructLiteral(node) {
     if (!node.properties.length) {
       this.write("{}");
       return;
@@ -501,7 +494,7 @@ export class Fmt {
 
     for (let i = 0; i < node.properties.length; i++) {
       this.newline();
-      this.visitMapProperty(node.properties[i]);
+      this.visitStructProperty(node.properties[i]);
       if (i < node.properties.length - 1) this.write(",");
     }
 
@@ -510,7 +503,7 @@ export class Fmt {
     this.write("}");
   }
 
-  visitMapProperty(node) {
+  visitStructProperty(node) {
     this.write(node.key);
     if (node.index) {
       this.write("[");

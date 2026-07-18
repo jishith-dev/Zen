@@ -10,6 +10,7 @@ import {
   BUILTIN_FUNCTIONS,
   BUILTIN_STRUCTS,
   PRIMITIVE_TYPES,
+  TYPE_MAP,
 } from "../../config/config.js";
 
 export class Expression {
@@ -103,19 +104,11 @@ export class Expression {
       const isStruct = data?.isStruct;
       const isList = data?.isList;
       const isVarArg = data?.isVarArg;
-      const isMap = data?.isMap;
       let needsLoad = data?.needsLoad ?? false; // default false
       const fromLoopOf = data?.fromLoopOf;
 
       let t;
-      if (
-        !isArray &&
-        !isStruct &&
-        !isList &&
-        !isVarArg &&
-        !isMap &&
-        needsLoad
-      ) {
+      if (!isArray && !isStruct && !isList && !isVarArg && needsLoad) {
         t = this.IRB.newTemp();
         this.IRB.emit(`${t} = load ${data.llvmType}, ptr ${data.ptr}`);
         needsLoad = false; // update
@@ -142,8 +135,6 @@ export class Expression {
         fromParam: data?.fromParam,
         isVarArg,
         isArray: isArray ? true : false,
-        isMap: isMap,
-        layout: data.layout,
         needsLoad,
         name: data?.name,
         fromLoopOf,
@@ -201,10 +192,10 @@ export class Expression {
       return expr;
     }
 
-    if (node.type === "MAP_LITERAL") {
+    if (node.type === "STRUCT_LITERAL") {
       this.IRB.emitError(
         "SemanticError",
-        "Map litetals are not supported",
+        "struct litetals are not supported in standalone context",
         node,
       );
     }
@@ -265,48 +256,88 @@ export class Expression {
         );
       }
 
-      if (first.type === "MAP_LITERAL") {
-        const structName = ContextType;
-        const elemSize = this.IRB.sizeOf(structName);
+      if (first.type === "STRUCT_LITERAL") {
+  const structName = ContextType;
 
-        if (!structName) {
-          this.IRB.emitError(
-            "TypeError",
-            "Cannot infer struct type for struct list literal",
-            node,
-          );
-        }
+  if (!structName) {
+    this.IRB.emitError(
+      "TypeError",
+      "Cannot infer struct type for struct list literal",
+      node,
+    );
+  }
 
-        const list = this.IRB.newTemp();
+  const structDef = this.IRB.getStruct(structName);
 
-        const local = [];
-        const global = [];
+  const isOpaque =
+    structDef?.isBuiltin && structDef?.isOpaque;
 
-        local.push(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
+  const elemSize = isOpaque
+    ? 8
+    : this.IRB.sizeOf(structName);
 
-        for (const el of node.elements) {
-          const structPtr = this.IRB.emitStructLiteral(structName, el);
+  const list = this.IRB.newTemp();
 
-          local.push(
-            `call void @_zen_list_push(ptr ${list}, ptr ${structPtr})`,
-          );
-        }
+  const local = [];
+  const global = [];
 
-        return {
-          ptr: list,
-          addr: list,
-          type: structName,
-          llvmType: "ptr",
-          local,
-          global,
-          isListLiteral: true,
-          isList: true,
-          generic: {
-            type: "List",
-            generic: { type: ContextType },
-          },
-        };
-      }
+  local.push(
+    `${list} = call ptr @_zen_list_new(i64 ${elemSize})`,
+  );
+
+  for (const el of node.elements) {
+    const structPtr = this.IRB.emitStructLiteral(
+      structName,
+      el,
+    );
+    
+
+    let p = structPtr.ptr;
+
+    if (structPtr.needsLoad) {
+      const t = this.IRB.newTemp();
+      this.IRB.emit(
+        `${t} = load ptr, ptr ${structPtr.ptr}`,
+      );
+      p = t;
+    }
+
+    if (isOpaque) {
+      const tmp = this.IRB.newTemp();
+
+      local.push(
+        `${tmp} = alloca ptr`,
+      );
+
+      local.push(
+        `store ptr ${p}, ptr ${tmp}`,
+      );
+
+      p = tmp;
+    }
+
+    local.push(
+      `call void @_zen_list_push(ptr ${list}, ptr ${p})`,
+    );
+  }
+
+  return {
+    ptr: list,
+    addr: list,
+    type: structName,
+    llvmType: "ptr",
+    local,
+    global,
+    isListLiteral: true,
+    isList: true,
+    generic: {
+      type: "List",
+      generic: {
+        type: ContextType,
+      },
+    },
+  };
+}
 
       const elemExpr = this.handleExpression(first, false, ContextType);
 
@@ -339,8 +370,16 @@ export class Expression {
           const el = node.elements[i];
 
           let elPtr;
-          if (el.type === "MAP_LITERAL") {
-            elPtr = this.IRB.emitStructLiteral(structName, el);
+          if (el.type === "STRUCT_LITERAL") {
+            let t = this.IRB.emitStructLiteral(structName, el);
+
+            if (elPtr.needsLoad) {
+              const t = this.IRB.newTemp();
+              this.IRB.emit(`${t} = load ptr, ptr ${elPtr.ptr}`);
+              elPtr = t;
+            } else {
+              elPtr = elPtr.ptr;
+            }
           } else {
             const expr = this.handleExpression(el);
             this.IRB.emitExpr(expr);
@@ -494,7 +533,6 @@ export class Expression {
       if (
         PRIMITIVE_TYPES.includes(object.type) &&
         !object.isList &&
-        !object.isMap &&
         !object.isStruct
       ) {
         this.IRB.emitError(
@@ -604,6 +642,7 @@ export class Expression {
                 basePtr,
                 node,
                 object,
+                globalScope,
               );
 
               if (builtin) return builtin;
@@ -780,355 +819,6 @@ export class Expression {
             needsLoad: true,
           };
         }
-      }
-
-      // map member access
-      if (object?.isMap) {
-        // DECLARE RUNTIME
-
-        this.IRB.declareOneTime(
-          "zen_map_get",
-          "declare ptr @_zen_map_get(ptr, ptr)",
-        );
-
-        // MAP LAYOUT
-
-        let currentLayout = this.IRB.maps.get(base.name);
-
-        if (!currentLayout) {
-          this.IRB.emitError(
-            "InternalError",
-            `Unknown map layout: ${base.name}`,
-            node,
-          );
-        }
-
-        // START CHAIN WALK
-
-        let currentMapPtr = object.ptr;
-
-        if (object.needsLoad) {
-          const loaded = this.IRB.newTemp();
-
-          this.IRB.emit(`${loaded} = load ptr, ptr ${currentMapPtr}`);
-
-          currentMapPtr = loaded;
-        }
-
-        let resultPtr = null;
-        let isList = false;
-        let finalElementType = null;
-        let finalType = "ptr";
-        let finalLLVMType = "ptr";
-        let finalMapLayout = null;
-
-        // a.b.c.d
-
-        for (let i = 0; i < fields.length; i++) {
-          const currentPath = fields.slice(0, i).join(".");
-          const freed = this.IRB.freedMap.get(base.name);
-
-          // check base itself freed (a.free() then a.something)
-          if (freed?.has("")) {
-            this.IRB.emitError(
-              "MemoryError",
-              `Use after free — '${base.name}' has been freed and is no longer accessible`,
-              node,
-            );
-          }
-
-          // check nested path freed
-          if (freed?.has(currentPath) && currentPath !== "") {
-            this.IRB.emitError(
-              "MemoryError",
-              `Use after free — '${fields[i - 1]}' has been freed and is no longer accessible`,
-              node,
-            );
-          }
-
-          const field = fields[i];
-
-          // VALIDATE FIELD
-
-          const freedSet = this.IRB.freedFields.get(object.name);
-
-          if (freedSet?.has(field)) {
-            this.IRB.emitError(
-              "MemoryError",
-              `map ${object.name} field '${field}' used after free`,
-              node,
-            );
-          }
-
-          switch (field) {
-            case "free": {
-              this.IRB.declareOneTime(
-                "zen_map_free",
-                "declare void @_zen_map_free(ptr)",
-              );
-              this.IRB.emit(`call void @_zen_map_free(ptr ${currentMapPtr})`);
-
-              if (!this.IRB.freedMap.has(base.name)) {
-                this.IRB.freedMap.set(base.name, new Set());
-              }
-
-              const freedPath = fields.slice(0, i).join(".");
-              this.IRB.freedMap.get(base.name).add(freedPath);
-
-              return {
-                ptr: null,
-                type: "void",
-                llvmType: "void",
-                local: [],
-                global: [],
-              };
-            }
-
-            case "remove": {
-              this.IRB.declareOneTime(
-                "zen_map_remove",
-                "declare void @_zen_map_remove(ptr, ptr)",
-              );
-              const mapPtr = currentMapPtr;
-              const argNode = node.args?.[0];
-              if (!argNode) {
-                this.IRB.emitError(
-                  "ArgumentError",
-                  `'map.remove' expects exactly 1 argument, got 0`,
-                  node,
-                );
-              }
-              const keyStr = this.handleExpression(argNode);
-              this.IRB.emit(
-                `call void @_zen_map_remove(ptr ${mapPtr}, ptr ${keyStr.ptr})`,
-              );
-              return {
-                ptr: null,
-                type: "void",
-                llvmType: "void",
-                local: [],
-                global: [],
-              };
-            }
-
-            case "has": {
-              this.IRB.declareOneTime(
-                "zen_map_has",
-                "declare i1 @_zen_map_has(ptr, ptr)",
-              );
-              const mapPtr = currentMapPtr;
-              const argNode = node.args?.[0];
-              if (!argNode) {
-                this.IRB.emitError(
-                  "ArgumentError",
-                  `'map.has' expects exactly 1 argument, got 0`,
-                  node,
-                );
-              }
-              const keyStr = this.handleExpression(argNode);
-              const result = this.IRB.newTemp();
-              this.IRB.emit(
-                `${result} = call i1 @_zen_map_has(ptr ${mapPtr}, ptr ${keyStr.ptr})`,
-              );
-              return {
-                ptr: result,
-                type: "bool",
-                llvmType: "i1",
-                local: [],
-                global: [],
-                isVarRef: false,
-              };
-            }
-
-            case "keys": {
-              const keys = Object.keys(this.IRB.maps.get(base.name));
-              this.IRB.declareOneTime(
-                "zen_list_new",
-                "declare ptr @_zen_list_new(i64)",
-              );
-
-              this.IRB.declareOneTime(
-                "zen_list_push",
-                "declare void @_zen_list_push(ptr, ptr)",
-              );
-
-              this.IRB.declareOneTime(
-                "ZenList",
-                "%ZenList = type { ptr, i32, i32, i64 }",
-              );
-
-              const list = this.IRB.newTemp();
-              this.IRB.emit(`${list} = call ptr @_zen_list_new(i64 8)`); // ptr sizeOf 64bit
-
-              for (const k of keys) {
-                const keyStr = this.IRB.newGlobalString(k);
-
-                const tmp = this.IRB.newTemp();
-                this.IRB.emit(`${tmp} = alloca ptr`);
-                this.IRB.emit(`store ptr ${keyStr.name}, ptr ${tmp}`);
-                this.IRB.emit(
-                  `call void @_zen_list_push(ptr ${list}, ptr ${tmp})`,
-                );
-              }
-
-              return {
-                ptr: list,
-                type: "string",
-                llvmType: "ptr",
-                local: [],
-                global: [],
-                needsLoad: true,
-                isList: true,
-                generic: {
-                  generic: "string",
-                },
-              };
-            }
-          }
-
-          if (!currentLayout[field] && field !== "free") {
-            this.IRB.emitError(
-              "ReferenceError",
-              `Map field '${field}' does not exist`,
-              node,
-            );
-          }
-
-          const meta = currentLayout[field];
-
-          // SWITCH TO LIST MEMBER ACCESS
-
-          if (meta.isList && i < fields.length - 1) {
-            this.IRB.declareOneTime(
-              "zen_map_get",
-              "declare ptr @_zen_map_get(ptr, ptr)",
-            );
-
-            // get actual list ptr first
-            const keyPtr = this.IRB.newGlobalString(field);
-
-            const listPtr = this.IRB.newTemp();
-
-            this.IRB.emit(
-              `${listPtr} = call ptr @_zen_map_get(ptr ${currentMapPtr}, ptr ${keyPtr.name})`,
-            );
-
-            // remaining field
-            const nextField = fields[i + 1];
-
-            const normalizedGeneric = this.IRB.normalizeGeneric(
-              meta.elementType,
-            );
-
-            // fake list object
-            const fakeObject = {
-              ptr: listPtr,
-              basePtr: object.ptr,
-              type: meta.type,
-              llvmType: "ptr",
-              isList: true,
-              name: object?.name,
-              generic: {
-                generic: normalizedGeneric,
-              },
-              fromParam: false,
-              local: [],
-              global: [],
-            };
-
-            // DIRECT LIST PROPERTY HANDLING
-
-            const listGeneric = meta.elementType;
-
-            if (meta.isList) {
-              return this.IRB.handleListProperty(
-                listPtr,
-                fakeObject,
-                nextField,
-                node,
-                true,
-                field,
-              );
-            }
-          }
-
-          // SAVE FINAL TYPE
-
-          finalType = meta.type === "List" ? meta?.elementType.type : meta.type;
-          finalElementType = meta?.isVarRef ? meta.generic : meta.elementType;
-
-          finalLLVMType = meta.llvmType;
-
-          isList = meta.isList;
-
-          const keyPtr = this.IRB.newGlobalString(field);
-
-          // MAP GET
-
-          resultPtr = this.IRB.newTemp();
-
-          this.IRB.emit(
-            `${resultPtr} = call ptr @_zen_map_get(ptr ${currentMapPtr}, ptr ${keyPtr.name})`,
-          );
-
-          // NEXT MAP
-
-          if (meta.isMap) {
-            currentLayout = meta.layout;
-            finalMapLayout = meta.layout;
-          }
-
-          if (i < fields.length - 1) {
-            currentMapPtr = resultPtr;
-          }
-        }
-
-        let finalPtr = resultPtr;
-
-        if (!isList) {
-          // int
-          if (finalType === "int") {
-            finalPtr = this.IRB.newTemp();
-
-            this.IRB.emit(`${finalPtr} = load i32, ptr ${resultPtr}`);
-          }
-
-          // bool
-          else if (finalType === "bool") {
-            finalPtr = this.IRB.newTemp();
-
-            this.IRB.emit(`${finalPtr} = load i1, ptr ${resultPtr}`);
-          }
-
-          // double
-          else if (finalType === "double") {
-            finalPtr = this.IRB.newTemp();
-
-            this.IRB.emit(`${finalPtr} = load double, ptr ${resultPtr}`);
-          }
-        }
-
-        this.IRB.declareOneTime(
-          "ZenList",
-          "%ZenList = type { ptr, i32, i32, i64 }",
-        );
-
-        // RETURN FINAL VALUE
-
-        return {
-          ptr: finalPtr,
-          type: finalType,
-          llvmType: finalLLVMType,
-          local: [],
-          global: [],
-          isMapValue: true,
-          isList,
-          generic: {
-            generic: this.IRB.normalizeGeneric(finalElementType),
-          },
-          layout: finalMapLayout,
-          isMap: finalType === "Map",
-        };
       }
 
       // list  / struct
@@ -1316,111 +1006,6 @@ export class Expression {
             isStruct,
             needsLoad: !isNested,
           };
-        }
-
-        // MAP ACCESS — a[key]
-        // Dynamic Map indexing (a[key]) is disabled to keep Map struct-like and LLVM-friendly.
-        // Use dot access (a.name) or can be introduce a superate system
-        if (base.isMap) {
-          this.IRB.emitError(
-            "SemanticError",
-            "Dynamic Map indexing (map[key]) is not supported. Use dot access (a.name) instead.",
-            node,
-          );
-          /*
-          const mapLayout = base.layout;
-          const typeSet = new Set();
-          let genericType;
-          for (const key in mapLayout) {
-            const isList = mapLayout[key]?.isList;
-            if (isList) {
-              typeSet.add("List");
-              genericType = "List";
-            } else {
-              typeSet.add(mapLayout[key].type);
-              genericType = mapLayout[key].type
-            }
-          }
-          
-          if (typeSet.size > 1) {
-            this.IRB.emitError("TypeError", `Map '${base.name}' contains heterogeneous value types`, node)
-          }
-          
-          
-          this.IRB.declareOneTime(
-            "zen_map_get",
-            "declare ptr @_zen_map_get(ptr, ptr)"
-          );
-          
-          // Load the map ptr if needed
-          let mapPtr = base.ptr;
-          if (base.needsLoad) {
-            const loaded = this.IRB.newTemp();
-            local.push(`${loaded} = load ptr, ptr ${mapPtr}`);
-            mapPtr = loaded;
-          }
-          
-          // index.ptr is the runtime key string ptr (from loopIn keyName binding)
-          const resultPtr = this.IRB.newTemp();
-          local.push(
-            `${resultPtr} = call ptr @_zen_map_get(ptr ${mapPtr}, ptr ${index.ptr})`
-          );
-          
-          
-          
-          let meta;
-          
-          if (index.rawStr && mapLayout[index.rawStr]) {
-            meta = mapLayout[index.rawStr];
-          } else {
-            meta = Object.values(mapLayout)[0]; // safe fallback
-          }
-          
-          // TYPE RESOLUTION
-          
-          // primitive type only
-          let finalType = meta?.type || genericType;
-          
-          if (finalType === undefined || finalType === null) {
-            
-            const hasLayout = base?.layout && Object.keys(base.layout).length > 0;
-            
-            if (!hasLayout) {
-              this.IRB.emitError("ReferenceError", `Key '${index.rawStr ?? "unknown"}' does not exist in Map '${base.name}'`, node)
-            } else {
-              this.IRB.emitError("ReferenceError", `Key '${index.rawStr ?? "unknown"}' is not defined in Map '${base.name}'`, node)
-            }
-          }
-          
-          const isList = meta?.isList || false;
-          
-          const elementType = meta?.elementType || null;
-          
-          const finalLLVMType =
-            meta?.llvmType ?? this.IRB.getLLVMType(finalType);
-          
-          let finalPtr = resultPtr;
-          let tm;
-          if (finalType !== "string" && finalType !== "List") {
-          tm = this.IRB.newTemp();
-          local.push(`${tm} = load ${finalLLVMType}, ptr ${finalPtr}`);
-          } else {
-            tm = finalPtr;
-          }
-          return {
-            ptr: tm,
-            type: finalType,
-            llvmType: finalLLVMType,
-            addr: finalType,
-            local: [],
-            global: [],
-            isMapValue: true,
-            isDynamicMapAccess: true,
-            isList,
-            isArray: false,
-            needsLoad: false
-          };
-          */
         }
 
         // string index access

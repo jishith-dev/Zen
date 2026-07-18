@@ -36,8 +36,8 @@ export class IRBuilder {
     this.hadError = false;
 
     this.runtimeStack = [];
+    this.aliasFreedSet = new Set();
 
-    this.maps = new Map();
     this.JsonParseMap = new Map();
 
     this.freedVars = [new Set()];
@@ -185,18 +185,6 @@ export class IRBuilder {
   setCall(expr) {
     this.expr = expr;
   }
-  /*
-  setFunction(name, data, node) {
-    if (this.functions.has(name)) {
-      this.emitError(
-        "DeclarationError",
-        `Function '${name}' is already defined`,
-        node,
-      );
-    }
-    this.functions.set(name, data);
-  }
-*/
 
   setFunction(name, data, node) {
     const old = this.functions.get(name);
@@ -259,28 +247,6 @@ export class IRBuilder {
       );
     }
   }
-  /*
-  alignOf(type) {
-    if (type === "int") return 4;
-    if (type === "double") return 8;
-    if (type === "bool") return 1;
-    if (type === "string") return this.target.ptrSize;
-    if (type === "byte") return 1;
-
-    const structInfo = this.getStruct(type);
-    if (structInfo) {
-      // struct alignment = max alignment of its fields
-      let maxAlign = 1;
-      for (const field of structInfo.layout) {
-        const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
-        maxAlign = Math.max(maxAlign, a);
-      }
-      return maxAlign;
-    }
-
-    return this.target.ptrSize;
-  }
-*/
 
   alignOf(type) {
     if (type === "int") return 4;
@@ -302,10 +268,7 @@ export class IRBuilder {
     if (structInfo) {
       let maxAlign = 1;
       for (const field of structInfo.layout) {
-        const a =
-          field.isList || field.isMap
-            ? this.target.ptrSize
-            : this.alignOf(field.type);
+        const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
 
         maxAlign = Math.max(maxAlign, a);
       }
@@ -314,13 +277,22 @@ export class IRBuilder {
 
     return this.target.ptrSize;
   }
-  /*
+
   sizeOf(type) {
     if (type === "int") return 4;
     if (type === "double") return 8;
     if (type === "bool") return 1;
-    if (type === "string") return this.target.ptrSize;
     if (type === "byte") return 1;
+
+    // pointer backed
+    if (
+      type === "string" ||
+      type === "Ptr" ||
+      type === "List" ||
+      type === "Map"
+    ) {
+      return this.target.ptrSize;
+    }
 
     const structInfo = this.getStruct(type);
 
@@ -332,59 +304,10 @@ export class IRBuilder {
         const align = field.isList
           ? this.target.ptrSize
           : this.alignOf(field.type);
+
         const size = field.isList
           ? this.target.ptrSize
           : this.sizeOf(field.type);
-
-        // pad before field to satisfy its alignment
-        offset = Math.ceil(offset / align) * align;
-        offset += size;
-
-        maxAlign = Math.max(maxAlign, align);
-      }
-
-      // pad struct total size to its own alignment
-      offset = Math.ceil(offset / maxAlign) * maxAlign;
-
-      return offset;
-    }
-
-    return this.target.ptrSize; // fallback
-  }
-*/
-
-  sizeOf(type) {
-    if (type === "int") return 4;
-    if (type === "double") return 8;
-    if (type === "bool") return 1;
-    if (type === "byte") return 1;
-
-    // pointer backed
-    if (
-      type === "string" ||
-      type === "Ptr" ||
-      type === "List" ||
-      type === "Map"
-    ) {
-      return this.target.ptrSize;
-    }
-
-    const structInfo = this.getStruct(type);
-
-    if (structInfo) {
-      let offset = 0;
-      let maxAlign = 1;
-
-      for (const field of structInfo.layout) {
-        const align =
-          field.isList || field.isMap
-            ? this.target.ptrSize
-            : this.alignOf(field.type);
-
-        const size =
-          field.isList || field.isMap
-            ? this.target.ptrSize
-            : this.sizeOf(field.type);
 
         offset = Math.ceil(offset / align) * align;
         offset += size;
@@ -672,7 +595,6 @@ export class IRBuilder {
     ptr,
     llvmType,
     type,
-    isMap,
     isVarArg,
     isMethod,
     generic,
@@ -688,7 +610,6 @@ export class IRBuilder {
     dimensionsData,
     dimensions,
     fromParam,
-    layout,
     needsLoad,
     name,
     fromLoopOf,
@@ -701,7 +622,6 @@ export class IRBuilder {
       ptr,
       llvmType,
       type,
-      isMap,
       generic,
       isList,
       isMethod,
@@ -717,7 +637,6 @@ export class IRBuilder {
       dimensionsData,
       dimensions,
       fromParam,
-      layout,
       needsLoad,
       name,
       fromLoopOf,
@@ -748,17 +667,6 @@ export class IRBuilder {
     }
     current.set(name, data);
   }
-  /*
-  getVar(name, node) {
-    for (let i = this.symbolTable.length - 1; i >= 0; i--) {
-      if (this.symbolTable[i].has(name)) {
-        return this.symbolTable[i].get(name);
-      }
-    }
-
-    this.emitError("ReferenceError", `variable ${name} is not defined`, node);
-  }
-*/
 
   getVar(name, node) {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
@@ -1085,14 +993,6 @@ export class IRBuilder {
         continue;
       }
 
-      if (p.type.type === "Map") {
-        this.IRB.emitError(
-          "SemanticError",
-          "Map values cannot be used as function parameters",
-          this.lineAndColumn(),
-        );
-      }
-
       // ARRAY CHECK
 
       const isArray = p.type?.dimensions?.length > 0;
@@ -1135,12 +1035,13 @@ export class IRBuilder {
       });
     }
 
-    if (
-      this.hasStruct(returnType) &&
-      !BUILTIN_STRUCT_ABI.includes(returnType)
-    ) {
-      paramStr.unshift(`ptr sret(%${returnType}) %sret`); // because sret attr need to be first
-    }
+    const retStruct = this.hasStruct(returnType) ? this.getStruct(returnType) : false;
+    
+const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
+
+if (this.hasStruct(returnType) && !isOpaqueReturn) {
+  paramStr.unshift(`ptr sret(%${returnType}) %sret`);
+}
 
     return {
       ir: `(${paramStr.join(", ")})`,
@@ -1341,47 +1242,6 @@ export class IRBuilder {
       }
     }
   }
-  /*
-  emitScreenInt(val) {
-    this.declareOneTime(
-      "fmt_int",
-      '@.fmt_int = private constant [4 x i8] c"%d\\0A\\00"',
-    );
-
-    this.declareOneTime(
-      "screen_int",
-      `define void @_screen_int(i32 %x) {
-entry:
-  call i32 (ptr, ...) @printf(ptr getelementptr ([4 x i8], [4 x i8]* @.fmt_int, i32 0, i32 0),
-    i32 %x)
-  call i32 @fflush(ptr null)
-  ret void
-}`,
-    );
-
-    this.emit(`call void @_screen_int(i32 ${val})`);
-  }
-
-  emitScreenDouble(val) {
-    this.declareOneTime(
-      "fmt_double",
-      '@.fmt_double = private constant [5 x i8] c"%lf\\0A\\00"',
-    );
-
-    this.declareOneTime(
-      "screen_double",
-      `define void @_screen_double(double %x) {
-entry:
-  call i32 (ptr, ...) @printf(ptr getelementptr ([5 x i8], [5 x i8]* @.fmt_double, i32 0, i32 0),
-    double %x)
-  call i32 @fflush(ptr null)
-  ret void
-}`,
-    );
-
-    this.emit(`call void @_screen_double(double ${val})`);
-  }
-*/
 
   emitScreenDouble(val, format = "%lf\n") {
     this.formatMapDouble = this.formatMapDouble || new Map();
@@ -2403,182 +2263,122 @@ end:
       type: meta,
       llvmType: this.getLLVMType(meta),
       isList: false,
-      isMap: false,
       elementType: null,
     };
   }
 
-  buildMapLayout(mapLiteral) {
-    if (!mapLiteral || !mapLiteral.properties) {
-      return;
-    }
-
-    const layout = {};
-
-    for (const prop of mapLiteral.properties) {
-      // NESTED MAP
-
-      if (prop.value.type === "MAP_LITERAL") {
-        layout[prop.key] = {
-          type: "Map",
-          llvmType: "ptr",
-          isMap: true,
-          layout: this.buildMapLayout(prop.value),
-        };
-      }
-
-      // LIST
-      else if (prop.value.type === "ARRAY") {
-        const inferArrayType = (arr) => {
-          const first = arr.elements?.[0];
-
-          if (!first) {
-            return {
-              type: "dynamic",
-              llvmType: "ptr",
-              isList: true,
-              elementType: "dynamic",
-            };
-          }
-
-          if (first.type === "ARRAY") {
-            const nested = inferArrayType(first);
-
-            return {
-              type: nested.type,
-              llvmType: nested.llvmType,
-              isList: true,
-              elementType: {
-                type: "List",
-                llvmType: "ptr",
-                isList: true,
-                generic: nested.elementType,
-              },
-            };
-          }
-
-          // primitive
-          return {
-            type: first.type,
-            llvmType: this.getLLVMType(first.type),
-            isList: true,
-            elementType: this.normalizeGeneric(first.type),
-          };
-        };
-
-        layout[prop.key] = inferArrayType(prop.value);
-        layout[prop.key].isMap = false;
-      }
-
-      // NORMAL VALUE
-      else {
-        const expr = this.expr.handleExpression(prop.value);
-
-        // MAP/LIST VARIABLE REF
-
-        if (expr.isVarRef && (expr.isMap || expr.isList)) {
-          // MAP
-          if (expr.isMap) {
-            layout[prop.key] = {
-              type: "Map",
-              llvmType: "ptr",
-              isMap: true,
-              layout: expr.layout,
-            };
-          }
-
-          // LIST
-          else if (expr.isList) {
-            layout[prop.key] = {
-              type: expr.type, // "int"
-              llvmType: this.getLLVMType(expr.type), // "i32"
-              isList: true,
-              isMap: false,
-              isVarRef: true,
-              generic: expr.generic?.generic || expr.generic,
-            };
-          }
-        }
-
-        // NORMAL VALUE
-        else {
-          layout[prop.key] = {
-            type: expr.type,
-            llvmType: this.getLLVMType(expr.type),
-            isMap: false,
-          };
-        }
-      }
-    }
-
-    return layout;
-  }
-
   buildMapRecursive(parentMapPtr, mapLiteral) {
     this.declareOneTime(
-      "zen_map_set",
-      "declare void @_zen_map_set(ptr, ptr, ptr, i32, i32, i32)",
+      "zen_map_set_int",
+      "declare void @zen_map_set_int(ptr, ptr, i32)",
     );
+    this.declareOneTime(
+      "zen_map_set_bool",
+      "declare void @zen_map_set_bool(ptr, ptr, i1)",
+    );
+    this.declareOneTime(
+      "zen_map_set_double",
+      "declare void @zen_map_set_double(ptr, ptr, double)",
+    );
+    this.declareOneTime(
+      "zen_map_set_string",
+      "declare void @zen_map_set_string(ptr, ptr, ptr)",
+    );
+    this.declareOneTime(
+      "zen_map_set_list",
+      "declare void @zen_map_set_list(ptr, ptr, ptr, i32, i32)",
+    );
+    this.declareOneTime(
+      "zen_map_set_map",
+      "declare void @zen_map_set_map(ptr, ptr, ptr)",
+    );
+    this.declareOneTime("zen_map_new", "declare ptr @_zen_map_new()");
+
     for (const prop of mapLiteral.properties) {
       const keyPtr = this.newGlobalString(prop.key);
 
-      let valuePtr;
-      let typeId;
-      let depth = 0;
-      let deepestType = 0;
-
       // NESTED MAP
-
-      if (prop.value.type === "MAP_LITERAL") {
+      if (prop.value.type === "STRUCT_LITERAL") {
         const nestedMapPtr = this.newTemp();
-
         this.emit(`${nestedMapPtr} = call ptr @_zen_map_new()`);
-
         this.buildMapRecursive(nestedMapPtr, prop.value);
 
-        valuePtr = nestedMapPtr;
-
-        typeId = TYPE_MAP.map;
-      } else {
-        const value = this.expr.handleExpression(prop.value);
-
-        this.emitExpr(value);
-
-        if (value?.needsLoad) {
-          const t = this.newTemp();
-          this.emit(`${t} = load ptr, ptr ${value.ptr}`);
-          valuePtr = t;
-        } else {
-          valuePtr = this.castToPtr(value);
-        }
-
-        if (value?.isList) {
-          depth = this.getListDepth(value.generic);
-
-          const deepest = this.getDeepestGeneric(value.generic);
-
-          deepestType = TYPE_MAP[deepest];
-        }
-
-        if (value?.isList) {
-          typeId = TYPE_MAP.List;
-        } else if (value?.isMap) {
-          typeId = TYPE_MAP.map;
-        } else {
-          typeId = TYPE_MAP[value.type];
-        }
+        this.emit(
+          `call void @zen_map_set_map(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${nestedMapPtr})`,
+        );
+        continue;
       }
 
-      this.emit(
-        `call void @_zen_map_set(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${valuePtr}, i32 ${typeId}, i32 ${depth}, i32 ${deepestType})`,
-      );
+      const value = this.expr.handleExpression(prop.value);
+      this.emitExpr(value);
+
+      let raw;
+      if (value?.needsLoad) {
+        const t = this.newTemp();
+        this.emit(`${t} = load ${value.llvmType ?? "ptr"}, ptr ${value.ptr}`);
+        raw = t;
+      } else {
+        raw = value.ptr ?? value.result ?? value.value;
+      }
+
+      // LIST
+      if (value?.isList) {
+        const depth = this.getListDepth(value.generic);
+        const deepest = this.getDeepestGeneric(value.generic);
+        const deepestType = TYPE_MAP[deepest];
+
+        this.emit(
+          `call void @zen_map_set_list(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${this.castToPtr(value)}, i32 ${depth}, i32 ${deepestType})`,
+        );
+        continue;
+      }
+
+      if (value?.isStruct && value.type === "Map") {
+        this.emit(
+          `call void @zen_map_set_map(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${this.castToPtr(value)})`,
+        );
+        continue;
+      }
+
+      // SCALARS
+      switch (value.type) {
+        case "int":
+          this.emit(
+            `call void @zen_map_set_int(ptr ${parentMapPtr}, ptr ${keyPtr.name}, i32 ${raw})`,
+          );
+          break;
+
+        case "bool":
+          this.emit(
+            `call void @zen_map_set_bool(ptr ${parentMapPtr}, ptr ${keyPtr.name}, i1 ${raw})`,
+          );
+          break;
+
+        case "double":
+          this.emit(
+            `call void @zen_map_set_double(ptr ${parentMapPtr}, ptr ${keyPtr.name}, double ${raw})`,
+          );
+          break;
+
+        case "string":
+          this.emit(
+            `call void @zen_map_set_string(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${raw})`,
+          );
+          break;
+
+        default:
+          this.emitError(
+            "TypeError",
+            `Unsupported Map type ${value.type}`,
+            prop,
+          );
+      }
     }
   }
 
   castToPtr(value, node) {
     const type = value.type;
     const isList = value.isList;
-    const isMap = value.isMap;
     const isListAccess = value.isListAccess;
     const vptr = value.ptr;
 
@@ -2588,8 +2388,7 @@ end:
       type === "string" ||
       type === "Map" ||
       type === "List" ||
-      isList ||
-      isMap
+      isList
     ) {
       return isListAccess ? value.addr : vptr;
     }
@@ -2709,34 +2508,64 @@ end:
         const isStructElement = this.hasStruct(deepestType);
 
         // STRUCT LITERAL push({...})
-        if (node.args[0]?.type === "MAP_LITERAL" && isStructElement) {
-          const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
-          this.emit(
-            `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr})`,
-          );
-          return {
-            ptr: null,
-            type: "void",
-            llvmType: "void",
-            local: [],
-            global: [],
-          };
-        }
+        if (node.args[0]?.type === "STRUCT_LITERAL" && isStructElement) {
+  const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
+
+  const elementStruct = this.getStruct(deepestType);
+  const isOpaqueElement =
+    elementStruct?.isOpaque || BUILTIN_STRUCT_ABI.includes(deepestType);
+
+  if (!isOpaqueElement && structPtr.needsLoad) {
+    const t = this.newTemp();
+    this.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+    structPtr.ptr = t;
+  }
+
+  this.emit(
+    `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+  );
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+  };
+}
 
         const arg = this.expr.handleExpression(node.args[0], false);
 
         if (this.hasStruct(arg.type)) {
-          this.emit(
-            `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
-          );
-          return {
-            ptr: null,
-            type: "void",
-            llvmType: "void",
-            local: [],
-            global: [],
-          };
-        }
+  const struct = this.getStruct(arg.type);
+
+  if (struct?.isBuiltin && struct?.isOpaque) {
+    let p = arg.ptr;
+
+    if (!arg.needsLoad) {
+      const tmp = this.newTemp();
+      this.emit(`${tmp} = alloca ptr`);
+      this.emit(`store ptr ${arg.ptr}, ptr ${tmp}`);
+      p = tmp;
+    }
+
+    this.emit(
+      `call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`,
+    );
+
+  } else {
+    this.emit(
+      `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
+    );
+  }
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+  };
+}
 
         let expType = object?.generic?.generic?.type;
 
@@ -3316,7 +3145,11 @@ end:
     );
   }
 
-  emitStructLiteral(structName, mapLiteralNode) {
+  emitStructLiteral(structName, mapLiteralNode, globalScope = false) {
+    if (structName === "Map") {
+      return this.emitMapLiteral(mapLiteralNode, globalScope);
+    }
+
     const llvmType = `%${structName}`;
     let structPtr = this.newTemp();
 
@@ -3349,34 +3182,6 @@ end:
       );
 
       // NESTED LIST FIELD
-      /*   if (prop.value.type === "ARRAY") {
-      
-      const innerStructName = this.getDeepestGeneric(field.generic)
-      const elementSize = this.sizeOf(innerStructName)
-
-      const listPtr = this.newTemp();
-      this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
-
-      for (const el of prop.value.elements) {
-        if (el.type === "MAP_LITERAL") {
-          const innerPtr = this.emitStructLiteral(innerStructName, el);
-          this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
-        } else {
-          const expr = this.expr.handleExpression(el);
-          
-          this.emitExpr(expr);
-          const tmp = this.newTemp();
-          this.emit(`${tmp} = alloca ${expr.llvmType}`);
-          this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
-          this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-        }
-      }
-
-      this.emit(`store ptr ${listPtr}, ptr ${fieldPtr}`);
-      continue;
-    }*/
-
-      // NESTED LIST FIELD
       if (prop.value.type === "ARRAY") {
         const isNestedList = field.generic?.generic?.type === "List";
 
@@ -3397,11 +3202,17 @@ end:
             this.emit(`${tmp} = alloca ptr`);
             this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
             this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-          } else if (el.type === "MAP_LITERAL") {
+          } else if (el.type === "STRUCT_LITERAL") {
             const innerStructName = this.getDeepestGeneric(field.generic);
             const innerPtr = this.emitStructLiteral(innerStructName, el);
+
+            if (innerPtr.needsLoad) {
+              const t = this.newTemp();
+              this.emit(`${t} = load ptr, ptr ${innerPtr.ptr}`);
+              innerPtr.ptr = t;
+            }
             this.emit(
-              `call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`,
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr.ptr})`,
             );
           } else {
             const expr = this.expr.handleExpression(el);
@@ -3418,14 +3229,24 @@ end:
       }
 
       // NESTED STRUCT FIELD (literal)
-      if (prop.value.type === "MAP_LITERAL") {
-        const nestedPtr = this.emitStructLiteral(field.type, prop.value);
+      if (prop.value.type === "STRUCT_LITERAL") {
+        const nestedPtr = this.emitStructLiteral(
+          field.type,
+          prop.value,
+          globalScope,
+        );
+
+        if (nestedPtr.needsLoad) {
+          const t = this.newTemp();
+          this.emit(`${t} = load ptr, ptr ${nestedPtr.ptr}`);
+          nestedPtr.ptr = t;
+        }
         this.declareOneTime(
           "memcpy",
           "declare void @llvm.memcpy(ptr, ptr, i64, i1)",
         );
         this.emit(
-          `call void @llvm.memcpy(ptr ${fieldPtr}, ptr ${nestedPtr}, i64 ${this.sizeOf(field.type)}, i1 false)`,
+          `call void @llvm.memcpy(ptr ${fieldPtr}, ptr ${nestedPtr.ptr}, i64 ${this.sizeOf(field.type)}, i1 false)`,
         );
         continue;
       }
@@ -3450,7 +3271,10 @@ end:
       this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
     }
 
-    return structPtr;
+    return {
+      ptr: structPtr,
+      needsLoad: false,
+    };
   }
 
   emitNestedListLiteral(arrayNode, elementGeneric) {
@@ -3477,10 +3301,18 @@ end:
         this.emit(`${tmp} = alloca ptr`);
         this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
         this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-      } else if (el.type === "MAP_LITERAL") {
+      } else if (el.type === "STRUCT_LITERAL") {
         const structName = elementGeneric?.type;
         const innerPtr = this.emitStructLiteral(structName, el);
-        this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
+
+        if (innerPtr.needsLoad) {
+          const t = this.newTemp();
+          this.emit(`${t} = load ptr, ptr ${innerPtr.ptr}`);
+          innerPtr.ptr = t;
+        }
+        this.emit(
+          `call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr.ptr})`,
+        );
       } else {
         const expr = this.expr.handleExpression(el);
         this.emitExpr(expr);
@@ -3607,9 +3439,37 @@ end:
     this.registerBuiltInStructs("JsonObject", [], { opaque: true });
 
     this.registerBuiltInStructs("Ptr", [], { opaque: true }, true);
+
+    this.registerBuiltInStructs("Map", [], { opaque: true });
   }
 
   allocStructStorage(structInfo, structName, globalScope) {
+    // speacial case for Map
+
+    if (structName === "Map") {
+      this.declareOneTime("zen_map_new", "declare ptr @_zen_map_new()");
+
+      if (globalScope) {
+        const ptr = this.newGlobalTemp();
+        this.globals.push(`${ptr} = global ptr null`);
+
+        const map = this.newTemp();
+        this.emit(`${map} = call ptr @_zen_map_new()`);
+        this.emit(`store ptr ${map}, ptr ${ptr}`);
+
+        return ptr;
+      }
+
+      const ptr = this.newTemp();
+      this.emit(`${ptr} = alloca ptr`);
+
+      const map = this.newTemp();
+      this.emit(`${map} = call ptr @_zen_map_new()`);
+      this.emit(`store ptr ${map}, ptr ${ptr}`);
+
+      return ptr;
+    }
+
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
     const llvmType = isOpaque ? "ptr" : `%${structName}`;
     const initVal = isOpaque ? "null" : "zeroinitializer";
@@ -3636,6 +3496,7 @@ end:
     basePtr,
     node,
     obj,
+    globalScope,
   ) {
     const method = BUILTIN_STRUCT_METHODS?.[structName]?.[methodName];
 
@@ -3685,9 +3546,32 @@ end:
     const llvmArgTypes = [];
 
     for (let i = 0; i < args.length; i++) {
+      if (args[i].type === "STRUCT_LITERAL") {
+        const ptr = this.emitStructLiteral(structName, args[i]);
+
+        if (ptr.needsLoad) {
+          const t = this.newTemp();
+          this.emit(`${t} = load ptr, ptr ${ptr.ptr}`);
+          ptr.ptr = t;
+        }
+
+        llvmArgs.push(`ptr ${ptr.ptr}`);
+        llvmArgTypes.push("ptr");
+
+        continue;
+      }
+
       const expr = this.expr.handleExpression(args[i]);
 
-      if (expr.type !== method.args[i]) {
+      if (expr.isList) {
+        if (method.args[i] !== "List") {
+          this.emitError(
+            "TypeError",
+            `'${structName}.${methodName}()' argument ${i + 1} expects '${expected}', got 'List'`,
+            node,
+          );
+        }
+      } else if (expr.type !== method.args[i]) {
         this.emitError(
           "TypeError",
           `'${structName}.${methodName}()' argument ${i + 1} expects '${method.args[i]}', got '${expr.type}'`,
@@ -3782,13 +3666,40 @@ end:
       };
     }
 
-    // Value-returning methods
     const temp = this.newTemp();
 
     this.emit(
       `${temp} = call ${llvmReturn} @${fnName}(${callArgs.join(", ")})`,
     );
 
+    // Special case: Map.getList<T>()
+    if (structName === "Map" && methodName === "getList") {
+      if (!node.generic) {
+        this.emitError(
+          "TypeError",
+          `'map.getList' requires an explicit compile-time generic, e.g. map.getList<List<int>>("key")`,
+          node,
+        );
+      }
+
+      const normalizedGeneric = this.normalizeGeneric(node.generic);
+      const deepestType = this.getDeepestGeneric(normalizedGeneric);
+
+      return {
+        ptr: temp,
+        type: deepestType,
+        llvmType: "ptr",
+        local: [],
+        global: [],
+        isVarRef: false,
+        needsLoad: false,
+        isDirectCall: true,
+        isList: true,
+        generic: normalizedGeneric,
+      };
+    }
+
+    // Generic return
     return {
       ptr: temp,
       type: method.returnType,
@@ -4021,5 +3932,36 @@ end:
     this.functionBuff.push(buf.join("\n"));
 
     return fnName;
+  }
+
+  emitMapLiteral(mapLiteral, globalScope) {
+    this.declareOneTime("zen_map_new", "declare ptr @_zen_map_new()");
+
+    let varPtr;
+
+    if (globalScope) {
+      varPtr = this.newGlobalTemp();
+      this.globals.push(`${varPtr} = global ptr null`);
+    } else {
+      varPtr = this.newTemp();
+      this.emit(`${varPtr} = alloca ptr`);
+    }
+
+    const mapPtr = this.newTemp();
+    this.emit(`${mapPtr} = call ptr @_zen_map_new()`);
+    this.emit(`store ptr ${mapPtr}, ptr ${varPtr}`);
+
+    if (
+      mapLiteral &&
+      mapLiteral.properties &&
+      mapLiteral.properties.length > 0
+    ) {
+      this.buildMapRecursive(mapPtr, mapLiteral);
+    }
+
+    return {
+      ptr: varPtr,
+      needsLoad: true,
+    };
   }
 }

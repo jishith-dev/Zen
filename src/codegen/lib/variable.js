@@ -285,49 +285,6 @@ export class Variable {
 
       this.IRB.emitExpr(valExpr);
 
-      // MAP WRITE a[key]
-      // disabled in v1. for more info : https://jishith-dev.github.io/zen-doc/site/#51-map
-      /*
-        if (varInfo.isMap) {
-          
-          this.IRB.declareOneTime(
-            "zen_map_set",
-            "declare void @_zen_map_set(ptr, ptr, ptr)"
-          );
-          
-          // base map pointer
-          let mapPtr = varInfo.ptr;
-          
-          if (varInfo.needsLoad) {
-            const tmp = this.IRB.newTemp();
-            this.IRB.emit(`${tmp} = load ptr, ptr ${mapPtr}`);
-            mapPtr = tmp;
-          }
-          
-          const keyExpr = this.expr.handleExpression(expression.index);
-          this.IRB.emitExpr(keyExpr);
-          
-          const valExpr = this.expr.handleExpression(expression.value);
-          this.IRB.emitExpr(valExpr);
-          
-          // type check
-          const layout = varInfo.layout;
-          
-          if (layout && keyExpr.rawStr && layout[keyExpr.rawStr]) {
-            const expected = layout[keyExpr.rawStr].type;
-            if (expected !== valExpr.type) {
-              this.IRB.emitError("TypeError", `Map '${base.name}' expects value of type '${expected}', got '${valExpr.type}'`, node)
-            }
-          }
-          
-          this.IRB.emit(
-            `call void @_zen_map_set(ptr ${mapPtr}, ptr ${keyExpr.ptr}, ptr ${valExpr.ptr})`
-          );
-          
-          return;
-        }
-        */
-
       if (varInfo.isList) {
         const generic = this.IRB.getDeepestGeneric(varInfo.generic);
         if (generic !== valExpr.type) {
@@ -419,8 +376,10 @@ export class Variable {
         );
       }
 
-      if (expression.value.type === "MAP_LITERAL") {
-        srcPtr = this.IRB.emitStructLiteral(orgData.type, expression.value);
+      if (expression.value.type === "STRUCT_LITERAL") {
+        let t = this.IRB.emitStructLiteral(orgData.type, expression.value);
+
+        srcPtr = t.ptr;
       } else {
         const rhs = this.expr.handleExpression(expression.value);
 
@@ -503,6 +462,8 @@ export class Variable {
 
     this.IRB.emit(`store ${llvmType} ${expr.ptr}, ptr ${orgPtr}`);
 
+    // if (this.IRB.freedVars.has())
+
     this.IRB.updateReactive(expression.name);
   }
 
@@ -532,6 +493,7 @@ export class Variable {
         field: node.value.callee.field,
         object: node.value.callee.object,
         args: node.value.args,
+        generic: node.value.generic,
       };
 
       const valExpr = this.expr.handleExpression(fakeNode);
@@ -662,10 +624,10 @@ export class Variable {
     }
 
     const isList = val?.isList;
-    const isMap = val?.isMap;
+
     const isStruct = val?.isStruct;
 
-    if (isList || isMap) {
+    if (isList) {
       this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
     } else if (this.IRB.hasStruct(val.type)) {
       if (val?.fromParam) {
@@ -715,13 +677,12 @@ export class Variable {
       name,
       this.IRB.createData({
         ptr,
-        llvmType: isList || isMap || isStruct ? "ptr" : llvmType,
+        llvmType: isList || isStruct ? "ptr" : llvmType,
         type: dataType,
         isConstant: false,
         isGlobal: globalScope,
         needsLoad: true,
         isList,
-        isMap,
         isStruct,
       }),
     );
@@ -843,97 +804,6 @@ export class Variable {
 
       const varInfo = this.IRB.getVar(root, exprNode);
 
-      // map inside list reassignment handling
-
-      if (varInfo.isMap) {
-        this.IRB.declareOneTime(
-          "zen_map_set",
-          "declare void @_zen_map_set(ptr, ptr, ptr)",
-        );
-
-        this.IRB.declareOneTime(
-          "zen_map_get",
-          "declare void @_zen_map_get(ptr, ptr)",
-        );
-        const baseExpr = this.expr.handleExpression(b);
-
-        this.IRB.emitExpr(baseExpr);
-
-        let currentPtr = baseExpr.ptr;
-
-        for (let i = 0; i < indices.length; i++) {
-          const v = indices[i];
-
-          const indexExpr = this.expr.handleExpression(v);
-
-          this.IRB.emitExpr(indexExpr);
-
-          const isLast = i === indices.length - 1;
-
-          // MAP KEY ACCESS
-
-          if (v.type === "string") {
-            this.IRB.declareOneTime(
-              "zen_map_get",
-              "declare ptr @_zen_map_get(ptr, ptr)",
-            );
-
-            const tmp = this.IRB.newTemp();
-
-            this.IRB.emit(
-              `${tmp} = call ptr @_zen_map_get(ptr ${currentPtr}, ptr ${indexExpr.ptr})`,
-            );
-
-            if (!isLast) {
-              const loaded = this.IRB.newTemp();
-
-              this.IRB.emit(`${loaded} = load ptr, ptr ${tmp}`);
-
-              currentPtr = loaded;
-            } else {
-              currentPtr = tmp;
-            }
-          }
-
-          // LIST INDEX ACCESS
-          else {
-            this.IRB.declareOneTime(
-              "zen_list_get",
-              "declare ptr @_zen_list_get(ptr, i32)",
-            );
-
-            const tmp = this.IRB.newTemp();
-
-            this.IRB.emit(
-              `${tmp} = call ptr @_zen_list_get(ptr ${currentPtr}, i32 ${indexExpr.ptr})`,
-            );
-
-            if (!isLast) {
-              const loaded = this.IRB.newTemp();
-
-              this.IRB.emit(`${loaded} = load ptr, ptr ${tmp}`);
-
-              currentPtr = loaded;
-            }
-
-            // keep slot ptr for store
-            else {
-              currentPtr = tmp;
-            }
-          }
-        }
-
-        const valueExpr = this.expr.handleExpression(exprNode.value);
-
-        this.IRB.emitExpr(valueExpr);
-
-        this.IRB.emit(
-          `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${currentPtr}`,
-        );
-
-        return;
-      }
-
       basePtr = varInfo.ptr;
       let structName = varInfo.type;
 
@@ -1039,7 +909,7 @@ export class Variable {
 
         basePtr = ptr;
 
-        const fieldInfo = structInfo.layout[idx];
+        const fieldInfo = structInfolayout[idx];
 
         structName = fieldInfo.type;
         llvmType = fieldInfo.llvmType;
