@@ -41,7 +41,7 @@ export class ZenString {
 
     this.IRB.declareOneTime("strlen", "declare i32 @strlen(ptr)");
 
-    let finalPtr = null;
+    let finalPtr;
 
     if (!isArray) {
       const t = this.IRB.newTemp();

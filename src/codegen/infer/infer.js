@@ -1,5 +1,5 @@
 export class InferType {
-  constructor(IRB, expr, scope = {}) {
+  constructor(IRB, expr) {
     this.IRB = IRB;
     this.expr = expr;
     this.numericTypes = ["int", "double", "bool"];
@@ -126,46 +126,45 @@ export class InferType {
         const { base, fields } = this.IRB.resolveMemberChain(node);
 
         if (base.type === "variable") {
-          const varInfo = this.IRB.getVar(base.name, node);
 
-          // STRUCT ACCESS
-          let currentType;
-          if (base.value === "this") {
-            currentType = this.IRB.currentStruct;
-          } else {
-            currentType = this.IRB.getVar(base.name, node).type;
-          }
-
-          let fieldInfo;
-
-          for (const field of fields) {
-            const structInfo = this.IRB.getStruct(currentType);
-
-            const fieldIndex = structInfo.fieldMap[field];
-
-            fieldInfo = structInfo.layout[fieldIndex];
-
-            if (fieldInfo.isList && context === "fnret") {
-              this.IRB.emitError(
-                "TypeError",
-                `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
-                node,
-              );
-            }
-
-            if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
-              this.IRB.emitError(
-                "TypeError",
-                `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
-                node,
-              );
-            }
-
-            currentType = fieldInfo.type;
-          }
-
-          return fieldInfo.type;
+        // STRUCT ACCESS
+        let currentType;
+        if (base.value === "this") {
+          currentType = this.IRB.currentStruct;
+        } else {
+          currentType = this.IRB.getVar(base.name, node).type;
         }
+
+        let fieldInfo;
+
+        for (const field of fields) {
+          const structInfo = this.IRB.getStruct(currentType);
+
+          const fieldIndex = structInfo.fieldMap[field];
+
+          fieldInfo = structInfo.layout[fieldIndex];
+
+          if (fieldInfo.isList && context === "fnret") {
+            this.IRB.emitError(
+              "TypeError",
+              `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
+              node,
+            );
+          }
+
+          if (this.IRB.hasStruct(fieldInfo.type) && context === "fnret") {
+            this.IRB.emitError(
+              "TypeError",
+              `cannot infer 'auto' return type for 'struct'. specify an explicit return type`,
+              node,
+            );
+          }
+
+          currentType = fieldInfo.type;
+        }
+
+        return fieldInfo.type;
+      }
       }
 
       case "CALL": {
@@ -207,7 +206,7 @@ export class InferType {
         if (node.name) {
           const fn = this.IRB.getFunction(node.name);
 
-          if (fn.returnType === "List" && context === "fnret") {
+          if (fn.returnType === "List"  && context === "fnret") {
             this.IRB.emitError(
               "TypeError",
               `cannot infer 'auto' return type for 'List<T>. specify an explicit return type`,
@@ -222,6 +221,8 @@ export class InferType {
               node,
             );
           }
+
+          
 
           node.inferredType = fn.returnType;
 
@@ -347,7 +348,7 @@ export class InferType {
         }
 
         if (node.operator === "-") {
-          let orgType = this.ensureNumeric(valueType, "-");
+          let orgType = this.ensureNumeric(valueType, "-", node);
 
           node.inferredType = orgType;
           if (orgType === "bool") orgType = "int";
@@ -436,7 +437,7 @@ export class InferType {
     }
   }
 
-  ensureNumeric(type, op) {
+  ensureNumeric(type, op, node) {
     if (!this.numericTypes.includes(type)) {
       this.IRB.emitError(
         "TypeError",

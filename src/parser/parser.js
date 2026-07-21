@@ -7,7 +7,7 @@ import {
 import { Lexer } from "../lexer/lexer.js";
 
 export class Parser {
-  constructor(tokens, IRB, options = { preserveComments: false }) {
+  constructor(tokens, IRB, options = { preserveComments: false}) {
     this.tokens = tokens;
     this.pos = 0;
     this.IRB = IRB;
@@ -106,36 +106,39 @@ export class Parser {
 
     return body;
   }
+  
+  isGenericStart(pos) {
+  return this.tokens[pos]?.value === "<" && this.tokens[pos + 1]?.value === "List";
+}
 
   // STATEMENTS
 
   parseStatement() {
-    if (
-      this.matchKeyword("const") &&
-      this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-      this.tokens[this.pos + 2]?.type === "IDENTIFIER"
-    ) {
-      this.advance(); // const
-      return this.node(this.parseStructVariableDeclaration(true));
-    }
+    
+    if (this.matchKeyword("const") &&
+    this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+    this.tokens[this.pos + 2]?.type === "IDENTIFIER") {
+    this.advance(); // const
+    return this.node(this.parseStructVariableDeclaration(true));
+}
 
-    if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
-      return this.node(this.parseStructVariableDeclaration(false));
-    }
-
+if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
+    return this.node(this.parseStructVariableDeclaration(false));
+}
+    
     if (
       this.match("TYPE") ||
       this.matchKeyword("auto") ||
-      this.matchKeyword("reactive") ||
+      this.matchKeyword("reactive") || 
       this.matchKeyword("const")
     ) {
       return this.node(this.parseVariableDeclaration());
     }
-
+    
     if (this.options.preserveComments) {
-      if (this.match("COMMENT")) {
-        return this.parseComment();
-      }
+    if (this.match("COMMENT")) {
+      return this.parseComment();
+    }
     }
 
     if (this.matchKeyword("switch")) {
@@ -225,35 +228,40 @@ export class Parser {
     }
 
     if (
-      this.matchKeyword("await") &&
-      this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-      (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
-        this.tokens[this.pos + 2]?.value === "<")
-    ) {
-      this.advance();
+  this.matchKeyword("await") &&
+  this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+  (
+    this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+    this.isGenericStart(this.pos + 2)
+  )
+) {
+  this.advance();
 
-      const name = this.current().value;
+  const name = this.current().value;
 
-      this.advance();
+  this.advance();
 
-      return this.node(
-        this.parseCall(
-          name,
-          true, // isAwait
-        ),
-      );
-    }
+  return this.node(
+    this.parseCall(
+      name,
+      true, // isAwait
+    ),
+  );
+}
 
-    if (
-      this.match("IDENTIFIER") &&
-      (this.peek("LEFT_PARENTHESIS") ||
-        this.tokens[this.pos + 1]?.value === "<")
-    ) {
-      const name = this.current().value;
-
-      this.advance();
-      return this.node(this.parseCall(name, false));
-    }
+if (
+  this.match("IDENTIFIER") &&
+  (
+    this.peek("LEFT_PARENTHESIS") ||
+    this.isGenericStart(this.pos + 1)
+  )
+) {
+  
+  const name = this.current().value;
+  
+  this.advance();
+  return this.node(this.parseCall(name, false));
+}
 
     if (this.matchKeyword("continue")) {
       this.expectKeyword("continue");
@@ -299,34 +307,34 @@ export class Parser {
       expression: expr,
     });
   }
-
+  
   parseStructVariableDeclaration(isConst = false) {
     const struct_ref = this.advance().value;
     const name = this.advance().value;
 
     let value = null;
     if (this.current().value === "=") {
-      this.advance();
-      value = this.node(this.parseExpression());
+        this.advance();
+        value = this.node(this.parseExpression());
     }
 
     return this.node({
-      type: ParserTypes.VARIABLE_DECLARATION,
-      struct_ref,
-      name,
-      value,
-      isConstant: isConst,
+        type: ParserTypes.VARIABLE_DECLARATION,
+        struct_ref,
+        name,
+        value,
+        isConstant: isConst,
     });
-  }
-
+}
+  
   parseComment() {
     const token = this.advance();
 
     return {
       type: ParserTypes.COMMENT,
-      value: token.value,
+      value: token.value
     };
-  }
+}
 
   parseMap(isConstant = false) {
     this.expectKeyword("Map");
@@ -545,11 +553,7 @@ export class Parser {
         isThreadfn = true;
         this.advance();
       } else if (this.matchKeyword("fn")) {
-        this.IRB.emitError(
-          "SyntaxError",
-          "method should be declared without 'fn' keyword",
-          this.lineAndColumn(),
-        );
+        this.IRB.emitError("SyntaxError", "method should be declared without 'fn' keyword", this.lineAndColumn());
       }
 
       // METHOD
@@ -699,11 +703,12 @@ export class Parser {
   }
 
   parseList(isConstant = false) {
+    
     const generic = this.parseListGeneric();
-
+    
     const name = this.expect("IDENTIFIER").value;
 
-    let value = null;
+    let value;
 
     if (this.match("ASSIGNMENT")) {
       this.advance();
@@ -842,13 +847,13 @@ export class Parser {
     });
   }
 
-  parseType(fromRet) {
+  parseType() {
     if (this.matchKeyword("List")) {
       return this.parseListGeneric();
     }
 
     if (this.matchKeyword("fn")) {
-      return this.parseFParam();
+      return this.parseFnParam();
     }
 
     if (this.matchKeyword("Map")) {
@@ -952,20 +957,20 @@ export class Parser {
     this.expect("RIGHT_PARENTHESIS");
 
     let returnType = {
-      type: "void",
+  type: "void",
+  dimensions: [],
+};
+
+if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
+  if (this.matchKeyword("void")) {
+    returnType = {
+      type: this.expectKeyword("void").value,
       dimensions: [],
     };
-
-    if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
-      if (this.matchKeyword("void")) {
-        returnType = {
-          type: this.expectKeyword("void").value,
-          dimensions: [],
-        };
-      } else {
-        returnType = this.parseType(true);
-      }
-    }
+  } else {
+    returnType = this.parseType(true);
+  }
+}
 
     return {
       type: "Function",
@@ -982,7 +987,7 @@ export class Parser {
     isThread = false,
     isExtern = false,
   ) {
-    let isAsync = isAsyncFn;
+    
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
         this.advance();
@@ -991,7 +996,7 @@ export class Parser {
       } else if (this.matchKeyword("extern")) this.advance();
 
       this.expectKeyword("fn");
-    }
+    } 
 
     let name;
 
@@ -1014,23 +1019,23 @@ export class Parser {
 
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
-
+      
       let isConstant = false;
 
-      if (this.matchKeyword("const")) {
+    if (this.matchKeyword("const")) {
         isConstant = true;
         this.advance();
-      }
+    }
 
       const t = this.parseType();
-
+      
       if (isConstant && t.type === "Function") {
-        this.IRB.emitError(
-          "TypeError",
-          "function callback parameters cannot be declared as 'const'",
-          this.lineAndColumn(),
-        );
-      }
+  this.IRB.emitError(
+    "TypeError",
+    "function callback parameters cannot be declared as 'const'",
+    this.lineAndColumn(),
+  );
+}
 
       let name;
 
@@ -1115,7 +1120,7 @@ export class Parser {
     }
 
     let body;
-    let isDeclaration = false;
+    let isDeclaration;
     if (this.match("NEWLINE")) {
       if (isInsideMethod)
         this.IRB.emitError(
@@ -1157,8 +1162,7 @@ export class Parser {
 
     const next1 = this.tokens[this.pos];
     const next2 = this.tokens[this.pos + 1];
-    const next3 = this.tokens[this.pos + 2];
-
+    
     const isLoopOf =
       next1?.type === "IDENTIFIER" &&
       next2?.type === "KEYWORD" &&
@@ -1168,12 +1172,6 @@ export class Parser {
       next1?.type === "IDENTIFIER" &&
       next2?.type === "KEYWORD" &&
       next2.value === "in";
-
-    // LOOP OF (ARRAY / LIST)
-    // loop (int i of arr)
-
-    // NOTE: loop (v in map) is disabled in ZEN semantic design.
-    // Map is not treated as an iterable sequence type.
 
     if (isLoopIn) {
       this.IRB.emitError(
@@ -1218,8 +1216,8 @@ export class Parser {
     let second = this.parseExpression();
 
     let init = null;
-    let condition = null;
-    let update = null;
+    let condition;
+    let update;
 
     if (this.match("COMMA")) {
       this.advance();
@@ -1336,7 +1334,7 @@ export class Parser {
 
   parseVariableDeclaration() {
     let isConst = false;
-
+    
     if (this.match("KEYWORD")) {
       const keyVal = this.expect("KEYWORD").value;
 
@@ -1344,30 +1342,30 @@ export class Parser {
         isConst = true;
       }
     }
-
+    
     let haveReactive = false;
     if (this.matchKeyword("reactive")) {
       haveReactive = true;
       this.advance();
     }
-
+    
     if (haveReactive && isConst) {
-      this.IRB.emitError(
+    this.IRB.emitError(
         "SyntaxError",
         "variable cannot be both 'const' and 'reactive'",
         this.lineAndColumn(),
-      );
-    }
+    );
+}
 
     // redirect to List or Map so const works there too.
     if (this.current().value === "List") {
-      return this.parseList(isConst);
-    }
+    return this.parseList(isConst);
+}
 
-    if (this.current().value === "Map") {
-      return this.parseMap(isConst);
-    }
-
+if (this.current().value === "Map") {
+    return this.parseMap(isConst);
+}
+    
     const dataType = this.advance().value;
 
     const name = this.expect("IDENTIFIER").value;
@@ -1734,15 +1732,16 @@ export class Parser {
 
         continue;
       }
-
-      if (this.current()?.value === "<") {
+      
+      if (this.isGenericStart(this.pos)) {
         this.advance(); // <
-        expr.generic = this.parseListGeneric();
-        this.advance(); // >
-      }
+    expr.generic = this.parseListGeneric();
+    this.advance(); // >
+}
 
       if (this.match("LEFT_PARENTHESIS")) {
         this.advance();
+        
 
         const args = [];
 
@@ -1894,30 +1893,36 @@ export class Parser {
     // VARIABLE
     if (token.type === "IDENTIFIER") {
       this.advance();
-
+      
       if (
-        this.matchKeyword("await") &&
-        this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-        (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
-          this.tokens[this.pos + 2]?.value === "<")
-      ) {
-        this.advance();
+  this.matchKeyword("await") &&
+  this.isGenericStart(this.pos + 2) &&
+  (
+    this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+    this.tokens[this.pos + 2]?.value === "<"
+  )
+) {
+  this.advance();
 
-        const name = this.current().value;
+  const name = this.current().value;
 
-        this.advance();
+  this.advance();
 
-        return this.node(
-          this.parseCall(
-            name,
-            true, // isAwait
-          ),
-        );
-      }
+  return this.node(
+    this.parseCall(
+      name,
+      true, // isAwait
+    ),
+  );
+}
 
-      if (this.match("LEFT_PARENTHESIS") || this.current()?.value === "<") {
-        return this.node(this.parseCall(token.value, false));
-      }
+if (
+  this.match("LEFT_PARENTHESIS") ||
+  this.isGenericStart(this.pos)
+) {
+  return this.node(this.parseCall(token.value, false));
+}
+      
 
       return this.node({
         type: ParserTypes.VARIABLE,
@@ -1989,24 +1994,25 @@ export class Parser {
   // FUNCTION CALL
 
   parseCall(name, isAwait = false) {
+    
     let generic = null;
 
-    if (this.current().value === "<") {
-      this.advance();
+if (this.current().value === "<") {
+  this.advance();
 
-      generic = this.parseListGeneric();
+  generic = this.parseListGeneric();
 
-      if (this.current().value === ">") {
-        this.advance();
-      } else {
-        this.IRB.emitError(
-          "SyntaxError",
-          "Expected '>' after generic type",
-          this.lineAndColumn(),
-        );
-      }
-    }
-
+  if (this.current().value === ">") {
+    this.advance();
+  } else {
+    this.IRB.emitError(
+      "SyntaxError",
+      "Expected '>' after generic type",
+      this.lineAndColumn(),
+    );
+  }
+}
+    
     this.expect("LEFT_PARENTHESIS");
     this.skipNewlines();
     const args = [];

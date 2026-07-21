@@ -12,12 +12,14 @@ import {
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { execSync } from "child_process";
 
 export class IRBuilder {
   constructor(moduleName) {
     this.globals = [];
     this.locals = [];
     this.functionBuff = [];
+    this.meta = [];
 
     this.currentFunction = null;
     this.functions = new Map();
@@ -432,6 +434,8 @@ export class IRBuilder {
     if (this.functionParamTable.has(name)) {
       return this.functionParamTable.get(name);
     }
+    
+    this.emitError("ReferenceError", `callback function '${name}' not defined`, node);
   }
 
   typeMatches(expr, expectedType, expectedIsList = false) {
@@ -565,7 +569,7 @@ export class IRBuilder {
   }
 
   getIR() {
-    return [...this.globals, ...this.functionBuff, ...this.locals].join("\n");
+    return [...this.meta, ...this.globals, ...this.functionBuff, ...this.locals].join("\n");
   }
 
   newTemp() {
@@ -868,7 +872,6 @@ export class IRBuilder {
     const RED = "\x1b[31m";
     const YELLOW = "\x1b[33m";
     const CYAN = "\x1b[36m";
-    const GREEN = "\x1b[32m";
     const BOLD = "\x1b[1m";
 
     const loc = this.getNodeLocation(err.node);
@@ -1000,8 +1003,7 @@ export class IRBuilder {
       if (isArray) {
         this.emitError(
           "SemanticError",
-          `Fixed-size arrays cannot be passed as function parameters`,
-          node,
+          `Fixed-size arrays cannot be passed as function parameters`
         );
       }
 
@@ -1517,7 +1519,7 @@ end:
       );
     }
 
-    node.elements.forEach((el, i) =>
+    node.elements.forEach((el) =>
       this.validateArrayType(innerType, el, expectedZenType, name),
     );
   }
@@ -1541,7 +1543,7 @@ end:
       if (node.type !== zenType) {
         this.emitError(
           "DeclarationError",
-          `Global array '${name}' initializer must be a compile-time constant`,
+          `Global array '${node.name}' initializer must be a compile-time constant`,
           node,
         );
       }
@@ -1663,7 +1665,7 @@ end:
       );
     }
 
-    const { full: arrayType, base: elementType } = this.buildArrayType(
+    const { full: arrayType } = this.buildArrayType(
       baseType,
       dims,
     );
@@ -3044,7 +3046,7 @@ end:
     return node;
   }
 
-  normalizeUpdateToExpr(update, loopVarName) {
+  normalizeUpdateToExpr(update) {
     if (update.type === "UNARY_EXPRESSION") {
       const op = update.operator === "++" ? "+" : "-";
       return {
@@ -3088,7 +3090,18 @@ end:
   }
 
   constEval(node, context) {
+  
     if (node.type === "int") return Number(node.value);
+    
+    if (this.enums.has(node.object.name)) {
+      const field = node.field;
+      const e = this.enums.get(node.object.name).members.has(field);
+      if (e) {
+        return Number(this.enums.get(node.object.name).members.get(field));
+      } else {
+        this.emitError("ReferenceError", `enum '${node.object.name}' does't have member '${field}'`, node);
+      }
+    }
 
     if (node.type === "BINARY_EXPRESSION") {
       const l = this.constEval(node.left, context);
@@ -3496,7 +3509,6 @@ end:
     basePtr,
     node,
     obj,
-    globalScope,
   ) {
     const method = BUILTIN_STRUCT_METHODS?.[structName]?.[methodName];
 
@@ -3567,7 +3579,7 @@ end:
         if (method.args[i] !== "List") {
           this.emitError(
             "TypeError",
-            `'${structName}.${methodName}()' argument ${i + 1} expects '${expected}', got 'List'`,
+            `'${structName}.${methodName}()' argument ${i + 1} expects '${method.arg[i]}', got 'List'`,
             node,
           );
         }
@@ -3717,7 +3729,7 @@ end:
     if (!prop) {
       this.emitError(
         "ReferenceError",
-        `'${structName}' has no property '${methodName}'`,
+        `'${structName}' has no property '${propName}'`,
         node,
       );
     }
@@ -3786,12 +3798,12 @@ end:
     };
   }
 
-  resolveFunction(name) {
+  resolveFunction(name, node) {
     if (this.functionParamTable.has(name)) {
       return this.functionParamTable.get(name);
     }
 
-    return this.getFunction(name);
+    return this.getFunction(name, node);
   }
 
   // debug.pretty() helper
@@ -3964,4 +3976,17 @@ end:
       needsLoad: true,
     };
   }
+  
+  getTargetInfo() {
+  try {
+    const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
+
+    return {
+      triple: ir.match(/target triple = "([^"]+)"/)?.[1] || false,
+      dataLayout: ir.match(/target datalayout = "([^"]+)"/)?.[1] || false,
+    };
+  } catch {
+    return false;
+  }
+}
 }

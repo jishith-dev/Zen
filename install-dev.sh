@@ -118,6 +118,21 @@ compile_ll() {
   }
 }
 
+detect_os() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    Darwin)               echo "macos" ;;
+    Linux)
+      if [ -n "${TERMUX_VERSION:-}" ] || [ -d "/data/data/com.termux" ]; then
+        echo "android"
+      else
+        echo "linux"
+      fi
+      ;;
+    *) echo "unknown" ;;
+  esac
+}
+
 compile_c() {
   local src="$1"
   local out="$2"
@@ -143,7 +158,15 @@ compile_ll src/zen_stdlib/zen_stdlib_opt.ll   src/zen_stdlib/zen_stdlib_opt.o
 
 info "Building runtime..."
 
-compile_c      src/codegen/runtime/runtime.c       src/codegen/runtime/runtime.o
+TARGET_OS="$(detect_os)"
+if [ "$TARGET_OS" = "windows" ]; then
+  RUNTIME_SRC="src/codegen/runtime/w_runtime.c"
+else
+  RUNTIME_SRC="src/codegen/runtime/runtime.c"
+fi
+info "Target OS: $TARGET_OS"
+
+compile_c      "$RUNTIME_SRC"                      src/codegen/runtime/runtime.o
 compile_c      src/codegen/runtime/listRuntime.c   src/codegen/runtime/listRuntime.o
 compile_c      src/codegen/runtime/jsonRuntime.c   src/codegen/runtime/jsonRuntime.o
 compile_c      src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o

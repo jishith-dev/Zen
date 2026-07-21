@@ -1,4 +1,10 @@
 
+#include <stdint.h>
+
+#ifdef _WIN32
+#define strdup _strdup
+#endif
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +12,8 @@
 
 #define INITIAL_CAPACITY 8
 
-#define INT2PTR(x) ((void *)(long)(x))
-#define PTR2INT(x) ((int)(long)(x))
+#define INT2PTR(x) ((void *)(intptr_t)(x))
+#define PTR2INT(x) ((int)(intptr_t)(x))
 
 enum { ZEN_INT = 1, ZEN_BOOL, ZEN_DOUBLE, ZEN_STRING, ZEN_LIST, ZEN_MAP };
 

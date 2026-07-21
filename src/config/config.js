@@ -420,7 +420,6 @@ const BUILTIN_FUNCTIONS = [
   "_ffi_tan",
   "_ffi_log",
   "_ffi_exp",
-  "_ffi_exit",
   "_ffi_system",
   "_ffi_abort",
   "_ffi_clock",
@@ -1659,11 +1658,6 @@ const BUILTIN_MAP = {
     llvmName: "_ffi_exp",
   },
 
-  exit: {
-    returnType: "void",
-    llvmName: "_ffi_exit",
-  },
-
   system: {
     returnType: "int",
     llvmName: "_ffi_system",
@@ -2245,8 +2239,6 @@ const FFI_MAP = {
 
   _ffi_exp: ["_ffi_exp", "double", 1, ["double"]],
 
-  _ffi_exit: ["_ffi_exit", "void", 1, ["int"]],
-
   _ffi_system: ["_ffi_system", "int", 1, ["string"]],
 
   _ffi_abort: ["_ffi_abort", "void", 0, []],
@@ -2256,22 +2248,6 @@ const FFI_MAP = {
   _ffi_rand: ["_ffi_rand", "int", 0, []],
 
   _ffi_srand: ["_ffi_srand", "void", 1, ["int"]],
-
-  _ffi_abs: ["_ffi_abs", "int", 1, ["int"]],
-
-  _ffi_atoi: ["_ffi_atoi", "int", 1, ["string"]],
-
-  _ffi_atof: ["_ffi_atof", "double", 1, ["string"]],
-
-  _ffi_toupper: ["_ffi_toupper", "int", 1, ["int"]],
-
-  _ffi_tolower: ["_ffi_tolower", "int", 1, ["int"]],
-
-  _ffi_isalpha: ["_ffi_isalpha", "int", 1, ["int"]],
-
-  _ffi_isdigit: ["_ffi_isdigit", "int", 1, ["int"]],
-
-  _ffi_isspace: ["_ffi_isspace", "int", 1, ["int"]],
 
   _ffi_fmod: ["_ffi_fmod", "double", 2, ["double", "double"]],
   _ffi_log10: ["_ffi_log10", "double", 1, ["double"]],

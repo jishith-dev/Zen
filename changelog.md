@@ -228,3 +228,143 @@ Generated `zen.json`:
 ### Fixes
 
 - Various compiler, runtime, CLI, package registry, and standard library bug fixes
+
+---
+
+# v2.0.0 — Major Release
+
+> ⚠️ **Breaking Release**
+>
+> **ZEN v2** introduces the largest language update since the initial release. Several language constructs have been refined for improved consistency, readability, and long-term stability.
+>
+> From **v2 onwards, the language syntax is considered frozen for backward compatibility.** Future releases will focus on new features and APIs while preserving existing syntax whenever possible.
+
+---
+
+## Language
+
+### Syntax Changes
+
+> ⚠️ **Breaking Change**
+>
+> Struct field declarations now use **`type name`** order.
+>
+> **Old**
+> ```zen
+> name string
+> age int
+> ```
+>
+> **New**
+> ```zen
+> string name
+> int age
+> ```
+
+> ⚠️ **Breaking Change**
+>
+> `const` now appears **before** the type.
+>
+> **Old**
+> ```zen
+> int const age = 10
+> ```
+>
+> **New**
+> ```zen
+> const int age = 10
+> ```
+
+- Added callback function parameters (`fn cb(...)`)
+- Added `thread fn` for lightweight concurrent execution
+- Added `extern fn` for foreign function declarations without name mangling
+- Added generic function call syntax (`function<Type>()`) for type-safe generic returns
+- Added built-in `Ptr` struct for native pointer manipulation
+- `Map` is now implemented as a built-in struct instead of a language data type
+- Added struct-style `Map` literals
+- Improved compile-time type safety for generic APIs
+
+---
+
+## Standard Library
+
+### HTTP
+
+- Added `http.urlEncode()`
+- Added `http.urlDecode()`
+- Added `http.setHeader()`
+- Added `http.clearHeaders()`
+- Added `http.lastStatus()`
+- Added configurable request timeout support
+
+### Threads
+
+- Added `threads` namespace
+- Added `threads.waitAll()`
+
+### Debug
+
+- Added `debug` namespace
+- Added `debug.pretty()` for formatted printing of Lists, Maps, and structs
+
+---
+
+## Compiler & Runtime
+
+- Added runtime support for thread execution
+- Added callback code generation support
+- Added external function declarations
+- Added native pointer runtime (`Ptr`)
+- Migrated `Map` to an opaque built-in runtime struct
+- Improved generic type resolution for nested `List` types
+- Improved built-in struct handling
+- Improved HTTP runtime
+- Improved parser consistency
+- Improved formatter support
+
+---
+
+## Tooling
+
+- Added official source formatter (`zen fmt`)
+- Added built-in linter (`zen lint`)
+- Added Language Server Protocol (LSP) implementation
+- Added editor auto-completion support
+- Added hover information support
+- Added signature help support
+- Improved diagnostics
+- Improved code formatting workflow
+- Improved developer tooling integration
+
+---
+
+## Documentation
+
+- Completely rewritten language specification
+- Updated all syntax examples to v2
+- Added thread documentation
+- Added callback documentation
+- Added `extern` documentation
+- Added `Ptr` documentation
+- Added `Map` runtime documentation
+- Expanded built-in struct documentation
+- Improved API reference
+- Improved appendix and language reference
+
+---
+
+## Fixes
+
+- Fixed numerous parser bugs
+- Fixed formatter inconsistencies
+- Fixed built-in struct handling
+- Fixed HTTP runtime issues
+- Fixed generic type resolution
+- Fixed module and compiler edge cases
+- Fixed known compiler, runtime, tooling, and standard library bugs
+
+---
+
+## Notes
+
+This release marks the beginning of the **ZEN v2** series. The language syntax is now considered stable, with future releases focusing on new capabilities, performance improvements, tooling, and standard library expansion while maintaining backward compatibility.

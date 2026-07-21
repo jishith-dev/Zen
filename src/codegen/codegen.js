@@ -33,7 +33,6 @@ import {
   VOID_BUILTIN_FUNCTIONS,
   GLOBAL_EXTERNAL,
   STD_FUNCTIONS_SCHEMA,
-  BUILTIN_FUNCTIONS,
   BUILTIN_MAP,
   RESERVED_FUNCTIONS,
   COMPOUND_OPERATORS,
@@ -117,11 +116,17 @@ export class CodeGen {
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
+    
+    const target = this.IRB.getTargetInfo();
+
+if (target) {
+  this.IRB.meta.push(`target triple = "${target.triple}"`);
+  this.IRB.meta.push(`target datalayout = "${target.dataLayout}"`);
+}
 
     this.IRB.initBuiltInStructs();
 
     const haveExport = this.ast.find((f) => f.type === "EXPORT");
-    const haveImport = this.ast.find((f) => f.type === "IMPORT");
 
     if (haveExport) {
       this.IRB.haveExport = true;
@@ -205,7 +210,7 @@ define void @_assignSeed () {
         if (isArrayRet) {
           this.IRB.emitError(
             "SemanticError",
-            `function ${name} cannot return array`,
+            `function ${node.name} cannot return array`,
             node,
           );
         }
@@ -325,7 +330,7 @@ define void @_assignSeed () {
         if (isArrayRet) {
           this.IRB.emitError(
             "SemanticError",
-            `function ${name} cannot return array`,
+            `function ${node.name} cannot return array`,
             node,
           );
         }
@@ -580,8 +585,6 @@ define void @_assignSeed () {
       this.ternary.ternary(node.expression);
       return;
     }
-
-    const isMemberAccess = node?.object?.name;
 
     if (isMemberAssign) {
       // inside redirect ro map assign

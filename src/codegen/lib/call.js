@@ -1,5 +1,4 @@
 import {
-  NON_STANDALONE_BUILTINS,
   OS_MAP,
   FILE_MAP,
   TIME_MAP,
@@ -57,9 +56,6 @@ export class Call {
     this.expr = expr;
   }
 
-  // A struct returns/passes as a raw `ptr` (no sret, no alloca-by-value)
-  // if it's either opaque (unsized, e.g. Map/Json) OR explicitly listed
-  // in BUILTIN_STRUCT_ABI (sized, but designed to be passed as ptr, e.g. Ptr).
   isPtrReturn(typeName) {
     const struct = this.IRB.hasStruct(typeName) ? this.IRB.getStruct(typeName) : false;
     return !!struct?.isOpaque || BUILTIN_STRUCT_ABI.includes(typeName);
@@ -124,6 +120,9 @@ export class Call {
     }
 
     const fn = this.IRB.resolveFunction(name, node);
+    
+    const isImportedFn = !!fn.isImported;
+    const importedModuleName = fn?.importedModuleName;
 
     const isFunctionParam = !!fn.isFunctionParam;
 
@@ -145,6 +144,9 @@ export class Call {
         break;
       case isStdFn:
         mangledName = name;
+        break;
+      case isImportedFn:
+        mangledName = `zen_${importedModuleName}_${name}`
         break;
       default:
         mangledName = `zen_${this.moduleName}_${name}`;
@@ -601,8 +603,6 @@ export class Call {
 
   handleBuiltInCall(node, globalScope) {
     this.IRB.guardStackOp("CALL", node);
-
-    const type = node?.type;
 
     let name = node.name;
 

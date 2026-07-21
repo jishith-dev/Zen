@@ -1,5 +1,5 @@
 struct Banking {
-  balance int
+  int balance
   
   deposit(int a) {
 if (a <= 0) sys.panic("cannot deposit 0 or negative value")

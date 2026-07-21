@@ -484,3 +484,43 @@ Map uses an opaque runtime representation internally.
 
 Users interact through methods only; memory layout and storage are managed by the runtime.
 
+
+
+Linter tooling completed.
+
+Zen Linter features:
+
+- Total individual checks: 22
+- Public grouped categories: 19
+
+Errors:
+
+1. Undefined variable
+2. Duplicate variable declaration
+3. Duplicate function declaration
+4. Duplicate parameter declaration
+5. Duplicate struct field
+6. Duplicate enum member
+7. Duplicate map key
+8. Return outside function
+9. Break outside loop/switch
+10. Continue outside loop
+
+Warnings:
+11. Variable shadowing
+12. Unused variable
+13. Unused parameter
+14. Unreachable code
+15. Empty block
+16. Empty function
+17. Empty loop
+18. Duplicate switch case
+19. Constant condition in if
+20. Constant condition in while/do while/loop
+21. Self assignment
+22. Expression has no effect
+
+Usage:
+zen lint <file>.zen
+
+removed ffi.exit instead use os.exit to avoid inconsistency

@@ -29,7 +29,7 @@ export class Struct {
       if (isArrayRet)
         this.IRB.emitError(
           "SemanticError",
-          `function ${name} cannot return array`,
+          `function ${method.name} cannot return array`,
           method,
         );
 
@@ -64,9 +64,6 @@ export class Struct {
     const layout = [];
     const fieldMap = {};
     const llvmFields = [];
-
-    let byteSize = 0;
-    let maxAlign = 0;
 
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
@@ -137,7 +134,7 @@ export class Struct {
 
     if (isMethod) {
       this.registerStructMethods(node);
-
+if (!this.IRB.hasVar("this")) {
       this.IRB.setVar(
         "this",
         this.IRB.createData({
@@ -147,6 +144,7 @@ export class Struct {
           isStruct: true,
         }),
       );
+}
 
       this.generateMethods(node);
     }
@@ -220,7 +218,7 @@ export class Struct {
     );
   }
 
-  assignStruct(node, globalScope) {
+  assignStruct(node) {
     const { base, fields } = this.IRB.resolveMemberChainAssign(node.object);
     const lastField = node.field;
 
@@ -286,7 +284,6 @@ export class Struct {
       );
     }
 
-    const isStructInfer = this.IRB.hasStruct(fieldMeta.type);
     const value = this.expr.handleExpression(node.value, false, fieldMeta.type);
 
     const expected = fieldMeta?.type;
@@ -360,10 +357,18 @@ export class Struct {
     // NORMAL VALUE STORE
 
     const llvmType = this.IRB.getLLVMType(structInfo.layout[fieldIndex].type);
-
+    
     if (llvmType === "ptr" || isList) {
-      this.IRB.emit(`store ptr ${value.ptr}, ptr ${finalPtr}`);
-    } else {
+  let ptrValue = value.ptr;
+
+  if (value.needsLoad) {
+    ptrValue = this.IRB.newTemp();
+    this.IRB.emit(`${ptrValue} = load ptr, ptr ${value.ptr}`);
+  }
+
+  this.IRB.emit(`store ptr ${ptrValue}, ptr ${finalPtr}`);
+}
+    else {
       this.IRB.emit(`store ${llvmType} ${value.ptr}, ptr ${finalPtr}`);
     }
   }

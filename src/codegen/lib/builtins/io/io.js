@@ -1,4 +1,3 @@
-import { FORMAT_MAP } from "../../../../config/config.js";
 
 export class IO {
   constructor(IRB, expr) {
@@ -44,9 +43,7 @@ export class IO {
       format = args[1].value;
     }
 
-    let expr = null;
-    let type = null;
-    let valuePtr = null;
+    let expr, type, valuePtr;
 
     // function special case
     const isFunction =
@@ -69,6 +66,7 @@ export class IO {
 
     // derived types (safe guards)
     if (expr) {
+
       if (expr.isArray) {
         valuePtr = this.IRB.newGlobalString("<array>").name;
         type = "string";
@@ -88,15 +86,17 @@ export class IO {
     }
 
     switch (type) {
-      case "int":
+      case "int":{
         this.IRB.emitScreenInt(valuePtr, format || "%d\n");
         break;
+      }
 
-      case "double":
+      case "double":{
         this.IRB.emitScreenDouble(valuePtr, format || "%lf\n");
         break;
+      }
 
-      case "bool":
+      case "bool":{
         if (format !== null) {
           this.IRB.emitError(
             "ArgumentError",
@@ -106,14 +106,16 @@ export class IO {
         }
         this.IRB.emitScreenBool(valuePtr);
         break;
+      }
 
-      case "string":
+      case "string": {
         let strFormat = format || "%s\n";
         if (!strFormat.includes("%s")) {
           strFormat = strFormat + "%s";
         }
         this.IRB.emitScreenString(valuePtr, strFormat);
         break;
+      }
 
       default:
         this.IRB.emitError(
@@ -124,7 +126,7 @@ export class IO {
     }
   }
 
-  input(node, globalScope) {
+  input(node) {
     this.IRB.declareOneTime("sys_input", "declare ptr @_sys_input(ptr)");
 
     const args = node?.value?.args || node?.args;

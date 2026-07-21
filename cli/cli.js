@@ -30,6 +30,7 @@ const VALID_COMMANDS = new Set([
   "version",
   "update",
   "fmt",
+  "lint"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -59,8 +60,9 @@ const COMPILE_COMMANDS = new Set([
   "ast",
   "tokens",
   "clean",
-
+  
   "fmt", // format
+  "lint" // linter
 ]);
 
 function help() {
@@ -83,6 +85,7 @@ Project:
   
 Tooling:
   zen fmt <file> *? or **?
+  zen lint <file>
 
 Packages:
   zen install <package>
@@ -126,12 +129,7 @@ export class CLI {
   async main() {
     const command = this.command;
 
-    if (
-      !command ||
-      command === "--help" ||
-      command === "-h" ||
-      command === "help"
-    ) {
+    if (!command || command === "--help" || command === "-h" || command === "help") {
       help();
       process.exit(0);
     }

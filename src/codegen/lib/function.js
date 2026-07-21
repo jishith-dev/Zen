@@ -122,8 +122,6 @@ export class HandleFunction {
 
       const first = this.IRB.currentFunction.returnTypes[0];
 
-      const totalReturns = currentFunction.returnTypes.length;
-
       const isSameType = currentFunction.returnTypes.every(
         (type) => type === first,
       );

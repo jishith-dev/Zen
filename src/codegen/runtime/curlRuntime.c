@@ -1,10 +1,14 @@
 
 #include <curl/curl.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <string.h>
+#define strncasecmp _strnicmp
+#else
 #include <strings.h>
+#endif
 
 static void http_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen %s]\n  └── %s\033[0m\n", type, msg);

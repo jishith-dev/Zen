@@ -7,10 +7,9 @@ import {
   fcmpMap,
   NAMESPACE_MAP,
   SCALAR_TYPES,
-  BUILTIN_FUNCTIONS,
   BUILTIN_STRUCTS,
   PRIMITIVE_TYPES,
-  TYPE_MAP,
+  BUILTIN_STRUCT_ABI
 } from "../../config/config.js";
 
 export class Expression {
@@ -122,7 +121,6 @@ export class Expression {
         type: data.type,
         stringGep: data?.ir,
         llvmType: data.llvmType,
-        isStruct: data?.isStruct,
         local: [],
         global: [],
         length: data?.length,
@@ -641,8 +639,7 @@ export class Expression {
                 base,
                 basePtr,
                 node,
-                object,
-                globalScope,
+                object
               );
 
               if (builtin) return builtin;
@@ -685,19 +682,39 @@ export class Expression {
               const arg = this.handleExpression(argNode);
               this.IRB.emitExpr(arg);
 
-              if (arg?.isStruct) {
-                args.push(`ptr ${arg.ptr}`);
-              } else if (arg.needsLoad) {
-                const tmp = this.IRB.newTemp();
-                this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
-                args.push(`ptr ${tmp}`);
-              } else {
-                args.push(`${arg.llvmType} ${arg.ptr}`);
-              }
+             if (arg?.isStruct && BUILTIN_STRUCT_ABI.includes(arg.type)) {
+  let value = arg.ptr;
+
+  if (arg.needsLoad) {
+    const tmp = this.IRB.newTemp();
+    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
+    value = tmp;
+  }
+
+  args.push(`ptr ${value}`);
+} else if (arg?.isStruct) {
+  let value = arg.ptr;
+
+  if (arg.needsLoad) {
+    const tmp = this.IRB.newTemp();
+    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
+    value = tmp;
+  }
+
+  args.push(`ptr ${value}`);
+} else if (arg.needsLoad) {
+  const tmp = this.IRB.newTemp();
+  this.IRB.emit(`${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`);
+  args.push(`${arg.llvmType} ${tmp}`);
+} else {
+  args.push(`${arg.llvmType} ${arg.ptr}`);
+}
+      
             }
 
             // void method
             if (fn.returnType.type === "void") {
+              
               this.IRB.emit(`call void @${possibleMethod}(${args.join(", ")})`);
               return {
                 ptr: null,
@@ -710,29 +727,50 @@ export class Expression {
             }
 
             const retType = this.IRB.getLLVMType(fn.returnType.type);
-            const isStruct = this.IRB.hasStruct(fn.returnType.type);
+            
+const isStruct = this.IRB.hasStruct(fn.returnType.type);
+const structInfo = isStruct ? this.IRB.getStruct(fn.returnType.type) : null;
+const isOpaqueStruct = structInfo?.isBuiltin || BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
 
-            // struct-returning method — use sret convention
-            if (isStruct) {
-              const tmp = this.IRB.newTemp();
-              this.IRB.emit(`${tmp} = alloca ${retType}`);
+// opaque builtin struct — returned as a plain ptr handle, no sret
+if (isOpaqueStruct) {
+  const tmp = this.IRB.newTemp();
+  this.IRB.emit(
+    `${tmp} = call ptr @${possibleMethod}(${args.join(", ")})`,
+  );
 
-              const sretArgs = [`ptr sret(${retType}) ${tmp}`, ...args];
+  return {
+    ptr: tmp,
+    type: fn.returnType.type,
+    llvmType: "ptr",
+    isStruct: true,
+    isVarRef: false,
+    local,
+    global: [],
+  };
+}
 
-              this.IRB.emit(
-                `call void @${possibleMethod}(${sretArgs.join(", ")})`,
-              );
+// non-opaque struct-returning method — sret convention
+if (isStruct) {
+  const tmp = this.IRB.newTemp();
+  this.IRB.emit(`${tmp} = alloca ${retType}`);
 
-              return {
-                ptr: tmp,
-                type: fn.returnType.type,
-                llvmType: retType,
-                isStruct: true,
-                isVarRef: false,
-                local,
-                global: [],
-              };
-            }
+  const sretArgs = [`ptr sret(${retType}) ${tmp}`, ...args];
+
+  this.IRB.emit(
+    `call void @${possibleMethod}(${sretArgs.join(", ")})`,
+  );
+
+  return {
+    ptr: tmp,
+    type: fn.returnType.type,
+    llvmType: retType,
+    isStruct: true,
+    isVarRef: false,
+    local,
+    global: [],
+  };
+}
 
             // primitive / list-returning method
             const tmp = this.IRB.newTemp();
@@ -826,7 +864,6 @@ export class Expression {
       let structName = object.type;
       let basePtr = object.ptr;
       const isList = object?.isList;
-      const methodName = `${object.type}_${node.field}`;
 
       if (isList) {
         const o = object;
@@ -860,8 +897,6 @@ export class Expression {
       // walk struct
       for (let i = 0; i < fields.length; i++) {
         const structInfo = this.IRB.getStruct(structName, node);
-
-        const currentField = fields[i];
 
         const fieldIndex = structInfo.fieldMap[fields[i]];
 
@@ -908,11 +943,12 @@ export class Expression {
 
       return {
         ptr: val,
+        addr: basePtr,
         type: structName,
         llvmType: finalType,
         local,
         global: [],
-        isVarRef: false,
+        isVarRef: true,
       };
     }
 
@@ -966,7 +1002,6 @@ export class Expression {
           if (base.isMapValue || base.fromParam || base?.isDirectCall) {
             listTemp = base.ptr;
           } else {
-            listTemp = this.IRB.newTemp();
 
             local.push(`${listTemp} = load ptr, ptr ${base.ptr}`);
           }
@@ -981,8 +1016,6 @@ export class Expression {
           local.push(
             `${elemPtr} = call ptr @_zen_list_get(ptr ${listTemp}, i32 ${index.ptr})`,
           );
-
-          const isListValue = !!base.generic;
 
           const nextGeneric = base.generic?.generic;
 
@@ -1004,7 +1037,7 @@ export class Expression {
             postOrPrefix: false,
             isArray: false,
             isStruct,
-            needsLoad: !isNested,
+            needsLoad: !(isNested || isStruct)
           };
         }
 
@@ -1062,7 +1095,7 @@ export class Expression {
 
       const val = this.IRB.newTemp();
 
-      const isListAccess = final.isList;
+      
       const isStruct = final?.isStruct;
 
       let resultPtr = final.ptr;
@@ -1075,6 +1108,8 @@ export class Expression {
 
         resultPtr = val;
       }
+      
+      
 
       return {
         ptr: resultPtr,
@@ -1100,6 +1135,7 @@ export class Expression {
     }
 
     if (node.type === "UNARY_EXPRESSION") {
+      
       const val = this.handleExpression(node.argument, globalScope);
 
       const local = [...(val.local || [])];
@@ -1118,7 +1154,6 @@ export class Expression {
       //  LOGICAL NOT (!)
 
       if (node.operator === "!") {
-        let isValue;
         let boolVal;
 
         if (val.type === "int") {
@@ -1184,8 +1219,6 @@ export class Expression {
             };
           }
         }
-
-        const tmp = this.IRB.newTemp();
 
         if (val.type === "int") {
           const tm = this.IRB.newTemp();
@@ -1474,8 +1507,6 @@ export class Expression {
 
       if (COMPARISON_OPS.includes(op)) {
         this.IRB.declareOneTime("str_cmp", "declare i32 @strcmp(ptr, ptr)");
-
-        const resultPtr = this.IRB.newTemp();
 
         const l = lPtr;
         const r = rPtr;

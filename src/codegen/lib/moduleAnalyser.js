@@ -3,7 +3,6 @@ import { Parser } from "../../parser/parser.js";
 import { CodeGen } from "../codegen.js";
 import fs from "fs";
 import path from "path";
-import os from "os";
 
 export class Module {
   constructor(IRB, moduleFiles) {
@@ -12,7 +11,7 @@ export class Module {
     this.moduleImports = new Map();
     this.generatedModules = new Map();
     this.moduleFiles = moduleFiles;
-
+    this.curruntModuleName = "";
     this.loadingStack = new Set();
   }
 
@@ -43,6 +42,7 @@ export class Module {
     const file = this.IRB.loadFile(source, node);
 
     const moduleName = path.basename(source, ".zen");
+    this.curruntModuleName = moduleName;
 
     const prevModule = this.IRB.moduleName;
 
@@ -141,11 +141,16 @@ export class Module {
 
       if (tables.functionTable.has(name)) {
         const fn = tables.functionTable.get(name);
+        
+        // add imported fn flag
+        fn.isImported = true;
+        
+        fn.importedModuleName = this.curruntModuleName;
 
         const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);
 
         this.IRB.globals.push(
-          `declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${fn.name}${types}`,
+          `declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${this.curruntModuleName}_${fn.name}${types}`,
         );
         this.IRB.setFunction(name, fn);
         continue;

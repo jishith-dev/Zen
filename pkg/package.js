@@ -609,7 +609,7 @@ export class Package {
       );
 
       console.log("Zen updated successfully.");
-    } catch (err) {
+    } catch {
       console.error("error: Update failed.");
       process.exit(1);
     }

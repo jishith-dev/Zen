@@ -1,4 +1,6 @@
-
+#ifdef _WIN32
+#define strdup _strdup
+#endif
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -459,14 +461,23 @@ void _debug_pretty_list(ZenList *list, int depth, int deepestType) {
 
 typedef void (*ZenPrintFn)(void*);
 
+void _debug_print_indent(int n) {
+    for (int i = 0; i < n; i++) {
+        printf(" ");
+    }
+}
+
 void _debug_pretty_list_struct_impl(
     ZenList* list,
     int depth,
     ZenPrintFn printFn
 ) {
     printf("[");
+    printf("\n");
 
     for (int i = 0; i < list->size; i++) {
+
+      _debug_print_indent(2);
 
         if (i)
             printf(", ");
@@ -486,18 +497,20 @@ void _debug_pretty_list_struct_impl(
 
             printFn(_zen_list_get(list, i));
         }
+        
     }
-
+    
     printf("]");
-}
-
-void _debug_print_indent(int n) {
-    for (int i = 0; i < n; i++) {
-        printf(" ");
-    }
 }
 
 void _debug_pretty_list_struct(ZenList* list, int depth, ZenPrintFn printFn) {
     _debug_pretty_list_struct_impl(list, depth, printFn);
     printf("\n");
+}
+
+void _debug_pretty_map(void* map, int depth);
+
+void _debug_pretty_map_elem(void* slot, int depth) {
+    void* handle = *(void**)slot;
+    _debug_pretty_map(handle, depth);
 }

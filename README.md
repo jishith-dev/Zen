@@ -1,9 +1,11 @@
 # ZEN Programming Language
 
-**Version 1.3.0** · Stable · July 2026
+**Version 2.0.0** · Stable · July 2026
 
-**GitHub**: https://github.com/`Jishith-dev/Zen`
+**GitHub**: https://github.com/Jishith-dev/Zen
+
 **Contact**: jishithmp534@gmail.com
+
 **Installation**: 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
@@ -59,9 +61,9 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v1.3.0
+Current Version: v2.0.0
 
-### v1.3.0
+### v2.0.0
 
 - Dynamic GitHub default branch detection for `zen install`
 - Increased package description limit from 50 to 400 characters
@@ -150,7 +152,13 @@ brew install llvm node
 
 #### Windows
 
-Not available in v1 yet.
+Download and install the following:
+
+- **Node.js (LTS):** https://nodejs.org/
+- **LLVM:** https://github.com/llvm/llvm-project/releases
+
+After installation, ensure both `node` and LLVM tools (such as `clang`) are available from the command line by adding them to your system `PATH`.
+
 
 ---
 
@@ -168,6 +176,8 @@ zen ast <file>             # Print Abstract Syntax Tree
 zen tokens <file>          # Print lexer tokens
 zen clean <file>           # Remove build artifacts
 zen update                 # update latest zen without original install command.
+zen fmt <file> ## or /* (non-recurse), /** (resursive) select all .zen files
+zen lint <file>            # for getting errors and Warnings.
 ```
 
 ### Project Management
@@ -297,11 +307,27 @@ zen list
   screen("Hello World!")
 ```
 
+> ⚠️ **Syntax update:** `const` now appears **before** the type.
+>
+> **Old**
+> ```zen
+> int const age = 21
+> string const name = "ZEN"
+> ```
+>
+> **New**
+> ```zen
+> const int age = 21
+> const string name = "ZEN"
+> ```
+
 ### Simple Variables
 
 ```zen
   string name = "Zen"
-  int const age = 21
+  const int age = 21
+  const List<int> a
+  const Person p
 
   screen(name)
   screen(`Age: ${age}`)
@@ -448,6 +474,63 @@ base = 20   # doubled → 40, final → 45
 
 ---
 
+## Threads
+
+Zen supports lightweight threads for running code concurrently.
+
+### Thread Functions
+
+Thread functions are declared using the `thread` keyword.
+
+```zen
+thread fn worker() {
+    screen("Running in background")
+}
+```
+
+#### Rules
+
+- Thread functions cannot accept parameters.
+- Thread functions cannot return a value (only `void` is allowed).
+- They can be started like a normal function call.
+
+```zen
+thread fn worker() {
+    screen("Hello")
+}
+
+worker()
+```
+
+> ⚠️ **Race Conditions:** Thread functions can access shared variables. If multiple threads modify the same data simultaneously, race conditions may occur. Use shared state carefully.
+
+### `threads` Namespace
+
+The `threads` namespace provides utilities for working with threads.
+
+##### `threads.waitAll`
+
+Blocks execution until all running threads have finished.
+
+```zen
+threads.waitAll()
+```
+
+Returns `void`.
+
+```zen
+thread fn worker() {
+    screen("Working...")
+}
+
+worker()
+
+threads.waitAll()
+screen("Done")
+```
+
+---
+
 ## Enumerations (enum)
 
 Zen provides **enumerations (`enum`)** for defining a fixed set of named constant integer values.
@@ -471,9 +554,9 @@ enum Color {
     blue = 3
 }
 
-print(Color.green)   # 0
-print(Color.red)     # 1
-print(Color.blue)    # 3
+screen(Color.green)   # 0
+screen(Color.red)     # 1
+screen(Color.blue)    # 3
 ```
 
 ### Rules
@@ -511,6 +594,7 @@ The following built-in types use **reference semantics**:
 - `JsonArray`
 - `List`
 - `Map`
+- `Ptr`
 
 Assigning or passing one of these values copies only a reference to the underlying runtime object rather than duplicating the object itself. This is required because these types represent runtime-managed resources or dynamically allocated data.
 
@@ -520,7 +604,7 @@ Primitive values (`int`, `double`, `bool`, and `byte`) require no manual memory 
 
 String literals are emitted as LLVM global constants and likewise require no manual cleanup. Some runtime string operations (such as concatenation) may allocate temporary memory internally, but this is managed by the runtime and does not require the programmer to call `free()`. Future versions may introduce explicit ownership semantics for dynamically created strings if needed.
 
-Some reference-semantic built-in types allocate runtime resources and therefore provide a `free()` method. Examples include `Json`, `List`, and `Map`. Where a built-in type requires explicit cleanup, it is documented alongside that type's API.
+Some reference-semantic built-in types allocate runtime resources and therefore provide a `free()` method. Examples include `Json`, `List`, and `Map`, `Ptr` etc.. Where a built-in type requires explicit cleanup, it is documented alongside that type's API.
 
 Attempting to use an object after it has been freed results in undefined behavior and may be diagnosed by the compiler or detected by the runtime where applicable.
 
@@ -528,7 +612,7 @@ Attempting to use an object after it has been freed results in undefined behavio
 
 ## Scope of This Specification
 
-Version 1.3.0 defines the **stable core** of the language:
+Version 2.0.0 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
@@ -601,7 +685,7 @@ The following identifiers are reserved by the language and may not be used as us
 
 | Category | Keywords |
 |---|---|
-| **Types** | `int` `double` `string` `bool` `List` `Map` |
+| **Types** | `int` `double` `string` `bool` `List` |
 | **Speacial Type** | `byte` |
 | **reactive** | `reactive` |
 | **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` |
@@ -617,7 +701,7 @@ The following identifiers are reserved by the language and may not be used as us
 
 Keywords are case-sensitive. `fn` is reserved; `Fn` and `FN` are valid identifiers.
 
-ZEN reserves async and await as keywords in v1, and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Full async/await support, including the concurrency model and runtime semantics, is planned for v2.
+ZEN reserves async and await as keywords in v2, and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Full async/await support, including the concurrency model and runtime semantics, is planned for future versions.
 
 ---
 
@@ -676,7 +760,7 @@ Hexadecimal literals are supported using the `0x` prefix.
 0x00
 ```
 
-Binary and octal representations are not supported in v1.
+Binary and octal representations are not supported in v2
 
 
 #### 2.6.2 Double Literals
@@ -689,7 +773,7 @@ A decimal integer part, a dot, and a decimal fractional part. Both parts are req
 100.0
 ```
 
-Scientific notation is not supported in v1. A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
+Scientific notation is not supported in v2. A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
 
 #### 2.6.3 String Literals
 
@@ -837,7 +921,7 @@ Every unit of source text falls into one of the following token types:
 
 ZEN is a statically typed language. Every value has a type known at compile time. This section defines the four primitive types that form the foundation of the type system.
 
-Data structure types — `List`, `Map`, `struct`, and fixed-size arrays — are defined separately in Section 5.
+Data structure types — `List`, `struct`, and fixed-size arrays — are defined separately in Section 5.
 
 ---
 
@@ -1045,7 +1129,6 @@ var_decl_default
 | `string` | `""` |
 | `bool` | `false` |
 | `List<T>` | `[]` |
-| `Map` | `{}` |
 
 ```zen
 int a          # lowered to: int a = 0
@@ -1064,8 +1147,8 @@ const_decl
 ```
 
 ```zen
-int const MAX = 100
-string const VERSION = "1.0.1"
+const int MAX = 100
+const string VERSION = "1.0.1"
 ```
 
 ---
@@ -1115,7 +1198,7 @@ literal
   | STRING_LITERAL
   | BOOL_LITERAL
   | list_literal
-  | Map and fixed array literals not exists
+  | struct literal
 ```
 
 #### Binary Expressions
@@ -1194,7 +1277,7 @@ index_access
 
 field_access
   = IDENTIFIER "." IDENTIFIER
-  | IDENTIFIER "[" expression "]"     # runtime key access for Map
+  | IDENTIFIER "[" expression "]"     # runtime key access for Struct
 ```
 
 ```zen
@@ -1230,6 +1313,109 @@ return_type
 - `auto` may be used as the return type; the compiler infers it from the `return` statement.
 - A rest parameter (`type identifier...`) collects remaining arguments into a `List`. It must be the last parameter.
 - Function declarations may not be nested inside another function.
+
+---
+
+#### Callback Parameters
+
+Functions can accept other functions as parameters (callbacks).
+
+```
+callback_param
+  = "fn" IDENTIFIER "(" type_list? ")" return_type
+
+type_list
+  = type ("," type)*
+```
+
+- Callback parameters declare only the function signature.
+- They can accept zero or more typed parameters.
+- They may return any valid type, including `void`.
+
+```zen
+fn run(fn cb(string, int) void) {
+  cb("ZEN", 10)
+}
+
+fn printMessage(string name, int age) {
+  screen(name)
+  screen(age)
+}
+
+run(printMessage)
+```
+
+---
+
+### Function Declarations
+
+ZEN supports two kinds of function declarations:
+
+- **Normal function declarations** (`fn`) — must be defined in the same module.
+- **External function declarations** (`extern fn`) — declare functions implemented outside of ZEN.
+
+---
+
+#### Normal Function Declaration
+
+A normal function declaration includes both its signature and implementation.
+
+```
+function_decl
+  = "fn" IDENTIFIER "(" param_list? ")" return_type
+```
+
+```zen
+fn add(int a, int b) int
+
+- Must be defined in the same module.
+- Contains a function body.
+- May be called anywhere after declaration.
+
+then later 
+
+```zen
+fn add(int a, int b) int {
+    return a + b
+}
+```
+
+---
+
+#### External Function Declaration
+
+An external function declaration defines only the function signature.
+
+```
+extern_function_decl
+  = "extern" "fn" IDENTIFIER "(" param_list? ")" return_type
+```
+
+- Used to call functions implemented outside of ZEN (for example, C libraries).
+- Does not contain a function body.
+- The compiler emits the function name exactly as written (no name mangling).
+- Supports all valid parameter and return types.
+- If an external function returns a native pointer, use the built-in `Ptr` struct as the return type.
+
+```zen
+extern fn puts(string text) int
+
+extern fn malloc(int size) Ptr
+
+extern fn free(Ptr memory)
+```
+
+External functions are invoked exactly like normal functions.
+
+```zen
+Ptr memory = malloc(1024)
+
+puts("Allocated successfully")
+
+free(memory)
+```
+
+---
 
 ```zen
 fn greet(string name) {
@@ -1416,11 +1602,10 @@ do {
 } while (count < 10)
 ```
 
-#### Loop In — Map Iteration
+#### Loop In — object Iteration
 
-> ⚠️ **Disabled in Zen** — `loop in` over a `Map` is not supported.  
-> Maps are heterogeneous (values can be any type), so iteration is undefined at compile time.  
-> This will throw a compile-time error.
+> ⚠️ **Temporarily disabled** — `loop in` is currently unavailable.
+> The `in` keyword remains reserved for future compatibility and will be supported in a future release.
 
 #### Loop Of — Array and List Iteration
 
@@ -1529,25 +1714,6 @@ List<List<int>> matrix = [[1, 2], [3, 4]]
 List<int> empty                              # lowered to: List<int> empty = []
 ```
 
-#### Map
-
-```
-map_decl
-  = "Map" IDENTIFIER "=" map_literal
-  | Map IDENTIFIER # lowered to = {}
-
-map_literal
-  = "{" (IDENTIFIER ":" expression ("," IDENTIFIER ":" expression)*)? "}"
-```
-
-```zen
-Map person = {
-  name: "Jishith",
-  age: 21
-}
-Map address # lowered to Map address = {}
-```
-
 #### Fixed-Size Array
 
 ```
@@ -1573,7 +1739,7 @@ struct_decl
   = "struct" IDENTIFIER "{" field_decl* method_decl* "}"
 
 field_decl
-  = IDENTIFIER type ","?
+  = type IDENTIFIER ","?
 
 method_decl
   = IDENTIFIER "(" param_list? ")" return_type? block
@@ -1581,9 +1747,9 @@ method_decl
 
 ```zen
 struct Person {
-  name string,
-  age int,
-  scores List<int>,
+  string name,
+  int age,
+  List<int> scores,
 
   greet() void {
     # this is implicitly available
@@ -1594,6 +1760,21 @@ struct Person {
   }
 }
 ```
+
+> ⚠️ **Syntax update:** Struct fields now use `type name` order instead of the old `name type` syntax.
+>
+> **Old**
+> ```zen
+> name string
+> age int
+> ```
+>
+> **New**
+> ```zen
+> string name
+> int age
+> ```
+
 
 #### Struct Instantiation and Access
 
@@ -1623,10 +1804,127 @@ Zen provides several built-in structs that are available without importing any l
 >
 > Built-in structs use **reference semantics**, while user-defined structs use **value semantics**.
 >
-> Built-in structs (such as `HttpServer`, `HttpRequest`, `Json`, `JsonObject`, and `JsonArray`) represent runtime resources managed outside of Zen. Copying them would duplicate only the handle, not the underlying resource, so they are always passed and assigned by reference.
+> Built-in structs (such as `HttpServer`, `HttpRequest`, `HttpResponse`, `Json`, `JsonObject`, and `JsonArray`, `Map`, `Ptr`) represent runtime resources managed outside of Zen. Copying them would duplicate only the handle, not the underlying resource, so they are always passed and assigned by reference.
 >
 > User-defined structs, on the other hand, are ordinary data values and are copied on assignment or when passed to functions, providing predictable value semantics.
 
+---
+
+##### Ptr
+
+Represents a native memory pointer.
+
+`Ptr` is a built-in struct used for low-level memory access and interoperability with external libraries through `extern` functions. It can read and write primitive values, perform pointer arithmetic, copy memory, and manage manually allocated memory.
+
+> **⚠️ Warning**
+>
+> `Ptr` provides direct access to raw memory. Incorrect usage (such as invalid offsets, reading uninitialized memory, accessing freed memory, or writing outside allocated memory) results in undefined behavior.
+
+```zen
+extern fn malloc(int size) Ptr
+
+Ptr p = malloc(16)
+
+p.storeInt(123)
+
+screen(p.loadInt())
+
+p.free()
+```
+
+**Methods**
+
+```zen
+p.storeInt(int value)
+p.loadInt() int
+
+p.storeDouble(double value)
+p.loadDouble() double
+
+p.storeBool(bool value)
+p.loadBool() bool
+
+p.storeString(string value)
+p.loadString() string
+
+p.storePtr(Ptr value)
+p.loadPtr() Ptr
+
+p.isNull() bool
+
+p.offset(int bytes) Ptr
+
+p.copyFrom(Ptr src, int bytes)
+p.copyTo(Ptr dst, int bytes)
+
+p.fill(int value, int bytes)
+
+p.free()
+```
+
+`offset()` returns a new `Ptr` advanced by the specified number of bytes from the current pointer, allowing pointer arithmetic without modifying the original pointer.
+
+---
+
+##### Map
+
+Represents a dynamic key-value collection.
+
+Unlike user-defined structs, `Map` does not have a fixed set of fields. Keys can be added, updated, or removed at runtime, making it suitable for dynamic data such as JSON-like objects and configuration values.
+
+Map supports struct-style literals:
+
+```zen
+Map user = {
+    name: "Jishith",
+    age: 25,
+    skills: ["LLVM", "Compiler"]
+}
+```
+
+Map literals can be passed directly to functions, returned from functions, stored in collections, and nested inside other maps.
+
+Because `Map` is dynamic, different instances may contain different keys.
+
+```zen
+Map user = {
+    name: "Alice",
+    age: 20,
+    country: "India"
+}
+```
+
+> 💡 **Note:** `Map` is a built-in struct, not a language data type. Its internal representation is managed entirely by the Zen runtime.
+
+**Methods**
+
+```zen
+map.setInt(string key, int value)
+map.getInt(string key) int
+
+map.setDouble(string key, double value)
+map.getDouble(string key) double
+
+map.setBool(string key, bool value)
+map.getBool(string key) bool
+
+map.setString(string key, string value)
+map.getString(string key) string
+
+map.setList(string key, List<T> value)
+map.getList<List<T>>(string key) List<T>
+
+map.setMap(string key, Map value)
+map.getMap(string key) Map
+
+map.remove(string key) void
+
+map.has(string key) bool
+
+map.free()
+```
+
+---
 
 ##### HttpServer
 
@@ -1740,122 +2038,19 @@ array.arrayGetArray(...)
 
 ## 5. Data Structures
 
-ZEN provides four built-in data structure types: `Map`, `List`, fixed-size arrays, and `struct`. Each has distinct memory characteristics, mutability rules, and supported operations.
+ZEN provides four built-in data structure types: `List`, fixed-size arrays, and `struct`. Each has distinct memory characteristics, mutability rules, and supported operations.
 
 | Type | Schema | Size | Memory | Heterogeneous |
 |---|---|---|---|---|
-| `Map` | Dynamic | Runtime | Heap | Yes |
 | `List<T>` | Typed | Runtime | Heap | No |
 | `array` | Fixed | Compile-time | Stack | No |
 | `struct` | Fixed | Compile-time | Stack | No |
 
 ---
 
-### 5.1 Map
+### 5.1 List
 
-A `Map` is a dynamic, heterogeneous key-value store. Its schema is not fixed at compile time — fields may be added at runtime. It is a heap-allocated object and must be explicitly freed when no longer needed.
-
-#### Declaration
-
-```
-map_decl
-  = "Map" IDENTIFIER "=" map_literal
-  | "Map" IDENTIFIER                   # lowered to Map IDENTIFIER = {}
-```
-
-A `Map` declared without an initializer is lowered to an empty map.
-
-```zen
-Map a                                  # lowered to: Map a = {}
-Map a = {}                             # explicit empty map
-```
-
-#### Allowed Value Types
-
-Map values may be of the following types:
-
-- `int`, `double`, `string`, `bool`
-- `List<T>`
-- Nested `Map`
-
-Struct instances may not be stored as Map values in v1.
-
-#### Literals and Nesting
-
-Map literals use identifier keys with colon-separated values. Maps may be nested to any depth.
-
-```zen
-Map a = {
-  name: "jishith",
-  age: 21,
-  score: 98.5,
-  active: true
-}
-
-Map b = {
-  name: "jishith",
-  nested: {
-    hobbies: [20, 20, 10, 39],
-    salary: 20000.5
-  }
-}
-```
-
-> **Note:** Map literals are only valid at the point of declaration. Map is not a first-class value in v1.3.0 — map literals cannot be passed as arguments, returned from functions, or assigned to variables after initial declaration. This restriction may be lifted in a future version.
-
-#### Field Access
-
-Fields are accessed using dot notation. Nested fields are chained.
-
-```zen
-a.name                                 # "jishith"
-b.nested.hobbies[0]                    # 20
-b.nested.salary                        # 20000.5
-```
-
-> ⚠️ **Not supported in v1.x** — Runtime key access using a variable raises a compile-time error. Planned for v2.
-
-#### Field Assignment
-
-Assigning to an existing field updates its value. Assigning to a field that does not exist creates it dynamically at runtime.
-
-```zen
-a.name = "arun"                        # update existing field
-a.country = "India"                    # creates new field at runtime
-```
-
-#### Built-in Methods
-
-| Method | Description |
-|---|---|
-| `free()` | Releases the Map from heap memory |
-| `has(key)` | Returns `bool` — checks if a key exists in the Map |
-| `remove(key)` | Removes a key-value pair from the Map |
-| `keys()` | Returns `List<string>` containing all keys in the Map |
-
-```zen
-a.free()
-```
-
-After calling `free()`, the Map must not be accessed or reassigned. Any use after `free()` will result in a runtime error.
-
-```zen
-a.free()
-a.name = "x"                           # runtime error: use after free
-```
-
-```zen
-bool exists = a.has("name")            # true if key exists
-a.remove("name")                       # removes key from Map
-
-List<string> keys = a.keys()     # eg: ["name", "age"]
-```
-
----
-
-### 5.2 List
-
-A `List` is a dynamically sized, heap-allocated array. Unlike `Map`, a `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
+A `List` is a dynamically sized, heap-allocated array. `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
 
 > **Note:** `byte` is a special type available only as a List generic (`List<byte>`). Standalone `byte` variables, parameters, fields, and return types are not supported.
 
@@ -1884,8 +2079,6 @@ List elements may be of the following types:
 - Struct types
 - Nested `List<T>`
 - `List<byte>`
-
-`Map` is not a valid element type in v1, as Map has no literal form for use in expressions.
 
 `auto` is not valid as a type parameter — `List<auto>` is a compile-time error.
 
@@ -1961,7 +2154,7 @@ For nested lists, freeing an inner list directly is technically permitted but no
 
 ---
 
-### 5.3 Fixed-Size Arrays
+### 5.2 Fixed-Size Arrays
 
 A fixed-size array has a length determined at compile time and cannot be resized. It is stack-allocated. Dimensions are specified in the declaration and are part of the array's type.
 
@@ -2012,14 +2205,14 @@ matrix[1][1] = 5
 
 #### Constraints
 
-- Fixed-size arrays cannot be passed as function parameters in v1.
+- Fixed-size arrays cannot be passed as function parameters in v2.
 - Fixed-size arrays cannot be return in functions
 - Fixed-size arrays have no built-in methods.
 - Resizing is not possible after declaration.
 
 ---
 
-### 5.4 Struct
+### 5.3 Struct
 
 A `struct` defines a named, fixed-schema composite type. Its fields and methods are determined at compile time and cannot be changed at runtime. Struct instances are stack-allocated.
 
@@ -2040,9 +2233,9 @@ By convention, struct names begin with an uppercase letter.
 
 ```zen
 struct Person {
-  name string,
-  age int,
-  scores List<int>,
+  string name,
+  int age,
+  List<int> scores
 
   greet() void {
     # this is implicitly available inside all methods
@@ -2061,8 +2254,6 @@ Struct fields may be of the following types:
 - `int`, `double`, `string`, `bool`
 - `List<T>`
 - Another `struct` type
-
-`Map` is not a valid field type in v1.
 
 #### Instantiation
 
@@ -2122,13 +2313,13 @@ A struct field may hold another struct instance.
 
 ```zen
 struct Address {
-  city string,
-  zip int
+  string city,
+  int zip
 }
 
 struct Person {
-  name string,
-  address Address
+  string name,
+  Address address
 }
 
 Person p = {
@@ -2163,8 +2354,8 @@ Person p2 = p1
 
 p2.name = "Zen"
 
-print(p1.name)   # Jishith
-print(p2.name)   # Zen
+screen(p1.name)   # Jishith
+screen(p2.name)   # Zen
 ```
 
 Likewise, returning a struct from a function or assigning a struct literal produces a new struct value.
@@ -2186,7 +2377,7 @@ Methods are declared inside the struct body without the `fn` keyword. The curren
 
 ```zen
 struct Counter {
-  value int,
+  int value,
 
   increment() void {
     this.value += 1
@@ -2198,7 +2389,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives. Struct instances cannot be passed as function parameters in v1.3.0, and methods cannot be called on a struct type directly — only on an instance.
+Methods may have any return type, including `List<T>`, `auto`, or primitives.
 
 ```zen
 Counter c
@@ -2213,12 +2404,12 @@ Structs can be passed as function parameters and returned from functions.
 
 ```zen
 struct Person {
-  name string,
-  age int
+  string name,
+  int age
 }
 
 fn greet(Person p) void {
-  print(p.name)
+  screen(p.name)
 }
 
 Person user = {
@@ -2256,12 +2447,11 @@ Person user = {
 
 rename(user)
 
-print(user.name)   # Jishith
+screen(user.name)   # Jishith
 ```
 
 #### Constraints
 
-- `Map` is not a valid field type in v1.
 - Methods are user-defined only; no built-in struct methods exist.
 - Struct declarations may not be nested inside functions.
 
@@ -2332,31 +2522,19 @@ fn deep(List<List<List<int>>> cube) void { ... }
 
 ---
 
-### Map Parameters
-
-Maps cannot be used as function parameters.
-
-```zen
-fn display(Map info) void { ... }  # compile-time error
-```
-
-This restriction exists to preserve compile-time type safety and avoid dynamic Map usage across function boundaries.
-
----
-
 ### Struct Parameters
 
 Structs can be used as function parameters.
 
 ```zen
 struct Person {
-  name string,
-  age int
+  string name,
+  int age
 }
 
 fn display(Person p) void {
-  print(p.name)
-  print(p.age)
+  screen(p.name)
+  screen(p.age)
 }
 
 Person user = {
@@ -2381,7 +2559,7 @@ Person user = {
 
 rename(user)
 
-print(user.name)  # Jishith
+screen(user.name)  # Jishith
 ```
 
 Functions may also return struct values.
@@ -2435,26 +2613,14 @@ fn process(Person p = {name: "John"}) void {
 }
 ```
 
-**Maps cannot be used as function parameters.**
-
-```zen
-// Invalid
-fn display(Map info) void { ... }
-
-// Invalid
-fn display(Map info = {}) void { ... }
-```
-
-Use structs instead when passing structured data to functions.
-
 ```zen
 struct Person {
-  name string,
-  age int
+  string name,
+  int age
 }
 
 fn display(Person p) void {
-  print(p.name)
+  screen(p.name)
 }
 ```
 
@@ -2598,6 +2764,19 @@ fn clamp(int val) int {
 ### 6.4 Function Calls
 
 A function is called by its name followed by a parenthesised argument list.
+
+> 💡 **Generic Function Calls**
+>
+> Functions may optionally specify generic type arguments using `function<Type>()`. This is primarily used by built-in APIs that return generic types, allowing the compiler to infer the complete return type safely.
+>
+> ```zen
+> List<int> numbers = map.getList<List<int>>("numbers")
+>
+> List<List<string>> matrix =
+>     map.getList<List<List<string>>>("matrix")
+> ```
+>
+> This syntax is currently required only for APIs that return generic values (such as `Map.getList()`), especially when nested `List` types are involved, ensuring full compile-time type safety.
 
 ```zen
 greet("ZEN")
@@ -2865,10 +3044,10 @@ The condition is evaluated after each iteration. `break` exits immediately; `con
 
 ---
 
-### 9.4 Loop In — Map Iteration
+### 9.4 Loop In - Object iterarion
 
-> ⚠️ **Not supported in v1.x** — `loop in` over a `Map` raises a compile-time error.
-> Maps are heterogeneous, so value iteration is undefined at compile time. Planned for v2.
+> ⚠️ **Temporarily unavailable** — `loop in` is currently disabled.
+> The `in` keyword remains reserved for future compatibility and will be supported in a future release.
 
 ### 9.5 Loop Of — List and Array Iteration
 
@@ -2933,7 +3112,7 @@ Only global symbols may be exported.
 | Double literal | `double pi = 3.14` |
 | String literal | `string name = "ZEN"` |
 | Bool literal | `bool flag = true` |
-| Constant | `int const MAX = 100` |
+| Constant | `const int MAX = 100` |
 | Global function | `fn add(int a, int b) int { ... }` |
 | Struct declaration | `struct Person { ... }` |
 | Global struct instance | `Person p` |
@@ -2951,8 +3130,8 @@ Only global symbols may be exported.
 
 ```zen
 struct Person {
-  name string,
-  age int
+  string name,
+  int age
 }
 
 Person user = {
@@ -3548,7 +3727,7 @@ Returns `bool`.
 
 ```zen
 if (sys.hasEnv("API_KEY")) {
-    print("Found")
+    screen("Found")
 }
 ```
 
@@ -3570,7 +3749,7 @@ Returns `string`.
 
 ```zen
 string out = sys.execOutput("pwd")
-print(out)
+screen(out)
 ```
 
 ---
@@ -4110,6 +4289,8 @@ int y = time.year()    # e.g. 2026
 
 HTTP client functions. All HTTP functions take a URL as the first parameter and return the response body as a `string`.
 
+> **Request timeout:** HTTP requests use a default **10-second connection timeout** and **30-second overall timeout**. If either limit is exceeded, the request fails and returns an error.
+
 ---
 
 ##### `http.get`
@@ -4124,6 +4305,82 @@ Returns `string` — the response body.
 
 ```zen
 string res = http.get("https://api.example.com/data")
+```
+
+---
+
+##### `http.urlEncode`
+
+Encodes a string for safe use in a URL.
+
+```zen
+http.urlEncode(text)
+```
+
+Returns `string` — the URL-encoded string.
+
+```zen
+string encoded = http.urlEncode("Hello World!")
+```
+
+##### `http.urlDecode`
+
+Decodes a URL-encoded string.
+
+```zen
+http.urlDecode(text)
+```
+
+Returns `string` — the decoded string.
+
+```zen
+string decoded = http.urlDecode("Hello%20World%21")
+```
+
+##### `http.setHeader`
+
+Sets a default HTTP header used for subsequent requests.
+
+```zen
+http.setHeader(name, value)
+```
+
+Returns `void`.
+
+```zen
+http.setHeader("Authorization", "Bearer token")
+http.setHeader("User-Agent", "Zen")
+```
+
+##### `http.clearHeaders`
+
+Clears all previously set default HTTP headers.
+
+```zen
+http.clearHeaders()
+```
+
+Returns `void`.
+
+```zen
+http.clearHeaders()
+```
+
+##### `http.lastStatus`
+
+Returns the HTTP status code of the last request.
+
+```zen
+http.lastStatus()
+```
+
+Returns `int` — the last HTTP status code.
+
+```zen
+http.get("https://api.example.com/data")
+
+int status = http.lastStatus()
+screen(status)
 ```
 
 ---
@@ -4223,7 +4480,6 @@ Foreign Function Interface (FFI) bindings to selected C standard library functio
 | `ffi.tan` | Tangent |
 | `ffi.log` | Natural logarithm |
 | `ffi.exp` | Exponential function |
-| `ffi.exit` | Terminates the program |
 | `ffi.system` | Executes a system command |
 | `ffi.abort` | Aborts program execution |
 | `ffi.clock` | Returns processor time used |
@@ -4292,6 +4548,97 @@ Returns `HttpServer`.
 
 ```zen
 HttpServer server = httpServer.create(8080)
+```
+
+---
+
+#### 11.3.9 `threads`
+
+Utilities for working with threads.
+
+##### `threads.waitAll`
+
+Blocks execution until all running threads have finished.
+
+```zen
+threads.waitAll()
+```
+
+Returns `void`.
+
+```zen
+thread fn worker() {
+    screen("Working...")
+}
+
+worker()
+
+threads.waitAll()
+screen("Done")
+```
+
+---
+
+#### 11.3.10 `debug`
+
+Utilities for inspecting complex values during development.
+
+The `debug` namespace provides helper functions for printing data structures in a human-readable format. Unlike `screen()`, which prints values directly, `debug.pretty()` formats nested objects, collections, and structs with indentation for easier debugging.
+
+> 💡 **Tip:** `debug.pretty()` is intended for debugging and development. For normal program output, use `screen()`.
+
+---
+
+##### `debug.pretty`
+
+Pretty-prints supported values in a structured, readable format.
+
+```zen
+debug.pretty(value)
+```
+
+Returns `void`.
+
+**Supported types**
+
+- `List<T>`
+- `Map`
+- User-defined structs
+- Nested combinations of the above
+
+```zen
+struct Person {
+    string name
+    int age
+}
+
+Person p = {
+    name: "Jishith",
+    age: 21
+}
+
+debug.pretty(p)
+```
+
+Output:
+
+```text
+Person {
+  name: "Jishith"
+  age: 21
+}
+```
+
+Lists and maps are also formatted recursively.
+
+```zen
+Map user = {
+    name: "ZEN",
+    version: 2,
+    tags: ["compiler", "llvm", "language"]
+}
+
+debug.pretty(user)
 ```
 
 ---
@@ -4928,7 +5275,7 @@ bool ok = matchRegex(
   "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
 )
 
-print(ok)   # true
+screen(ok)   # true
 ```
 
 ---
@@ -5080,8 +5427,7 @@ Source (.zen)
      ▼
  Clang Pipeline (-O2)
      │
-     ├── Linux  → ELF binary
-     └── Windows → .obj binary
+     ├── (.o file)
 ```
 
 ---
@@ -5113,9 +5459,6 @@ Output: `.ll` LLVM IR file
 
 The emitted IR is passed to Clang with `-O2` aggressive optimization. Clang compiles and links the IR into a native binary.
 
-- On **Linux**: produces an ELF executable binary
-- On **Windows**: produces a `.obj` binary
-
 Input: `.ll` file
 Output: Native binary
 
@@ -5123,7 +5466,7 @@ Output: Native binary
 
 ### 12.3 Host Language
 
-The ZEN compiler is implemented in **JavaScript** and runs on **Node.js**. This is the v1 host. Self-hosting — rewriting the compiler in ZEN itself — is a future goal and not part of the current specification.
+The ZEN compiler is implemented in **JavaScript** and runs on **Node.js**. This is the v2 host. Self-hosting — rewriting the compiler in ZEN itself — is a future goal and not part of the current specification.
 
 ---
 
@@ -5136,7 +5479,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v1.3.0. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v2.0.0. All compilation uses `-O2` by default.
 
 ---
 
@@ -5163,8 +5506,7 @@ This command runs the full pipeline — lexing, parsing, IR emission, Clang comp
 | File | Description |
 |---|---|
 | `.ll` | LLVM IR intermediate representation |
-| Binary (Linux) | ELF executable |
-| Binary (Windows) | `.obj` binary |
+| Binary | `.o` object file|
 
 ## 13. Error Model
 
@@ -5207,7 +5549,7 @@ All Zen errors follow a consistent structured format:
   └── Index 5 is out of bounds for List of length 3 — valid range is 0 to 2
 ```
 
-> **Note:** Stack traces are not included in Zen v1. A full call stack trace is planned for v2.
+> **Note:** Stack traces are not included in Zen v2. A full call stack trace is planned for future versions.
 
 ```
 [Zen  ArgumentError]
@@ -5573,7 +5915,7 @@ Common triggers:
 
 #### ReferenceError
 
-Raised when a variable, function, struct, field, or map key is referenced but has not been defined.
+Raised when a variable, function, struct, field is referenced but has not been defined.
 
 ```
 [Zen  ReferenceError]
@@ -5609,7 +5951,6 @@ Common triggers:
 - Calling a function that has not been declared
 - Accessing a struct that has not been defined
 - Accessing a field that does not exist in a struct
-- Accessing a key that does not exist in a map layout
 - Calling a method that does not exist on a type
 ```
 
@@ -5656,7 +5997,7 @@ Raised when a heap object is accessed after it has been freed.
 ```
 
 Common triggers:
-- Accessing a `List` or `Map` after calling `.free()` on it
+- Accessing a `List` after calling `.free()` on it
 - Accessing a freed inner list within a nested `List<List<T>>`
 - Retaining a reference to a freed object across function calls
 
@@ -5664,12 +6005,7 @@ Common triggers:
 
 #### LoopError
 
-Raised when `loop in` is used on a `Map`.
-
-```
-[Zen  LoopError]
-  └── Cannot iterate over Map — 'loop in' on Map is not supported in v1.x
-```
+Raised when `loop in` is used on a non-objects.
 
 #### PanicError
 
@@ -5693,7 +6029,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v1.3.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for v2:
+ZEN v2.0.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -5714,7 +6050,6 @@ The following identifiers are reserved by the language and cannot be used as use
 | `string` | Type |
 | `bool` | Type |
 | `List` | Type |
-| `Map` | Type |
 | `fn` | Function declaration |
 | `return` | Function |
 | `const` | Declaration modifier |
@@ -5793,7 +6128,6 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `string` | `""` |
 | `bool` | `false` |
 | `List<T>` | `[]` |
-| `Map` | `{}` |
 
 ---
 
@@ -5829,7 +6163,6 @@ When a variable is declared without an initializer, it is lowered to its type's 
 
 | Type | Heap | Resizable | Typed | Nestable | Pass as Param |
 |---|---|---|---|---|---|
-| `Map` | Yes | Yes | No | Yes | No |
 | `List<T>` | Yes | Yes | Yes | Yes | Yes |
 | Fixed Array | No | No | Yes | Yes | No |
 | `struct` | No | No | Yes | Yes | No |
@@ -5868,7 +6201,7 @@ When a variable is declared without an initializer, it is lowered to its type's 
 |---|---|---|
 | `TypeError` | Compile-time | Type mismatch in assignment or expression |
 | `ArgumentError` | Compile-time | Wrong number of arguments to a function |
-| `ReferenceError` | Compile-time | Variable, function, struct, field, or map key referenced before definition |
+| `ReferenceError` | Compile-time | Variable, function, struct, field etc referenced before definition |
 | `DeclarationError` | Compile-time | Invalid identifier or declaration |
 | `ConstError` | Compile-time | Reassignment of a constant |
 | `ExportError` | Compile-time | Invalid export — expression value or duplicate export |
@@ -5878,7 +6211,6 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `MemoryError` | Runtime | Use after free |
 | `IndexError` | Runtime | Out-of-bounds array or list access |
 | `PanicError` | Runtime | Explicit `sys.panic()` call |
-| `LoopError` | Compile-time | `loop in` on a `Map` is not supported in v1.x |
 
 
 ### K. Installation
@@ -5891,18 +6223,22 @@ Zen can be installed depending on the target platform.
 curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
 ```
 
-#### Windows
+### Windows (Git Bash / MSYS2)
 
-Not available in v1 yet.
+```bash
+curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
+```
+
+> Requires Git Bash, MSYS2, or another Bash-compatible environment.
 
 ---
 
 ### L. Links
 
 - Source Code: 
-- **GitHub**: https://github.com/`Jishith-dev/Zen`
-- Documentation: https://`https://jishith-dev.github.io/zen-doc/`
-- Issue Tracker: https://github.com/`Jishith-dev/Zen/issues`
+- **GitHub**: https://github.com/Jishith-dev/Zen
+- Documentation: https://jishith-dev.github.io/zen-doc/
+- Issue Tracker: https://github.com/Jishith-dev/Zen/issues
 
 ---
 
@@ -5924,21 +6260,57 @@ License: MIT
 For bugs, contributions, or discussions:
 
 - Email: jishithmp534@gmail.com
-- GitHub: https://github.com/`Jishith-dev/Zen`
-- Github registry: https://github.com/`Jishith-dev/zen-registry`
+- GitHub: https://github.com/Jishith-dev/Zen
+- Github registry: https://github.com/Jishith-dev/zen-registry
+
+---
+
+### O. File Extensions
+
+| Extension | Description |
+|---|---|
+| `.zen` | ZEN source file |
+| `.ll` | Generated LLVM IR |
+| Native binary | Platform-specific executable generated by Clang |
+
+---
+
+### P. Naming Conventions
+
+The ZEN style guide recommends:
+
+| Item | Convention | Example |
+|---|---|---|
+| Variables | camelCase | `userName` |
+| Functions | camelCase | `readFile()` |
+| Structs | PascalCase | `HttpRequest` |
+| Constants | UPPER_SNAKE_CASE | `I32_MAX` |
+| Namespaces | lowerCamelCase | `httpServer` |
+
+---
+
+### Q. Version Information
+
+| Item | Value |
+|---|---|
+| Documentation Version | 2.0 |
+| Language Version | 2.0 |
+| Backend | LLVM |
+| License | MIT |
+
+---
 
 ## Disclaimer
 
-Zen is an actively evolving language and compiler.
+This documentation targets **ZEN v2**.
 
-While the documentation aims to cover all supported features in the current release, there may still be:
+Starting with **v2**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
 
-- Undocumented features
-- Undocumented implementation details
-- Edge-case bugs
-- Undefined behavior in uncommon scenarios
+As the documentation continues to evolve alongside the language, you may occasionally encounter:
+
+- Outdated syntax examples
+- References to removed or renamed features
+- Missing documentation for newer features
 - Documentation inaccuracies or omissions
 
-If you discover behavior that differs from the documentation, find a bug, or notice missing documentation, please open an issue or report it.
-
-Feedback from users helps improve the language, compiler, standard library, tooling, and documentation for future releases.
+If you notice anything that does not match the current behavior of ZEN, please report it by opening an issue. Community feedback helps improve the language, compiler, standard library, tooling, and documentation.

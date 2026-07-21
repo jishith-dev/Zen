@@ -2,7 +2,6 @@ import {
   TYPES,
   TokenTypes,
   KEYWORDS,
-  BUILTIN_FUNCTIONS,
   OPERATORS,
   ASSIGNMENT_OPS,
   ARITHMETIC_OPS,
@@ -566,5 +565,3 @@ export class Lexer {
     );
   }
 }
-
-const end = performance.now();
