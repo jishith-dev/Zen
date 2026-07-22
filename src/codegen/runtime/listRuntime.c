@@ -24,6 +24,20 @@ typedef struct {
   int deepestType;
 } ZenList;
 
+
+#define ZEN_LIST_STRING 4
+#define ZEN_LIST_MAP    6
+
+void _zen_map_free_internal(void *map); 
+
+static void _zen_list_free_leaf(ZenList *list, int i) {
+  if (list->deepestType == ZEN_LIST_STRING) {
+    free(*(char **)((char *)list->data + i * list->element_size));
+  } else if (list->deepestType == ZEN_LIST_MAP) {
+    _zen_map_free_internal(*(void **)((char *)list->data + i * list->element_size));
+  }
+}
+
 ZenList *_zen_list_new(size_t element_size) {
 
   ZenList *list = (ZenList *)malloc(sizeof(ZenList));
@@ -124,6 +138,13 @@ void _zen_list_set(ZenList *list, int index, void *value) {
     exit(1);
   }
 
+  if (list->depth > 1) {
+    ZenList *old = ((ZenList **)list->data)[index];
+    if (old) _zen_list_free(old);
+  } else {
+    _zen_list_free_leaf(list, index);
+  }
+
   char *base = (char *)list->data;
 
   memcpy(base + (index * list->element_size), value, list->element_size);
@@ -155,6 +176,13 @@ void _zen_list_remove(ZenList *list, int index) {
     exit(1);
   }
 
+  if (list->depth > 1) {
+    ZenList *old = ((ZenList **)list->data)[index];
+    if (old) _zen_list_free(old);
+  } else {
+    _zen_list_free_leaf(list, index);
+  }
+
   char *base = (char *)list->data;
 
   memmove(base + (index * list->element_size),
@@ -169,13 +197,17 @@ void _zen_list_free(ZenList *list) {
   if (!list)
     return;
 
-  if (list->depth > 1 && list->data) {
-
-    for (int i = 0; i < list->size; i++) {
-      ZenList *child = ((ZenList **)list->data)[i];
-
-      if (child)
-        _zen_list_free(child);
+  if (list->data) {
+    if (list->depth > 1) {
+      for (int i = 0; i < list->size; i++) {
+        ZenList *child = ((ZenList **)list->data)[i];
+        if (child)
+          _zen_list_free(child);
+      }
+    } else {
+      for (int i = 0; i < list->size; i++) {
+        _zen_list_free_leaf(list, i);
+      }
     }
   }
 
@@ -188,13 +220,17 @@ void _zen_list_clear(ZenList *list) {
   if (!list)
     return;
 
-  if (list->depth > 1 && list->data) {
-
-    for (int i = 0; i < list->size; i++) {
-      ZenList *child = ((ZenList **)list->data)[i];
-
-      if (child)
-        _zen_list_free(child);
+  if (list->data) {
+    if (list->depth > 1) {
+      for (int i = 0; i < list->size; i++) {
+        ZenList *child = ((ZenList **)list->data)[i];
+        if (child)
+          _zen_list_free(child);
+      }
+    } else {
+      for (int i = 0; i < list->size; i++) {
+        _zen_list_free_leaf(list, i);
+      }
     }
   }
 

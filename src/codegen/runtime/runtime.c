@@ -1,16 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
-#include <direct.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <psapi.h>
-#pragma comment(lib, "ws2_32.lib")
-#include <windows.h>
-#else
 #include <sys/stat.h>
-#endif
 #include <stdbool.h>
 #include <time.h>
 #include <unistd.h>
@@ -19,7 +10,6 @@
 #include <sys/utsname.h>
 #include <sys/sysinfo.h>
 #include <regex.h>
-
 #include <termios.h>
 #include <fcntl.h>
 
@@ -351,20 +341,12 @@ const char* _time_time() {
 
 int _time_millis() {
 
-#ifdef _WIN32
-
-    return GetTickCount64();
-
-#else
-
     struct timespec ts;
 
     clock_gettime(CLOCK_REALTIME, &ts);
 
     return ((long long)ts.tv_sec * 1000LL)
            + (ts.tv_nsec / 1000000LL);
-
-#endif
 }
 
 int _time_date() {
@@ -386,34 +368,6 @@ int _time_year() {
     time_t now = time(NULL);
     return localtime(&now)->tm_year + 1900;
 }
-
-#ifdef _WIN32
-
-const char* _os_battery() {
-
-    static char result[64];
-
-    SYSTEM_POWER_STATUS s;
-
-    if (!GetSystemPowerStatus(&s)) {
-        return "unknown#0";
-    }
-
-    const char *state =
-        s.ACLineStatus == 1 ? "charging" : "discharging";
-
-    sprintf(
-        result,
-        "%s#%d",
-        state,
-        s.BatteryLifePercent
-    );
-
-    return result;
-}
-
-#else
-
 
 const char* _os_battery() {
 
@@ -454,39 +408,14 @@ const char* _os_battery() {
     return result;
 }
 
-#endif
 
 bool _net_online() {
-
-#ifdef _WIN32
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2,2), &wsa);
-#endif
 
     struct addrinfo *res;
 
     if (getaddrinfo("google.com", "80", NULL, &res) != 0) {
         return false;
     }
-
-#ifdef _WIN32
-
-    SOCKET sock = socket(
-        res->ai_family,
-        res->ai_socktype,
-        res->ai_protocol
-    );
-
-    bool ok = connect(
-        sock,
-        res->ai_addr,
-        (int)res->ai_addrlen
-    ) == 0;
-
-    closesocket(sock);
-    WSACleanup();
-
-#else
 
     int sock = socket(
         res->ai_family,
@@ -502,41 +431,26 @@ bool _net_online() {
 
     close(sock);
 
-#endif
-
     freeaddrinfo(res);
 
     return ok;
 }
 
 int _os_cpuCount() {
-#ifdef _WIN32
-    SYSTEM_INFO si;
-    GetSystemInfo(&si);
-    return (int)si.dwNumberOfProcessors;
-#else
     long n = sysconf(_SC_NPROCESSORS_ONLN);
     return (n > 0) ? (int)n : 1;
-#endif
 }
 
 
 const char* _os_cpuArch() {
-#ifdef _WIN32
-    return "x86/amd64-windows";
-#else
     static struct utsname u;
     if (uname(&u) == 0)
         return u.machine;
     return "unknown";
-#endif
 }
 
 
 const char* _os_cpuModel() {
-#ifdef _WIN32
-    return "windows-cpu";
-#else
     static char model[128];
     FILE *f = fopen("/proc/cpuinfo", "r");
     if (!f) return "unknown";
@@ -551,14 +465,11 @@ const char* _os_cpuModel() {
 
     fclose(f);
     return "unknown";
-#endif
+
 }
 
 
 double _os_cpuSpeed() {
-#ifdef _WIN32
-    return -1;
-#else
     FILE *f = fopen("/proc/cpuinfo", "r");
     if (!f) return -1;
 
@@ -586,7 +497,6 @@ double _os_cpuSpeed() {
     }
 
     return -1;
-#endif
 }
 
 long _os_totalMemory() {
@@ -765,7 +675,12 @@ char* _fs_cwd() {
     char *buf = malloc(1024);
     if (!buf) return NULL;
 
-    return getcwd(buf, 1024);
+    char *r = _getcwd(buf, 1024);
+    if (!r) {
+        free(buf);
+        return NULL;
+    }
+    return buf;
 }
 
 const char* _sys_getEnv(const char *key) {

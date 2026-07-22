@@ -812,13 +812,7 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_zen_json_getObject",
     },
     has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
-    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
-
-    free: {
-      returnType: "void",
-      args: [],
-      llvmName: "_zen_json_free",
-    },
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" }
   },
 
   JsonArray: {
@@ -856,13 +850,7 @@ const BUILTIN_STRUCT_METHODS = {
       returnType: "JsonArray",
       args: ["int"],
       llvmName: "_zen_json_arrayGetArray",
-    },
-
-    free: {
-      returnType: "void",
-      args: [],
-      llvmName: "_zen_json_free",
-    },
+    }
   },
 
   HttpServer: {

@@ -502,3 +502,12 @@ void _httpRequest_sendFile(HttpRequest *req, const char *path, const char *conte
 const char* _httpRequest_method(HttpRequest *req) { return (req && req->method) ? req->method : ""; }
 const char* _httpRequest_path(HttpRequest *req)   { return (req && req->path)   ? req->path   : ""; }
 const char* _httpRequest_body(HttpRequest *req)   { return (req && req->body)   ? req->body   : ""; }
+
+void _httpRequest_discard(HttpRequest *req) {
+    if (!req) return;
+    if (req->responded) return;
+    req->responded = 1;
+    CLOSESOCK(req->clientFd);
+    freeRequestFields(req);
+    free(req);
+}
