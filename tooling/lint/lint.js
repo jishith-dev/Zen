@@ -67,12 +67,12 @@ export class Lint {
         kind === "function"
           ? "function"
           : kind === "param"
-          ? "parameter"
-          : kind === "struct"
-          ? "struct"
-          : kind === "enum"
-          ? "enum"
-          : "variable";
+            ? "parameter"
+            : kind === "struct"
+              ? "struct"
+              : kind === "enum"
+                ? "enum"
+                : "variable";
 
       this.error(node, `Duplicate ${label} declaration '${name}'`);
       return;
@@ -107,7 +107,6 @@ export class Lint {
 
     this.error(node, `Undefined variable '${name}'`);
   }
-
 
   error(node, message) {
     this.errors.push({
@@ -162,7 +161,6 @@ export class Lint {
         return null;
     }
   }
-
 
   visitStatementList(statements) {
     let terminated = false;
@@ -451,7 +449,6 @@ export class Lint {
     }
   }
 
-
   visitAssignment(node) {
     this.resolve(node.name, node);
     this.visit(node.value);
@@ -482,7 +479,6 @@ export class Lint {
       }
     }
   }
-
 
   visitConditional(node) {
     if (this.isConstantCondition(node.if.condition)) {
@@ -590,7 +586,6 @@ export class Lint {
 
     this.visit(body);
   }
-
 
   visitSwitch(node) {
     this.visit(node.discriminant);

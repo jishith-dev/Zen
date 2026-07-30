@@ -26,76 +26,76 @@ export class Compiler {
   isURL(input) {
     return /^https?:\/\//.test(input);
   }
-  
+
   getSourceFiles(input) {
-  const type = this.pathType(input);
+    const type = this.pathType(input);
 
-  if (type === "local") {
-    return [path.resolve(input)];
+    if (type === "local") {
+      return [path.resolve(input)];
+    }
+
+    if (type === "project") {
+      const config = JSON.parse(
+        fs.readFileSync(path.join(input, "zen.json"), "utf8"),
+      );
+
+      return [path.join(input, config.main)];
+    }
+
+    if (type === "non-recurse") {
+      const dir = input.slice(0, -2) || ".";
+
+      return fs
+        .readdirSync(dir, { withFileTypes: true })
+        .filter(
+          (e) =>
+            e.isFile() &&
+            e.name.endsWith(".zen") &&
+            !e.name.includes(".formatted."),
+        )
+        .map((e) => path.join(dir, e.name));
+    }
+
+    if (type === "recurse") {
+      const files = [];
+
+      const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+
+          if (entry.isDirectory()) {
+            walk(full);
+          } else if (
+            full.endsWith(".zen") &&
+            !path.basename(full).includes(".formatted.")
+          ) {
+            files.push(full);
+          }
+        }
+      };
+
+      walk(input.slice(0, -3) || ".");
+
+      return files;
+    }
+
+    return [];
   }
-
-  if (type === "project") {
-    const config = JSON.parse(
-      fs.readFileSync(path.join(input, "zen.json"), "utf8")
-    );
-
-    return [path.join(input, config.main)];
-  }
-
-  if (type === "non-recurse") {
-    const dir = input.slice(0, -2) || ".";
-
-    return fs.readdirSync(dir, { withFileTypes: true })
-  .filter(
-    e =>
-      e.isFile() &&
-      e.name.endsWith(".zen") &&
-      !e.name.includes(".formatted.")
-  )
-  .map(e => path.join(dir, e.name));
-  }
-
-  if (type === "recurse") {
-    const files = [];
-
-    const walk = (dir) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-          walk(full);
-        } else if (
-  full.endsWith(".zen") &&
-  !path.basename(full).includes(".formatted.")
-) {
-  files.push(full);
-}
-      }
-    };
-
-    walk(input.slice(0, -3) || ".");
-
-    return files;
-  }
-
-  return [];
-}
 
   pathType(input) {
+    if (this.isURL(input)) return "remote";
 
-  if (this.isURL(input)) return "remote";
+    if (input.endsWith("/*")) {
+      return "non-recurse";
+    } else if (input.endsWith("/**")) {
+      return "recurse";
+    }
 
-  if (input.endsWith("/*")) {
-  return "non-recurse";
-} else if (input.endsWith("/**")) {
-  return "recurse";
-}
+    if (input.endsWith(".zen") && fs.existsSync(input)) return "local";
+    if (fs.existsSync(path.join(input, "zen.json"))) return "project";
 
-  if (input.endsWith(".zen") && fs.existsSync(input)) return "local";
-  if (fs.existsSync(path.join(input, "zen.json"))) return "project";
-
-  return "unknown";
-}
+    return "unknown";
+  }
 
   setProjectRoot(input) {
     const type = this.pathType(input);
@@ -123,7 +123,6 @@ export class Compiler {
   }
 
   async setSource(input, IRB) {
-    
     const type = this.pathType(input);
 
     if (type === "local") {
@@ -171,7 +170,6 @@ export class Compiler {
   }
 
   extractModuleName(input) {
-    
     if (this.isURL(input)) {
       const urlPath = new URL(input).pathname;
       const base = path.basename(urlPath);
@@ -245,7 +243,7 @@ export class Compiler {
     }
 
     const IRB = new IRBuilder(this.moduleName);
-    
+
     let Lexer;
     try {
       Lexer = (
@@ -258,7 +256,7 @@ export class Compiler {
       console.error("error: Failed to load Lexer");
       process.exit(1);
     }
-    
+
     let Parser;
     try {
       Parser = (
@@ -271,76 +269,73 @@ export class Compiler {
       console.error("error: Failed to load Parser");
       process.exit(1);
     }
-    
+
     if (command === "fmt") {
-  let Fmt;
+      let Fmt;
 
-  try {
-    Fmt = (
-      await import(
-        pathToFileURL(
-          path.join(this.COMPILER_ROOT, "tooling/fmt/fmt.js")
-        ).href
-      )
-    ).Fmt;
-  } catch (e) {
-    console.error("error: Failed to load formatter");
-    console.log(e);
-    process.exit(1);
-  }
+      try {
+        Fmt = (
+          await import(
+            pathToFileURL(path.join(this.COMPILER_ROOT, "tooling/fmt/fmt.js"))
+              .href
+          )
+        ).Fmt;
+      } catch (e) {
+        console.error("error: Failed to load formatter");
+        console.log(e);
+        process.exit(1);
+      }
 
-  const formatFile = (filePath) => {
-    const start = performance.now();
-    
-    const fmtIRB = new IRBuilder(path.basename(filePath, ".zen"));
+      const formatFile = (filePath) => {
+        const start = performance.now();
 
-    const source = fmtIRB.safeReadFile(filePath);
+        const fmtIRB = new IRBuilder(path.basename(filePath, ".zen"));
 
-    const preserveComments = !process.argv.includes("--no-comments");
+        const source = fmtIRB.safeReadFile(filePath);
 
-    const lexer = new Lexer(source, fmtIRB, 1, 1, { preserveComments });
-    const tokens = lexer.tokenize();
+        const preserveComments = !process.argv.includes("--no-comments");
 
-    const parser = new Parser(tokens, fmtIRB, { preserveComments });
-    const ast = parser.parse();
+        const lexer = new Lexer(source, fmtIRB, 1, 1, { preserveComments });
+        const tokens = lexer.tokenize();
 
-    const fmt = new Fmt(ast);
-    const formatted = fmt.format();
+        const parser = new Parser(tokens, fmtIRB, { preserveComments });
+        const ast = parser.parse();
 
-    if (!formatted.trim()) {
-      console.error(`error: failed to format '${filePath}'`);
-      process.exit(1);
+        const fmt = new Fmt(ast);
+        const formatted = fmt.format();
+
+        if (!formatted.trim()) {
+          console.error(`error: failed to format '${filePath}'`);
+          process.exit(1);
+        }
+
+        const ext = path.extname(filePath);
+        const outPath = filePath.slice(0, -ext.length) + ".formatted" + ext;
+
+        fs.writeFileSync(outPath, formatted);
+
+        const end = performance.now();
+
+        console.log(
+          `Formatted ${filePath} -> ${outPath} (${(end - start).toFixed(2)} ms)`,
+        );
+      };
+
+      const files = this.getSourceFiles(file);
+
+      if (files.length === 0) {
+        console.error("error: No .zen files found");
+        process.exit(1);
+      }
+
+      for (const filePath of files) {
+        formatFile(filePath);
+      }
+
+      process.exit(0);
     }
 
-    const ext = path.extname(filePath);
-    const outPath = filePath.slice(0, -ext.length) + ".formatted" + ext;
-
-    fs.writeFileSync(outPath, formatted);
-
-    const end = performance.now();
-
-    console.log(
-      `Formatted ${filePath} -> ${outPath} (${(end - start).toFixed(2)} ms)`
-    );
-  };
-
-  const files = this.getSourceFiles(file);
-
-  if (files.length === 0) {
-    console.error("error: No .zen files found");
-    process.exit(1);
-  }
-
-  for (const filePath of files) {
-    formatFile(filePath);
-  }
-
-  process.exit(0);
-}
-
     await this.setSource(file, IRB);
-
-    
 
     const lexer = new Lexer(this.source, IRB);
     const tokens = lexer.tokenize();
@@ -357,48 +352,47 @@ export class Compiler {
       console.log(JSON.stringify(ast, null, 2));
       process.exit(0);
     }
-    
+
     if (command === "lint") {
-      
-  const lintIRB = new IRBuilder(this.moduleName);
+      const lintIRB = new IRBuilder(this.moduleName);
 
-  const lintLexer = new Lexer(this.source, lintIRB);
-  const lintTokens = lintLexer.tokenize();
+      const lintLexer = new Lexer(this.source, lintIRB);
+      const lintTokens = lintLexer.tokenize();
 
-  const lintParser = new Parser(lintTokens, lintIRB);
-  const lintAst = lintParser.parse();
+      const lintParser = new Parser(lintTokens, lintIRB);
+      const lintAst = lintParser.parse();
 
-  let Lint;
-  try {
-    Lint = (
-      await import(
-        pathToFileURL(
-          path.join(this.COMPILER_ROOT, "/tooling/lint/lint.js"),
-        ).href
-      )
-    ).Lint;
-  } catch (err) {
-    console.error("error: Failed to load Lint" + err);
-    process.exit(1);
-  }
+      let Lint;
+      try {
+        Lint = (
+          await import(
+            pathToFileURL(
+              path.join(this.COMPILER_ROOT, "/tooling/lint/lint.js"),
+            ).href
+          )
+        ).Lint;
+      } catch (err) {
+        console.error("error: Failed to load Lint" + err);
+        process.exit(1);
+      }
 
-  const lint = new Lint(lintAst);
-  const { errors, warnings } = lint.run();
-  
-  for (const w of warnings) {
-    console.warn(
-      `warning: ${w.message}${w.line ? ` (line ${w.line}, col ${w.column})` : ""}`,
-    );
-  }
+      const lint = new Lint(lintAst);
+      const { errors, warnings } = lint.run();
 
-  for (const e of errors) {
-    console.error(
-      `error: ${e.message}${e.line ? ` (line ${e.line}, col ${e.column})` : ""}`,
-    );
-  }
+      for (const w of warnings) {
+        console.warn(
+          `warning: ${w.message}${w.line ? ` (line ${w.line}, col ${w.column})` : ""}`,
+        );
+      }
 
-  process.exit(errors.length > 0 ? 1 : 0);
-}
+      for (const e of errors) {
+        console.error(
+          `error: ${e.message}${e.line ? ` (line ${e.line}, col ${e.column})` : ""}`,
+        );
+      }
+
+      process.exit(errors.length > 0 ? 1 : 0);
+    }
 
     let CodeGen;
     try {
@@ -506,29 +500,29 @@ export class Compiler {
     ];
 
     const outputExe = path.join(
-  buildDir,
-  this.isWindows ? `${this.moduleName}.exe` : this.moduleName,
-);
+      buildDir,
+      this.isWindows ? `${this.moduleName}.exe` : this.moduleName,
+    );
 
-const linkArgs = [
-  "clang",
-  outO,
-  ...moduleObjs,
-  ...stdlibObjs,
-  ...runtimeObjs,
-  this.optFlag,
-];
+    const linkArgs = [
+      "clang",
+      outO,
+      ...moduleObjs,
+      ...stdlibObjs,
+      ...runtimeObjs,
+      this.optFlag,
+    ];
 
-if (!this.isWindows) {
-  linkArgs.push("-Wno-override-module");
-  linkArgs.push("-lm");
-}
+    if (!this.isWindows) {
+      linkArgs.push("-Wno-override-module");
+      linkArgs.push("-lm");
+    }
 
-linkArgs.push("-lcurl");
-linkArgs.push("-o");
-linkArgs.push(outputExe);
+    linkArgs.push("-lcurl");
+    linkArgs.push("-o");
+    linkArgs.push(outputExe);
 
-this.run(linkArgs.join(" "));
+    this.run(linkArgs.join(" "));
 
     if (command === "build") {
       console.log(`Build successful: ${outputExe}`);

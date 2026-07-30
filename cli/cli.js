@@ -30,7 +30,7 @@ const VALID_COMMANDS = new Set([
   "version",
   "update",
   "fmt",
-  "lint"
+  "lint",
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -60,9 +60,9 @@ const COMPILE_COMMANDS = new Set([
   "ast",
   "tokens",
   "clean",
-  
+
   "fmt", // format
-  "lint" // linter
+  "lint", // linter
 ]);
 
 function help() {
@@ -129,7 +129,12 @@ export class CLI {
   async main() {
     const command = this.command;
 
-    if (!command || command === "--help" || command === "-h" || command === "help") {
+    if (
+      !command ||
+      command === "--help" ||
+      command === "-h" ||
+      command === "help"
+    ) {
       help();
       process.exit(0);
     }

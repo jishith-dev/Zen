@@ -40,7 +40,7 @@ export class ZenFileSystem {
       const displayType = isList ? `List` : actualType;
 
       if (isList || expectedType !== actualType) {
-        if (funcName !== "_fs_writeFileBytes" && expectedType !== "byte") {
+        if (funcName !== "_fs_writeFileBytes" && expectedType !== "Byte") {
           this.IRB.emitError(
             "TypeError",
             `Function ${name} expects ${expectedType} at arg ${i + 1}, got ${displayType}`,
@@ -62,7 +62,7 @@ export class ZenFileSystem {
           return "i1";
         case "string":
           return "ptr";
-        case "byte": // special case
+        case "Byte": // special case
           return "ptr";
         default:
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
@@ -108,7 +108,7 @@ export class ZenFileSystem {
     }
 
     const listRetFn = ["_fs_readFileBytes"]; // only list return fn in fs namespace
-    const generic = { generic: "byte" };
+    const generic = { generic: "Byte" };
     return {
       ptr: isVoidFn ? null : t,
       type: isVoidFn ? "void" : returnType,

@@ -7,7 +7,13 @@ const __dirname = path.dirname(__filename);
 const COMPILER_ROOT = path.resolve(__dirname, "..");
 
 let IRBuilder, Lexer, Parser, Lint;
-let KEYWORDS, TYPES, BUILTIN_FUNCTIONS, BUILTIN_STRUCTS, STD_FUNCTIONS_SCHEMA, GLOBAL_EXTERNAL, ParserTypes;
+let KEYWORDS,
+  TYPES,
+  BUILTIN_FUNCTIONS,
+  BUILTIN_STRUCTS,
+  STD_FUNCTIONS_SCHEMA,
+  GLOBAL_EXTERNAL,
+  ParserTypes;
 
 const namespaces = new Map();
 let globalBuiltins = [];
@@ -36,20 +42,27 @@ function buildNamespaces() {
 async function loadDeps() {
   IRBuilder = (
     await import(
-      pathToFileURL(path.join(COMPILER_ROOT, "src/codegen/helper/helper.js")).href
+      pathToFileURL(path.join(COMPILER_ROOT, "src/codegen/helper/helper.js"))
+        .href
     )
   ).IRBuilder;
 
   Lexer = (
-    await import(pathToFileURL(path.join(COMPILER_ROOT, "src/lexer/lexer.js")).href)
+    await import(
+      pathToFileURL(path.join(COMPILER_ROOT, "src/lexer/lexer.js")).href
+    )
   ).Lexer;
 
   Parser = (
-    await import(pathToFileURL(path.join(COMPILER_ROOT, "src/parser/parser.js")).href)
+    await import(
+      pathToFileURL(path.join(COMPILER_ROOT, "src/parser/parser.js")).href
+    )
   ).Parser;
 
   Lint = (
-    await import(pathToFileURL(path.join(COMPILER_ROOT, "/tooling/lint/lint.js")).href)
+    await import(
+      pathToFileURL(path.join(COMPILER_ROOT, "/tooling/lint/lint.js")).href
+    )
   ).Lint;
 
   const config = await import(
@@ -189,14 +202,18 @@ function analyze(uri, text) {
       const lint = new Lint(ast);
       const { errors, warnings } = lint.run();
 
-      for (const e of errors) diagnostics.push(toDiagnostic(e.message, e.line, e.column, 1));
-      for (const w of warnings) diagnostics.push(toDiagnostic(w.message, w.line, w.column, 2));
+      for (const e of errors)
+        diagnostics.push(toDiagnostic(e.message, e.line, e.column, 1));
+      for (const w of warnings)
+        diagnostics.push(toDiagnostic(w.message, w.line, w.column, 2));
     });
   } catch (err) {
     if (err && err.__lspGuardExit) {
       diagnostics.push(toDiagnostic("Syntax error (parsing aborted)", 1, 1, 1));
     } else {
-      diagnostics.push(toDiagnostic(`Internal error: ${err?.message || err}`, 1, 1, 1));
+      diagnostics.push(
+        toDiagnostic(`Internal error: ${err?.message || err}`, 1, 1, 1),
+      );
     }
   }
 
@@ -241,7 +258,10 @@ function collectSymbols(ast) {
     });
 
     for (const p of node.params || []) {
-      variables.set(p.name, { dataType: p.dataType || p.type || "auto", line: node.line });
+      variables.set(p.name, {
+        dataType: p.dataType || p.type || "auto",
+        line: node.line,
+      });
     }
 
     if (node.body) walk(node.body);
@@ -270,7 +290,10 @@ function collectSymbols(ast) {
 
       case ParserTypes.STRUCT:
         structs.set(node.name, {
-          fields: (node.fields || []).map((f) => ({ name: f.name, dataType: f.dataType || f.type })),
+          fields: (node.fields || []).map((f) => ({
+            name: f.name,
+            dataType: f.dataType || f.type,
+          })),
           methods: (node.methods || []).map((m) => m.name),
           line: node.line,
         });
@@ -369,11 +392,19 @@ function buildCompletionItems(uri, line, character) {
   }
 
   for (const s of BUILTIN_STRUCTS) {
-    items.push({ label: s, kind: CompletionKind.Struct, detail: "built-in struct" });
+    items.push({
+      label: s,
+      kind: CompletionKind.Struct,
+      detail: "built-in struct",
+    });
   }
 
   for (const nsName of namespaces.keys()) {
-    items.push({ label: nsName, kind: CompletionKind.Module, detail: "namespace" });
+    items.push({
+      label: nsName,
+      kind: CompletionKind.Module,
+      detail: "namespace",
+    });
   }
 
   for (const fn of globalBuiltins) {
@@ -408,18 +439,34 @@ function buildCompletionItems(uri, line, character) {
       });
     }
     for (const [name, info] of state.symbols.variables) {
-      items.push({ label: name, kind: CompletionKind.Variable, detail: info.dataType });
+      items.push({
+        label: name,
+        kind: CompletionKind.Variable,
+        detail: info.dataType,
+      });
     }
     for (const [name, info] of state.symbols.structs) {
-      items.push({ label: name, kind: CompletionKind.Struct, detail: "struct" });
+      items.push({
+        label: name,
+        kind: CompletionKind.Struct,
+        detail: "struct",
+      });
       for (const f of info.fields) {
-        items.push({ label: f.name, kind: CompletionKind.Field, detail: `${name}.${f.name}: ${f.dataType}` });
+        items.push({
+          label: f.name,
+          kind: CompletionKind.Field,
+          detail: `${name}.${f.name}: ${f.dataType}`,
+        });
       }
     }
     for (const [name, info] of state.symbols.enums) {
       items.push({ label: name, kind: CompletionKind.Class, detail: "enum" });
       for (const m of info.members) {
-        items.push({ label: m, kind: CompletionKind.EnumMember, detail: `${name}.${m}` });
+        items.push({
+          label: m,
+          kind: CompletionKind.EnumMember,
+          detail: `${name}.${m}`,
+        });
       }
     }
   }
@@ -464,7 +511,10 @@ function handleHover(id, params) {
       : `\`\`\`zen\nfn ${ns}.${word}(...)\n\`\`\`\nInternal built-in function`;
   } else if (namespaces.has(word)) {
     const members = [...namespaces.get(word).entries()]
-      .map(([method, fullName]) => `- ${signatureLabel(`${word}.${method}`, STD_FUNCTIONS_SCHEMA[fullName])}`)
+      .map(
+        ([method, fullName]) =>
+          `- ${signatureLabel(`${word}.${method}`, STD_FUNCTIONS_SCHEMA[fullName])}`,
+      )
       .join("\n");
     contents = `\`\`\`zen\nnamespace ${word}\n\`\`\`\n${members}`;
   } else if (KEYWORDS.includes(word)) {
@@ -486,16 +536,22 @@ function handleHover(id, params) {
     if (state) {
       if (state.symbols.functions.has(word)) {
         const f = state.symbols.functions.get(word);
-        const paramsStr = f.params.map((p) => `${p.dataType} ${p.name}`).join(", ");
+        const paramsStr = f.params
+          .map((p) => `${p.dataType} ${p.name}`)
+          .join(", ");
         contents = `\`\`\`zen\nfn ${word}(${paramsStr}): ${f.returnType}\n\`\`\`${
-          f.isMethod ? `\nMethod of \`${f.ofStruct}\`` : "\nUser-defined function"
+          f.isMethod
+            ? `\nMethod of \`${f.ofStruct}\``
+            : "\nUser-defined function"
         }`;
       } else if (state.symbols.variables.has(word)) {
         const v = state.symbols.variables.get(word);
         contents = `\`\`\`zen\n${v.dataType} ${word}\n\`\`\`\nVariable`;
       } else if (state.symbols.structs.has(word)) {
         const s = state.symbols.structs.get(word);
-        const fields = s.fields.map((f) => `  ${f.dataType} ${f.name}`).join("\n");
+        const fields = s.fields
+          .map((f) => `  ${f.dataType} ${f.name}`)
+          .join("\n");
         contents = `\`\`\`zen\nstruct ${word} {\n${fields}\n}\n\`\`\``;
       } else if (state.symbols.enums.has(word)) {
         const e = state.symbols.enums.get(word);
@@ -526,7 +582,10 @@ function findEnclosingCall(line, character) {
     else if (c === "(") {
       if (depth === 0) {
         const before = line.slice(0, i);
-        const m = /([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*$/.exec(before);
+        const m =
+          /([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*$/.exec(
+            before,
+          );
         if (!m) return null;
 
         const argsSoFar = line.slice(i + 1, character);
@@ -550,12 +609,20 @@ function resolveCallSchema(uri, name) {
     const fullName = namespaces.get(ns)?.get(method);
     const schema = fullName ? STD_FUNCTIONS_SCHEMA[fullName] : null;
     if (!schema) return null;
-    return { label: name, params: (schema.params ?? []).map(displayType), returnType: displayType(schema.ret ?? "void") };
+    return {
+      label: name,
+      params: (schema.params ?? []).map(displayType),
+      returnType: displayType(schema.ret ?? "void"),
+    };
   }
 
   const schema = STD_FUNCTIONS_SCHEMA[name];
   if (schema && globalBuiltins.includes(name)) {
-    return { label: name, params: (schema.params ?? []).map(displayType), returnType: displayType(schema.ret ?? "void") };
+    return {
+      label: name,
+      params: (schema.params ?? []).map(displayType),
+      returnType: displayType(schema.ret ?? "void"),
+    };
   }
 
   const state = docState.get(uri);

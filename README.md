@@ -608,6 +608,27 @@ Some reference-semantic built-in types allocate runtime resources and therefore 
 
 Attempting to use an object after it has been freed results in undefined behavior and may be diagnosed by the compiler or detected by the runtime where applicable.
 
+
+### Ownership
+
+Reference-semantic built-in types follow **ownership semantics**.
+
+The object that creates or owns a runtime resource is responsible for releasing it by calling `free()`. Child objects, borrowed references, or values obtained from another object must **not** be freed directly.
+
+```zen
+Map parent
+Map child = parent.getMap("child")
+
+parent.free()   # Correct
+child.free()    # Illegal
+```
+
+Whenever possible, the compiler diagnoses ownership violations at compile time. If a violation cannot be determined statically, the runtime detects the error and terminates execution.
+
+After an object has been freed, it immediately becomes invalid. Any attempt to access it, modify it, or free it again is illegal and results in either a compile-time diagnostic or a runtime error.
+
+In short, **the parent owns the lifetime of all of its children**. Only the owner of a runtime resource is permitted to destroy it.
+
 ---
 
 ## Scope of This Specification
@@ -686,7 +707,7 @@ The following identifiers are reserved by the language and may not be used as us
 | Category | Keywords |
 |---|---|
 | **Types** | `int` `double` `string` `bool` `List` |
-| **Speacial Type** | `byte` |
+| **Speacial Type** | `Byte` |
 | **reactive** | `reactive` |
 | **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` |
 | **Loop Control flow** | `break` `continue` |
@@ -2030,9 +2051,9 @@ array.arrayGetObject(...)
 array.arrayGetArray(...)
 ```
 
-##### byte
+##### Byte
 
-`byte` is a built-in special type used primarily with generic containers such as `List<byte>`. Although it is not a user-defined struct, it is treated as a built-in struct type for consistency with generic APIs.
+`Byte` is a built-in struct representing a single byte of binary data. It is primarily intended for use with binary APIs and generic containers such as `List<Byte>`.
 
 ---
 
@@ -2052,7 +2073,7 @@ ZEN provides four built-in data structure types: `List`, fixed-size arrays, and 
 
 A `List` is a dynamically sized, heap-allocated array. `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
 
-> **Note:** `byte` is a special type available only as a List generic (`List<byte>`). Standalone `byte` variables, parameters, fields, and return types are not supported.
+> **Note:** `Byte` is intended primarily for use with `List<Byte>` and binary-related APIs. Standalone `Byte` values can be created only through the `toByte()` conversion function.
 
 #### Declaration
 
@@ -2078,7 +2099,6 @@ List elements may be of the following types:
 - `int`, `double`, `string`, `bool`
 - Struct types
 - Nested `List<T>`
-- `List<byte>`
 
 `auto` is not valid as a type parameter — `List<auto>` is a compile-time error.
 
@@ -3536,6 +3556,25 @@ Returns `string`.
 string a = String(42)        # "42"
 string b = String(3.14)      # "3.14"
 string c = String(true)      # "true"
+```
+
+---
+
+#### `toByte`
+
+Converts an `int` to `Byte`.
+
+```
+toByte(value)
+```
+
+Returns `Byte`.
+
+```zen
+List<Byte> bytes
+
+bytes.push(toByte(65))
+bytes.push(toByte(255))
 ```
 
 ---
@@ -6085,7 +6124,7 @@ The following names are reserved as built-in functions, standard library functio
 
 #### Core Functions
 
-`screen` `input` `type` `Int` `Double` `Bool` `String` `toString` `toInt` `length`
+`screen` `input` `type` `Int` `Double` `Bool` `String` `toString` `toInt` `length` `sizeOf` `toByte`
 
 #### Standard Functions
 

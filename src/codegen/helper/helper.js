@@ -9,6 +9,7 @@ import {
   TYPE_MAP,
   BUILTIN_STRUCT_ABI,
 } from "../../config/config.js";
+import { InferType } from "../infer/infer.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -20,6 +21,7 @@ export class IRBuilder {
     this.locals = [];
     this.functionBuff = [];
     this.meta = [];
+    this.allocaBuff = [];
 
     this.currentFunction = null;
     this.functions = new Map();
@@ -28,6 +30,9 @@ export class IRBuilder {
 
     this.returnCount = 0;
     this.returnTypes = [];
+
+    this.nextOwnerId = 1;
+    this.freedOwners = new Set();
 
     this.reactiveMap = new Map();
     this.dependents = new Map();
@@ -105,6 +110,11 @@ export class IRBuilder {
     this.returnCount = 0;
     this.returnTypes = [];
     this.haveExport = false;
+    this.allocaBuff = [];
+  }
+
+  genOwnerId() {
+    return this.nextOwnerId++;
   }
 
   hasPath(from, target, visited = new Set()) {
@@ -186,6 +196,7 @@ export class IRBuilder {
 
   setCall(expr) {
     this.expr = expr;
+    this.infer = new InferType(this, this.expr);
   }
 
   setFunction(name, data, node) {
@@ -254,7 +265,7 @@ export class IRBuilder {
     if (type === "int") return 4;
     if (type === "double") return 8;
     if (type === "bool") return 1;
-    if (type === "byte") return 1;
+    if (type === "Byte") return 1;
 
     // pointer backed
     if (
@@ -267,13 +278,20 @@ export class IRBuilder {
     }
 
     const structInfo = this.getStruct(type);
+
     if (structInfo) {
+      if (structInfo.isBuiltin) {
+        if (structInfo.align != null) return structInfo.align;
+        if (structInfo.isOpaque) return this.target.ptrSize;
+      }
+
       let maxAlign = 1;
+
       for (const field of structInfo.layout) {
         const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
-
         maxAlign = Math.max(maxAlign, a);
       }
+
       return maxAlign;
     }
 
@@ -284,7 +302,6 @@ export class IRBuilder {
     if (type === "int") return 4;
     if (type === "double") return 8;
     if (type === "bool") return 1;
-    if (type === "byte") return 1;
 
     // pointer backed
     if (
@@ -299,6 +316,11 @@ export class IRBuilder {
     const structInfo = this.getStruct(type);
 
     if (structInfo) {
+      if (structInfo.isBuiltin) {
+        if (structInfo?.byteSize != null) return structInfo.byteSize;
+        if (structInfo.isOpaque) return this.target.ptrSize;
+      }
+
       let offset = 0;
       let maxAlign = 1;
 
@@ -434,8 +456,12 @@ export class IRBuilder {
     if (this.functionParamTable.has(name)) {
       return this.functionParamTable.get(name);
     }
-    
-    this.emitError("ReferenceError", `callback function '${name}' not defined`, node);
+
+    this.emitError(
+      "ReferenceError",
+      `callback function '${name}' not defined`,
+      node,
+    );
   }
 
   typeMatches(expr, expectedType, expectedIsList = false) {
@@ -448,6 +474,16 @@ export class IRBuilder {
     }
 
     this.emitError("ReferenceError", `Struct '${name}' is not defined`, node);
+  }
+
+  validateStandaloneType(type, node) {
+    if (type === "Byte") {
+      this.emitError(
+        "TypeError",
+        "'Byte' may only be used as 'List<Byte>'",
+        node,
+      );
+    }
   }
 
   utf8LenWithNull(str) {
@@ -506,7 +542,7 @@ export class IRBuilder {
       return "ptr";
     }
 
-    if (inner.type === "byte") {
+    if (inner.type === "Byte") {
       return "i32";
     }
 
@@ -547,16 +583,18 @@ export class IRBuilder {
   getLLVMType(type) {
     // struct ref
     if (this.structTable.has(type)) {
+      const s = this.getStruct(type);
+
+      if (s.isBuiltin && s.isOpaque) {
+        return "ptr";
+      }
+
       return `%${type}`;
     }
 
     if (type === "struct") return "ptr";
 
     if (type === "Map" || type === "List" || type === "ptr") {
-      return "ptr";
-    }
-
-    if (type === "byte") {
       return "ptr";
     }
 
@@ -569,7 +607,16 @@ export class IRBuilder {
   }
 
   getIR() {
-    return [...this.meta, ...this.globals, ...this.functionBuff, ...this.locals].join("\n");
+    return [
+      ...this.meta,
+      ...this.globals,
+      ...this.functionBuff,
+      ...this.locals,
+    ].join("\n");
+  }
+
+  emitAlloca(reg, type) {
+    this.allocaBuff.push(`${reg} = alloca ${type}`);
   }
 
   newTemp() {
@@ -621,6 +668,8 @@ export class IRBuilder {
     isReactive,
     isListAccess,
     isRet,
+    ownerId,
+    pIndex,
   }) {
     return {
       ptr,
@@ -648,6 +697,8 @@ export class IRBuilder {
       isReactive,
       isListAccess,
       isRet,
+      ownerId,
+      pIndex,
     };
   }
 
@@ -914,7 +965,7 @@ export class IRBuilder {
     const paramData = [];
     const types = [];
 
-    for (const p of params) {
+    for (const [i, p] of params.entries()) {
       const temp = this.newTemp();
 
       // fn param
@@ -975,12 +1026,15 @@ export class IRBuilder {
           llvmType: "%ZenList*",
           isList: true,
           isConstant: p.isConstant,
+          pIndex: i,
         });
 
         continue;
       }
 
       if (this.hasStruct(p.type.type)) {
+        validateStandaloneType(p.type.type, node);
+
         types.push("ptr");
         paramStr.push(`ptr ${temp}`);
 
@@ -1003,7 +1057,7 @@ export class IRBuilder {
       if (isArray) {
         this.emitError(
           "SemanticError",
-          `Fixed-size arrays cannot be passed as function parameters`
+          `Fixed-size arrays cannot be passed as function parameters`,
         );
       }
 
@@ -1037,13 +1091,15 @@ export class IRBuilder {
       });
     }
 
-    const retStruct = this.hasStruct(returnType) ? this.getStruct(returnType) : false;
-    
-const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
+    const retStruct = this.hasStruct(returnType)
+      ? this.getStruct(returnType)
+      : false;
 
-if (this.hasStruct(returnType) && !isOpaqueReturn) {
-  paramStr.unshift(`ptr sret(%${returnType}) %sret`);
-}
+    const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
+
+    if (this.hasStruct(returnType) && !isOpaqueReturn) {
+      paramStr.unshift(`ptr sret(%${returnType}) %sret`);
+    }
 
     return {
       ir: `(${paramStr.join(", ")})`,
@@ -1665,10 +1721,7 @@ end:
       );
     }
 
-    const { full: arrayType } = this.buildArrayType(
-      baseType,
-      dims,
-    );
+    const { full: arrayType } = this.buildArrayType(baseType, dims);
     const elementSize = this.sizeOf(zenType);
     const length = value.elements.length;
     if (value && value.elements.length > 0) {
@@ -1710,7 +1763,7 @@ end:
     let ir = [];
     const ptr = this.newTemp();
 
-    ir.push(`${ptr} = alloca ${arrayType}`);
+    this.emitAlloca(ptr, arrayType);
 
     // zero init
     if (!value || value.elements.length === 0) {
@@ -1978,6 +2031,25 @@ end:
         ptr: t,
         llvmType: "double",
         type: "double",
+        local,
+      };
+    }
+
+    // INT  BYTE
+    if (expr.type === "int" && targetType === "Byte") {
+      const ptr = this.newTemp();
+
+      local.push(`${ptr} = alloca i8`);
+
+      const value = this.newTemp();
+      local.push(`${value} = trunc i32 ${expr.ptr} to i8`);
+
+      local.push(`store i8 ${value}, ptr ${ptr}`);
+
+      return {
+        ptr,
+        llvmType: "ptr",
+        type: "Byte",
         local,
       };
     }
@@ -2402,7 +2474,7 @@ end:
 
       const box = this.newTemp();
 
-      this.emit(`${box} = alloca i32`);
+      this.emitAlloca(box, "i32");
 
       this.emit(`store i32 ${vptr}, ptr ${box}`);
 
@@ -2416,7 +2488,7 @@ end:
 
       const box = this.newTemp();
 
-      this.emit(`${box} = alloca i1`);
+      this.emitAlloca(box, "i1");
 
       this.emit(`store i1 ${vptr}, ptr ${box}`);
 
@@ -2430,7 +2502,7 @@ end:
 
       const box = this.newTemp();
 
-      this.emit(`${box} = alloca double`);
+      this.emitAlloca(box, "double");
 
       this.emit(`store double ${vptr}, ptr ${box}`);
 
@@ -2511,67 +2583,64 @@ end:
 
         // STRUCT LITERAL push({...})
         if (node.args[0]?.type === "STRUCT_LITERAL" && isStructElement) {
-  const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
+          const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
 
-  const elementStruct = this.getStruct(deepestType);
-  const isOpaqueElement =
-    elementStruct?.isOpaque || BUILTIN_STRUCT_ABI.includes(deepestType);
+          const elementStruct = this.getStruct(deepestType);
+          const isOpaqueElement =
+            elementStruct?.isOpaque || BUILTIN_STRUCT_ABI.includes(deepestType);
 
-  if (!isOpaqueElement && structPtr.needsLoad) {
-    const t = this.newTemp();
-    this.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
-    structPtr.ptr = t;
-  }
+          if (!isOpaqueElement && structPtr.needsLoad) {
+            const t = this.newTemp();
+            this.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+            structPtr.ptr = t;
+          }
 
-  this.emit(
-    `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
-  );
-  return {
-    ptr: null,
-    type: "void",
-    llvmType: "void",
-    local: [],
-    global: [],
-  };
-}
+          this.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+          );
+          return {
+            ptr: null,
+            type: "void",
+            llvmType: "void",
+            local: [],
+            global: [],
+          };
+        }
 
         const arg = this.expr.handleExpression(node.args[0], false);
 
         if (this.hasStruct(arg.type)) {
-  const struct = this.getStruct(arg.type);
+          const struct = this.getStruct(arg.type);
 
-  if (struct?.isBuiltin && struct?.isOpaque) {
-    let p = arg.ptr;
+          if (struct?.isBuiltin && struct?.isOpaque) {
+            let p = arg.ptr;
 
-    if (!arg.needsLoad) {
-      const tmp = this.newTemp();
-      this.emit(`${tmp} = alloca ptr`);
-      this.emit(`store ptr ${arg.ptr}, ptr ${tmp}`);
-      p = tmp;
-    }
+            if (!arg.needsLoad) {
+              const tmp = this.newTemp();
+              this.emitAlloca(tmp, "ptr");
+              this.emit(`store ptr ${arg.ptr}, ptr ${tmp}`);
+              p = tmp;
+            }
 
-    this.emit(
-      `call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`,
-    );
+            this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
+          } else {
+            this.emit(
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
+            );
+          }
 
-  } else {
-    this.emit(
-      `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
-    );
-  }
-
-  return {
-    ptr: null,
-    type: "void",
-    llvmType: "void",
-    local: [],
-    global: [],
-  };
-}
+          return {
+            ptr: null,
+            type: "void",
+            llvmType: "void",
+            local: [],
+            global: [],
+          };
+        }
 
         let expType = object?.generic?.generic?.type;
 
-        if (expType === "byte") {
+        if (expType === "Byte") {
           expType = "int";
         }
 
@@ -2599,7 +2668,7 @@ end:
 
         const llvmType = this.getListElementLLVM(object.generic);
         const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ${llvmType}`);
+        this.emitAlloca(tmp, llvmType);
 
         let t;
         if (arg.needsLoad) {
@@ -2663,7 +2732,7 @@ end:
         // LIST (nested list popped out) — out is a ptr slot holding the inner list ptr
         if (isNestedList) {
           const out = this.newTemp();
-          this.emit(`${out} = alloca ptr`);
+          this.emitAlloca(out, "ptr");
 
           this.emit(`call void @_zen_list_pop(ptr ${listPtr}, ptr ${out})`);
 
@@ -2686,7 +2755,7 @@ end:
         const llvmType = this.getListElementLLVM(object.generic);
 
         const out = this.newTemp();
-        this.emit(`${out} = alloca ${llvmType}`);
+        this.emitAlloca(out, llvmType);
 
         this.emit(`call void @_zen_list_pop(ptr ${listPtr}, ptr ${out})`);
 
@@ -2793,7 +2862,7 @@ end:
         const llvmType = this.getListElementLLVM(object.generic);
 
         const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ${llvmType}`);
+        this.emitAlloca(tmp, llvmType);
 
         let ptr;
         if (arg.needsLoad) {
@@ -2858,7 +2927,7 @@ end:
         const llvmType = this.getListElementLLVM(object.generic);
 
         const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ${llvmType}`);
+        this.emitAlloca(tmp, llvmType);
 
         let ptr;
         if (arg.needsLoad) {
@@ -2948,12 +3017,6 @@ end:
           this.emit(`store ptr null, ptr ${object.ptr}`);
 
           this.freedVars[this.freedVars.length - 1].add(node.object.name);
-
-          if (!this.freedFields.has(object.name)) {
-            this.freedFields.set(object.name, new Set());
-
-            this.freedFields.get(object.name).add(freeField);
-          }
         } else {
           // map inside list
 
@@ -2978,10 +3041,27 @@ end:
           const meta = this.maps.get(object.name);
           meta[freeField].freed = true;
           meta[freeField].freedAt = freeField;
+        }
 
-          // important case mutating var for save freed field !!
+        if (node.object.type !== "variable") {
+          this.emitError(
+            "MemoryError",
+            "free() can only be called on an owning variable",
+            node,
+          );
+        }
 
-          this.getVar(object.name).freedAt = freeField;
+        const sym = this.getVar(node.object.name);
+
+        if (sym.ownerId !== undefined) {
+          this.freedOwners.add(sym.ownerId);
+        }
+        sym.isFreed = true;
+
+        if (sym.fromParam && sym.pIndex !== undefined) {
+          this.functions
+            .get(this.currentFunction.name)
+            .freedPindex.add(sym.pIndex);
         }
 
         return {
@@ -2990,6 +3070,7 @@ end:
           llvmType: "void",
           local: [],
           global: [],
+          isFreed: true,
         };
       }
 
@@ -3090,16 +3171,19 @@ end:
   }
 
   constEval(node, context) {
-  
     if (node.type === "int") return Number(node.value);
-    
+
     if (this.enums.has(node.object.name)) {
       const field = node.field;
       const e = this.enums.get(node.object.name).members.has(field);
       if (e) {
         return Number(this.enums.get(node.object.name).members.get(field));
       } else {
-        this.emitError("ReferenceError", `enum '${node.object.name}' does't have member '${field}'`, node);
+        this.emitError(
+          "ReferenceError",
+          `enum '${node.object.name}' does't have member '${field}'`,
+          node,
+        );
       }
     }
 
@@ -3173,7 +3257,7 @@ end:
       "declare ptr @_zen_list_push(ptr, ptr)",
     );
 
-    this.emit(`${structPtr} = alloca ${llvmType}`);
+    this.emitAlloca(structPtr, llvmType);
 
     const structInfo = this.getStruct(structName);
 
@@ -3212,7 +3296,7 @@ end:
               field.generic.generic,
             );
             const tmp = this.newTemp();
-            this.emit(`${tmp} = alloca ptr`);
+            this.emitAlloca(tmp, "ptr");
             this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
             this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
           } else if (el.type === "STRUCT_LITERAL") {
@@ -3231,7 +3315,7 @@ end:
             const expr = this.expr.handleExpression(el);
             this.emitExpr(expr);
             const tmp = this.newTemp();
-            this.emit(`${tmp} = alloca ${expr.llvmType}`);
+            this.emitAlloca(tmp, expr.llvmType);
             this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
             this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
           }
@@ -3311,7 +3395,7 @@ end:
           elementGeneric.generic,
         );
         const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ptr`);
+        this.emitAlloca(tmp, "ptr");
         this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
         this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
       } else if (el.type === "STRUCT_LITERAL") {
@@ -3330,7 +3414,7 @@ end:
         const expr = this.expr.handleExpression(el);
         this.emitExpr(expr);
         const tmp = this.newTemp();
-        this.emit(`${tmp} = alloca ${expr.llvmType}`);
+        this.emitAlloca(tmp, expr.llvmType);
         this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
         this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
       }
@@ -3392,7 +3476,14 @@ end:
     return this.safeReadFile(entryFile);
   }
 
-  registerBuiltInStructs(name, fields = [], methods = {}, needSize = false) {
+  registerBuiltInStructs(
+    name,
+    fields = [],
+    methods = {},
+    needSize = false,
+    builtinSize = null,
+    builtinAlign = null,
+  ) {
     const layout = [];
     const fieldMap = {};
     const llvmFields = [];
@@ -3431,11 +3522,17 @@ end:
       layout,
       fieldMap,
       size: fields.length,
+      byteSize: builtinSize,
+      align: builtinAlign,
       methods,
     });
 
-    this.getStruct(name).byteSize = this.sizeOf(name);
-    this.getStruct(name).align = this.alignOf(name);
+    if (builtinSize === null) {
+      this.getStruct(name).byteSize = this.sizeOf(name);
+    }
+    if (builtinAlign === null) {
+      this.getStruct(name).align = this.alignOf(name);
+    }
   }
 
   initBuiltInStructs() {
@@ -3454,9 +3551,11 @@ end:
     this.registerBuiltInStructs("Ptr", [], { opaque: true }, true);
 
     this.registerBuiltInStructs("Map", [], { opaque: true });
+
+    this.registerBuiltInStructs("Byte", [], { opaque: true }, false, 1, 1);
   }
 
-  allocStructStorage(structInfo, structName, globalScope) {
+  allocStructStorage(structInfo, structName, globalScope, allocate = true) {
     // speacial case for Map
 
     if (structName === "Map") {
@@ -3474,11 +3573,13 @@ end:
       }
 
       const ptr = this.newTemp();
-      this.emit(`${ptr} = alloca ptr`);
+      this.emitAlloca(ptr, "ptr");
 
-      const map = this.newTemp();
-      this.emit(`${map} = call ptr @_zen_map_new()`);
-      this.emit(`store ptr ${map}, ptr ${ptr}`);
+      if (allocate) {
+        const map = this.newTemp();
+        this.emit(`${map} = call ptr @_zen_map_new()`);
+        this.emit(`store ptr ${map}, ptr ${ptr}`);
+      }
 
       return ptr;
     }
@@ -3495,7 +3596,7 @@ end:
 
     this.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
     const ptr = this.newTemp();
-    this.emit(`${ptr} = alloca ${llvmType}`);
+    this.emitAlloca(ptr, llvmType);
     if (isOpaque) {
       this.emit(`store ptr null, ptr ${ptr}`);
     }
@@ -3612,13 +3713,55 @@ end:
 
     // Semantic state
 
+    let ownerId;
+
+    if (this.hasVar(object?.name)) {
+      const receiverVar = this.getVar(object.name);
+
+      if (receiverVar.ownerId === undefined) {
+        receiverVar.ownerId = this.genOwnerId();
+      }
+
+      ownerId = receiverVar.ownerId;
+    } else {
+      ownerId = object?.ownerId ?? this.genOwnerId();
+    }
+
+    if (currentFreed.has(object.name)) {
+      this.emitError(
+        "MemoryError",
+        `'${object.name}' has already been freed and cannot be used`,
+        node,
+      );
+    }
+
+    // Ownership chain check: object may not be freed itself, but its
+    // root owner (whatever .free() was called on) might be.
+    if (this.hasVar(object?.name)) {
+      const receiverVar = this.getVar(object.name);
+
+      if (
+        (receiverVar.ownerId !== undefined &&
+          this.freedOwners.has(receiverVar.ownerId)) ||
+        receiverVar.isFreed
+      ) {
+        this.emitError(
+          "MemoryError",
+          `use-after-free: '${object.name}' is no longer valid`,
+          node,
+        );
+      }
+    }
+
     if (methodName === "parse") {
       this.JsonParseMap.set(object.name, true);
+
       currentFreed.delete(object.name);
     }
 
     if (methodName === "free") {
       currentFreed.add(object.name);
+      this.freedOwners.add(ownerId);
     }
 
     const isStruct = this.hasStruct(method.returnType);
@@ -3660,6 +3803,7 @@ end:
         global: [],
         isVarRef: false,
         needsLoad: false,
+        ownerId,
       };
     }
 
@@ -3675,6 +3819,7 @@ end:
         global: [],
         isVarRef: false,
         needsLoad: false,
+        ownerId,
       };
     }
 
@@ -3708,6 +3853,7 @@ end:
         isDirectCall: true,
         isList: true,
         generic: normalizedGeneric,
+        ownerId,
       };
     }
 
@@ -3720,6 +3866,7 @@ end:
       global: [],
       isVarRef: false,
       isStruct,
+      ownerId,
     };
   }
 
@@ -3956,7 +4103,7 @@ end:
       this.globals.push(`${varPtr} = global ptr null`);
     } else {
       varPtr = this.newTemp();
-      this.emit(`${varPtr} = alloca ptr`);
+      this.emitAlloca(varPtr, "ptr");
     }
 
     const mapPtr = this.newTemp();
@@ -3976,17 +4123,111 @@ end:
       needsLoad: true,
     };
   }
-  
-  getTargetInfo() {
-  try {
-    const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
 
-    return {
-      triple: ir.match(/target triple = "([^"]+)"/)?.[1] || false,
-      dataLayout: ir.match(/target datalayout = "([^"]+)"/)?.[1] || false,
-    };
-  } catch {
-    return false;
+  getTargetInfo() {
+    try {
+      const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
+
+      return {
+        triple: ir.match(/target triple = "([^"]+)"/)?.[1] || false,
+        dataLayout: ir.match(/target datalayout = "([^"]+)"/)?.[1] || false,
+      };
+    } catch {
+      return false;
+    }
   }
-}
+
+  getListTypeCode(type) {
+    if (this.hasStruct(type)) return 0; // safe placeholder
+
+    const code = TYPE_MAP[type];
+
+    if (code === undefined) {
+      this.emitError("InternalError", `no type code mapping for '${type}'`);
+    }
+
+    return code;
+  }
+
+  inferDepthAndTypeFromElement(el) {
+    // nested list literal: recurse, since infer.infer() doesn't walk into these
+    if (el.type === "ARRAY" || el.type === "LIST_LITERAL") {
+      if (!el.elements || el.elements.length === 0) {
+        this.emitError(
+          "TypeError",
+          "cannot infer the element type of an empty nested list literal without context",
+          el,
+        );
+      }
+
+      const results = el.elements.map((c) =>
+        this.inferDepthAndTypeFromElement(c),
+      );
+      const first = results[0];
+
+      for (const r of results) {
+        if (r.deepestType !== first.deepestType || r.depth !== first.depth) {
+          this.emitError(
+            "TypeError",
+            "list literal has mixed element types",
+            el,
+          );
+        }
+      }
+
+      return { deepestType: first.deepestType, depth: first.depth + 1 };
+    }
+
+    if (el.type === "STRUCT_LITERAL") {
+      this.emitError(
+        "TypeError",
+        "cannot infer struct type inside an untyped list literal — assign it to a typed variable first",
+        el,
+      );
+    }
+
+    return { deepestType: this.infer.infer(el), depth: 0 };
+  }
+
+  countGenericDepth(generic) {
+    let depth = 0;
+    let g = generic;
+    while (g?.type === "List") {
+      depth++;
+      g = g.generic;
+    }
+    return depth;
+  }
+
+  inferListContextFromLiteral(node) {
+    if (!node.elements || node.elements.length === 0) {
+      this.emitError(
+        "TypeError",
+        "cannot infer the element type of an empty list literal — assign it to a typed variable first (e.g. List<int> a = [])",
+        node,
+      );
+    }
+
+    const results = node.elements.map((el) =>
+      this.inferDepthAndTypeFromElement(el),
+    );
+    const first = results[0];
+
+    for (const r of results) {
+      if (r.deepestType !== first.deepestType || r.depth !== first.depth) {
+        this.emitError(
+          "TypeError",
+          "list literal elements have inconsistent types",
+          node,
+        );
+      }
+    }
+
+    let generic = { type: first.deepestType };
+    for (let i = 0; i < first.depth; i++) {
+      generic = { type: "List", generic };
+    }
+
+    return { generic, type: first.deepestType, depth: first.depth };
+  }
 }

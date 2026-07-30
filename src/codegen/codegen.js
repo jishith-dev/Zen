@@ -37,7 +37,7 @@ import {
   RESERVED_FUNCTIONS,
   COMPOUND_OPERATORS,
   BUILTIN_STRUCT_ABI,
-  BUILTIN_STRUCTS
+  BUILTIN_STRUCTS,
 } from "../config/config.js";
 
 export class CodeGen {
@@ -46,14 +46,16 @@ export class CodeGen {
     this.moduleName = moduleName;
 
     this.IRB = new IRBuilder(this.moduleName);
-    this.expr = new Expression(this.IRB);
+    this.expr = new Expression(this.IRB, this.infer);
     this.time = new Time(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
     this.network = new ZenNetwork(this.IRB, this.expr);
     this.thread = new Thread(this.IRB, this.expr);
     this.debug = new DEBUG(this.IRB, this.expr);
     this.httpServer = new ZenHttpServer(this.IRB, this.expr);
-    this.infer = new InferType(this.IRB, this.expr);
+    this.infer = new InferType(this.IRB);
+    this.expr.setInfer(this.infer);
+
     this.enum = new Enum(this.IRB);
     this.file = new ZenFileSystem(this.IRB, this.expr);
     this.path = new PATH(this.IRB, this.expr);
@@ -104,7 +106,7 @@ export class CodeGen {
       moduleFiles,
       this.moduleName,
       BUILTIN_STRUCT_ABI,
-      BUILTIN_STRUCTS
+      BUILTIN_STRUCTS,
     );
     this.struct = new Struct(this.IRB, this.expr, this.fn);
     this.variable = new Variable(this.IRB, this.expr, this.call, this.infer);
@@ -116,13 +118,13 @@ export class CodeGen {
     if (!this.IRB.DEBUG_IR) {
       this.IRB.loadGlobalConstants();
     }
-    
+
     const target = this.IRB.getTargetInfo();
 
-if (target) {
-  this.IRB.meta.push(`target triple = "${target.triple}"`);
-  this.IRB.meta.push(`target datalayout = "${target.dataLayout}"`);
-}
+    if (target) {
+      this.IRB.meta.push(`target triple = "${target.triple}"`);
+      this.IRB.meta.push(`target datalayout = "${target.dataLayout}"`);
+    }
 
     this.IRB.initBuiltInStructs();
 
@@ -246,13 +248,19 @@ define void @_assignSeed () {
           isThread: node.isThread,
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
+          freedPindex: new Set(),
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);
       }
     }
 
+    this.IRB.allocaBuff = []; // reset buffer
+
     for (const node of this.ast) this.dispatch(node);
+
+    this.IRB.locals.splice(1, 0, this.IRB.allocaBuff.join("\n"));
+
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
       this.IRB.emit("ret i32 0 \n}\n");
     }
@@ -366,6 +374,7 @@ define void @_assignSeed () {
           isThread: node.isThread,
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
+          freedPindex: new Set(),
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);

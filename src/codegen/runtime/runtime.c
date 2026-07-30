@@ -675,7 +675,7 @@ char* _fs_cwd() {
     char *buf = malloc(1024);
     if (!buf) return NULL;
 
-    char *r = _getcwd(buf, 1024);
+    char *r = getcwd(buf, 1024);
     if (!r) {
         free(buf);
         return NULL;

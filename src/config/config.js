@@ -45,7 +45,7 @@ const SCALAR_TYPES = ["int", "bool", "double"];
 
 const PRIMITIVE_TYPES = ["int", "double", "bool", "string"];
 
-const speacialTypes = ["byte"]; // only use inside List<T>
+const speacialTypes = ["Byte"]; // only use inside List<T>
 
 const NON_SCALAR_TYPES = ["string"];
 
@@ -139,6 +139,7 @@ const RESERVED_FUNCTIONS = [
   "toInt",
   "length",
   "sizeOf",
+  "toByte",
 
   // BASIC
   "isEven",
@@ -212,7 +213,7 @@ const RESERVED_FUNCTIONS = [
 ];
 
 const BUILTIN_STRUCTS = [
-  "byte", // speacial
+  "Byte", // speacial
   "HttpServer",
   "HttpRequest",
   "HttpResponse", // future
@@ -240,6 +241,7 @@ const BUILTIN_FUNCTIONS = [
   "toInt",
   "length",
   "sizeOf",
+  "toByte",
 
   // BASIC
   "isEven",
@@ -812,7 +814,7 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_zen_json_getObject",
     },
     has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
-    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" }
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
   },
 
   JsonArray: {
@@ -850,7 +852,7 @@ const BUILTIN_STRUCT_METHODS = {
       returnType: "JsonArray",
       args: ["int"],
       llvmName: "_zen_json_arrayGetArray",
-    }
+    },
   },
 
   HttpServer: {
@@ -1201,6 +1203,11 @@ const BUILTIN_MAP = {
     llvmName: "sizeOf",
   },
 
+  toByte: {
+    returnType: "Byte",
+    llvmName: "toByte",
+  },
+
   panic: {
     returnType: "void",
     llvmName: "_sys_panic",
@@ -1287,7 +1294,7 @@ const BUILTIN_MAP = {
   },
 
   readFileBytes: {
-    returnType: "byte",
+    returnType: "Byte",
     llvmName: "_fs_readFileBytes",
   },
 
@@ -2097,9 +2104,9 @@ const FILE_MAP = {
 
   _fs_writeFile: ["_fs_writeFile", "int", 2, ["string", "string"]],
 
-  _fs_readFileBytes: ["_fs_readFileBytes", "byte", 1, ["string"]],
+  _fs_readFileBytes: ["_fs_readFileBytes", "Byte", 1, ["string"]],
 
-  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "byte"]],
+  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "Byte"]],
 
   _fs_exists: ["_fs_exists", "bool", 1, ["string"]],
 

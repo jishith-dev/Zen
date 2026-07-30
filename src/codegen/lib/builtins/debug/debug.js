@@ -124,49 +124,42 @@ export class DEBUG {
 
     // Struct
     // Struct
-if (expr.isStruct) {
+    if (expr.isStruct) {
+      const structInfo = this.IRB.getStruct(expr.type);
 
-  const structInfo = this.IRB.getStruct(expr.type);
+      // Builtin opaque structs (runtime handled)
+      if (structInfo?.isBuiltin && structInfo?.isOpaque) {
+        if (expr.type === "Map") {
+          let t;
 
-  // Builtin opaque structs (runtime handled)
-  if (structInfo?.isBuiltin && structInfo?.isOpaque) {
+          if (expr.needsLoad) {
+            t = this.IRB.newTemp();
+            this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+          } else {
+            t = expr.ptr;
+          }
 
-    if (expr.type === "Map") {
-  let t;
+          this.IRB.declareOneTime(
+            "_debug_pretty_map",
+            "declare void @_debug_pretty_map(ptr, i32)",
+          );
 
-  if (expr.needsLoad) {
-    t = this.IRB.newTemp();
-    this.IRB.emit(
-      `${t} = load ptr, ptr ${expr.ptr}`
-    );
-  } else {
-    t = expr.ptr;
-  }
+          this.IRB.emit(`call void @_debug_pretty_map(ptr ${t}, i32 0)`);
 
-  this.IRB.declareOneTime(
-    "_debug_pretty_map",
-    "declare void @_debug_pretty_map(ptr, i32)",
-  );
+          return;
+        }
+        this.IRB.emitError(
+          "TypeError",
+          `debug.pretty() does not support builtin type '${expr.type}'`,
+          arg,
+        );
+      }
 
-  this.IRB.emit(
-    `call void @_debug_pretty_map(ptr ${t}, i32 0)`
-  );
-
-  return;
-  
-}
-this.IRB.emitError(
-    "TypeError",
-    `debug.pretty() does not support builtin type '${expr.type}'`,
-    arg,
-  );
-  }
-
-  // User-defined structs
-  const printFn = this.IRB.getOrBuildStructPrinter(expr.type);
-  this.IRB.emit(`call void @${printFn}(ptr ${expr.ptr}, i32 0)`);
-  return;
-}
+      // User-defined structs
+      const printFn = this.IRB.getOrBuildStructPrinter(expr.type);
+      this.IRB.emit(`call void @${printFn}(ptr ${expr.ptr}, i32 0)`);
+      return;
+    }
 
     let t;
     if (expr?.needsLoad) {
@@ -183,47 +176,45 @@ this.IRB.emitError(
 
       // List of structs
       if (this.IRB.hasStruct(deepestType)) {
+        let printFn;
 
-  let printFn;
+        const structInfo = this.IRB.getStruct(deepestType);
 
-  const structInfo = this.IRB.getStruct(deepestType);
+        if (structInfo?.isBuiltin && structInfo?.isOpaque) {
+          if (deepestType === "Map") {
+            this.IRB.declareOneTime(
+              "_debug_pretty_map",
+              "declare void @_debug_pretty_map(ptr, i32)",
+            );
+            this.IRB.declareOneTime(
+              "_debug_pretty_map_elem",
+              "declare void @_debug_pretty_map_elem(ptr)",
+            );
 
-  if (structInfo?.isBuiltin && structInfo?.isOpaque) {
-  if (deepestType === "Map") {
-    this.IRB.declareOneTime(
-      "_debug_pretty_map",
-      "declare void @_debug_pretty_map(ptr, i32)",
-    );
-    this.IRB.declareOneTime(
-      "_debug_pretty_map_elem",
-      "declare void @_debug_pretty_map_elem(ptr)",
-    );
+            printFn = "_debug_pretty_map_elem";
+          } else {
+            this.IRB.emitError(
+              "TypeError",
+              `debug.pretty() does not support builtin type '${deepestType}'`,
+              arg,
+            );
+            return;
+          }
+        } else {
+          printFn = this.IRB.getOrBuildStructPrinter(deepestType);
+        }
 
-    printFn = "_debug_pretty_map_elem";
-  } else {
-    this.IRB.emitError(
-      "TypeError",
-      `debug.pretty() does not support builtin type '${deepestType}'`,
-      arg,
-    );
-    return;
-  }
-} else {
-  printFn = this.IRB.getOrBuildStructPrinter(deepestType);
-}
+        this.IRB.declareOneTime(
+          "_debug_pretty_list_struct",
+          "declare void @_debug_pretty_list_struct(ptr, i32, ptr)",
+        );
 
+        this.IRB.emit(
+          `call void @_debug_pretty_list_struct(ptr ${t}, i32 ${depth}, ptr @${printFn})`,
+        );
 
-  this.IRB.declareOneTime(
-    "_debug_pretty_list_struct",
-    "declare void @_debug_pretty_list_struct(ptr, i32, ptr)",
-  );
-
-  this.IRB.emit(
-    `call void @_debug_pretty_list_struct(ptr ${t}, i32 ${depth}, ptr @${printFn})`,
-  );
-
-  return;
-}
+        return;
+      }
 
       this.IRB.declareOneTime(
         "_debug_pretty_list",

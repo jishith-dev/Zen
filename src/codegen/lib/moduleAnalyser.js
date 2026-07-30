@@ -141,10 +141,10 @@ export class Module {
 
       if (tables.functionTable.has(name)) {
         const fn = tables.functionTable.get(name);
-        
+
         // add imported fn flag
         fn.isImported = true;
-        
+
         fn.importedModuleName = this.curruntModuleName;
 
         const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);

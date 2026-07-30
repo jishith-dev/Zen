@@ -275,13 +275,22 @@ Generated `zen.json`:
 > const int age = 10
 > ```
 
+> ⚠️ **Breaking Change**
+>
+> `byte` has been replaced by the built-in `Byte` struct.
+>
+> Binary APIs now use `List<Byte>`, and byte values are created using `toByte()`.
+
 - Added callback function parameters (`fn cb(...)`)
 - Added `thread fn` for lightweight concurrent execution
 - Added `extern fn` for foreign function declarations without name mangling
 - Added generic function call syntax (`function<Type>()`) for type-safe generic returns
 - Added built-in `Ptr` struct for native pointer manipulation
+- Added built-in `Byte` struct for binary data
+- Added global `toByte()` conversion function
 - `Map` is now implemented as a built-in struct instead of a language data type
 - Added struct-style `Map` literals
+- Introduced ownership semantics for runtime-managed objects
 - Improved compile-time type safety for generic APIs
 
 ---
@@ -316,8 +325,13 @@ Generated `zen.json`:
 - Added external function declarations
 - Added native pointer runtime (`Ptr`)
 - Migrated `Map` to an opaque built-in runtime struct
+- Migrated binary APIs to `List<Byte>`
+- Added compile-time ownership validation where possible
+- Added runtime detection for invalid ownership operations
+- Added runtime detection for use-after-free errors
 - Improved generic type resolution for nested `List` types
 - Improved built-in struct handling
+- Improved `Byte` runtime integration
 - Improved HTTP runtime
 - Improved parser consistency
 - Improved formatter support
@@ -346,8 +360,12 @@ Generated `zen.json`:
 - Added callback documentation
 - Added `extern` documentation
 - Added `Ptr` documentation
+- Added `Byte` documentation
+- Added `toByte()` documentation
+- Added ownership semantics documentation
 - Added `Map` runtime documentation
 - Expanded built-in struct documentation
+- Updated binary API documentation to `List<Byte>`
 - Improved API reference
 - Improved appendix and language reference
 

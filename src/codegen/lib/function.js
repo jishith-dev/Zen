@@ -16,7 +16,9 @@ export class HandleFunction {
   // if it's either opaque (unsized, e.g. Map/Json) OR explicitly listed
   // in BUILTIN_STRUCT_ABI (sized, but designed to be passed as ptr, e.g. Ptr).
   isPtrReturn(typeName) {
-    const struct = this.IRB.hasStruct(typeName) ? this.IRB.getStruct(typeName) : false;
+    const struct = this.IRB.hasStruct(typeName)
+      ? this.IRB.getStruct(typeName)
+      : false;
     return !!struct?.isOpaque || this.BUILTIN_STRUCT_ABI.includes(typeName);
   }
 
@@ -173,6 +175,7 @@ export class HandleFunction {
     }
 
     const isStruct = this.IRB.hasStruct(funcType);
+    this.IRB.validateStandaloneType(funcType, node);
     const isNativeABI = this.isPtrReturn(funcType);
 
     if (isStruct && !isNativeABI) {
@@ -244,7 +247,7 @@ export class HandleFunction {
       this.IRB.emit("ret void");
       return;
     }
-    
+
     if (isStruct && isNativeABI && node.value.type === "STRUCT_LITERAL") {
       const ptr = this.IRB.emitStructLiteral(funcType, node.value);
 
@@ -333,6 +336,8 @@ export class HandleFunction {
     this.haveBareRet = false;
 
     this.IRB.funcTempCounter = 0; // reset counter per function
+    const savedAllocaBuff = this.IRB.allocaBuff;
+    this.IRB.allocaBuff = [];
 
     const isDecl = node.isDeclaration;
     const isExtern = node.isExtern;
@@ -373,10 +378,13 @@ export class HandleFunction {
 
     let returnType = node.returnType === "void" ? "void" : node.returnType.type; // exclude auto infer for now
 
-    let listGeneric;
+    const listGeneric = {};
 
     if (returnType === "List") {
-      listGeneric = this.IRB.getDeepestGeneric(node.returnType.generic);
+      const generic = node.returnType.generic;
+      listGeneric.generic = generic;
+      listGeneric.type = this.IRB.getDeepestGeneric(generic);
+      listGeneric.depth = this.IRB.getListDepth(generic);
     }
 
     if (!isDecl) {
@@ -491,6 +499,8 @@ export class HandleFunction {
             isList: true,
             fromParam: true,
             needsLoad: false,
+            pIndex: p.pIndex,
+            ownerId: this.IRB.genOwnerId(),
           }),
         );
       } else if (p?.isMethod) {
@@ -647,6 +657,8 @@ export class HandleFunction {
 
     this.block.block(node.body);
 
+    this.IRB.currentFunction.body.splice(2, 0, this.IRB.allocaBuff.join("\n"));
+
     if (returnType === "void" && this.hasRet) {
       this.IRB.emitError(
         "TypeError",
@@ -679,5 +691,6 @@ export class HandleFunction {
 
     this.IRB.currentFunction = prevFunction;
     this.hasRet = false; // reset state
+    this.IRB.allocaBuff = savedAllocaBuff;
   }
 }

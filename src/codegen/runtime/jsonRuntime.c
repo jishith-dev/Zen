@@ -436,8 +436,6 @@ int _zen_json_getBool(ZenJson *obj, const char *key) {
   return v->as.b;
 }
 
-/* BORROWED — same contract as getArray/getObject. Do not free the result;
-   it is owned by the parent ZenJson and released by _zen_json_free. */
 char *_zen_json_getString(ZenJson *obj, const char *key) {
   json_check_alive(obj);
   ZenJson *v = json_lookup(obj, key);
@@ -521,7 +519,7 @@ int _zen_json_arrayGetBool(ZenJson *arr, int index) {
   return v->as.b;
 }
 
-/* BORROWED — same contract as arrayGetObject/arrayGetArray. */
+
 char *_zen_json_arrayGetString(ZenJson *arr, int index) {
   json_check_alive(arr);
   ZenJson *v = array_at(arr, index);

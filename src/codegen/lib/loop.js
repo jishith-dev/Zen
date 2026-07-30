@@ -214,7 +214,7 @@ export class Loop {
     // index = 0
 
     const indexPtr = this.IRB.newTemp();
-    this.IRB.emit(`${indexPtr} = alloca i32`);
+    this.IRB.emitAlloca(indexPtr, `i32`);
 
     this.IRB.emit(`store i32 0, ptr ${indexPtr}`);
 
@@ -312,7 +312,7 @@ export class Loop {
         this.IRB.emit(`${valTmp} = load ${llvmVarType}, ptr ${elemTmp}`);
 
         const ptr = this.IRB.newTemp();
-        this.IRB.emit(`${ptr} = alloca ${llvmVarType}`);
+        this.IRB.emitAlloca(ptr, `${llvmVarType}`);
         this.IRB.emit(`store ${llvmVarType} ${valTmp}, ptr ${ptr}`);
 
         this.IRB.setVar(varName, {
@@ -456,12 +456,12 @@ export class Loop {
     // INDEX ALLOCA
     
     const idxPtr = this.IRB.newTemp();
-    this.IRB.emit(`${idxPtr} = alloca i32`);
+    this.IRB.emitAlloca(idxPtr, `i32`);
     this.IRB.emit(`store i32 0, ptr ${idxPtr}`);
   
     
     const keySlot = this.IRB.newTemp();
-    this.IRB.emit(`${keySlot} = alloca ptr`);
+    this.IRB.emitAlloca(keySlot, `ptr`);
     
     this.IRB.emit(`br label %${startLabel}`);
     

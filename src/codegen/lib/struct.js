@@ -68,13 +68,7 @@ export class Struct {
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
 
-      if (f.type === "Map") {
-        this.IRB.emitError(
-          "TypeError",
-          `Map is not allowed as a struct field`,
-          node,
-        );
-      }
+      this.IRB.validateStandaloneType(f.type, node);
 
       let llvmType;
 
@@ -124,6 +118,7 @@ export class Struct {
     this.IRB.setStruct(name, {
       isGlobal: globalScope,
       layout,
+      isBuiltin: false,
       isOpaque: false,
       fieldMap,
       size: fields.length,
@@ -134,17 +129,17 @@ export class Struct {
 
     if (isMethod) {
       this.registerStructMethods(node);
-if (!this.IRB.hasVar("this")) {
-      this.IRB.setVar(
-        "this",
-        this.IRB.createData({
-          ptr: "%this",
-          type: name,
-          llvmType: `%${name}*`,
-          isStruct: true,
-        }),
-      );
-}
+      if (!this.IRB.hasVar("this")) {
+        this.IRB.setVar(
+          "this",
+          this.IRB.createData({
+            ptr: "%this",
+            type: name,
+            llvmType: `%${name}*`,
+            isStruct: true,
+          }),
+        );
+      }
 
       this.generateMethods(node);
     }
@@ -157,12 +152,15 @@ if (!this.IRB.hasVar("this")) {
     const varName = node.name;
     const value = node.value;
 
+    this.IRB.validateStandaloneType(structName, node);
+
     const structInfo = this.IRB.getStruct(structName);
     const llvmType = `%${structName}`;
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
 
     let ptr;
     let isRet = false;
+    let ownerId;
 
     if (value?.type === "STRUCT_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
@@ -178,7 +176,16 @@ if (!this.IRB.hasVar("this")) {
 
       this.IRB.emitExpr(expr);
 
-      ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+      ownerId = expr?.ownerId;
+
+      const needAllocate = expr.type !== "Map";
+
+      ptr = this.IRB.allocStructStorage(
+        structInfo,
+        structName,
+        globalScope,
+        needAllocate,
+      );
 
       if (isOpaque) {
         let valuePtr = expr.ptr;
@@ -214,6 +221,7 @@ if (!this.IRB.hasVar("this")) {
         isVarRef: true,
         needsLoad: true,
         isRet,
+        ownerId,
       }),
     );
   }
@@ -357,18 +365,17 @@ if (!this.IRB.hasVar("this")) {
     // NORMAL VALUE STORE
 
     const llvmType = this.IRB.getLLVMType(structInfo.layout[fieldIndex].type);
-    
+
     if (llvmType === "ptr" || isList) {
-  let ptrValue = value.ptr;
+      let ptrValue = value.ptr;
 
-  if (value.needsLoad) {
-    ptrValue = this.IRB.newTemp();
-    this.IRB.emit(`${ptrValue} = load ptr, ptr ${value.ptr}`);
-  }
+      if (value.needsLoad) {
+        ptrValue = this.IRB.newTemp();
+        this.IRB.emit(`${ptrValue} = load ptr, ptr ${value.ptr}`);
+      }
 
-  this.IRB.emit(`store ptr ${ptrValue}, ptr ${finalPtr}`);
-}
-    else {
+      this.IRB.emit(`store ptr ${ptrValue}, ptr ${finalPtr}`);
+    } else {
       this.IRB.emit(`store ${llvmType} ${value.ptr}, ptr ${finalPtr}`);
     }
   }

@@ -9,25 +9,32 @@ import {
   SCALAR_TYPES,
   BUILTIN_STRUCTS,
   PRIMITIVE_TYPES,
-  BUILTIN_STRUCT_ABI
+  BUILTIN_STRUCT_ABI,
 } from "../../config/config.js";
 
 export class Expression {
   constructor(IRB) {
     this.IRB = IRB;
-    this.count = 0;
   }
 
   setCall(call) {
     this.call = call;
   }
 
+  setInfer(infer) {
+    this.infer = infer;
+  }
+
   setTernary(t) {
     this.ternary = t;
   }
 
-  handleExpression(node, globalScope = true, ContextType = "Unknown") {
+  handleExpression(node, globalScope = true, Context = {}) {
     // default globalScope true
+
+    if (node === undefined && node?.type === undefined) {
+      this.IRB.emitError("InternalError", "node is empty");
+    }
 
     const op = node?.operator;
     let local = [];
@@ -98,6 +105,18 @@ export class Expression {
 
       const data = this.IRB.getVar(node.name, node);
 
+      if (
+        (data.ownerId !== undefined &&
+          this.IRB.freedOwners.has(data.ownerId)) ||
+        data.isFreed
+      ) {
+        this.IRB.emitError(
+          "MemoryError",
+          `use-after-free: '${node.name}' is no longer valid`,
+          node,
+        );
+      }
+
       // check if its array so no need to load. we can load in array access
       const isArray = data?.isArray;
       const isStruct = data?.isStruct;
@@ -144,6 +163,9 @@ export class Expression {
         isFunction: data?.isFunction,
         params: data?.params,
         returnType: data?.returnType,
+        isFreed: data?.isFreed,
+        ownerId: data?.ownerId,
+        pIndex: data?.pIndex,
       };
     }
 
@@ -203,248 +225,264 @@ export class Expression {
         "zen_list_new",
         "declare ptr @_zen_list_new(i64)",
       );
-
       this.IRB.declareOneTime(
         "zen_list_push",
         "declare void @_zen_list_push(ptr, ptr)",
       );
-
       this.IRB.declareOneTime(
         "ZenList",
-        "%ZenList = type { ptr, i32, i32, i64 }",
+        `%ZenList = type { ptr, i32, i32, i64 }`,
       );
 
-      // infer element type from first element
-      const first = node.elements[0];
-
-      if (!first) {
-        // Caller knows the expected type
-        // List<T> field or variable) — use it instead of inferring from elements
-        if (ContextType) {
-          this.IRB.declareOneTime(
-            "zen_list_new",
-            "declare ptr @_zen_list_new(i64)",
-          );
-
-          const elemSize = this.IRB.sizeOf(ContextType);
-
-          const list = this.IRB.newTemp();
-
-          this.IRB.emit(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
-
-          return {
-            ptr: list,
-            addr: list,
-            type: ContextType,
-            llvmType: "ptr",
-            local: [],
-            global: [],
-            isListLiteral: true,
-            isList: true,
-            generic: {
-              generic: { type: ContextType },
-            },
-          };
-        }
-
-        this.IRB.emitError(
-          "TypeError",
-          "cannot infer empty array literal type",
-          node,
-        );
+      if (
+        !Context?.generic &&
+        Context?.type === undefined &&
+        Context?.depth === undefined
+      ) {
+        Context = this.IRB.inferListContextFromLiteral(node);
       }
 
-      if (first.type === "STRUCT_LITERAL") {
-  const structName = ContextType;
+      if (
+        Context?.generic &&
+        Context?.type !== undefined &&
+        Context?.depth !== undefined
+      ) {
+        const name = "list literal"; // used only in error messages — no declared var to reference here
 
-  if (!structName) {
-    this.IRB.emitError(
-      "TypeError",
-      "Cannot infer struct type for struct list literal",
-      node,
-    );
-  }
+        const deepestType = Context.type;
+        const depth = Context.depth;
 
-  const structDef = this.IRB.getStruct(structName);
+        const elementGeneric = Context.generic;
+        const listGeneric = { type: "List", generic: elementGeneric };
 
-  const isOpaque =
-    structDef?.isBuiltin && structDef?.isOpaque;
+        const type = deepestType;
+        const listLLVM = "ptr";
+        const elementSize = depth > 0 ? 8 : this.IRB.sizeOf(deepestType);
 
-  const elemSize = isOpaque
-    ? 8
-    : this.IRB.sizeOf(structName);
+        let rootList = null;
 
-  const list = this.IRB.newTemp();
+        const validateDepth = (el, generic) => {
+          const expectsList = generic.type === "List";
 
-  const local = [];
-  const global = [];
-
-  local.push(
-    `${list} = call ptr @_zen_list_new(i64 ${elemSize})`,
-  );
-
-  for (const el of node.elements) {
-    const structPtr = this.IRB.emitStructLiteral(
-      structName,
-      el,
-    );
-    
-
-    let p = structPtr.ptr;
-
-    if (structPtr.needsLoad) {
-      const t = this.IRB.newTemp();
-      this.IRB.emit(
-        `${t} = load ptr, ptr ${structPtr.ptr}`,
-      );
-      p = t;
-    }
-
-    if (isOpaque) {
-      const tmp = this.IRB.newTemp();
-
-      local.push(
-        `${tmp} = alloca ptr`,
-      );
-
-      local.push(
-        `store ptr ${p}, ptr ${tmp}`,
-      );
-
-      p = tmp;
-    }
-
-    local.push(
-      `call void @_zen_list_push(ptr ${list}, ptr ${p})`,
-    );
-  }
-
-  return {
-    ptr: list,
-    addr: list,
-    type: structName,
-    llvmType: "ptr",
-    local,
-    global,
-    isListLiteral: true,
-    isList: true,
-    generic: {
-      type: "List",
-      generic: {
-        type: ContextType,
-      },
-    },
-  };
-}
-
-      const elemExpr = this.handleExpression(first, false, ContextType);
-
-      this.IRB.emitExpr(elemExpr);
-
-      if (elemExpr.isStruct) {
-        const structName = elemExpr.type;
-        const elemSize = this.IRB.sizeOf(structName);
-
-        const list = this.IRB.newTemp();
-        const local = [];
-        const global = [];
-
-        local.push(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
-
-        // first element already evaluated above
-        const firstTmp = this.IRB.newTemp();
-        this.IRB.declareOneTime(
-          "llvm.memcpy.p0.p0.i64",
-          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
-        );
-        local.push(`${firstTmp} = alloca %${structName}`);
-        local.push(
-          `call void @llvm.memcpy.p0.p0.i64(ptr ${firstTmp}, ptr ${elemExpr.ptr}, i64 ${elemSize}, i1 false)`,
-        );
-        local.push(`call void @_zen_list_push(ptr ${list}, ptr ${firstTmp})`);
-
-        // remaining elements
-        for (let i = 1; i < node.elements.length; i++) {
-          const el = node.elements[i];
-
-          let elPtr;
-          if (el.type === "STRUCT_LITERAL") {
-            let t = this.IRB.emitStructLiteral(structName, el);
-
-            if (elPtr.needsLoad) {
-              const t = this.IRB.newTemp();
-              this.IRB.emit(`${t} = load ptr, ptr ${elPtr.ptr}`);
-              elPtr = t;
-            } else {
-              elPtr = elPtr.ptr;
-            }
+          let isActualList;
+          if (el.type === "ARRAY" || el.type === "LIST_LITERAL") {
+            isActualList = true;
+          } else if (el.type === "STRUCT_LITERAL") {
+            isActualList = false;
           } else {
-            const expr = this.handleExpression(el);
-            this.IRB.emitExpr(expr);
-
-            const tmp = this.IRB.newTemp();
-            local.push(`${tmp} = alloca %${structName}`);
-            local.push(
-              `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${elemSize}, i1 false)`,
-            );
-            elPtr = tmp;
+            // side-effect-free: reuses the same pure lookup as inference,
+            // no handleExpression call, no duplicated instructions
+            const inferred = this.IRB.inferDepthAndTypeFromElement(el);
+            isActualList = inferred.depth > 0;
           }
 
-          local.push(`call void @_zen_list_push(ptr ${list}, ptr ${elPtr})`);
+          if (expectsList && !isActualList) {
+            this.IRB.emitError(
+              "TypeError",
+              `List ${name} expects nested list elements`,
+              el,
+            );
+          }
+
+          if (!expectsList && isActualList) {
+            this.IRB.emitError(
+              "TypeError",
+              `List ${name} expects '${generic.type}' but got List`,
+              el,
+            );
+          }
+
+          if (isActualList && el.type !== "variable") {
+            for (const child of el.elements) {
+              validateDepth(child, generic.generic);
+            }
+          }
+        };
+
+        const pushRecursive = (listPtr, element, generic) => {
+          if (element.type === "STRUCT_LITERAL") {
+            const structName = this.IRB.getDeepestGeneric(generic);
+            const structPtr = this.IRB.emitStructLiteral(structName, element);
+
+            const struct = this.IRB.getStruct(structName);
+            const isOpaqueElement = struct?.isBuiltin && struct?.isOpaque;
+
+            if (!isOpaqueElement && structPtr.needsLoad) {
+              const t = this.IRB.newTemp();
+              this.IRB.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+              structPtr.ptr = t;
+            }
+
+            this.IRB.emit(
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+            );
+            return;
+          }
+
+          if (element.type === "ARRAY" || element.type === "LIST_LITERAL") {
+            if (generic.type !== "List") {
+              this.IRB.emitError(
+                "TypeError",
+                "nested list inside non-list generic",
+                node,
+              );
+            }
+
+            const innerGeneric = generic.generic;
+            const innerDepth = this.IRB.getListDepth(innerGeneric);
+            const innerDeepest = this.IRB.getDeepestGeneric(innerGeneric);
+            const innerSize =
+              innerDepth > 1 ? 8 : this.IRB.sizeOf(innerDeepest);
+
+            const childList = this.IRB.newTemp();
+            this.IRB.emit(
+              `${childList} = call ptr @_zen_list_new(i64 ${innerSize})`,
+            );
+            this.IRB.emit(
+              `call void @_zen_list_set_meta(ptr ${childList}, i32 ${innerDepth}, i32 ${this.IRB.getListTypeCode(innerDeepest)})`,
+            );
+
+            for (const child of element.elements) {
+              pushRecursive(childList, child, innerGeneric);
+            }
+
+            const tmp = this.IRB.newTemp();
+            this.IRB.emitAlloca(tmp, `ptr`);
+            this.IRB.emit(`store ptr ${childList}, ptr ${tmp}`);
+            this.IRB.emit(
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+            );
+            return;
+          }
+
+          const expr = this.handleExpression(element);
+          this.IRB.emitExpr(expr);
+
+          if (expr.isStruct) {
+            const struct = this.IRB.getStruct(expr.type);
+
+            if (struct.isBuiltin && struct.isOpaque) {
+              let p = expr.ptr;
+              if (!expr.needsLoad) {
+                const tmp = this.IRB.newTemp();
+                this.IRB.emitAlloca(tmp, `ptr`);
+                this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
+                p = tmp;
+              }
+              this.IRB.emit(
+                `call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`,
+              );
+              return;
+            }
+
+            const structSize = this.IRB.sizeOf(expr.type);
+            this.IRB.declareOneTime(
+              "llvm.memcpy.p0.p0.i64",
+              "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+            );
+
+            const tmp = this.IRB.newTemp();
+            this.IRB.emitAlloca(tmp, `%${expr.type}`);
+            this.IRB.emit(
+              `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${structSize}, i1 false)`,
+            );
+            this.IRB.emit(
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+            );
+            return;
+          }
+
+          const elementLLVM = this.IRB.getListElementLLVM(generic);
+          const tmp = this.IRB.newTemp();
+          this.IRB.emitAlloca(tmp, `${elementLLVM}`);
+          let valueToStore = expr.ptr;
+
+          if (elementLLVM === "ptr" && expr.type === "string") {
+            this.IRB.declareOneTime("strdup", "declare ptr @strdup(ptr)");
+            const dup = this.IRB.newTemp();
+            this.IRB.emit(`${dup} = call ptr @strdup(ptr ${expr.ptr})`);
+            valueToStore = dup;
+          }
+
+          this.IRB.emit(`store ${elementLLVM} ${valueToStore}, ptr ${tmp}`);
+          this.IRB.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+          );
+        };
+
+        const listTemp = this.IRB.newTemp();
+        this.IRB.emit(
+          `${listTemp} = call ptr @_zen_list_new(i64 ${elementSize})`,
+        );
+
+        this.IRB.declareOneTime(
+          "zen_list_set_meta",
+          "declare void @_zen_list_set_meta(ptr, i32, i32)",
+        );
+        this.IRB.emit(
+          `call void @_zen_list_set_meta(ptr ${listTemp}, i32 ${depth}, i32 ${this.IRB.getListTypeCode(deepestType)})`,
+        );
+
+        rootList = listTemp;
+
+        const validate = (el, expectedType) => {
+          if (el.type === "STRUCT_LITERAL") {
+            const structDef = this.IRB.getStruct(expectedType);
+            if (!structDef) {
+              this.IRB.emitError(
+                "TypeError",
+                `List ${name} expected struct instance but got ${expectedType}`,
+                el,
+              );
+            }
+            return;
+          }
+
+          if (el.type === "ARRAY" || el.type === "LIST") {
+            for (const sub of el.elements) {
+              validate(sub, expectedType);
+            }
+            return;
+          }
+
+          const actualType = this.infer.infer(el);
+
+          if (actualType !== expectedType) {
+            this.IRB.emitError(
+              "TypeError",
+              `List ${name} expected ${expectedType} but got ${actualType}`,
+              node,
+            );
+          }
+        };
+
+        if (node.elements && node.elements.length > 0) {
+          for (const el of node.elements) {
+            validateDepth(el, elementGeneric); // unwrapped
+            validate(el, type);
+            pushRecursive(rootList, el, listGeneric); // wrapped
+          }
         }
 
         return {
-          ptr: list,
-          addr: list,
-          type: structName,
-          llvmType: "ptr",
-          local,
-          global,
-          isListLiteral: true,
+          ptr: rootList,
+          llvmType: listLLVM,
+          type: deepestType,
+          generic: listGeneric,
+          internalType: "List",
           isList: true,
-          generic: { type: "List", generic: { type: structName } },
+          isGlobal: false,
+          isConstant: false,
+          needsLoad: false,
+          isListLiteral: true,
         };
+      } else {
+        this.IRB.emitError(
+          "TypeError",
+          "cannot determine element type for this list literal — assign it to a typed variable first (e.g. 'List<int> a = [1, 2, 3]')",
+          node,
+        );
       }
-
-      const elemLLVM = elemExpr.isList ? "ptr" : elemExpr.llvmType;
-
-      const elemSize = elemLLVM === "ptr" ? 8 : this.IRB.sizeOf(elemExpr.type);
-
-      const list = this.IRB.newTemp();
-
-      const local = [];
-      const global = [];
-
-      local.push(`${list} = call ptr @_zen_list_new(i64 ${elemSize})`);
-
-      for (const el of node.elements) {
-        const expr = this.handleExpression(el);
-
-        this.IRB.emitExpr(expr);
-
-        const tmp = this.IRB.newTemp();
-
-        local.push(`${tmp} = alloca ${elemLLVM}`);
-
-        local.push(`store ${elemLLVM} ${expr.ptr}, ptr ${tmp}`);
-
-        local.push(`call void @_zen_list_push(ptr ${list}, ptr ${tmp})`);
-      }
-
-      return {
-        ptr: list,
-        addr: list,
-        type: elemExpr.type,
-        llvmType: "ptr",
-        local,
-        global,
-        isListLiteral: true,
-        isList: true,
-        generic: {
-          type: "List",
-          generic: elemExpr.isList ? elemExpr.generic : { type: elemExpr.type },
-        },
-      };
     }
 
     if (node.type === "TERNARY") {
@@ -639,7 +677,7 @@ export class Expression {
                 base,
                 basePtr,
                 node,
-                object
+                object,
               );
 
               if (builtin) return builtin;
@@ -682,39 +720,37 @@ export class Expression {
               const arg = this.handleExpression(argNode);
               this.IRB.emitExpr(arg);
 
-             if (arg?.isStruct && BUILTIN_STRUCT_ABI.includes(arg.type)) {
-  let value = arg.ptr;
+              if (arg?.isStruct && BUILTIN_STRUCT_ABI.includes(arg.type)) {
+                let value = arg.ptr;
 
-  if (arg.needsLoad) {
-    const tmp = this.IRB.newTemp();
-    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
-    value = tmp;
-  }
+                if (arg.needsLoad) {
+                  const tmp = this.IRB.newTemp();
+                  this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
+                  value = tmp;
+                }
 
-  args.push(`ptr ${value}`);
-} else if (arg?.isStruct) {
-  let value = arg.ptr;
+                args.push(`ptr ${value}`);
+              } else if (arg?.isStruct) {
+                let value = arg.ptr;
 
-  if (arg.needsLoad) {
-    const tmp = this.IRB.newTemp();
-    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
-    value = tmp;
-  }
+                if (arg.needsLoad) {
+                  const tmp = this.IRB.newTemp();
+                  this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
+                  value = tmp;
+                }
 
-  args.push(`ptr ${value}`);
-} else if (arg.needsLoad) {
-  const tmp = this.IRB.newTemp();
-  this.IRB.emit(`${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`);
-  args.push(`${arg.llvmType} ${tmp}`);
-} else {
-  args.push(`${arg.llvmType} ${arg.ptr}`);
-}
-      
+                args.push(`ptr ${value}`);
+              } else if (arg.needsLoad) {
+                const tmp = this.IRB.newTemp();
+                this.IRB.emit(`${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`);
+                args.push(`${arg.llvmType} ${tmp}`);
+              } else {
+                args.push(`${arg.llvmType} ${arg.ptr}`);
+              }
             }
 
             // void method
             if (fn.returnType.type === "void") {
-              
               this.IRB.emit(`call void @${possibleMethod}(${args.join(", ")})`);
               return {
                 ptr: null,
@@ -727,50 +763,54 @@ export class Expression {
             }
 
             const retType = this.IRB.getLLVMType(fn.returnType.type);
-            
-const isStruct = this.IRB.hasStruct(fn.returnType.type);
-const structInfo = isStruct ? this.IRB.getStruct(fn.returnType.type) : null;
-const isOpaqueStruct = structInfo?.isBuiltin || BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
 
-// opaque builtin struct — returned as a plain ptr handle, no sret
-if (isOpaqueStruct) {
-  const tmp = this.IRB.newTemp();
-  this.IRB.emit(
-    `${tmp} = call ptr @${possibleMethod}(${args.join(", ")})`,
-  );
+            const isStruct = this.IRB.hasStruct(fn.returnType.type);
+            const structInfo = isStruct
+              ? this.IRB.getStruct(fn.returnType.type)
+              : null;
+            const isOpaqueStruct =
+              structInfo?.isBuiltin ||
+              BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
 
-  return {
-    ptr: tmp,
-    type: fn.returnType.type,
-    llvmType: "ptr",
-    isStruct: true,
-    isVarRef: false,
-    local,
-    global: [],
-  };
-}
+            // opaque builtin struct — returned as a plain ptr handle, no sret
+            if (isOpaqueStruct) {
+              const tmp = this.IRB.newTemp();
+              this.IRB.emit(
+                `${tmp} = call ptr @${possibleMethod}(${args.join(", ")})`,
+              );
 
-// non-opaque struct-returning method — sret convention
-if (isStruct) {
-  const tmp = this.IRB.newTemp();
-  this.IRB.emit(`${tmp} = alloca ${retType}`);
+              return {
+                ptr: tmp,
+                type: fn.returnType.type,
+                llvmType: "ptr",
+                isStruct: true,
+                isVarRef: false,
+                local,
+                global: [],
+              };
+            }
 
-  const sretArgs = [`ptr sret(${retType}) ${tmp}`, ...args];
+            // non-opaque struct-returning method — sret convention
+            if (isStruct) {
+              const tmp = this.IRB.newTemp();
+              this.IRB.emitAlloca(tmp, `${retType}`);
 
-  this.IRB.emit(
-    `call void @${possibleMethod}(${sretArgs.join(", ")})`,
-  );
+              const sretArgs = [`ptr sret(${retType}) ${tmp}`, ...args];
 
-  return {
-    ptr: tmp,
-    type: fn.returnType.type,
-    llvmType: retType,
-    isStruct: true,
-    isVarRef: false,
-    local,
-    global: [],
-  };
-}
+              this.IRB.emit(
+                `call void @${possibleMethod}(${sretArgs.join(", ")})`,
+              );
+
+              return {
+                ptr: tmp,
+                type: fn.returnType.type,
+                llvmType: retType,
+                isStruct: true,
+                isVarRef: false,
+                local,
+                global: [],
+              };
+            }
 
             // primitive / list-returning method
             const tmp = this.IRB.newTemp();
@@ -868,7 +908,7 @@ if (isStruct) {
       if (isList) {
         const o = object;
 
-        this.IRB.emitExpr(o);
+        // this.IRB.emitExpr(o);
 
         let listPtr = this.IRB.newTemp();
 
@@ -924,6 +964,7 @@ if (isStruct) {
 
       if (isArray || isStruct) {
         //  return pointer (so ARRAY_ACCESS can use it)
+
         return {
           ptr: basePtr,
           addr: basePtr,
@@ -999,10 +1040,14 @@ if (isStruct) {
         if (base.isList) {
           let listTemp = this.IRB.newTemp();
 
-          if (base.isMapValue || base.fromParam || base?.isDirectCall) {
+          if (
+            base.isMapValue ||
+            base.fromParam ||
+            base?.isDirectCall ||
+            base?.isListLiteral
+          ) {
             listTemp = base.ptr;
           } else {
-
             local.push(`${listTemp} = load ptr, ptr ${base.ptr}`);
           }
 
@@ -1037,7 +1082,7 @@ if (isStruct) {
             postOrPrefix: false,
             isArray: false,
             isStruct,
-            needsLoad: !(isNested || isStruct)
+            needsLoad: !(isNested || isStruct),
           };
         }
 
@@ -1095,7 +1140,6 @@ if (isStruct) {
 
       const val = this.IRB.newTemp();
 
-      
       const isStruct = final?.isStruct;
 
       let resultPtr = final.ptr;
@@ -1108,8 +1152,6 @@ if (isStruct) {
 
         resultPtr = val;
       }
-      
-      
 
       return {
         ptr: resultPtr,
@@ -1135,7 +1177,6 @@ if (isStruct) {
     }
 
     if (node.type === "UNARY_EXPRESSION") {
-      
       const val = this.handleExpression(node.argument, globalScope);
 
       const local = [...(val.local || [])];

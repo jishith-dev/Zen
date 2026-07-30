@@ -21,6 +21,7 @@ export class ZenList {
     );
 
     const name = node.name;
+    let ownerId;
 
     this.IRB.guardGlobal(name, node);
 
@@ -34,7 +35,7 @@ export class ZenList {
 
     const type = deepestType;
 
-    const elementSize = depth > 1 ? 8 : this.IRB.sizeOf(deepestType);
+    const elementSize = this.IRB.sizeOf(deepestType);
 
     const validateDepth = (el, generic) => {
       const expectsList = generic.type === "List";
@@ -79,23 +80,23 @@ export class ZenList {
       // STRUCT
 
       if (element.type === "STRUCT_LITERAL") {
-  const structName = this.IRB.getDeepestGeneric(generic);
-  const structPtr = this.IRB.emitStructLiteral(structName, element);
+        const structName = this.IRB.getDeepestGeneric(generic);
+        const structPtr = this.IRB.emitStructLiteral(structName, element);
 
-  const struct = this.IRB.getStruct(structName);
-  const isOpaqueElement = struct?.isBuiltin && struct?.isOpaque;
+        const struct = this.IRB.getStruct(structName);
+        const isOpaqueElement = struct?.isBuiltin && struct?.isOpaque;
 
-  if (!isOpaqueElement && structPtr.needsLoad) {
-    const t = this.IRB.newTemp();
-    this.IRB.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
-    structPtr.ptr = t;
-  }
+        if (!isOpaqueElement && structPtr.needsLoad) {
+          const t = this.IRB.newTemp();
+          this.IRB.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+          structPtr.ptr = t;
+        }
 
-  this.IRB.emit(
-    `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
-  );
-  return;
-}
+        this.IRB.emit(
+          `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+        );
+        return;
+      }
 
       // NESTED LIST
 
@@ -124,6 +125,10 @@ export class ZenList {
           `${childList} = call ptr @_zen_list_new(i64 ${innerSize})`,
         );
 
+        this.IRB.emit(
+          `call void @_zen_list_set_meta(ptr ${childList}, i32 ${innerDepth}, i32 ${this.IRB.getListTypeCode(innerDeepest)})`,
+        );
+
         // PUSH CHILD ELEMENTS
 
         for (const child of element.elements) {
@@ -134,7 +139,7 @@ export class ZenList {
 
         const tmp = this.IRB.newTemp();
 
-        this.IRB.emit(`${tmp} = alloca ptr`);
+        this.IRB.emitAlloca(tmp, `ptr`);
 
         this.IRB.emit(`store ptr ${childList}, ptr ${tmp}`);
 
@@ -153,19 +158,19 @@ export class ZenList {
         const struct = this.IRB.getStruct(expr.type);
 
         if (struct.isBuiltin && struct.isOpaque) {
-  let p = expr.ptr;
+          let p = expr.ptr;
 
-  if (!expr.needsLoad) {
-    const tmp = this.IRB.newTemp();
-    this.IRB.emit(`${tmp} = alloca ptr`);
-    this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
-    p = tmp;
-  }
+          if (!expr.needsLoad) {
+            const tmp = this.IRB.newTemp();
+            this.IRB.emitAlloca(tmp, `ptr`);
+            this.IRB.emit(`store ptr ${expr.ptr}, ptr ${tmp}`);
+            p = tmp;
+          }
 
-  // if needsLoad==true, expr.ptr is already the address of the pointer
-  this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
-  return;
-}
+          // if needsLoad==true, expr.ptr is already the address of the pointer
+          this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
+          return;
+        }
 
         const structSize = this.IRB.sizeOf(expr.type);
 
@@ -175,7 +180,7 @@ export class ZenList {
         );
 
         const tmp = this.IRB.newTemp();
-        this.IRB.emit(`${tmp} = alloca %${expr.type}`);
+        this.IRB.emitAlloca(tmp, `%${expr.type}`);
         this.IRB.emit(
           `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${expr.ptr}, i64 ${structSize}, i1 false)`,
         );
@@ -186,8 +191,17 @@ export class ZenList {
       const actualGeneric = generic.type === "List" ? generic.generic : generic;
       const elementLLVM = this.IRB.getListElementLLVM(generic);
       const tmp = this.IRB.newTemp();
-      this.IRB.emit(`${tmp} = alloca ${elementLLVM}`);
-      this.IRB.emit(`store ${elementLLVM} ${expr.ptr}, ptr ${tmp}`);
+      this.IRB.emitAlloca(tmp, `${elementLLVM}`);
+      let valueToStore = expr.ptr;
+
+      if (elementLLVM === "ptr" && expr.type === "string") {
+        this.IRB.declareOneTime("strdup", "declare ptr @strdup(ptr)");
+        const dup = this.IRB.newTemp();
+        this.IRB.emit(`${dup} = call ptr @strdup(ptr ${expr.ptr})`);
+        valueToStore = dup;
+      }
+
+      this.IRB.emit(`store ${elementLLVM} ${valueToStore}, ptr ${tmp}`);
       this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     };
 
@@ -204,6 +218,16 @@ export class ZenList {
 
     if (!isLiteralList && node.value) {
       const expr = this.expr.handleExpression(node.value);
+
+      ownerId = expr?.ownerId;
+
+      if (expr?.isFreed) {
+        this.IRB.emitError(
+          "MemoryError",
+          `use-after-free: '${node.name}' is no longer valid`,
+          node,
+        );
+      }
 
       const isValidList = expr.isList;
 
@@ -238,10 +262,19 @@ export class ZenList {
 
     // REAL LIST LITERAL
     else {
+      ownerId = this.IRB.genOwnerId();
       const listTemp = this.IRB.newTemp();
 
       this.IRB.emit(
         `${listTemp} = call ptr @_zen_list_new(i64 ${elementSize})`,
+      );
+
+      this.IRB.declareOneTime(
+        "zen_list_set_meta",
+        "declare void @_zen_list_set_meta(ptr, i32, i32)",
+      );
+      this.IRB.emit(
+        `call void @_zen_list_set_meta(ptr ${listTemp}, i32 ${depth}, i32 ${this.IRB.getListTypeCode(deepestType)})`,
       );
 
       rootList = listTemp;
@@ -257,8 +290,6 @@ export class ZenList {
               el,
             );
           }
-
-          // validate fields here
 
           return;
         }
@@ -312,7 +343,7 @@ export class ZenList {
 
       this.IRB.emit(`store ptr ${rootList}, ptr ${ptr}`);
     } else {
-      this.IRB.emit(`${ptr} = alloca ptr`);
+      this.IRB.emitAlloca(ptr, `ptr`);
 
       this.IRB.emit(`store ptr ${rootList}, ptr ${ptr}`);
     }
@@ -331,6 +362,7 @@ export class ZenList {
         isGlobal: globalScope,
         isConstant: node.isConstant,
         needsLoad: true,
+        ownerId,
       }),
     );
   }

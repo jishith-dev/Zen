@@ -29,6 +29,7 @@ typedef struct {
 #define ZEN_LIST_MAP    6
 
 void _zen_map_free_internal(void *map); 
+void _zen_list_free(ZenList *list);
 
 static void _zen_list_free_leaf(ZenList *list, int i) {
   if (list->deepestType == ZEN_LIST_STRING) {
@@ -41,6 +42,13 @@ static void _zen_list_free_leaf(ZenList *list, int i) {
 ZenList *_zen_list_new(size_t element_size) {
 
   ZenList *list = (ZenList *)malloc(sizeof(ZenList));
+  
+  if (list == NULL) {
+    fprintf(stderr,
+        "[Zen RuntimeError]\n"
+        "  └── Out of memory\n");
+    exit(1);
+}
 
   list->data = NULL;
   list->size = 0;
@@ -63,6 +71,14 @@ void _zen_list_grow(ZenList *list) {
   }
 
   void *new_data = malloc(new_capacity * list->element_size);
+  
+
+if (new_data == NULL) {
+    fprintf(stderr,
+        "[Zen RuntimeError]\n"
+        "  └── Out of memory\n");
+    exit(1);
+}
 
   // copy old
   if (list->data != NULL) {
@@ -296,17 +312,14 @@ ZenList *zen_va_bools(int count, va_list args) {
 }
 
 ZenList *_sys_argv(int argc, char **argv) {
+    ZenList *list = _zen_list_new(sizeof(char *));
 
-  ZenList *list = _zen_list_new(sizeof(char *));
+    for (int i = 0; i < argc; i++) {
+        char *arg = strdup(argv[i]);
+        _zen_list_push(list, &arg);
+    }
 
-  for (int i = 0; i < argc; i++) {
-
-    char *arg = argv[i];
-
-    _zen_list_push(list, &arg);
-  }
-
-  return list;
+    return list;
 }
 
 char *_zen_list_join(ZenList *list, const char *sep) {
@@ -549,4 +562,9 @@ void _debug_pretty_map(void* map, int depth);
 void _debug_pretty_map_elem(void* slot, int depth) {
     void* handle = *(void**)slot;
     _debug_pretty_map(handle, depth);
+}
+
+void _zen_list_set_meta(ZenList *list, int depth, int deepestType) {
+  list->depth = depth;
+  list->deepestType = deepestType;
 }

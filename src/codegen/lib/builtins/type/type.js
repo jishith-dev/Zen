@@ -277,4 +277,42 @@ export class Type {
       needsLoad: false,
     };
   }
+
+  Byte(node) {
+    const args = node.args;
+
+    if (args.length !== 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Byte() accepts exactly 1 argument",
+        node,
+      );
+    }
+
+    const expr = this.expr.handleExpression(args[0]);
+
+    if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
+      this.IRB.emitError(
+        "TypeError",
+        "Byte() cannot cast array, Map, List or struct to byte",
+        node,
+      );
+    }
+
+    this.IRB.emitExpr(expr);
+
+    const cast = this.IRB.castExpression(expr, "Byte");
+
+    this.IRB.emit(cast?.local.join("\n"));
+
+    return {
+      ptr: cast.ptr,
+      type: "Byte",
+      llvmType: "ptr",
+      local: [],
+      global: [],
+      isConstant: true,
+      postOrPrefix: false,
+    };
+  }
 }

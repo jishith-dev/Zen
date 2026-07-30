@@ -1,4 +1,3 @@
-
 export class IO {
   constructor(IRB, expr) {
     this.IRB = IRB;
@@ -66,7 +65,6 @@ export class IO {
 
     // derived types (safe guards)
     if (expr) {
-
       if (expr.isArray) {
         valuePtr = this.IRB.newGlobalString("<array>").name;
         type = "string";
@@ -86,17 +84,17 @@ export class IO {
     }
 
     switch (type) {
-      case "int":{
+      case "int": {
         this.IRB.emitScreenInt(valuePtr, format || "%d\n");
         break;
       }
 
-      case "double":{
+      case "double": {
         this.IRB.emitScreenDouble(valuePtr, format || "%lf\n");
         break;
       }
 
-      case "bool":{
+      case "bool": {
         if (format !== null) {
           this.IRB.emitError(
             "ArgumentError",

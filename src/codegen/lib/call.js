@@ -57,7 +57,9 @@ export class Call {
   }
 
   isPtrReturn(typeName) {
-    const struct = this.IRB.hasStruct(typeName) ? this.IRB.getStruct(typeName) : false;
+    const struct = this.IRB.hasStruct(typeName)
+      ? this.IRB.getStruct(typeName)
+      : false;
     return !!struct?.isOpaque || BUILTIN_STRUCT_ABI.includes(typeName);
   }
 
@@ -93,6 +95,7 @@ export class Call {
         generic: valExpr?.generic,
         isStruct: valExpr?.isStruct,
         needsLoad: valExpr?.needsLoad,
+        ownerId: valExpr?.ownerId,
       };
     }
 
@@ -120,7 +123,7 @@ export class Call {
     }
 
     const fn = this.IRB.resolveFunction(name, node);
-    
+
     const isImportedFn = !!fn.isImported;
     const importedModuleName = fn?.importedModuleName;
 
@@ -146,7 +149,7 @@ export class Call {
         mangledName = name;
         break;
       case isImportedFn:
-        mangledName = `zen_${importedModuleName}_${name}`
+        mangledName = `zen_${importedModuleName}_${name}`;
         break;
       default:
         mangledName = `zen_${this.moduleName}_${name}`;
@@ -205,6 +208,17 @@ export class Call {
           global: [],
           isVarRef: false,
         };
+      } else if (arg.type === "ARRAY") {
+        const wrapped = param.type;
+
+        const listGeneric = {
+          generic: wrapped.generic,
+          type: this.IRB.getDeepestGeneric(wrapped),
+          depth: this.IRB.getListDepth(wrapped),
+        };
+
+        val = this.expr.handleExpression(arg, false, listGeneric);
+        this.IRB.emitExpr(val);
       } else {
         val = this.expr.handleExpression(arg, false);
 
@@ -220,6 +234,16 @@ export class Call {
       }
 
       args.push(val);
+    }
+
+    for (const i of fn.freedPindex) {
+      const arg = node.args[i];
+      if (!arg) continue;
+
+      const sym = this.IRB.hasVar(arg?.name) ? this.IRB.getVar(arg.name) : null;
+      if (!sym) continue;
+
+      sym.isFreed = true;
     }
 
     let restIndex = -1;
@@ -455,7 +479,6 @@ export class Call {
     // NORMAL CALL
 
     for (const a of args) {
-      
       if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
         let value = a.ptr;
 
@@ -467,14 +490,13 @@ export class Call {
 
         argStr.push(`ptr ${value}`);
       } else if (a?.isStruct) {
-        
         let v = a.ptr;
         if (a.needsLoad) {
           const tmp = this.IRB.newTemp();
           local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
           v = tmp;
         }
-        
+
         argStr.push(`ptr ${v}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
@@ -640,6 +662,9 @@ export class Call {
 
       case "sizeOf":
         return this.type.sizeOf(node, globalScope);
+
+      case "toByte":
+        return this.type.Byte(node, globalScope);
 
       case "matchRegex":
         return this.string.matchRegex(node);
