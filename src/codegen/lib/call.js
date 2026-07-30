@@ -236,7 +236,7 @@ export class Call {
       args.push(val);
     }
 
-    for (const i of fn.freedPindex) {
+    for (const i of (fn.freedPindex ?? new Set())) {
       const arg = node.args[i];
       if (!arg) continue;
 
