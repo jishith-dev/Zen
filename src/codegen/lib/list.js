@@ -35,7 +35,7 @@ export class ZenList {
 
     const type = deepestType;
 
-    const elementSize = this.IRB.sizeOf(deepestType);
+    const elementSize = depth > 1 ? 8 : this.IRB.sizeOf(deepestType);
 
     const validateDepth = (el, generic) => {
       const expectsList = generic.type === "List";

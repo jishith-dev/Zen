@@ -16,14 +16,14 @@ this.balance -= a
 }
 }
 
-Banking jishith
+Banking user
 
-jishith.balance = 1000 // initial balance 
+user.balance = 1000 // initial balance 
 
-jishith.deposit(Int(input("Enter deposit amount: ")))
+user.deposit(Int(input("Enter deposit amount: ")))
 
-screen(`Balance: ${jishith.getBalance()}`)
+screen(`Balance: ${user.getBalance()}`)
 
-jishith.withdraw(Int(input("Enter amount to withdraw")))
+user.withdraw(Int(input("Enter amount to withdraw: ")))
 
-screen(`Remaining balance after withdraw: ${jishith.getBalance()}`)
+screen(`Remaining balance after withdraw: ${user.getBalance()}`)
