@@ -9,6 +9,7 @@ import {
   TYPE_MAP,
   BUILTIN_STRUCT_ABI,
 } from "../../config/config.js";
+
 import { InferType } from "../infer/infer.js";
 import fs from "fs";
 import path from "path";
@@ -140,10 +141,13 @@ export class IRBuilder {
   }
 
   updateReactive(name, visited = new Set()) {
+    
     if (visited.has(name)) return;
+    
     visited.add(name);
 
     const dependents = this.dependents.get(name) || [];
+    
 
     for (const d of dependents) {
       const reactive = this.reactiveMap.get(d);
@@ -757,9 +761,9 @@ if (this.structTable.has(type)) {
   }
 
   exitScope() {
-    this.symbolTable.pop();
-    this.freedVars.pop();
-  }
+  this.symbolTable.pop();
+  this.freedVars.pop();
+} 
 
   hasVar(name) {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
@@ -1074,7 +1078,7 @@ if (this.structTable.has(type)) {
     }
 
     if (isMethod) {
-      types.push("ptr");
+      types.unshift("ptr");
       paramStr.unshift(`ptr %this`);
       paramData.push({
         name: "this",
@@ -1122,17 +1126,23 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
   }
 
   newGlobalString(str) {
+    
+    this.declareOneTime("_str_dup", "declare ptr @_str_dup(ptr)");
+    
     if (this.cachedStrings.has(str)) {
       const cached = this.cachedStrings.get(str);
 
       const tmp = this.newTemp();
+      const value = this.newTemp();
 
       const ir = `getelementptr inbounds [${cached.len} x i8], ptr ${cached.globalName}, i64 0, i64 0`;
 
       this.emit(`${tmp} = ${ir}`);
+      
+      this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
 
       return {
-        name: tmp,
+        name: value,
         ir,
         local: [],
         global: [],
@@ -1153,10 +1163,13 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
     );
 
     const tmp = this.newTemp();
+    const value = this.newTemp();
 
     const ir = `getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`;
 
     this.emit(`${tmp} = ${ir}`);
+    
+    this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
 
     // cache ONLY global data
     this.cachedStrings.set(str, {
@@ -1165,7 +1178,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
     });
 
     return {
-      name: tmp,
+      name: value,
       ir,
       local: [],
       global: [],
@@ -1371,59 +1384,68 @@ entry:
   }
 
   toLLVMString(str) {
-    let result = "";
-    let len = 0;
+  let result = "";
+  let len = 0;
 
-    for (let i = 0; i < str.length; i++) {
-      const c = str[i];
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
 
-      switch (c) {
-        case "\0":
-          result += "\\00";
-          break;
-        case "\a":
-          result += "\\07";
-          break;
-        case "\b":
-          result += "\\08";
-          break;
-        case "\t":
-          result += "\\09";
-          break;
-        case "\n":
-          result += "\\0A";
-          break;
-        case "\v":
-          result += "\\0B";
-          break;
-        case "\f":
-          result += "\\0C";
-          break;
-        case "\r":
-          result += "\\0D";
-          break;
-        case '"':
-          result += "\\22";
-          break;
-        case "\\":
-          result += "\\5C";
-          break;
-        default:
-          result += c;
-      }
+    switch (c) {
+      case "\0":
+        result += "\\00";
+        break;
 
-      len++;
+      case "\x07":
+        result += "\\07";
+        break;
+
+      case "\b":
+        result += "\\08";
+        break;
+
+      case "\t":
+        result += "\\09";
+        break;
+
+      case "\n":
+        result += "\\0A";
+        break;
+
+      case "\v":
+        result += "\\0B";
+        break;
+
+      case "\f":
+        result += "\\0C";
+        break;
+
+      case "\r":
+        result += "\\0D";
+        break;
+
+      case '"':
+        result += "\\22";
+        break;
+
+      case "\\":
+        result += "\\5C";
+        break;
+
+      default:
+        result += c;
     }
 
-    // Null terminator
-    result += "\\00";
     len++;
-
-    return {
-      llvmStr: result,
-      length: len,
-    };
   }
+
+  result += "\\00";
+  len++;
+
+  return {
+    llvmStr: result,
+    length: len,
+  };
+}
 
   emitScreenString(val, format) {
     this.formatMap = this.formatMap || new Map();
@@ -1825,7 +1847,7 @@ end:
     return match ? match[1] : type;
   }
 
-  castExpression(expr, targetType, fnName, node) {
+  castExpression(expr, targetType, fnName, node, fromTemporary = false) {
     if (expr.type === targetType) {
       return expr;
     }
@@ -1864,6 +1886,7 @@ end:
           llvmType: "ptr",
           type: "string",
           local,
+          isTemp: fromTemporary
         };
       }
 
@@ -1963,6 +1986,7 @@ end:
         llvmType: "ptr",
         type: "string",
         local,
+        isTemp: fromTemporary
       };
     }
 
@@ -1981,6 +2005,7 @@ end:
         llvmType: "ptr",
         type: "string",
         local,
+        isTemp: fromTemporary
       };
     }
 
@@ -1995,6 +2020,7 @@ end:
         llvmType: "ptr",
         type: "string",
         local,
+        isTemp: fromTemporary
       };
     }
 
@@ -3967,6 +3993,9 @@ if (this.hasVar(object?.name)) {
   // debug.pretty() helper
 
   newGlobalStringInto(buffer, str) {
+    
+    this.declareOneTime("_str_dup", "declare ptr @_str_dup(ptr)");
+    
     let globalName, len;
 
     if (this.cachedStrings.has(str)) {
@@ -3982,10 +4011,14 @@ if (this.hasVar(object?.name)) {
     }
 
     const tmp = this.newTemp();
+    const value = this.newTemp();
+    
     buffer.push(
       `${tmp} = getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`,
     );
-    return tmp;
+    
+    this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
+    return value;
   }
 
   getOrBuildStructPrinter(structName) {
@@ -4235,4 +4268,64 @@ inferListContextFromLiteral(node) {
 
   return { generic, type: first.deepestType, depth: first.depth };
 }
+
+handleStringFree(object, node) {
+  this.declareOneTime("_zen_string_free", "declare void @_zen_string_free(ptr)");
+  
+  if (node.object.type !== "variable") {
+  this.emitError(
+    "MemoryError",
+    "free() can only be called on an owning variable",
+    node,
+  );
+}
+
+const sym = this.getVar(node.object.name);
+
+ let v = this.newTemp();
+ 
+ if (object.needsLoad) {
+   this.emit(`${v} = load ptr, ptr ${object.ptr}`);
+ } else {
+   v = object.ptr;
+ }
+
+this.emit(`call void @_zen_string_free(ptr ${v})`);
+
+
+if (sym.ownerId !== undefined) {
+    this.freedOwners.add(sym.ownerId);
+}
+sym.isFreed = true;
+
+if (sym.fromParam && sym.pIndex !== undefined) {
+  this.functions
+    .get(this.currentFunction.name)
+    .freedPindex.add(sym.pIndex);
+}
+
+        return {
+          ptr: null,
+          type: "void",
+          llvmType: "void",
+          local: [],
+          global: [],
+          isFreed: true
+        };
+  
+}
+
+  cleanupBuiltinStringTemps(args) {
+  for (const a of args || []) {
+    
+    if (a.type === "string" && (a.isTemp || a?.kind === "literal")) {
+      this.declareOneTime(
+        "_zen_string_free",
+        "declare void @_zen_string_free(ptr)",
+      );
+
+      this.emit(`call void @_zen_string_free(ptr ${a.ptr})`);
+    }
+  }
+  }
 }

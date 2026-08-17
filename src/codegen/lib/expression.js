@@ -391,13 +391,6 @@ if (
       this.IRB.emitAlloca(tmp, `${elementLLVM}`);
       let valueToStore = expr.ptr;
 
-      if (elementLLVM === "ptr" && expr.type === "string") {
-        this.IRB.declareOneTime("strdup", "declare ptr @strdup(ptr)");
-        const dup = this.IRB.newTemp();
-        this.IRB.emit(`${dup} = call ptr @strdup(ptr ${expr.ptr})`);
-        valueToStore = dup;
-      }
-
       this.IRB.emit(`store ${elementLLVM} ${valueToStore}, ptr ${tmp}`);
       this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     };
@@ -556,6 +549,26 @@ if (
       }
 
       this.IRB.emitExpr(object);
+      
+      if (object.type === "string" && node.field === "free") {
+  if (!Array.isArray(node.args)) {
+    this.IRB.emitError(
+      "TypeError",
+      "method 'free' must be called with '()'",
+      node,
+    );
+  }
+
+  if (node.args.length !== 0) {
+    this.IRB.emitError(
+      "ArgumentError",
+      "string.free() takes no arguments",
+      node,
+    );
+  }
+
+  return this.IRB.handleStringFree(object, node);
+}
 
       if (
         PRIMITIVE_TYPES.includes(object.type) &&
@@ -659,7 +672,8 @@ if (
           if (BUILTIN_STRUCTS.includes(structName)) {
             // diff prop and method call
 
-            const isCall = Array.isArray(node?.args);
+            const isLastField = i === fields.length - 1;
+const isCall = isLastField && Array.isArray(node?.args);
 
 
             if (isCall) {
@@ -722,7 +736,18 @@ if (
   }
 
   args.push(`ptr ${value}`);
-} else if (arg?.isStruct) {
+}
+else if (arg?.isStruct && BUILTIN_STRUCTS.includes(arg?.type)) {
+        let value = arg.ptr;
+
+        if (arg.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ptr, ptr ${arg.ptr}`);
+          value = tmp;
+        }
+        argStr.push(`ptr ${value}`);
+      }
+else if (arg?.isStruct) {
 
   args.push(`ptr ${arg.ptr}`);
 } else if (arg.needsLoad) {
@@ -845,15 +870,24 @@ if (isStruct) {
           }
 
           fieldInfo = structInfo.layout[fieldIndex];
-          const isList = fieldInfo.isList;
-          const ptr = this.IRB.newTemp();
-          if (isList) {
-            this.IRB.emit(
-              `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
-            );
-          }
-          basePtr = ptr;
-          structName = fieldInfo.type;
+const isList = fieldInfo.isList;
+const ptr = this.IRB.newTemp();
+
+this.IRB.emit(
+  `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
+);
+basePtr = ptr;
+
+structName = fieldInfo.type;
+
+if (!isList && this.IRB.hasStruct(structName)) {
+  const nextStructInfo = this.IRB.getStruct(structName);
+  if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque) {
+    const loaded = this.IRB.newTemp();
+    this.IRB.emit(`${loaded} = load ptr, ptr ${basePtr}`);
+    basePtr = loaded;
+  }
+}
         }
 
         // STRUCT FIELD TYPES
@@ -939,41 +973,58 @@ if (isStruct) {
 
         structName = fieldInfo.type;
       }
-
+      
       const finalType = fieldInfo.llvmType;
 
-      const isArray = finalType?.startsWith("[") || finalType?.isArray;
-      const isStruct = this.IRB.hasStruct(structName);
+const isArray = finalType?.startsWith("[") || finalType?.isArray;
+const isStruct = this.IRB.hasStruct(structName);
+const fieldStructInfo = isStruct ? this.IRB.getStruct(structName, node) : null;
+const isOpaqueField = fieldStructInfo?.isBuiltin && fieldStructInfo?.isOpaque;
 
-      if (isArray || isStruct) {
-        //  return pointer (so ARRAY_ACCESS can use it)
-        
-        return {
-          ptr: basePtr,
-          addr: basePtr,
-          type: structName,
-          llvmType: finalType,
-          local,
-          isStruct: isStruct,
-          global: [],
-          isVarRef: false
-        };
-      }
+if (isArray || (isStruct && !isOpaqueField)) {
+  // inline struct — GEP address is the value, no load
+  return {
+    ptr: basePtr,
+    addr: basePtr,
+    type: structName,
+    llvmType: finalType,
+    local,
+    isStruct: isStruct,
+    global: [],
+    isVarRef: false
+  };
+}
 
-      //  normal scalar  load
-      const val = this.IRB.newTemp();
+if (isOpaqueField) {
+  // opaque built-in struct field (HttpRequest, Map, ...) — field stores a ptr, must load it
+  const val = this.IRB.newTemp();
+  local.push(`${val} = load ptr, ptr ${basePtr}`);
 
-      local.push(`${val} = load ${finalType}, ptr ${basePtr}`);
+  return {
+    ptr: val,
+    addr: basePtr,
+    type: structName,
+    llvmType: "ptr",
+    local,
+    isStruct: true,
+    global: [],
+    isVarRef: false
+  };
+}
 
-      return {
-        ptr: val,
-        addr: basePtr,
-        type: structName,
-        llvmType: finalType,
-        local,
-        global: [],
-        isVarRef: true
-      };
+//  normal scalar load
+const val = this.IRB.newTemp();
+local.push(`${val} = load ${finalType}, ptr ${basePtr}`);
+
+return {
+  ptr: val,
+  addr: basePtr,
+  type: structName,
+  llvmType: finalType,
+  local,
+  global: [],
+  isVarRef: true
+};
     }
 
     if (node.type === "ARRAY_ACCESS") {
@@ -1378,6 +1429,9 @@ if (isStruct) {
     let rLLVMtype = null;
     let lKind = null;
     let rKind = null;
+    
+    let lIsTemp = null;
+    let rIsTemp = null;
 
     if (node.type === "ASSIGNMENT") {
       this.IRB.emitError(
@@ -1431,6 +1485,8 @@ if (isStruct) {
 
       lPtr = LNode.ptr;
       rPtr = RNode.ptr;
+      lIsTemp = LNode?.kind === "literal" || LNode?.isTemp;
+      rIsTemp = RNode?.kind === "literal" || RNode?.isTemp;
       lKind = LNode?.kind;
       rKind = RNode?.kind;
       lType = LNode.type;
@@ -1448,12 +1504,14 @@ if (isStruct) {
         ptr: lPtr,
         type: lType,
         llvmType: lLLVMtype,
+        isTemp: lIsTemp
       };
 
       const RNode = {
         ptr: rPtr,
         type: rType,
         llvmType: rLLVMtype,
+        isTemp: rIsTemp
       };
 
       let leftPtr = lPtr;
@@ -1464,9 +1522,14 @@ if (isStruct) {
           case "int":
           case "bool":
           case "double":
-            const cExpr = this.IRB.castExpression(LNode, "string");
+            const cExpr = this.IRB.castExpression(LNode, "string", null, null, true);
             local.push(cExpr?.local.join("\n"));
             leftPtr = cExpr.ptr;
+            
+            LNode.ptr = cExpr.ptr;
+LNode.type = "string";
+LNode.llvmType = "ptr";
+LNode.isTemp = true;
             break;
 
           default:
@@ -1483,9 +1546,14 @@ if (isStruct) {
           case "int":
           case "bool":
           case "double":
-            const cExpr = this.IRB.castExpression(RNode, "string");
+            const cExpr = this.IRB.castExpression(RNode, "string", null, null, true);
             local.push(cExpr?.local.join("\n"));
             rightPtr = cExpr.ptr;
+            
+            RNode.ptr = cExpr.ptr;
+RNode.type = "string";
+RNode.llvmType = "ptr";
+RNode.isTemp = true;
             break;
 
           default:
@@ -1517,6 +1585,20 @@ if (isStruct) {
         local.push(
           `${resultPtr} = call ptr @_str_concat(ptr ${leftPtr}, ptr ${rightPtr})`,
         );
+        
+        if (LNode.isTemp && LNode.type === "string") {
+          
+          this.IRB.declareOneTime("_zen_string_free", "declare void @_zen_string_free(ptr)");
+          
+          local.push(`call void @_zen_string_free(ptr ${LNode.ptr})`);
+        }
+        
+        if (RNode.isTemp && RNode.type === "string") {
+          
+          this.IRB.declareOneTime("_zen_string_free", "declare void @_zen_string_free(ptr)");
+          
+          local.push(`call void @_zen_string_free(ptr ${RNode.ptr})`);
+        }
 
         return {
           ptr: resultPtr,
@@ -1526,6 +1608,7 @@ if (isStruct) {
           global: global,
           endLabel: null,
           postOrPrefix: false,
+          isTemp: true
         };
       }
 

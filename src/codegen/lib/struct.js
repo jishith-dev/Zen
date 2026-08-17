@@ -272,8 +272,16 @@ export class Struct {
       const fieldMeta = structInfo.layout[fieldIndex];
 
       basePtr = ptr;
-
       structName = fieldMeta.type;
+
+      if (!fieldMeta.isList && this.IRB.hasStruct(structName)) {
+        const nextStructInfo = this.IRB.getStruct(structName);
+        if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque) {
+          const loaded = this.IRB.newTemp();
+          this.IRB.emit(`${loaded} = load ptr, ptr ${basePtr}`);
+          basePtr = loaded;
+        }
+      }
     }
 
     // FINAL FIELD

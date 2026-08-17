@@ -605,6 +605,10 @@ define void @_assignSeed () {
       return this.variable.handleUnary(node.expression);
     }
 
+    if (node.expression.type === "BINARY_EXPRESSION") {
+      return; // dead code
+    }
+
     return this.variable.variableReference(node);
   }
 }

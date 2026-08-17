@@ -91,6 +91,8 @@ export class Time {
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
     }
 
+    this.IRB.cleanupBuiltinStringTemps(exprs)
+
     return {
       ptr: t,
       type: returnType,

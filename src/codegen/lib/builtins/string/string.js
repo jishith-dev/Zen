@@ -116,6 +116,8 @@ export class ZenString {
 
     this.IRB.emit(`${finalPtr} = icmp eq i32 ${resultTemp}, 1`);
 
+    this.IRB.cleanupBuiltinStringTemps(exprs)
+
     return {
       ptr: finalPtr,
       type: "bool",

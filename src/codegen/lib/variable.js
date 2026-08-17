@@ -1,3 +1,4 @@
+
 export class Variable {
   constructor(IRB, expr, call, infer, struct) {
     this.IRB = IRB;
@@ -25,6 +26,7 @@ export class Variable {
     this.IRB.bindLineColumn(node);
 
     if (isReactive) {
+      
       const varRefs = this.IRB.collectVarRefs(node.value);
       this.IRB.reactiveMap.set(name, {
         deps: varRefs,
@@ -211,6 +213,7 @@ export class Variable {
         isGlobal: globalScope,
         rawStr: expr?.rawStr,
         needsLoad: true,
+        ownerId: expr?.ownerId ? expr.ownerId : this.IRB.genOwnerId()
       }),
     );
   }
@@ -218,13 +221,14 @@ export class Variable {
   // variable refference
 
   variableReference(node) {
+    
     const expression = node?.expression;
     let name = expression.name;
 
     const isUnary = expression.value?.type === "UNARY_EXPRESSION";
 
     const isCall = expression.value?.type === "CALL";
-
+    
     const isListLiteral = expression.value?.type === "ARRAY";
 
     const isMethodCall = !!node.expression?.callee;
@@ -232,12 +236,13 @@ export class Variable {
     const isArrayReassignment = expression?.array; // fixed/List
 
     if (isMethodCall) {
+      
       const fakeNode = {
         type: "MEMBER_ACCESS",
         field: expression.callee.field,
         object: expression.callee.object,
         args: expression.args,
-        isAwait: expression.isAwait,
+        isAwait: expression.isAwait
       };
 
       const valExpr = this.expr.handleExpression(fakeNode);
@@ -306,25 +311,25 @@ export class Variable {
       }
 
       if (this.IRB.hasStruct(valExpr.type)) {
-        const struct = this.IRB.getStruct(valExpr.type);
+    const struct = this.IRB.getStruct(valExpr.type);
 
-        if (struct.isBuiltin && struct.isOpaque) {
-          this.IRB.emit(`store ptr ${valExpr.ptr}, ptr ${expr.raw}`);
-        } else {
-          this.IRB.declareOneTime(
+    if (struct.isBuiltin && struct.isOpaque) {
+        this.IRB.emit(`store ptr ${valExpr.ptr}, ptr ${expr.raw}`);
+    } else {
+        this.IRB.declareOneTime(
             "llvm.memcpy.p0.p0.i64",
             "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
-          );
-
-          this.IRB.emit(
-            `call void @llvm.memcpy.p0.p0.i64(ptr ${expr.raw}, ptr ${valExpr.ptr}, i64 ${struct.byteSize}, i1 false)`,
-          );
-        }
-      } else {
-        this.IRB.emit(
-          `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${expr.raw}`,
         );
-      }
+
+        this.IRB.emit(
+            `call void @llvm.memcpy.p0.p0.i64(ptr ${expr.raw}, ptr ${valExpr.ptr}, i64 ${struct.byteSize}, i1 false)`
+        );
+    }
+} else {
+    this.IRB.emit(
+        `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${expr.raw}`
+    );
+}
       return;
     }
 
@@ -347,6 +352,7 @@ export class Variable {
     }
 
     const orgData = this.IRB.getVar(name, node);
+    
 
     if (isCall) {
       const isGlobal = orgData.isGlobal;
@@ -354,40 +360,39 @@ export class Variable {
     }
 
     if (orgData?.isStruct) {
+     
       if (orgData.isConstant) {
-        this.IRB.emitError(
-          "ConstError",
-          `Cannot reassign constant '${name}'`,
-          node,
-        );
-      }
-
+      this.IRB.emitError(
+        "ConstError",
+        `Cannot reassign constant '${name}'`,
+        node,
+      );
+    }
+      
       this.IRB.bindLineColumn(node);
 
       let srcPtr;
-
+      
       if (!expression?.value) {
-        this.IRB.emitError(
-          "SyntaxError",
-          `struct '${orgData.type}' property '${expression.field}' should have Right hand Assignment`,
-          node,
-        );
+        this.IRB.emitError("SyntaxError", `struct '${orgData.type}' property '${expression.field}' should have Right hand Assignment`, node)
       }
 
       if (expression.value.type === "STRUCT_LITERAL") {
-        let t = this.IRB.emitStructLiteral(orgData.type, expression.value);
+      
+      let t = this.IRB.emitStructLiteral(orgData.type, expression.value);
 
-        srcPtr = t.ptr;
+      srcPtr = t.ptr;
+
       } else {
         const rhs = this.expr.handleExpression(expression.value);
-
+        
         if (!this.IRB.hasStruct(rhs.type)) {
-          this.IRB.emitError(
-            "TypeError",
-            `right-hand side must be a struct, got '${rhs.type}'`,
-            node,
-          );
-        }
+  this.IRB.emitError(
+    "TypeError",
+    `right-hand side must be a struct, got '${rhs.type}'`,
+    node
+  );
+}
 
         srcPtr = rhs.ptr;
       }
@@ -435,38 +440,34 @@ export class Variable {
     }
 
     this.IRB.bindLineColumn(node);
-
+    
     if (isListLiteral) {
-      const wrapped = orgData.generic;
+  const wrapped = orgData.generic; 
 
-      const listContext = {
-        generic: wrapped.generic,
-        type: this.IRB.getDeepestGeneric(wrapped),
-        depth: this.IRB.getListDepth(wrapped),
-      };
+  const listContext = {
+    generic: wrapped.generic,                     
+    type: this.IRB.getDeepestGeneric(wrapped),
+    depth: this.IRB.getListDepth(wrapped),
+  };
 
-      const expr = this.expr.handleExpression(
-        expression.value,
-        false,
-        listContext,
-      );
+  const expr = this.expr.handleExpression(expression.value, false, listContext);
 
-      this.IRB.emitExpr(expr);
-      this.IRB.emit(`store ptr ${expr.ptr}, ptr ${orgPtr}`);
+  this.IRB.emitExpr(expr);
+  this.IRB.emit(`store ptr ${expr.ptr}, ptr ${orgPtr}`);
+  
+  // New ownership
+orgData.ownerId = this.IRB.genOwnerId();
+orgData.isFreed = false;
+  return;
+}
 
-      // New ownership
-      orgData.ownerId = this.IRB.genOwnerId();
-      orgData.isFreed = false;
-      return;
-    }
-
-    if (!expression.value) {
-      this.IRB.emitError(
-        "SemanticError",
-        `'${expression.field}' is a method and must be called with '()'`,
-        expression,
-      );
-    }
+if (!expression.value) {
+  this.IRB.emitError(
+    "SemanticError",
+    `'${expression.field}' is a method and must be called with '()'`,
+    expression
+  );
+}
 
     const expr = this.expr.handleExpression(expression.value);
 
@@ -489,14 +490,30 @@ export class Variable {
     }
 
     this.IRB.emitExpr(expr);
+  
+  let v = this.IRB.newTemp();
+  if (expr.needsLoad) {
+    this.IRB.emit(`${v} = load ${llvmType}, ptr ${expr.ptr}`);
+  } else {
+    v = expr.ptr;
+  }
+  
+  // new ownership
+  orgData.ownerId = this.IRB.genOwnerId();
+  orgData.isFreed = false;
+  
+  if (orgType === "string") {
+  this.IRB.declareOneTime(
+    "_zen_string_free",
+    "declare void @_zen_string_free(ptr)"
+  );
 
-    let v = this.IRB.newTemp();
-    if (expr.needsLoad) {
-      this.IRB.emit(`${v} = load ${llvmType}, ptr ${expr.ptr}`);
-    } else {
-      v = expr.ptr;
-    }
+  const value = this.IRB.newTemp();
 
+  this.IRB.emit(`${value} = load ptr, ptr ${orgPtr}`);
+  this.IRB.emit(`call void @_zen_string_free(ptr ${value})`);
+  }
+  
     this.IRB.emit(`store ${llvmType} ${v}, ptr ${orgPtr}`);
 
     this.IRB.updateReactive(expression.name);
@@ -516,6 +533,7 @@ export class Variable {
   }
 
   callVariable(node, globalScope) {
+    
     const isVarDecl = node.type === "VARIABLE_DECLARATION";
     const isMethodCall = !!node.value?.callee;
     const name = node.name || node?.expression.name;
@@ -528,7 +546,7 @@ export class Variable {
         field: node.value.callee.field,
         object: node.value.callee.object,
         args: node.value.args,
-        generic: node.value.generic,
+        generic: node.value.generic
       };
 
       const valExpr = this.expr.handleExpression(fakeNode);
@@ -583,6 +601,7 @@ export class Variable {
           );
         }
       } else {
+        
         this.IRB.emit(`store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${ptr}`);
       }
 
@@ -617,8 +636,8 @@ export class Variable {
     this.IRB.bindLineColumn(node);
 
     const val = this.expr.handleExpression(node.value, globalScope);
-
-    this.IRB.emitExpr(val);
+    
+    this.IRB.emitExpr(val)
 
     // void check
     if (val?.returnType === "void") {
@@ -642,11 +661,13 @@ export class Variable {
 
     if (globalScope) {
       if (isVarDecl) {
+        
         ptr = this.IRB.newGlobalTemp();
         this.IRB.globals.push(`${ptr} = global ${llvmType} ${value}`);
       } else {
         const data = this.IRB.getVar(name, node);
         ptr = data.ptr;
+        
       }
     } else {
       if (isVarDecl) {
@@ -659,7 +680,7 @@ export class Variable {
     }
 
     const isList = val?.isList;
-
+    
     const isStruct = val?.isStruct;
 
     if (isList) {
@@ -671,24 +692,27 @@ export class Variable {
         const structInfo = this.IRB.getStruct(val.type);
         if (structInfo.isBuiltin && structInfo.isOpaque) {
           // opaque handle (HttpServer, HttpRequest, ...)
+         
+         
+    if (isVarDecl) {
+        let tmp;
 
-          if (isVarDecl) {
-            let tmp;
+        if (globalScope) {
+            tmp = this.IRB.newGlobalTemp();
+            this.IRB.globals.push(`${tmp} = global ptr null`);
+        } else {
+            tmp = this.IRB.newTemp();
+            this.IRB.emitAlloca(tmp, `ptr`);
+        }
 
-            if (globalScope) {
-              tmp = this.IRB.newGlobalTemp();
-              this.IRB.globals.push(`${tmp} = global ptr null`);
-            } else {
-              tmp = this.IRB.newTemp();
-              this.IRB.emitAlloca(tmp, `ptr`);
-            }
-
-            this.IRB.emit(`store ptr ${val.ptr}, ptr ${tmp}`);
-            ptr = tmp;
-          } else {
-            // Assignment reuse existing storage
-            this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
-          }
+        this.IRB.emit(`store ptr ${val.ptr}, ptr ${tmp}`);
+        ptr = tmp;
+    } else {
+        // Assignment reuse existing storage
+        this.IRB.emit(`store ptr ${val.ptr}, ptr ${ptr}`);
+    }
+         
+         
         } else {
           const size = this.IRB.getStruct(val.type).byteSize;
 
@@ -767,7 +791,7 @@ export class Variable {
 
   arrayAccessVariable(node, globalScope) {
     const { name, isConstant, value } = node;
-
+    
     let dataType = node.dataType;
     if (dataType === "auto") {
       dataType = this.infer.infer(node);
@@ -791,25 +815,25 @@ export class Variable {
     this.IRB.emitExpr(expr);
 
     if (this.IRB.hasStruct(expr.type)) {
-      const structInfo = this.IRB.getStruct(expr.type);
+    const structInfo = this.IRB.getStruct(expr.type);
 
-      if (structInfo.isBuiltin && structInfo.isOpaque) {
+    if (structInfo.isBuiltin && structInfo.isOpaque) {
         this.IRB.emit(`store ptr ${expr.ptr}, ptr ${ptr}`);
-      } else {
+    } else {
         const size = structInfo.byteSize;
 
         this.IRB.declareOneTime(
-          "llvm.memcpy",
-          "declare void @llvm.memcpy(ptr, ptr, i64, i1)",
+            "llvm.memcpy",
+            "declare void @llvm.memcpy(ptr, ptr, i64, i1)",
         );
 
         this.IRB.emit(
-          `call void @llvm.memcpy(ptr ${ptr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`,
+            `call void @llvm.memcpy(ptr ${ptr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`
         );
-      }
-    } else {
-      this.IRB.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${ptr}`);
     }
+} else {
+    this.IRB.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${ptr}`);
+}
 
     this.IRB.setVar(
       name,
@@ -835,6 +859,7 @@ export class Variable {
     let llvmType;
 
     if (b.type === "MEMBER_ACCESS") {
+      
       const { base: root, fields } = this.IRB.resolveMemberChainAssign(b);
 
       const varInfo = this.IRB.getVar(root, exprNode);
@@ -903,27 +928,28 @@ export class Variable {
           const valueExpr = this.expr.handleExpression(exprNode.value);
 
           this.IRB.emitExpr(valueExpr);
-
+          
           if (this.IRB.hasStruct(valueExpr.type)) {
-            const struct = this.IRB.getStruct(valueExpr.type);
+  const struct = this.IRB.getStruct(valueExpr.type);
 
-            if (struct.isBuiltin && struct.isOpaque) {
-              this.IRB.emit(`store ptr ${valueExpr.ptr}, ptr ${tmp}`);
-            } else {
-              this.IRB.declareOneTime(
-                "llvm.memcpy.p0.p0.i64",
-                "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
-              );
+  if (struct.isBuiltin && struct.isOpaque) {
+    this.IRB.emit(`store ptr ${valueExpr.ptr}, ptr ${tmp}`);
+  } else {
+    this.IRB.declareOneTime(
+      "llvm.memcpy.p0.p0.i64",
+      "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+    );
 
-              this.IRB.emit(
-                `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${valueExpr.ptr}, i64 ${struct.byteSize}, i1 false)`,
-              );
-            }
-          } else {
-            this.IRB.emit(
-              `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${tmp}`,
-            );
-          }
+    this.IRB.emit(
+      `call void @llvm.memcpy.p0.p0.i64(ptr ${tmp}, ptr ${valueExpr.ptr}, i64 ${struct.byteSize}, i1 false)`
+    );
+  }
+} else {
+  this.IRB.emit(
+    `store ${valueExpr.llvmType} ${valueExpr.ptr}, ptr ${tmp}`
+  );
+}
+
 
           return;
         }

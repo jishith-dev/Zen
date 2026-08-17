@@ -1,4369 +1,4688 @@
-; ModuleID = '/sdcard/zen/src/zen_stdlib/build/stdlib.ll'
-source_filename = "/sdcard/zen/src/zen_stdlib/build/stdlib.ll"
 
-@INF = external local_unnamed_addr constant double
-@I32_MAX = external local_unnamed_addr constant i32
-@SEED = external local_unnamed_addr global i32
-@TAU = external local_unnamed_addr constant double
-@PI = external local_unnamed_addr constant double
-@.str_stdlib_stdlib_0 = private unnamed_addr constant [1 x i8] zeroinitializer
+@NAN = external constant double
+@NEG_INF = external constant double
+@INF = external constant double
+@F64_EPS = external constant double
+@F64_MIN = external constant double
+@F64_MAX = external constant double
+@I32_MIN = external constant i32
+@I32_MAX = external constant i32
+@SEED = external global i32
+@LN10 = external constant double
+@LN2 = external constant double
+@SQRT2 = external constant double
+@PHI = external constant double
+@E = external constant double
+@TAU = external constant double
+@PI = external constant double
+declare void @_zen_list_set_meta(ptr, i32, i32)
+%ZenList = type { ptr, i32, i32, i64 }
+declare void @_zen_list_push(ptr, ptr)
+declare ptr @_zen_list_new(i64)
+declare ptr @_int_to_string_ascii(i32)
+declare i32 @_string_to_int_ascii(ptr)
+declare i32 @strcmp(ptr, ptr)
+declare void @_zen_string_free(ptr)
+declare ptr @_str_concat(ptr, ptr)
+declare ptr @_zen_char_to_string(i8)
+declare ptr @_str_dup(ptr)
+declare i32 @strlen(ptr)
+%HttpServer = type opaque
+%HttpRequest = type opaque
+%HttpResponse = type opaque
+%Json = type opaque
+%JsonArray = type opaque
+%JsonObject = type opaque
+%Ptr = type { ptr }
+%Map = type opaque
+%Byte = type opaque
+
+
+
+
+
+
+@.str_stdlib_stdlib_0 = private unnamed_addr constant [1 x i8] c"\00"
 @.str_stdlib_stdlib_1 = private unnamed_addr constant [2 x i8] c"a\00"
 @.str_stdlib_stdlib_2 = private unnamed_addr constant [2 x i8] c"z\00"
 @.str_stdlib_stdlib_3 = private unnamed_addr constant [2 x i8] c"A\00"
 @.str_stdlib_stdlib_4 = private unnamed_addr constant [2 x i8] c"Z\00"
+@.str_stdlib_stdlib_5 = private unnamed_addr constant [2 x i8] c" \00"
+@.str_stdlib_stdlib_6 = private unnamed_addr constant [2 x i8] c"\0A\00"
+@.str_stdlib_stdlib_7 = private unnamed_addr constant [2 x i8] c"\09\00"
 @.str_stdlib_stdlib_8 = private unnamed_addr constant [2 x i8] c".\00"
+
+
+
 @.str_stdlib_stdlib_9 = private unnamed_addr constant [2 x i8] c"|\00"
+
+
+
+
+
+@.str_stdlib_stdlib_10 = private unnamed_addr constant [2 x i8] c"?\00"
+@.str_stdlib_stdlib_11 = private unnamed_addr constant [2 x i8] c"*\00"
+
+
+
+@.str_stdlib_stdlib_12 = private unnamed_addr constant [2 x i8] c"#\00"
+
+@.str_stdlib_stdlib_13 = private unnamed_addr constant [2 x i8] c"d\00"
+
 @.str_stdlib_stdlib_14 = private unnamed_addr constant [2 x i8] c"0\00"
 @.str_stdlib_stdlib_15 = private unnamed_addr constant [2 x i8] c"9\00"
+
 @.str_stdlib_stdlib_16 = private unnamed_addr constant [53 x i8] c"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\00"
+
+@.str_stdlib_stdlib_17 = private unnamed_addr constant [2 x i8] c"x\00"
+
 @.str_stdlib_stdlib_18 = private unnamed_addr constant [63 x i8] c"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\00"
+
+@.str_stdlib_stdlib_19 = private unnamed_addr constant [2 x i8] c"s\00"
+
+@.str_stdlib_stdlib_20 = private unnamed_addr constant [2 x i8] c":\00"
+
 @.str_stdlib_stdlib_21 = private unnamed_addr constant [5 x i8] c":int\00"
+@.str_stdlib_stdlib_22 = private unnamed_addr constant [2 x i8] c"-\00"
+
 @.str_stdlib_stdlib_23 = private unnamed_addr constant [4 x i8] c":id\00"
+
+@.str_stdlib_stdlib_24 = private unnamed_addr constant [2 x i8] c"_\00"
+
 @.str_stdlib_stdlib_25 = private unnamed_addr constant [8 x i8] c":string\00"
-@t_stdlib_78 = local_unnamed_addr global i32 0
+@.str_stdlib_stdlib_26 = private unnamed_addr constant [2 x i8] c"[\00"
+@.str_stdlib_stdlib_27 = private unnamed_addr constant [2 x i8] c"]\00"
+
+
+
+
+
+@.str_stdlib_stdlib_28 = private unnamed_addr constant [2 x i8] c",\00"
+
+@.str_stdlib_stdlib_29 = private unnamed_addr constant [2 x i8] c"\0D\00"
+
+@.str_stdlib_stdlib_30 = private unnamed_addr constant [2 x i8] c"\22\00"
+
+@.str_stdlib_stdlib_31 = private unnamed_addr constant [2 x i8] c"{\00"
+@.str_stdlib_stdlib_32 = private unnamed_addr constant [2 x i8] c"}\00"
+
+
+
+
+
 @.str_stdlib_stdlib_33 = private unnamed_addr constant [5 x i8] c"null\00"
 
-declare void @_zen_list_push(ptr, ptr) local_unnamed_addr
 
-declare ptr @_zen_list_new(i64) local_unnamed_addr
 
-declare ptr @_int_to_string_ascii(i32) local_unnamed_addr
 
-declare i32 @_string_to_int_ascii(ptr) local_unnamed_addr
 
-; Function Attrs: mustprogress nocallback nofree nounwind willreturn memory(argmem: read)
-declare i32 @strcmp(ptr captures(none), ptr captures(none)) local_unnamed_addr #0
 
-declare ptr @_str_concat(ptr, ptr) local_unnamed_addr
 
-declare ptr @_zen_char_to_string(i8) local_unnamed_addr
 
-declare i32 @strlen(ptr) local_unnamed_addr
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i1 @isEven(i32 %t0) local_unnamed_addr #1 {
+
+
+
+
+
+
+
+
+
+
+
+define i1 @isEven (i32 %t0) {
 entry:
-  %0 = and i32 %t0, 1
-  %t3 = icmp eq i32 %0, 0
-  ret i1 %t3
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i1 @isOdd(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = srem i32 %t1, 2
+%t3 = icmp eq i32 %t2, 0
+ret i1 %t3
+}
+define i1 @isOdd (i32 %t0) {
 entry:
-  %0 = and i32 %t0, 1
-  %t3 = icmp ne i32 %0, 0
-  ret i1 %t3
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i1 @isPositive(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = srem i32 %t1, 2
+%t3 = icmp ne i32 %t2, 0
+ret i1 %t3
+}
+define i1 @isPositive (i32 %t0) {
 entry:
-  %t2 = icmp sgt i32 %t0, 0
-  ret i1 %t2
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i1 @isNegative(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = icmp sgt i32 %t1, 0
+ret i1 %t2
+}
+define i1 @isNegative (i32 %t0) {
 entry:
-  %t2 = icmp slt i32 %t0, 0
-  ret i1 %t2
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define noundef i1 @isNaN(double %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = icmp slt i32 %t1, 0
+ret i1 %t2
+}
+define i1 @isNaN (double %t0) {
 entry:
-  ret i1 false
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define range(i32 0, -2147483647) i32 @abs(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t1 = load double, ptr %x.addr
+%t2 = load double, ptr %x.addr
+%t3 = fcmp one double %t1, %t2
+ret i1 %t3
+}
+define i32 @abs (i32 %t0) {
 entry:
-  %common.ret.op = tail call i32 @llvm.abs.i32(i32 %t0, i1 false)
-  ret i32 %common.ret.op
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @max(i32 %t0, i32 %t1) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = icmp slt i32 %t1, 0
+br i1 %t2, label %if1, label %end0
+if1:
+%t3 = load i32, ptr %x.addr
+%t4 = sub i32 0, %t3
+ret i32 %t4
+end0:
+%t5 = load i32, ptr %x.addr
+ret i32 %t5
+}
+define i32 @max (i32 %t0, i32 %t1) {
 entry:
-  %common.ret.op = tail call i32 @llvm.smax.i32(i32 %t0, i32 %t1)
-  ret i32 %common.ret.op
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @min(i32 %t0, i32 %t1) local_unnamed_addr #1 {
+%a.addr = alloca i32
+store i32 %t0, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t1, ptr %b.addr
+%t2 = load i32, ptr %a.addr
+%t3 = load i32, ptr %b.addr
+%t4 = icmp sgt i32 %t2, %t3
+br i1 %t4, label %if3, label %end2
+if3:
+%t5 = load i32, ptr %a.addr
+ret i32 %t5
+end2:
+%t6 = load i32, ptr %b.addr
+ret i32 %t6
+}
+define i32 @min (i32 %t0, i32 %t1) {
 entry:
-  %common.ret.op = tail call i32 @llvm.smin.i32(i32 %t0, i32 %t1)
-  ret i32 %common.ret.op
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @clamp(i32 %t0, i32 %t1, i32 %t2) local_unnamed_addr #1 {
+%a.addr = alloca i32
+store i32 %t0, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t1, ptr %b.addr
+%t2 = load i32, ptr %a.addr
+%t3 = load i32, ptr %b.addr
+%t4 = icmp slt i32 %t2, %t3
+br i1 %t4, label %if5, label %end4
+if5:
+%t5 = load i32, ptr %a.addr
+ret i32 %t5
+end4:
+%t6 = load i32, ptr %b.addr
+ret i32 %t6
+}
+define i32 @clamp (i32 %t0, i32 %t1, i32 %t2) {
 entry:
-  %t5 = icmp slt i32 %t0, %t1
-  %t2.t0 = tail call i32 @llvm.smin.i32(i32 %t0, i32 %t2)
-  %common.ret.op = select i1 %t5, i32 %t1, i32 %t2.t0
-  ret i32 %common.ret.op
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define range(i32 -1, 2) i32 @sign(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%low.addr = alloca i32
+store i32 %t1, ptr %low.addr
+%high.addr = alloca i32
+store i32 %t2, ptr %high.addr
+%t3 = load i32, ptr %x.addr
+%t4 = load i32, ptr %low.addr
+%t5 = icmp slt i32 %t3, %t4
+br i1 %t5, label %if7, label %end6
+if7:
+%t6 = load i32, ptr %low.addr
+ret i32 %t6
+end6:
+%t7 = load i32, ptr %x.addr
+%t8 = load i32, ptr %high.addr
+%t9 = icmp sgt i32 %t7, %t8
+br i1 %t9, label %if9, label %end8
+if9:
+%t10 = load i32, ptr %high.addr
+ret i32 %t10
+end8:
+%t11 = load i32, ptr %x.addr
+ret i32 %t11
+}
+define i32 @sign (i32 %t0) {
 entry:
-  %t0.lobit = ashr i32 %t0, 31
-  %t2.inv = icmp slt i32 %t0, 1
-  %common.ret.op = select i1 %t2.inv, i32 %t0.lobit, i32 1
-  ret i32 %common.ret.op
-}
 
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @pow(i32 %t0, i32 %t1) local_unnamed_addr #2 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = icmp sgt i32 %t1, 0
+br i1 %t2, label %if11, label %end10
+if11:
+ret i32 1
+end10:
+%t3 = load i32, ptr %x.addr
+%t4 = icmp slt i32 %t3, 0
+br i1 %t4, label %if13, label %end12
+if13:
+ret i32 -1
+end12:
+ret i32 0
+}
+define double @pow (i32 %t0, i32 %t1) {
 entry:
-  %t3 = icmp eq i32 %t1, 0
-  br i1 %t3, label %common.ret, label %end14
-
-common.ret:                                       ; preds = %whileBody29, %whileEnd30, %end14, %if17, %if23, %entry, %if34
-  %common.ret.op = phi double [ %t39, %if34 ], [ 1.000000e+00, %entry ], [ %., %if23 ], [ %spec.select, %if17 ], [ 1.000000e+00, %end14 ], [ %t30, %whileEnd30 ], [ %t32, %whileBody29 ]
-  ret double %common.ret.op
-
-end14:                                            ; preds = %entry
-  switch i32 %t0, label %end22 [
-    i32 0, label %if17
-    i32 1, label %common.ret
-    i32 -1, label %if23
-  ]
-
-if17:                                             ; preds = %end14
-  %t7 = icmp sgt i32 %t1, 0
-  %t8 = load double, ptr @INF, align 8
-  %spec.select = select i1 %t7, double 0.000000e+00, double %t8
-  br label %common.ret
-
-if23:                                             ; preds = %end14
-  %0 = and i32 %t1, 1
-  %t15 = icmp eq i32 %0, 0
-  %. = select i1 %t15, double 1.000000e+00, double -1.000000e+00
-  br label %common.ret
-
-end22:                                            ; preds = %end14
-  %t18 = icmp slt i32 %t1, 0
-  br i1 %t18, label %end26, label %whileBody29.lr.ph
-
-end26:                                            ; preds = %end22
-  %t21 = sub i32 0, %t1
-  %t2610 = icmp sgt i32 %t21, 0
-  br i1 %t2610, label %whileBody29.lr.ph, label %if34
-
-whileBody29.lr.ph:                                ; preds = %end22, %end26
-  %exp.addr.017 = phi i32 [ %t21, %end26 ], [ %t1, %end22 ]
-  %t29 = sitofp i32 %t0 to double
-  %t32 = load double, ptr @INF, align 8
-  br label %whileBody29
-
-whileCond28:                                      ; preds = %whileBody29
-  %t36 = add nuw nsw i32 %storemerge12, 1
-  %t26 = icmp samesign ult i32 %t36, %exp.addr.017
-  br i1 %t26, label %whileBody29, label %whileEnd30
-
-whileBody29:                                      ; preds = %whileBody29.lr.ph, %whileCond28
-  %storemerge12 = phi i32 [ 0, %whileBody29.lr.ph ], [ %t36, %whileCond28 ]
-  %t30911 = phi double [ 1.000000e+00, %whileBody29.lr.ph ], [ %t30, %whileCond28 ]
-  %t30 = fmul double %t30911, %t29
-  %t33 = fcmp oeq double %t30, %t32
-  br i1 %t33, label %common.ret, label %whileCond28
-
-whileEnd30:                                       ; preds = %whileCond28
-  br i1 %t18, label %if34, label %common.ret
-
-if34:                                             ; preds = %end26, %whileEnd30
-  %t3819 = phi double [ %t30, %whileEnd30 ], [ 1.000000e+00, %end26 ]
-  %t39 = fdiv double 1.000000e+00, %t3819
-  br label %common.ret
+%t16 = alloca i1
+%t23 = alloca double
+%t24 = alloca i32
+%base.addr = alloca i32
+store i32 %t0, ptr %base.addr
+%exp.addr = alloca i32
+store i32 %t1, ptr %exp.addr
+%t2 = load i32, ptr %exp.addr
+%t3 = icmp eq i32 %t2, 0
+br i1 %t3, label %if15, label %end14
+if15:
+ret double 1.0
+end14:
+%t4 = load i32, ptr %base.addr
+%t5 = icmp eq i32 %t4, 0
+br i1 %t5, label %if17, label %end16
+if17:
+%t6 = load i32, ptr %exp.addr
+%t7 = icmp sgt i32 %t6, 0
+br i1 %t7, label %if19, label %end18
+if19:
+ret double 0.0
+end18:
+%t8 = load double, ptr @INF
+ret double %t8
+end16:
+%t9 = load i32, ptr %base.addr
+%t10 = icmp eq i32 %t9, 1
+br i1 %t10, label %if21, label %end20
+if21:
+ret double 1.0
+end20:
+%t11 = load i32, ptr %base.addr
+%t12 = icmp eq i32 %t11, -1
+br i1 %t12, label %if23, label %end22
+if23:
+%t13 = load i32, ptr %exp.addr
+%t14 = srem i32 %t13, 2
+%t15 = icmp eq i32 %t14, 0
+br i1 %t15, label %if25, label %end24
+if25:
+ret double 1.0
+end24:
+ret double -1.0
+end22:
+store i1 0, ptr %t16
+%t17 = load i32, ptr %exp.addr
+%t18 = icmp slt i32 %t17, 0
+br i1 %t18, label %if27, label %end26
+if27:
+store i1 1, ptr %t16
+%t20 = load i32, ptr %exp.addr
+%t21 = sub i32 0, %t20
+store i32 %t21, ptr %exp.addr
+br label %end26
+end26:
+store double 1.0, ptr %t23
+store i32 0, ptr %t24
+br label %whileCond28
+whileCond28:
+%t25 = load i32, ptr %t24
+%t26 = load i32, ptr %exp.addr
+%t27 = icmp slt i32 %t25, %t26
+br i1 %t27, label %whileBody29, label %whileEnd30
+whileBody29:
+%t28 = load double, ptr %t23
+%t29 = load i32, ptr %base.addr
+%t30 = sitofp i32 %t29 to double
+%t31 = fmul double %t28, %t30
+store double %t31, ptr %t23
+%t33 = load double, ptr %t23
+%t34 = load double, ptr @INF
+%t35 = fcmp oeq double %t33, %t34
+br i1 %t35, label %if32, label %end31
+if32:
+%t36 = load double, ptr @INF
+ret double %t36
+end31:
+%t37 = load i32, ptr %t24
+%t38 = add i32 %t37, 1
+store i32 %t38, ptr %t24
+br label %whileCond28
+whileEnd30:
+%t40 = load i1, ptr %t16
+br i1 %t40, label %if34, label %end33
+if34:
+%t41 = load double, ptr %t23
+%t42 = fdiv double 1.0, %t41
+ret double %t42
+end33:
+%t43 = load double, ptr %t23
+ret double %t43
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define i32 @sqrt(i32 %t0) local_unnamed_addr #2 {
+define i32 @sqrt (i32 %t0) {
 entry:
-  %t2 = icmp slt i32 %t0, 0
-  br i1 %t2, label %common.ret, label %whileCond37
-
-common.ret:                                       ; preds = %entry, %whileEnd39
-  %common.ret.op = phi i32 [ %t12, %whileEnd39 ], [ -1, %entry ]
-  ret i32 %common.ret.op
-
-whileCond37:                                      ; preds = %entry, %whileCond37
-  %storemerge = phi i32 [ %t10, %whileCond37 ], [ 1, %entry ]
-  %t6 = mul i32 %storemerge, %storemerge
-  %t8.not = icmp sgt i32 %t6, %t0
-  %t10 = add i32 %storemerge, 1
-  br i1 %t8.not, label %whileEnd39, label %whileCond37
-
-whileEnd39:                                       ; preds = %whileCond37
-  %t12 = add i32 %storemerge, -1
-  br label %common.ret
+%t3 = alloca i32
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = icmp slt i32 %t1, 0
+br i1 %t2, label %if36, label %end35
+if36:
+ret i32 -1
+end35:
+store i32 1, ptr %t3
+br label %whileCond37
+whileCond37:
+%t4 = load i32, ptr %t3
+%t5 = load i32, ptr %t3
+%t7 = load i32, ptr %x.addr
+%t6 = mul i32 %t4, %t5
+%t8 = icmp sle i32 %t6, %t7
+br i1 %t8, label %whileBody38, label %whileEnd39
+whileBody38:
+%t9 = load i32, ptr %t3
+%t10 = add i32 %t9, 1
+store i32 %t10, ptr %t3
+br label %whileCond37
+whileEnd39:
+%t12 = load i32, ptr %t3
+%t13 = sub i32 %t12, 1
+ret i32 %t13
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @square(i32 %t0) local_unnamed_addr #1 {
+define i32 @square (i32 %t0) {
 entry:
-  %t3 = mul i32 %t0, %t0
-  ret i32 %t3
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @cube(i32 %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = load i32, ptr %x.addr
+%t3 = mul i32 %t1, %t2
+ret i32 %t3
+}
+define i32 @cube (i32 %t0) {
 entry:
-  %t3 = mul i32 %t0, %t0
-  %t5 = mul i32 %t3, %t0
-  ret i32 %t5
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @floor(double %t0) local_unnamed_addr #1 {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%t1 = load i32, ptr %x.addr
+%t2 = load i32, ptr %x.addr
+%t4 = load i32, ptr %x.addr
+%t3 = mul i32 %t1, %t2
+%t5 = mul i32 %t3, %t4
+ret i32 %t5
+}
+define i32 @floor (double %t0) {
 entry:
-  %t2 = fptosi double %t0 to i32
-  %t6 = fcmp olt double %t0, 0.000000e+00
-  %t11 = sitofp i32 %t2 to double
-  %t10 = fcmp one double %t0, %t11
-  %t4 = select i1 %t6, i1 %t10, i1 false
-  %t13 = sext i1 %t4 to i32
-  %common.ret.op = add i32 %t13, %t2
-  ret i32 %common.ret.op
+%t3 = alloca i32
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t1 = load double, ptr %x.addr
+%t2 = fptosi double %t1 to i32
+store i32 %t2, ptr %t3
+%t5 = load double, ptr %x.addr
+%t8 = load double, ptr %x.addr
+%t9 = load i32, ptr %t3
+%t7 = sitofp i32 0 to double
+%t6 = fcmp olt double %t5, %t7
+br i1 %t6, label %rhs41, label %skip42
+rhs41:
+%t11 = sitofp i32 %t9 to double
+%t10 = fcmp one double %t8, %t11
+br label %end43
+skip42:
+br label %end43
+end43:
+%t4 = phi i1 [ false, %skip42 ], [ %t10, %rhs41 ]
+br i1 %t4, label %if44, label %end40
+if44:
+%t12 = load i32, ptr %t3
+%t13 = sub i32 %t12, 1
+ret i32 %t13
+end40:
+%t14 = load i32, ptr %t3
+ret i32 %t14
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @ceil(double %t0) local_unnamed_addr #1 {
+define i32 @ceil (double %t0) {
 entry:
-  %t2 = fptosi double %t0 to i32
-  %t7 = sitofp i32 %t2 to double
-  %t6 = fcmp une double %t0, %t7
-  %t10 = fcmp ogt double %t0, 0.000000e+00
-  %or.cond = and i1 %t10, %t6
-  %t13 = zext i1 %or.cond to i32
-  %spec.select = add i32 %t13, %t2
-  ret i32 %spec.select
+%t3 = alloca i32
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t1 = load double, ptr %x.addr
+%t2 = fptosi double %t1 to i32
+store i32 %t2, ptr %t3
+%t4 = load double, ptr %x.addr
+%t5 = load i32, ptr %t3
+%t7 = sitofp i32 %t5 to double
+%t6 = fcmp oeq double %t4, %t7
+br i1 %t6, label %if46, label %end45
+if46:
+%t8 = load i32, ptr %t3
+ret i32 %t8
+end45:
+%t9 = load double, ptr %x.addr
+%t11 = sitofp i32 0 to double
+%t10 = fcmp ogt double %t9, %t11
+br i1 %t10, label %if48, label %end47
+if48:
+%t12 = load i32, ptr %t3
+%t13 = add i32 %t12, 1
+ret i32 %t13
+end47:
+%t14 = load i32, ptr %t3
+ret i32 %t14
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @round(double %t0) local_unnamed_addr #1 {
+define i32 @round (double %t0) {
 entry:
-  %t2 = fptosi double %t0 to i32
-  %t7 = sitofp i32 %t2 to double
-  %t8 = fsub double %t0, %t7
-  %t10 = fcmp ult double %t0, 0.000000e+00
-  br i1 %t10, label %end49, label %if50
-
-if50:                                             ; preds = %entry
-  %t13 = fcmp ult double %t8, 5.000000e-01
-  br i1 %t13, label %common.ret, label %if52
-
-common.ret:                                       ; preds = %end49, %if50, %if54, %if52
-  %common.ret.op = phi i32 [ %t15, %if52 ], [ %t20, %if54 ], [ %t2, %if50 ], [ %t2, %end49 ]
-  ret i32 %common.ret.op
-
-if52:                                             ; preds = %if50
-  %t15 = add i32 %t2, 1
-  br label %common.ret
-
-end49:                                            ; preds = %entry
-  %t18 = fcmp ugt double %t8, -5.000000e-01
-  br i1 %t18, label %common.ret, label %if54
-
-if54:                                             ; preds = %end49
-  %t20 = add i32 %t2, -1
-  br label %common.ret
+%t3 = alloca i32
+%t4 = alloca double
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t1 = load double, ptr %x.addr
+%t2 = fptosi double %t1 to i32
+store i32 %t2, ptr %t3
+%t5 = load double, ptr %x.addr
+%t6 = load i32, ptr %t3
+%t7 = sitofp i32 %t6 to double
+%t8 = fsub double %t5, %t7
+store double %t8, ptr %t4
+%t9 = load double, ptr %x.addr
+%t11 = sitofp i32 0 to double
+%t10 = fcmp oge double %t9, %t11
+br i1 %t10, label %if50, label %end49
+if50:
+%t12 = load double, ptr %t4
+%t13 = fcmp oge double %t12, 0.5
+br i1 %t13, label %if52, label %end51
+if52:
+%t14 = load i32, ptr %t3
+%t15 = add i32 %t14, 1
+ret i32 %t15
+end51:
+%t16 = load i32, ptr %t3
+ret i32 %t16
+end49:
+%t17 = load double, ptr %t4
+%t18 = fcmp ole double %t17, -0.5
+br i1 %t18, label %if54, label %end53
+if54:
+%t19 = load i32, ptr %t3
+%t20 = sub i32 %t19, 1
+ret i32 %t20
+end53:
+%t21 = load i32, ptr %t3
+ret i32 %t21
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @toFixed(double %t0, i32 %t1) local_unnamed_addr #2 {
+define double @toFixed (double %t0, i32 %t1) {
 entry:
-  %t3 = icmp slt i32 %t1, 0
-  br i1 %t3, label %common.ret, label %end55
-
-common.ret:                                       ; preds = %entry, %round.exit
-  %common.ret.op = phi double [ %t18, %round.exit ], [ %t0, %entry ]
-  ret double %common.ret.op
-
-end55:                                            ; preds = %entry
-  %t3.i = icmp eq i32 %t1, 0
-  br i1 %t3.i, label %pow.exit, label %whileBody29.lr.ph.i
-
-whileBody29.lr.ph.i:                              ; preds = %end55
-  %t32.i = load double, ptr @INF, align 8
-  br label %whileBody29.i
-
-whileCond28.i:                                    ; preds = %whileBody29.i
-  %t36.i = add nuw nsw i32 %storemerge12.i, 1
-  %t26.i = icmp samesign ult i32 %t36.i, %t1
-  br i1 %t26.i, label %whileBody29.i, label %pow.exit
-
-whileBody29.i:                                    ; preds = %whileCond28.i, %whileBody29.lr.ph.i
-  %storemerge12.i = phi i32 [ 0, %whileBody29.lr.ph.i ], [ %t36.i, %whileCond28.i ]
-  %t30911.i = phi double [ 1.000000e+00, %whileBody29.lr.ph.i ], [ %t30.i, %whileCond28.i ]
-  %t30.i = fmul double %t30911.i, 1.000000e+01
-  %t33.i = fcmp oeq double %t30.i, %t32.i
-  br i1 %t33.i, label %pow.exit, label %whileCond28.i
-
-pow.exit:                                         ; preds = %whileCond28.i, %whileBody29.i, %end55
-  %common.ret.op.i = phi double [ 1.000000e+00, %end55 ], [ %t30.i, %whileCond28.i ], [ %t32.i, %whileBody29.i ]
-  %t11 = fmul double %t0, %common.ret.op.i
-  %t2.i = fptosi double %t11 to i32
-  %t7.i = sitofp i32 %t2.i to double
-  %t8.i = fsub double %t11, %t7.i
-  %t10.i = fcmp ult double %t11, 0.000000e+00
-  br i1 %t10.i, label %end49.i, label %if50.i
-
-if50.i:                                           ; preds = %pow.exit
-  %t13.i = fcmp ult double %t8.i, 5.000000e-01
-  br i1 %t13.i, label %round.exit, label %if52.i
-
-if52.i:                                           ; preds = %if50.i
-  %t15.i = add i32 %t2.i, 1
-  br label %round.exit
-
-end49.i:                                          ; preds = %pow.exit
-  %t18.i3 = fcmp ugt double %t8.i, -5.000000e-01
-  br i1 %t18.i3, label %round.exit, label %if54.i
-
-if54.i:                                           ; preds = %end49.i
-  %t20.i = add i32 %t2.i, -1
-  br label %round.exit
-
-round.exit:                                       ; preds = %if50.i, %if52.i, %end49.i, %if54.i
-  %common.ret.op.i2 = phi i32 [ %t15.i, %if52.i ], [ %t20.i, %if54.i ], [ %t2.i, %if50.i ], [ %t2.i, %end49.i ]
-  %t17 = sitofp i32 %common.ret.op.i2 to double
-  %t18 = fdiv double %t17, %common.ret.op.i
-  br label %common.ret
+%t7 = alloca double
+%t8 = alloca double
+%t14 = alloca i32
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%precision.addr = alloca i32
+store i32 %t1, ptr %precision.addr
+%t2 = load i32, ptr %precision.addr
+%t3 = icmp slt i32 %t2, 0
+br i1 %t3, label %if56, label %end55
+if56:
+%t4 = load double, ptr %x.addr
+ret double %t4
+end55:
+%t5 = load i32, ptr %precision.addr
+%t6 = call double @pow(i32 10, i32 %t5)
+store double %t6, ptr %t7
+%t9 = load double, ptr %x.addr
+%t10 = load double, ptr %t7
+%t11 = fmul double %t9, %t10
+store double %t11, ptr %t8
+%t12 = load double, ptr %t8
+%t13 = call i32 @round(double %t12)
+store i32 %t13, ptr %t14
+%t15 = load i32, ptr %t14
+%t16 = load double, ptr %t7
+%t17 = sitofp i32 %t15 to double
+%t18 = fdiv double %t17, %t16
+ret double %t18
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i32 @mod(i32 %t0, i32 %t1) local_unnamed_addr #1 {
+define i32 @mod (i32 %t0, i32 %t1) {
 entry:
-  %spec.select = tail call i32 @llvm.abs.i32(i32 %t1, i1 false)
-  %t9 = srem i32 %t0, %spec.select
-  %t11 = icmp slt i32 %t9, 0
-  %t14 = select i1 %t11, i32 %spec.select, i32 0
-  %common.ret.op = add i32 %t14, %t9
-  ret i32 %common.ret.op
+%t7 = alloca i32
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%m.addr = alloca i32
+store i32 %t1, ptr %m.addr
+%t2 = load i32, ptr %m.addr
+%t3 = icmp slt i32 %t2, 0
+br i1 %t3, label %if58, label %end57
+if58:
+%t4 = load i32, ptr %m.addr
+%t5 = sub i32 0, %t4
+store i32 %t5, ptr %m.addr
+br label %end57
+end57:
+%t8 = load i32, ptr %x.addr
+%t9 = load i32, ptr %m.addr
+%t10 = srem i32 %t8, %t9
+store i32 %t10, ptr %t7
+%t11 = load i32, ptr %t7
+%t12 = icmp slt i32 %t11, 0
+br i1 %t12, label %if60, label %end59
+if60:
+%t13 = load i32, ptr %t7
+%t14 = load i32, ptr %m.addr
+%t15 = add i32 %t13, %t14
+ret i32 %t15
+end59:
+%t16 = load i32, ptr %t7
+ret i32 %t16
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define range(i32 0, -2147483648) i32 @gcd(i32 %t0, i32 %t1) local_unnamed_addr #2 {
+define i32 @gcd (i32 %t0, i32 %t1) {
 entry:
-  %t3 = tail call i32 @llvm.abs.i32(i32 %t0, i1 true)
-  %t7.not6 = icmp eq i32 %t1, 0
-  br i1 %t7.not6, label %whileEnd63, label %whileBody62.preheader
-
-whileBody62.preheader:                            ; preds = %entry
-  %t5 = tail call i32 @llvm.abs.i32(i32 %t1, i1 true)
-  br label %whileBody62
-
-whileBody62:                                      ; preds = %whileBody62.preheader, %whileBody62
-  %b.addr.08 = phi i32 [ %t12, %whileBody62 ], [ %t5, %whileBody62.preheader ]
-  %a.addr.07 = phi i32 [ %b.addr.08, %whileBody62 ], [ %t3, %whileBody62.preheader ]
-  %t12 = urem i32 %a.addr.07, %b.addr.08
-  %t7.not = icmp eq i32 %t12, 0
-  br i1 %t7.not, label %whileEnd63, label %whileBody62
-
-whileEnd63:                                       ; preds = %whileBody62, %entry
-  %a.addr.0.lcssa = phi i32 [ %t3, %entry ], [ %b.addr.08, %whileBody62 ]
-  ret i32 %a.addr.0.lcssa
+%t8 = alloca i32
+%a.addr = alloca i32
+store i32 %t0, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t1, ptr %b.addr
+%t2 = load i32, ptr %a.addr
+%t3 = call i32 @abs(i32 %t2)
+store i32 %t3, ptr %a.addr
+%t4 = load i32, ptr %b.addr
+%t5 = call i32 @abs(i32 %t4)
+store i32 %t5, ptr %b.addr
+br label %whileCond61
+whileCond61:
+%t6 = load i32, ptr %b.addr
+%t7 = icmp ne i32 %t6, 0
+br i1 %t7, label %whileBody62, label %whileEnd63
+whileBody62:
+%t9 = load i32, ptr %b.addr
+store i32 %t9, ptr %t8
+%t10 = load i32, ptr %a.addr
+%t11 = load i32, ptr %b.addr
+%t12 = srem i32 %t10, %t11
+store i32 %t12, ptr %b.addr
+%t14 = load i32, ptr %t8
+store i32 %t14, ptr %a.addr
+br label %whileCond61
+whileEnd63:
+%t16 = load i32, ptr %a.addr
+ret i32 %t16
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define range(i32 0, -2147483648) i32 @lcm(i32 %t0, i32 %t1) local_unnamed_addr #2 {
+define i32 @lcm (i32 %t0, i32 %t1) {
 entry:
-  %t4 = icmp eq i32 %t0, 0
-  %t6 = icmp eq i32 %t1, 0
-  %t2 = select i1 %t4, i1 true, i1 %t6
-  br i1 %t2, label %common.ret, label %whileBody62.preheader.i
 
-common.ret:                                       ; preds = %entry, %gcd.exit
-  %common.ret.op = phi i32 [ %t14, %gcd.exit ], [ 0, %entry ]
-  ret i32 %common.ret.op
-
-whileBody62.preheader.i:                          ; preds = %entry
-  %t3.i = tail call i32 @llvm.abs.i32(i32 %t0, i1 true)
-  %t5.i = tail call i32 @llvm.abs.i32(i32 %t1, i1 true)
-  br label %whileBody62.i
-
-whileBody62.i:                                    ; preds = %whileBody62.i, %whileBody62.preheader.i
-  %b.addr.08.i = phi i32 [ %t12.i, %whileBody62.i ], [ %t5.i, %whileBody62.preheader.i ]
-  %a.addr.07.i = phi i32 [ %b.addr.08.i, %whileBody62.i ], [ %t3.i, %whileBody62.preheader.i ]
-  %t12.i = urem i32 %a.addr.07.i, %b.addr.08.i
-  %t7.not.i = icmp eq i32 %t12.i, 0
-  br i1 %t7.not.i, label %gcd.exit, label %whileBody62.i
-
-gcd.exit:                                         ; preds = %whileBody62.i
-  %t11 = sdiv i32 %t0, %b.addr.08.i
-  %t13 = mul i32 %t11, %t1
-  %t14 = tail call i32 @llvm.abs.i32(i32 %t13, i1 true)
-  br label %common.ret
+%a.addr = alloca i32
+store i32 %t0, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t1, ptr %b.addr
+%t3 = load i32, ptr %a.addr
+%t5 = load i32, ptr %b.addr
+%t4 = icmp eq i32 %t3, 0
+br i1 %t4, label %skip66, label %rhs65
+rhs65:
+%t6 = icmp eq i32 %t5, 0
+br label %end67
+skip66:
+br label %end67
+end67:
+%t2 = phi i1 [ true, %skip66 ], [ %t6, %rhs65 ]
+br i1 %t2, label %if68, label %end64
+if68:
+ret i32 0
+end64:
+%t7 = load i32, ptr %a.addr
+%t8 = load i32, ptr %a.addr
+%t9 = load i32, ptr %b.addr
+%t12 = load i32, ptr %b.addr
+%t10 = call i32 @gcd(i32 %t8, i32 %t9)
+%t11 = sdiv i32 %t7, %t10
+%t13 = mul i32 %t11, %t12
+%t14 = call i32 @abs(i32 %t13)
+ret i32 %t14
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @factorial(i32 %t0) local_unnamed_addr #2 {
+define double @factorial (i32 %t0) {
 entry:
-  %t2 = icmp slt i32 %t0, 0
-  br i1 %t2, label %common.ret, label %end69
-
-common.ret:                                       ; preds = %whileBody74, %end69, %entry
-  %common.ret.op = phi double [ -1.000000e+00, %entry ], [ 1.000000e+00, %end69 ], [ %t13, %whileBody74 ]
-  ret double %common.ret.op
-
-end69:                                            ; preds = %entry
-  %t4 = icmp eq i32 %t0, 0
-  br i1 %t4, label %common.ret, label %whileBody74
-
-whileBody74:                                      ; preds = %end69, %whileBody74
-  %storemerge6 = phi i32 [ %t15, %whileBody74 ], [ 1, %end69 ]
-  %t1335 = phi double [ %t13, %whileBody74 ], [ 1.000000e+00, %end69 ]
-  %t12 = sitofp i32 %storemerge6 to double
-  %t13 = fmul double %t1335, %t12
-  %t15 = add i32 %storemerge6, 1
-  %t9.not = icmp sgt i32 %t15, %t0
-  br i1 %t9.not, label %common.ret, label %whileBody74
+%t5 = alloca double
+%t6 = alloca i32
+%n.addr = alloca i32
+store i32 %t0, ptr %n.addr
+%t1 = load i32, ptr %n.addr
+%t2 = icmp slt i32 %t1, 0
+br i1 %t2, label %if70, label %end69
+if70:
+ret double -1.0
+end69:
+%t3 = load i32, ptr %n.addr
+%t4 = icmp eq i32 %t3, 0
+br i1 %t4, label %if72, label %end71
+if72:
+ret double 1.0
+end71:
+store double 1.0, ptr %t5
+store i32 1, ptr %t6
+br label %whileCond73
+whileCond73:
+%t7 = load i32, ptr %t6
+%t8 = load i32, ptr %n.addr
+%t9 = icmp sle i32 %t7, %t8
+br i1 %t9, label %whileBody74, label %whileEnd75
+whileBody74:
+%t10 = load double, ptr %t5
+%t11 = load i32, ptr %t6
+%t12 = sitofp i32 %t11 to double
+%t13 = fmul double %t10, %t12
+store double %t13, ptr %t5
+%t15 = load i32, ptr %t6
+%t16 = add i32 %t15, 1
+store i32 %t16, ptr %t6
+br label %whileCond73
+whileEnd75:
+%t18 = load double, ptr %t5
+ret double %t18
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define noundef i1 @isPrime(i32 %t0) local_unnamed_addr #2 {
+define i1 @isPrime (i32 %t0) {
 entry:
-  %t2 = icmp slt i32 %t0, 2
-  br i1 %t2, label %common.ret, label %end76
-
-common.ret:                                       ; preds = %whileEnd39.i, %whileBody83, %end78, %end76, %entry
-  %common.ret.op = phi i1 [ false, %entry ], [ true, %end76 ], [ false, %end78 ], [ %t11.not, %whileBody83 ], [ %t11.not, %whileEnd39.i ]
-  ret i1 %common.ret.op
-
-end76:                                            ; preds = %entry
-  %t4 = icmp eq i32 %t0, 2
-  br i1 %t4, label %common.ret, label %end78
-
-end78:                                            ; preds = %end76
-  %0 = and i32 %t0, 1
-  %t3.i = icmp eq i32 %0, 0
-  br i1 %t3.i, label %common.ret, label %whileCond82
-
-whileCond82:                                      ; preds = %end78, %whileBody83
-  %storemerge = phi i32 [ %t17, %whileBody83 ], [ 3, %end78 ]
-  br label %whileCond37.i
-
-whileCond37.i:                                    ; preds = %whileCond82, %whileCond37.i
-  %storemerge.i = phi i32 [ %t10.i, %whileCond37.i ], [ 1, %whileCond82 ]
-  %t6.i = mul i32 %storemerge.i, %storemerge.i
-  %t8.not.i = icmp sgt i32 %t6.i, %t0
-  %t10.i = add i32 %storemerge.i, 1
-  br i1 %t8.not.i, label %whileEnd39.i, label %whileCond37.i
-
-whileEnd39.i:                                     ; preds = %whileCond37.i
-  %t12.i = add i32 %storemerge.i, -1
-  %t11.not = icmp sgt i32 %storemerge, %t12.i
-  br i1 %t11.not, label %common.ret, label %whileBody83
-
-whileBody83:                                      ; preds = %whileEnd39.i
-  %t14 = srem i32 %t0, %storemerge
-  %t15 = icmp eq i32 %t14, 0
-  %t17 = add i32 %storemerge, 2
-  br i1 %t15, label %common.ret, label %whileCond82
+%t7 = alloca i32
+%n.addr = alloca i32
+store i32 %t0, ptr %n.addr
+%t1 = load i32, ptr %n.addr
+%t2 = icmp slt i32 %t1, 2
+br i1 %t2, label %if77, label %end76
+if77:
+ret i1 0
+end76:
+%t3 = load i32, ptr %n.addr
+%t4 = icmp eq i32 %t3, 2
+br i1 %t4, label %if79, label %end78
+if79:
+ret i1 1
+end78:
+%t5 = load i32, ptr %n.addr
+%t6 = call i1 @isEven(i32 %t5)
+br i1 %t6, label %if81, label %end80
+if81:
+ret i1 0
+end80:
+store i32 3, ptr %t7
+br label %whileCond82
+whileCond82:
+%t8 = load i32, ptr %t7
+%t9 = load i32, ptr %n.addr
+%t10 = call i32 @sqrt(i32 %t9)
+%t11 = icmp sle i32 %t8, %t10
+br i1 %t11, label %whileBody83, label %whileEnd84
+whileBody83:
+%t12 = load i32, ptr %n.addr
+%t13 = load i32, ptr %t7
+%t14 = srem i32 %t12, %t13
+%t15 = icmp eq i32 %t14, 0
+br i1 %t15, label %if86, label %end85
+if86:
+ret i1 0
+end85:
+%t16 = load i32, ptr %t7
+%t17 = add i32 %t16, 2
+store i32 %t17, ptr %t7
+br label %whileCond82
+whileEnd84:
+ret i1 1
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define double @lerp(double %t0, double %t1, double %t2) local_unnamed_addr #1 {
+define double @lerp (double %t0, double %t1, double %t2) {
 entry:
-  %t6 = fsub double %t1, %t0
-  %t8 = fmul double %t6, %t2
-  %t9 = fadd double %t0, %t8
-  ret double %t9
-}
 
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define double @normalize(double %t0, double %t1, double %t2) local_unnamed_addr #1 {
+%a.addr = alloca double
+store double %t0, ptr %a.addr
+%b.addr = alloca double
+store double %t1, ptr %b.addr
+%t.addr = alloca double
+store double %t2, ptr %t.addr
+%t3 = load double, ptr %a.addr
+%t4 = load double, ptr %b.addr
+%t5 = load double, ptr %a.addr
+%t7 = load double, ptr %t.addr
+%t6 = fsub double %t4, %t5
+%t8 = fmul double %t6, %t7
+%t9 = fadd double %t3, %t8
+ret double %t9
+}
+define double @normalize (double %t0, double %t1, double %t2) {
 entry:
-  %t5 = fcmp oeq double %t1, %t2
-  br i1 %t5, label %common.ret, label %end87
 
-common.ret:                                       ; preds = %entry, %end87
-  %common.ret.op = phi double [ %t12, %end87 ], [ 0.000000e+00, %entry ]
-  ret double %common.ret.op
-
-end87:                                            ; preds = %entry
-  %t8 = fsub double %t0, %t1
-  %t11 = fsub double %t2, %t1
-  %t12 = fdiv double %t8, %t11
-  br label %common.ret
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%a.addr = alloca double
+store double %t1, ptr %a.addr
+%b.addr = alloca double
+store double %t2, ptr %b.addr
+%t3 = load double, ptr %a.addr
+%t4 = load double, ptr %b.addr
+%t5 = fcmp oeq double %t3, %t4
+br i1 %t5, label %if88, label %end87
+if88:
+ret double 0.0
+end87:
+%t6 = load double, ptr %x.addr
+%t7 = load double, ptr %a.addr
+%t9 = load double, ptr %b.addr
+%t10 = load double, ptr %a.addr
+%t8 = fsub double %t6, %t7
+%t11 = fsub double %t9, %t10
+%t12 = fdiv double %t8, %t11
+ret double %t12
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define i1 @between(i32 %t0, i32 %t1, i32 %t2) local_unnamed_addr #1 {
+define i1 @between (i32 %t0, i32 %t1, i32 %t2) {
 entry:
-  %t6 = icmp sge i32 %t0, %t1
-  %t9 = icmp sle i32 %t0, %t2
-  %t3 = select i1 %t6, i1 %t9, i1 false
-  ret i1 %t3
-}
 
-define ptr @reverse(ptr %t0) local_unnamed_addr {
+%x.addr = alloca i32
+store i32 %t0, ptr %x.addr
+%a.addr = alloca i32
+store i32 %t1, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t2, ptr %b.addr
+%t4 = load i32, ptr %x.addr
+%t5 = load i32, ptr %a.addr
+%t7 = load i32, ptr %x.addr
+%t8 = load i32, ptr %b.addr
+%t6 = icmp sge i32 %t4, %t5
+br i1 %t6, label %rhs89, label %skip90
+rhs89:
+%t9 = icmp sle i32 %t7, %t8
+br label %end91
+skip90:
+br label %end91
+end91:
+%t3 = phi i1 [ false, %skip90 ], [ %t9, %rhs89 ]
+ret i1 %t3
+}
+define ptr @reverse (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t6.03 = add i32 %t2, -1
-  %t104 = icmp sgt i32 %t6.03, -1
-  br i1 %t104, label %whileBody93, label %whileEnd94
-
-whileBody93:                                      ; preds = %entry, %whileBody93
-  %t6.06 = phi i32 [ %t6.0, %whileBody93 ], [ %t6.03, %entry ]
-  %t4.05 = phi ptr [ %t18, %whileBody93 ], [ @.str_stdlib_stdlib_0, %entry ]
-  %0 = zext nneg i32 %t6.06 to i64
-  %t14 = getelementptr i8, ptr %t0, i64 %0
-  %t15 = load i8, ptr %t14, align 1
-  %t16 = tail call ptr @_zen_char_to_string(i8 %t15)
-  %t18 = tail call ptr @_str_concat(ptr %t4.05, ptr %t16)
-  %t6.0 = add nsw i32 %t6.06, -1
-  %t10.not = icmp eq i32 %t6.06, 0
-  br i1 %t10.not, label %whileEnd94, label %whileBody93
-
-whileEnd94:                                       ; preds = %whileBody93, %entry
-  %t4.0.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %t18, %whileBody93 ]
-  ret ptr %t4.0.lcssa
+%t3 = alloca i32
+%t4 = alloca ptr
+%t7 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%t1 = load ptr, ptr %s.addr
+%t2 = call i32 @strlen(ptr %t1)
+store i32 %t2, ptr %t3
+%t5 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t6 = call ptr @_str_dup(ptr %t5)
+store ptr %t6, ptr %t4
+%t8 = load i32, ptr %t3
+%t9 = sub i32 %t8, 1
+store i32 %t9, ptr %t7
+br label %whileCond92
+whileCond92:
+%t10 = load i32, ptr %t7
+%t11 = icmp sge i32 %t10, 0
+br i1 %t11, label %whileBody93, label %whileEnd94
+whileBody93:
+%t12 = load ptr, ptr %t4
+%t13 = load ptr, ptr %s.addr
+%t14 = load i32, ptr %t7
+%t15 = getelementptr i8, ptr %t13, i32 %t14
+%t16 = load i8, ptr %t15
+%t17 = call ptr @_zen_char_to_string(i8 %t16)
+%t19 = call ptr @_str_concat(ptr %t12, ptr %t17)
+%t21 = load ptr, ptr %t4
+call void @_zen_string_free(ptr %t21)
+store ptr %t19, ptr %t4
+%t22 = load i32, ptr %t7
+%t23 = sub i32 %t22, 1
+store i32 %t23, ptr %t7
+br label %whileCond92
+whileEnd94:
+%t25 = load ptr, ptr %t4
+ret ptr %t25
 }
-
-define i32 @indexOf(ptr %t0, ptr %t1) local_unnamed_addr {
+define i32 @indexOf (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t6 = tail call i32 @strlen(ptr %t1)
-  %t9 = icmp eq i32 %t6, 0
-  br i1 %t9, label %common.ret, label %whileCond97.preheader
-
-whileCond97.preheader:                            ; preds = %entry
-  %t14 = sub i32 %t3, %t6
-  %t15.not6 = icmp slt i32 %t14, 0
-  br i1 %t15.not6, label %common.ret, label %whileBody98.lr.ph
-
-whileBody98.lr.ph:                                ; preds = %whileCond97.preheader
-  %t204 = icmp sgt i32 %t6, 0
-  br label %whileBody98
-
-common.ret:                                       ; preds = %whileBody98, %end105, %whileEnd102, %whileCond97.preheader, %entry
-  %common.ret.op = phi i32 [ 0, %entry ], [ -1, %whileCond97.preheader ], [ %storemerge7, %whileBody98 ], [ -1, %end105 ], [ %storemerge7, %whileEnd102 ]
-  ret i32 %common.ret.op
-
-whileBody98:                                      ; preds = %whileBody98.lr.ph, %end105
-  %storemerge7 = phi i32 [ 0, %whileBody98.lr.ph ], [ %t43, %end105 ]
-  br i1 %t204, label %whileBody101, label %common.ret
-
-whileBody101:                                     ; preds = %whileBody98, %whileBody101
-  %storemerge35 = phi i32 [ %t39, %whileBody101 ], [ 0, %whileBody98 ]
-  %0 = phi i1 [ %spec.select, %whileBody101 ], [ true, %whileBody98 ]
-  %t24 = add i32 %storemerge35, %storemerge7
-  %1 = sext i32 %t24 to i64
-  %t25 = getelementptr i8, ptr %t0, i64 %1
-  %t26 = load i8, ptr %t25, align 1
-  %t27 = tail call ptr @_zen_char_to_string(i8 %t26)
-  %2 = zext nneg i32 %storemerge35 to i64
-  %t31 = getelementptr i8, ptr %t1, i64 %2
-  %t32 = load i8, ptr %t31, align 1
-  %t33 = tail call ptr @_zen_char_to_string(i8 %t32)
-  %t36 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t27, ptr noundef nonnull dereferenceable(1) %t33)
-  %t37.not = icmp eq i32 %t36, 0
-  %spec.select = select i1 %t37.not, i1 %0, i1 false
-  %t39 = add nuw nsw i32 %storemerge35, 1
-  %t20 = icmp slt i32 %t39, %t6
-  br i1 %t20, label %whileBody101, label %whileEnd102
-
-whileEnd102:                                      ; preds = %whileBody101
-  br i1 %spec.select, label %common.ret, label %end105
-
-end105:                                           ; preds = %whileEnd102
-  %t43 = add i32 %storemerge7, 1
-  %t15.not = icmp sgt i32 %t43, %t14
-  br i1 %t15.not, label %common.ret, label %whileBody98
+%t4 = alloca i32
+%t7 = alloca i32
+%t10 = alloca i32
+%t16 = alloca i1
+%t17 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%target.addr = alloca ptr
+store ptr %t1, ptr %target.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = call i32 @strlen(ptr %t2)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %target.addr
+%t6 = call i32 @strlen(ptr %t5)
+store i32 %t6, ptr %t7
+%t8 = load i32, ptr %t7
+%t9 = icmp eq i32 %t8, 0
+br i1 %t9, label %if96, label %end95
+if96:
+ret i32 0
+end95:
+store i32 0, ptr %t10
+br label %whileCond97
+whileCond97:
+%t11 = load i32, ptr %t10
+%t12 = load i32, ptr %t4
+%t13 = load i32, ptr %t7
+%t14 = sub i32 %t12, %t13
+%t15 = icmp sle i32 %t11, %t14
+br i1 %t15, label %whileBody98, label %whileEnd99
+whileBody98:
+store i1 1, ptr %t16
+store i32 0, ptr %t17
+br label %whileCond100
+whileCond100:
+%t18 = load i32, ptr %t17
+%t19 = load i32, ptr %t7
+%t20 = icmp slt i32 %t18, %t19
+br i1 %t20, label %whileBody101, label %whileEnd102
+whileBody101:
+%t21 = load ptr, ptr %s.addr
+%t22 = load i32, ptr %t10
+%t23 = load i32, ptr %t17
+%t24 = add i32 %t22, %t23
+%t29 = load ptr, ptr %target.addr
+%t30 = load i32, ptr %t17
+%t25 = getelementptr i8, ptr %t21, i32 %t24
+%t26 = load i8, ptr %t25
+%t27 = call ptr @_zen_char_to_string(i8 %t26)
+%t31 = getelementptr i8, ptr %t29, i32 %t30
+%t32 = load i8, ptr %t31
+%t33 = call ptr @_zen_char_to_string(i8 %t32)
+%t35 = call i32 @strcmp(ptr %t27, ptr %t33)
+%t36 = icmp ne i32 %t35, 0
+br i1 %t36, label %if104, label %end103
+if104:
+store i1 0, ptr %t16
+br label %end103
+end103:
+%t38 = load i32, ptr %t17
+%t39 = add i32 %t38, 1
+store i32 %t39, ptr %t17
+br label %whileCond100
+whileEnd102:
+%t41 = load i1, ptr %t16
+br i1 %t41, label %if106, label %end105
+if106:
+%t42 = load i32, ptr %t10
+ret i32 %t42
+end105:
+%t43 = load i32, ptr %t10
+%t44 = add i32 %t43, 1
+store i32 %t44, ptr %t10
+br label %whileCond97
+whileEnd99:
+ret i32 -1
 }
-
-define ptr @slice(ptr %t0, i32 %t1, i32 %t2) local_unnamed_addr {
+define ptr @slice (ptr %t0, i32 %t1, i32 %t2) {
 entry:
-  %t4 = tail call i32 @strlen(ptr %t0)
-  %spec.store.select = tail call i32 @llvm.smax.i32(i32 %t1, i32 0)
-  %spec.select = tail call i32 @llvm.smin.i32(i32 %t2, i32 %t4)
-  %t14 = icmp sle i32 %spec.store.select, %spec.select
-  %t227 = icmp samesign ult i32 %spec.store.select, %spec.select
-  %or.cond = select i1 %t14, i1 %t227, i1 false
-  br i1 %or.cond, label %whileBody114, label %common.ret
-
-common.ret:                                       ; preds = %whileBody114, %entry
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %t30, %whileBody114 ]
-  ret ptr %common.ret.op
-
-whileBody114:                                     ; preds = %entry, %whileBody114
-  %storemerge9 = phi i32 [ %t32, %whileBody114 ], [ %spec.store.select, %entry ]
-  %t3068 = phi ptr [ %t30, %whileBody114 ], [ @.str_stdlib_stdlib_0, %entry ]
-  %0 = zext nneg i32 %storemerge9 to i64
-  %t26 = getelementptr i8, ptr %t0, i64 %0
-  %t27 = load i8, ptr %t26, align 1
-  %t28 = tail call ptr @_zen_char_to_string(i8 %t27)
-  %t30 = tail call ptr @_str_concat(ptr %t3068, ptr %t28)
-  %t32 = add nuw nsw i32 %storemerge9, 1
-  %t22 = icmp slt i32 %t32, %spec.select
-  br i1 %t22, label %whileBody114, label %common.ret
+%t5 = alloca i32
+%t19 = alloca ptr
+%t22 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%start.addr = alloca i32
+store i32 %t1, ptr %start.addr
+%end.addr = alloca i32
+store i32 %t2, ptr %end.addr
+%t3 = load ptr, ptr %s.addr
+%t4 = call i32 @strlen(ptr %t3)
+store i32 %t4, ptr %t5
+%t6 = load i32, ptr %start.addr
+%t7 = icmp slt i32 %t6, 0
+br i1 %t7, label %if108, label %end107
+if108:
+store i32 0, ptr %start.addr
+br label %end107
+end107:
+%t9 = load i32, ptr %end.addr
+%t10 = load i32, ptr %t5
+%t11 = icmp sgt i32 %t9, %t10
+br i1 %t11, label %if110, label %end109
+if110:
+%t12 = load i32, ptr %t5
+store i32 %t12, ptr %end.addr
+br label %end109
+end109:
+%t14 = load i32, ptr %start.addr
+%t15 = load i32, ptr %end.addr
+%t16 = icmp sgt i32 %t14, %t15
+br i1 %t16, label %if112, label %end111
+if112:
+%t17 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t18 = call ptr @_str_dup(ptr %t17)
+ret ptr %t18
+end111:
+%t20 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t21 = call ptr @_str_dup(ptr %t20)
+store ptr %t21, ptr %t19
+%t23 = load i32, ptr %start.addr
+store i32 %t23, ptr %t22
+br label %whileCond113
+whileCond113:
+%t24 = load i32, ptr %t22
+%t25 = load i32, ptr %end.addr
+%t26 = icmp slt i32 %t24, %t25
+br i1 %t26, label %whileBody114, label %whileEnd115
+whileBody114:
+%t27 = load ptr, ptr %t19
+%t28 = load ptr, ptr %s.addr
+%t29 = load i32, ptr %t22
+%t30 = getelementptr i8, ptr %t28, i32 %t29
+%t31 = load i8, ptr %t30
+%t32 = call ptr @_zen_char_to_string(i8 %t31)
+%t34 = call ptr @_str_concat(ptr %t27, ptr %t32)
+%t36 = load ptr, ptr %t19
+call void @_zen_string_free(ptr %t36)
+store ptr %t34, ptr %t19
+%t37 = load i32, ptr %t22
+%t38 = add i32 %t37, 1
+store i32 %t38, ptr %t22
+br label %whileCond113
+whileEnd115:
+%t40 = load ptr, ptr %t19
+ret ptr %t40
 }
-
-define ptr @charAt(ptr %t0, i32 %t1) local_unnamed_addr {
+define ptr @charAt (ptr %t0, i32 %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t7 = icmp slt i32 %t1, 0
-  %t10 = icmp sge i32 %t1, %t3
-  %t5 = select i1 %t7, i1 true, i1 %t10
-  br i1 %t5, label %common.ret, label %end116
-
-common.ret:                                       ; preds = %entry, %end116
-  %common.ret.op = phi ptr [ %t16, %end116 ], [ @.str_stdlib_stdlib_0, %entry ]
-  ret ptr %common.ret.op
-
-end116:                                           ; preds = %entry
-  %0 = zext nneg i32 %t1 to i64
-  %t14 = getelementptr i8, ptr %t0, i64 %0
-  %t15 = load i8, ptr %t14, align 1
-  %t16 = tail call ptr @_zen_char_to_string(i8 %t15)
-  br label %common.ret
+%t4 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%index.addr = alloca i32
+store i32 %t1, ptr %index.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = call i32 @strlen(ptr %t2)
+store i32 %t3, ptr %t4
+%t6 = load i32, ptr %index.addr
+%t8 = load i32, ptr %index.addr
+%t9 = load i32, ptr %t4
+%t7 = icmp slt i32 %t6, 0
+br i1 %t7, label %skip118, label %rhs117
+rhs117:
+%t10 = icmp sge i32 %t8, %t9
+br label %end119
+skip118:
+br label %end119
+end119:
+%t5 = phi i1 [ true, %skip118 ], [ %t10, %rhs117 ]
+br i1 %t5, label %if120, label %end116
+if120:
+%t11 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t12 = call ptr @_str_dup(ptr %t11)
+ret ptr %t12
+end116:
+%t13 = load ptr, ptr %s.addr
+%t14 = load i32, ptr %index.addr
+%t15 = getelementptr i8, ptr %t13, i32 %t14
+%t16 = load i8, ptr %t15
+%t17 = call ptr @_zen_char_to_string(i8 %t16)
+ret ptr %t17
 }
-
-define ptr @replace(ptr %t0, ptr %t1, ptr %t2) local_unnamed_addr {
+define ptr @replace (ptr %t0, ptr %t1, ptr %t2) {
 entry:
-  %t4 = tail call i32 @strlen(ptr %t0)
-  %t7 = tail call i32 @strlen(ptr %t1)
-  %t10 = icmp eq i32 %t7, 0
-  br i1 %t10, label %common.ret, label %whileCond123.preheader
-
-whileCond123.preheader:                           ; preds = %entry
-  %t16 = sub i32 %t4, %t7
-  %t17.not11 = icmp slt i32 %t16, 0
-  br i1 %t17.not11, label %common.ret, label %whileBody124.lr.ph
-
-whileBody124.lr.ph:                               ; preds = %whileCond123.preheader
-  %t229 = icmp sgt i32 %t7, 0
-  br label %whileBody124
-
-common.ret:                                       ; preds = %end131, %whileBody137, %whileEnd135, %whileCond123.preheader, %entry
-  %common.ret.op = phi ptr [ %t0, %entry ], [ %t0, %whileCond123.preheader ], [ %t61, %whileEnd135 ], [ %t78, %whileBody137 ], [ %t0, %end131 ]
-  ret ptr %common.ret.op
-
-whileBody124:                                     ; preds = %whileBody124.lr.ph, %end131
-  %storemerge12 = phi i32 [ 0, %whileBody124.lr.ph ], [ %t83, %end131 ]
-  br i1 %t229, label %whileBody127, label %if132
-
-whileBody127:                                     ; preds = %whileBody124, %whileBody127
-  %storemerge510 = phi i32 [ %t41, %whileBody127 ], [ 0, %whileBody124 ]
-  %0 = phi i1 [ %spec.select, %whileBody127 ], [ true, %whileBody124 ]
-  %t26 = add i32 %storemerge510, %storemerge12
-  %1 = sext i32 %t26 to i64
-  %t27 = getelementptr i8, ptr %t0, i64 %1
-  %t28 = load i8, ptr %t27, align 1
-  %t29 = tail call ptr @_zen_char_to_string(i8 %t28)
-  %2 = zext nneg i32 %storemerge510 to i64
-  %t33 = getelementptr i8, ptr %t1, i64 %2
-  %t34 = load i8, ptr %t33, align 1
-  %t35 = tail call ptr @_zen_char_to_string(i8 %t34)
-  %t38 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t29, ptr noundef nonnull dereferenceable(1) %t35)
-  %t39.not = icmp eq i32 %t38, 0
-  %spec.select = select i1 %t39.not, i1 %0, i1 false
-  %t41 = add nuw nsw i32 %storemerge510, 1
-  %t22 = icmp slt i32 %t41, %t7
-  br i1 %t22, label %whileBody127, label %whileEnd128
-
-whileEnd128:                                      ; preds = %whileBody127
-  br i1 %spec.select, label %if132, label %end131
-
-if132:                                            ; preds = %whileBody124, %whileEnd128
-  %t4814 = icmp sgt i32 %storemerge12, 0
-  br i1 %t4814, label %whileBody134, label %whileEnd135
-
-whileBody134:                                     ; preds = %if132, %whileBody134
-  %storemerge616 = phi i32 [ %t58, %whileBody134 ], [ 0, %if132 ]
-  %t561315 = phi ptr [ %t56, %whileBody134 ], [ @.str_stdlib_stdlib_0, %if132 ]
-  %3 = zext nneg i32 %storemerge616 to i64
-  %t52 = getelementptr i8, ptr %t0, i64 %3
-  %t53 = load i8, ptr %t52, align 1
-  %t54 = tail call ptr @_zen_char_to_string(i8 %t53)
-  %t56 = tail call ptr @_str_concat(ptr %t561315, ptr %t54)
-  %t58 = add nuw nsw i32 %storemerge616, 1
-  %t48 = icmp slt i32 %t58, %storemerge12
-  br i1 %t48, label %whileBody134, label %whileEnd135
-
-whileEnd135:                                      ; preds = %whileBody134, %if132
-  %t5613.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %if132 ], [ %t56, %whileBody134 ]
-  %t61 = tail call ptr @_str_concat(ptr %t5613.lcssa, ptr %t2)
-  %t63 = tail call i32 @strlen(ptr %t2)
-  %t67 = add i32 %storemerge12, %t7
-  %t7020 = icmp slt i32 %t67, %t4
-  br i1 %t7020, label %whileBody137, label %common.ret
-
-whileBody137:                                     ; preds = %whileEnd135, %whileBody137
-  %storemerge722 = phi i32 [ %t80, %whileBody137 ], [ %t67, %whileEnd135 ]
-  %t781921 = phi ptr [ %t78, %whileBody137 ], [ %t61, %whileEnd135 ]
-  %4 = sext i32 %storemerge722 to i64
-  %t74 = getelementptr i8, ptr %t0, i64 %4
-  %t75 = load i8, ptr %t74, align 1
-  %t76 = tail call ptr @_zen_char_to_string(i8 %t75)
-  %t78 = tail call ptr @_str_concat(ptr %t781921, ptr %t76)
-  %t80 = add nsw i32 %storemerge722, 1
-  %t70 = icmp slt i32 %t80, %t4
-  br i1 %t70, label %whileBody137, label %common.ret
-
-end131:                                           ; preds = %whileEnd128
-  %t83 = add i32 %storemerge12, 1
-  %t17.not = icmp sgt i32 %t83, %t16
-  br i1 %t17.not, label %common.ret, label %whileBody124
+%t5 = alloca i32
+%t8 = alloca i32
+%t12 = alloca i32
+%t18 = alloca i1
+%t19 = alloca i32
+%t44 = alloca ptr
+%t47 = alloca i32
+%t71 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%target.addr = alloca ptr
+store ptr %t1, ptr %target.addr
+%repl.addr = alloca ptr
+store ptr %t2, ptr %repl.addr
+%t3 = load ptr, ptr %s.addr
+%t4 = call i32 @strlen(ptr %t3)
+store i32 %t4, ptr %t5
+%t6 = load ptr, ptr %target.addr
+%t7 = call i32 @strlen(ptr %t6)
+store i32 %t7, ptr %t8
+%t9 = load i32, ptr %t8
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if122, label %end121
+if122:
+%t11 = load ptr, ptr %s.addr
+ret ptr %t11
+end121:
+store i32 0, ptr %t12
+br label %whileCond123
+whileCond123:
+%t13 = load i32, ptr %t12
+%t14 = load i32, ptr %t5
+%t15 = load i32, ptr %t8
+%t16 = sub i32 %t14, %t15
+%t17 = icmp sle i32 %t13, %t16
+br i1 %t17, label %whileBody124, label %whileEnd125
+whileBody124:
+store i1 1, ptr %t18
+store i32 0, ptr %t19
+br label %whileCond126
+whileCond126:
+%t20 = load i32, ptr %t19
+%t21 = load i32, ptr %t8
+%t22 = icmp slt i32 %t20, %t21
+br i1 %t22, label %whileBody127, label %whileEnd128
+whileBody127:
+%t23 = load ptr, ptr %s.addr
+%t24 = load i32, ptr %t12
+%t25 = load i32, ptr %t19
+%t26 = add i32 %t24, %t25
+%t31 = load ptr, ptr %target.addr
+%t32 = load i32, ptr %t19
+%t27 = getelementptr i8, ptr %t23, i32 %t26
+%t28 = load i8, ptr %t27
+%t29 = call ptr @_zen_char_to_string(i8 %t28)
+%t33 = getelementptr i8, ptr %t31, i32 %t32
+%t34 = load i8, ptr %t33
+%t35 = call ptr @_zen_char_to_string(i8 %t34)
+%t37 = call i32 @strcmp(ptr %t29, ptr %t35)
+%t38 = icmp ne i32 %t37, 0
+br i1 %t38, label %if130, label %end129
+if130:
+store i1 0, ptr %t18
+br label %end129
+end129:
+%t40 = load i32, ptr %t19
+%t41 = add i32 %t40, 1
+store i32 %t41, ptr %t19
+br label %whileCond126
+whileEnd128:
+%t43 = load i1, ptr %t18
+br i1 %t43, label %if132, label %end131
+if132:
+%t45 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t46 = call ptr @_str_dup(ptr %t45)
+store ptr %t46, ptr %t44
+store i32 0, ptr %t47
+br label %whileCond133
+whileCond133:
+%t48 = load i32, ptr %t47
+%t49 = load i32, ptr %t12
+%t50 = icmp slt i32 %t48, %t49
+br i1 %t50, label %whileBody134, label %whileEnd135
+whileBody134:
+%t51 = load ptr, ptr %t44
+%t52 = load ptr, ptr %s.addr
+%t53 = load i32, ptr %t47
+%t54 = getelementptr i8, ptr %t52, i32 %t53
+%t55 = load i8, ptr %t54
+%t56 = call ptr @_zen_char_to_string(i8 %t55)
+%t58 = call ptr @_str_concat(ptr %t51, ptr %t56)
+%t60 = load ptr, ptr %t44
+call void @_zen_string_free(ptr %t60)
+store ptr %t58, ptr %t44
+%t61 = load i32, ptr %t47
+%t62 = add i32 %t61, 1
+store i32 %t62, ptr %t47
+br label %whileCond133
+whileEnd135:
+%t64 = load ptr, ptr %t44
+%t65 = load ptr, ptr %repl.addr
+%t66 = call ptr @_str_concat(ptr %t64, ptr %t65)
+%t68 = load ptr, ptr %t44
+call void @_zen_string_free(ptr %t68)
+store ptr %t66, ptr %t44
+%t69 = load ptr, ptr %repl.addr
+%t70 = call i32 @strlen(ptr %t69)
+store i32 %t70, ptr %t71
+%t72 = load i32, ptr %t12
+%t73 = load i32, ptr %t8
+%t74 = add i32 %t72, %t73
+store i32 %t74, ptr %t47
+br label %whileCond136
+whileCond136:
+%t76 = load i32, ptr %t47
+%t77 = load i32, ptr %t5
+%t78 = icmp slt i32 %t76, %t77
+br i1 %t78, label %whileBody137, label %whileEnd138
+whileBody137:
+%t79 = load ptr, ptr %t44
+%t80 = load ptr, ptr %s.addr
+%t81 = load i32, ptr %t47
+%t82 = getelementptr i8, ptr %t80, i32 %t81
+%t83 = load i8, ptr %t82
+%t84 = call ptr @_zen_char_to_string(i8 %t83)
+%t86 = call ptr @_str_concat(ptr %t79, ptr %t84)
+%t88 = load ptr, ptr %t44
+call void @_zen_string_free(ptr %t88)
+store ptr %t86, ptr %t44
+%t89 = load i32, ptr %t47
+%t90 = add i32 %t89, 1
+store i32 %t90, ptr %t47
+br label %whileCond136
+whileEnd138:
+%t92 = load ptr, ptr %t44
+ret ptr %t92
+end131:
+%t93 = load i32, ptr %t12
+%t94 = add i32 %t93, 1
+store i32 %t94, ptr %t12
+br label %whileCond123
+whileEnd125:
+%t96 = load ptr, ptr %s.addr
+ret ptr %t96
 }
-
-define ptr @replaceAll(ptr %t0, ptr %t1, ptr %t2) local_unnamed_addr {
+define ptr @replaceAll (ptr %t0, ptr %t1, ptr %t2) {
 entry:
-  %t4 = tail call i32 @strlen(ptr %t0)
-  %t7 = tail call i32 @strlen(ptr %t1)
-  %t10 = icmp eq i32 %t7, 0
-  br i1 %t10, label %common.ret, label %end139
-
-common.ret:                                       ; preds = %end152, %end139, %entry
-  %common.ret.op = phi ptr [ %t0, %entry ], [ @.str_stdlib_stdlib_0, %end139 ], [ %t61, %end152 ]
-  ret ptr %common.ret.op
-
-end139:                                           ; preds = %entry
-  %t1713 = icmp sgt i32 %t4, 0
-  br i1 %t1713, label %whileBody142.lr.ph, label %common.ret
-
-whileBody142.lr.ph:                               ; preds = %end139
-  %t23 = sub i32 %t4, %t7
-  %t278 = icmp sgt i32 %t7, 0
-  br label %whileBody142
-
-whileBody142:                                     ; preds = %whileBody142.lr.ph, %end152
-  %storemerge515 = phi i32 [ 0, %whileBody142.lr.ph ], [ %t63, %end152 ]
-  %t611114 = phi ptr [ @.str_stdlib_stdlib_0, %whileBody142.lr.ph ], [ %t61, %end152 ]
-  %t24.not = icmp sgt i32 %storemerge515, %t23
-  br i1 %t24.not, label %else154, label %whileCond147.preheader
-
-whileCond147.preheader:                           ; preds = %whileBody142
-  br i1 %t278, label %whileBody148, label %end152
-
-whileBody148:                                     ; preds = %whileCond147.preheader, %whileBody148
-  %t4679 = phi i32 [ %t46, %whileBody148 ], [ 0, %whileCond147.preheader ]
-  %0 = phi i1 [ %spec.select, %whileBody148 ], [ true, %whileCond147.preheader ]
-  %t31 = add i32 %t4679, %storemerge515
-  %1 = sext i32 %t31 to i64
-  %t32 = getelementptr i8, ptr %t0, i64 %1
-  %t33 = load i8, ptr %t32, align 1
-  %t34 = tail call ptr @_zen_char_to_string(i8 %t33)
-  %2 = zext nneg i32 %t4679 to i64
-  %t38 = getelementptr i8, ptr %t1, i64 %2
-  %t39 = load i8, ptr %t38, align 1
-  %t40 = tail call ptr @_zen_char_to_string(i8 %t39)
-  %t43 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t34, ptr noundef nonnull dereferenceable(1) %t40)
-  %t44.not = icmp eq i32 %t43, 0
-  %spec.select = select i1 %t44.not, i1 %0, i1 false
-  %t46 = add nuw nsw i32 %t4679, 1
-  %t27 = icmp slt i32 %t46, %t7
-  br i1 %t27, label %whileBody148, label %end144
-
-end144:                                           ; preds = %whileBody148
-  br i1 %spec.select, label %end152, label %else154
-
-else154:                                          ; preds = %whileBody142, %end144
-  %3 = sext i32 %storemerge515 to i64
-  %t57 = getelementptr i8, ptr %t0, i64 %3
-  %t58 = load i8, ptr %t57, align 1
-  %t59 = tail call ptr @_zen_char_to_string(i8 %t58)
-  br label %end152
-
-end152:                                           ; preds = %end144, %whileCond147.preheader, %else154
-  %t59.sink = phi ptr [ %t59, %else154 ], [ %t2, %whileCond147.preheader ], [ %t2, %end144 ]
-  %.sink = phi i32 [ 1, %else154 ], [ %t7, %whileCond147.preheader ], [ %t7, %end144 ]
-  %t61 = tail call ptr @_str_concat(ptr %t611114, ptr %t59.sink)
-  %t63 = add i32 %storemerge515, %.sink
-  %t17 = icmp slt i32 %t63, %t4
-  br i1 %t17, label %whileBody142, label %common.ret
+%t5 = alloca i32
+%t8 = alloca i32
+%t12 = alloca ptr
+%t15 = alloca i32
+%t19 = alloca i1
+%t20 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%target.addr = alloca ptr
+store ptr %t1, ptr %target.addr
+%repl.addr = alloca ptr
+store ptr %t2, ptr %repl.addr
+%t3 = load ptr, ptr %s.addr
+%t4 = call i32 @strlen(ptr %t3)
+store i32 %t4, ptr %t5
+%t6 = load ptr, ptr %target.addr
+%t7 = call i32 @strlen(ptr %t6)
+store i32 %t7, ptr %t8
+%t9 = load i32, ptr %t8
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if140, label %end139
+if140:
+%t11 = load ptr, ptr %s.addr
+ret ptr %t11
+end139:
+%t13 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t14 = call ptr @_str_dup(ptr %t13)
+store ptr %t14, ptr %t12
+store i32 0, ptr %t15
+br label %whileCond141
+whileCond141:
+%t16 = load i32, ptr %t15
+%t17 = load i32, ptr %t5
+%t18 = icmp slt i32 %t16, %t17
+br i1 %t18, label %whileBody142, label %whileEnd143
+whileBody142:
+store i1 1, ptr %t19
+store i32 0, ptr %t20
+%t21 = load i32, ptr %t15
+%t22 = load i32, ptr %t5
+%t23 = load i32, ptr %t8
+%t24 = sub i32 %t22, %t23
+%t25 = icmp sle i32 %t21, %t24
+br i1 %t25, label %if145, label %else146
+if145:
+br label %whileCond147
+whileCond147:
+%t26 = load i32, ptr %t20
+%t27 = load i32, ptr %t8
+%t28 = icmp slt i32 %t26, %t27
+br i1 %t28, label %whileBody148, label %whileEnd149
+whileBody148:
+%t29 = load ptr, ptr %s.addr
+%t30 = load i32, ptr %t15
+%t31 = load i32, ptr %t20
+%t32 = add i32 %t30, %t31
+%t37 = load ptr, ptr %target.addr
+%t38 = load i32, ptr %t20
+%t33 = getelementptr i8, ptr %t29, i32 %t32
+%t34 = load i8, ptr %t33
+%t35 = call ptr @_zen_char_to_string(i8 %t34)
+%t39 = getelementptr i8, ptr %t37, i32 %t38
+%t40 = load i8, ptr %t39
+%t41 = call ptr @_zen_char_to_string(i8 %t40)
+%t43 = call i32 @strcmp(ptr %t35, ptr %t41)
+%t44 = icmp ne i32 %t43, 0
+br i1 %t44, label %if151, label %end150
+if151:
+store i1 0, ptr %t19
+br label %end150
+end150:
+%t46 = load i32, ptr %t20
+%t47 = add i32 %t46, 1
+store i32 %t47, ptr %t20
+br label %whileCond147
+whileEnd149:
+br label %end144
+else146:
+store i1 0, ptr %t19
+br label %end144
+end144:
+%t50 = load i1, ptr %t19
+br i1 %t50, label %if153, label %else154
+if153:
+%t51 = load ptr, ptr %t12
+%t52 = load ptr, ptr %repl.addr
+%t53 = call ptr @_str_concat(ptr %t51, ptr %t52)
+%t55 = load ptr, ptr %t12
+call void @_zen_string_free(ptr %t55)
+store ptr %t53, ptr %t12
+%t56 = load i32, ptr %t15
+%t57 = load i32, ptr %t8
+%t58 = add i32 %t56, %t57
+store i32 %t58, ptr %t15
+br label %end152
+else154:
+%t60 = load ptr, ptr %t12
+%t61 = load ptr, ptr %s.addr
+%t62 = load i32, ptr %t15
+%t63 = getelementptr i8, ptr %t61, i32 %t62
+%t64 = load i8, ptr %t63
+%t65 = call ptr @_zen_char_to_string(i8 %t64)
+%t67 = call ptr @_str_concat(ptr %t60, ptr %t65)
+%t69 = load ptr, ptr %t12
+call void @_zen_string_free(ptr %t69)
+store ptr %t67, ptr %t12
+%t70 = load i32, ptr %t15
+%t71 = add i32 %t70, 1
+store i32 %t71, ptr %t15
+br label %end152
+end152:
+br label %whileCond141
+whileEnd143:
+%t73 = load ptr, ptr %t12
+ret ptr %t73
 }
-
-define noundef i1 @contains(ptr %t0, ptr %t1) local_unnamed_addr {
+define i1 @contains (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t6 = tail call i32 @strlen(ptr %t1)
-  %t9 = icmp eq i32 %t6, 0
-  br i1 %t9, label %common.ret, label %whileCond157.preheader
-
-whileCond157.preheader:                           ; preds = %entry
-  %t14 = sub i32 %t3, %t6
-  %t15.not6 = icmp slt i32 %t14, 0
-  br i1 %t15.not6, label %common.ret, label %whileBody158.lr.ph
-
-whileBody158.lr.ph:                               ; preds = %whileCond157.preheader
-  %t204 = icmp sgt i32 %t6, 0
-  br label %whileBody158
-
-common.ret:                                       ; preds = %whileBody158, %whileEnd162, %whileCond157, %whileCond157.preheader, %entry
-  %common.ret.op = phi i1 [ true, %entry ], [ false, %whileCond157.preheader ], [ true, %whileBody158 ], [ true, %whileEnd162 ], [ false, %whileCond157 ]
-  ret i1 %common.ret.op
-
-whileCond157:                                     ; preds = %whileEnd162
-  %t42 = add i32 %storemerge7, 1
-  %t15.not = icmp sgt i32 %t42, %t14
-  br i1 %t15.not, label %common.ret, label %whileBody158
-
-whileBody158:                                     ; preds = %whileBody158.lr.ph, %whileCond157
-  %storemerge7 = phi i32 [ 0, %whileBody158.lr.ph ], [ %t42, %whileCond157 ]
-  br i1 %t204, label %whileBody161, label %common.ret
-
-whileBody161:                                     ; preds = %whileBody158, %whileBody161
-  %storemerge35 = phi i32 [ %t39, %whileBody161 ], [ 0, %whileBody158 ]
-  %0 = phi i1 [ %spec.select, %whileBody161 ], [ true, %whileBody158 ]
-  %t24 = add i32 %storemerge35, %storemerge7
-  %1 = sext i32 %t24 to i64
-  %t25 = getelementptr i8, ptr %t0, i64 %1
-  %t26 = load i8, ptr %t25, align 1
-  %t27 = tail call ptr @_zen_char_to_string(i8 %t26)
-  %2 = zext nneg i32 %storemerge35 to i64
-  %t31 = getelementptr i8, ptr %t1, i64 %2
-  %t32 = load i8, ptr %t31, align 1
-  %t33 = tail call ptr @_zen_char_to_string(i8 %t32)
-  %t36 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t27, ptr noundef nonnull dereferenceable(1) %t33)
-  %t37.not = icmp eq i32 %t36, 0
-  %spec.select = select i1 %t37.not, i1 %0, i1 false
-  %t39 = add nuw nsw i32 %storemerge35, 1
-  %t20 = icmp slt i32 %t39, %t6
-  br i1 %t20, label %whileBody161, label %whileEnd162
-
-whileEnd162:                                      ; preds = %whileBody161
-  br i1 %spec.select, label %common.ret, label %whileCond157
+%t4 = alloca i32
+%t7 = alloca i32
+%t10 = alloca i32
+%t16 = alloca i1
+%t17 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%target.addr = alloca ptr
+store ptr %t1, ptr %target.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = call i32 @strlen(ptr %t2)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %target.addr
+%t6 = call i32 @strlen(ptr %t5)
+store i32 %t6, ptr %t7
+%t8 = load i32, ptr %t7
+%t9 = icmp eq i32 %t8, 0
+br i1 %t9, label %if156, label %end155
+if156:
+ret i1 1
+end155:
+store i32 0, ptr %t10
+br label %whileCond157
+whileCond157:
+%t11 = load i32, ptr %t10
+%t12 = load i32, ptr %t4
+%t13 = load i32, ptr %t7
+%t14 = sub i32 %t12, %t13
+%t15 = icmp sle i32 %t11, %t14
+br i1 %t15, label %whileBody158, label %whileEnd159
+whileBody158:
+store i1 1, ptr %t16
+store i32 0, ptr %t17
+br label %whileCond160
+whileCond160:
+%t18 = load i32, ptr %t17
+%t19 = load i32, ptr %t7
+%t20 = icmp slt i32 %t18, %t19
+br i1 %t20, label %whileBody161, label %whileEnd162
+whileBody161:
+%t21 = load ptr, ptr %s.addr
+%t22 = load i32, ptr %t10
+%t23 = load i32, ptr %t17
+%t24 = add i32 %t22, %t23
+%t29 = load ptr, ptr %target.addr
+%t30 = load i32, ptr %t17
+%t25 = getelementptr i8, ptr %t21, i32 %t24
+%t26 = load i8, ptr %t25
+%t27 = call ptr @_zen_char_to_string(i8 %t26)
+%t31 = getelementptr i8, ptr %t29, i32 %t30
+%t32 = load i8, ptr %t31
+%t33 = call ptr @_zen_char_to_string(i8 %t32)
+%t35 = call i32 @strcmp(ptr %t27, ptr %t33)
+%t36 = icmp ne i32 %t35, 0
+br i1 %t36, label %if164, label %end163
+if164:
+store i1 0, ptr %t16
+br label %end163
+end163:
+%t38 = load i32, ptr %t17
+%t39 = add i32 %t38, 1
+store i32 %t39, ptr %t17
+br label %whileCond160
+whileEnd162:
+%t41 = load i1, ptr %t16
+br i1 %t41, label %if166, label %end165
+if166:
+ret i1 1
+end165:
+%t42 = load i32, ptr %t10
+%t43 = add i32 %t42, 1
+store i32 %t43, ptr %t10
+br label %whileCond157
+whileEnd159:
+ret i1 0
 }
-
-define ptr @upperCase(ptr %t0) local_unnamed_addr {
+define ptr @upperCase (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t93 = icmp sgt i32 %t2, 0
-  br i1 %t93, label %whileBody168, label %whileEnd169
-
-whileBody168:                                     ; preds = %entry, %end170
-  %t6.05 = phi i32 [ %t38, %end170 ], [ 0, %entry ]
-  %t4.04 = phi ptr [ %t36, %end170 ], [ @.str_stdlib_stdlib_0, %entry ]
-  %0 = zext nneg i32 %t6.05 to i64
-  %t13 = getelementptr i8, ptr %t0, i64 %0
-  %t14 = load i8, ptr %t13, align 1
-  %t15 = tail call ptr @_zen_char_to_string(i8 %t14)
-  %t18 = tail call i32 @_string_to_int_ascii(ptr %t15)
-  %t23 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_1)
-  %t27 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_2)
-  %t24 = icmp sge i32 %t18, %t23
-  %t28 = icmp sle i32 %t18, %t27
-  %t20 = select i1 %t24, i1 %t28, i1 false
-  br i1 %t20, label %if174, label %end170
-
-if174:                                            ; preds = %whileBody168
-  %t31 = add i32 %t18, -32
-  %t32 = tail call ptr @_int_to_string_ascii(i32 %t31)
-  br label %end170
-
-end170:                                           ; preds = %whileBody168, %if174
-  %t15.sink = phi ptr [ %t32, %if174 ], [ %t15, %whileBody168 ]
-  %t36 = tail call ptr @_str_concat(ptr %t4.04, ptr %t15.sink)
-  %t38 = add nuw nsw i32 %t6.05, 1
-  %t9 = icmp slt i32 %t38, %t2
-  br i1 %t9, label %whileBody168, label %whileEnd169
-
-whileEnd169:                                      ; preds = %end170, %entry
-  %t4.0.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %t36, %end170 ]
-  ret ptr %t4.0.lcssa
+%t3 = alloca i32
+%t4 = alloca ptr
+%t7 = alloca i32
+%t11 = alloca ptr
+%t20 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%t1 = load ptr, ptr %s.addr
+%t2 = call i32 @strlen(ptr %t1)
+store i32 %t2, ptr %t3
+%t5 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t6 = call ptr @_str_dup(ptr %t5)
+store ptr %t6, ptr %t4
+store i32 0, ptr %t7
+br label %whileCond167
+whileCond167:
+%t8 = load i32, ptr %t7
+%t9 = load i32, ptr %t3
+%t10 = icmp slt i32 %t8, %t9
+br i1 %t10, label %whileBody168, label %whileEnd169
+whileBody168:
+%t12 = load ptr, ptr %s.addr
+%t13 = load i32, ptr %t7
+%t14 = getelementptr i8, ptr %t12, i32 %t13
+%t15 = load i8, ptr %t14
+%t16 = call ptr @_zen_char_to_string(i8 %t15)
+store ptr %t16, ptr %t11
+%t18 = load ptr, ptr %t11
+%t19 = call i32 @_string_to_int_ascii(ptr %t18)
+store i32 %t19, ptr %t20
+%t22 = load i32, ptr %t20
+%t23 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_1, i64 0, i64 0
+%t24 = call ptr @_str_dup(ptr %t23)
+%t25 = call i32 @_string_to_int_ascii(ptr %t24)
+%t27 = load i32, ptr %t20
+%t28 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_2, i64 0, i64 0
+%t29 = call ptr @_str_dup(ptr %t28)
+%t30 = call i32 @_string_to_int_ascii(ptr %t29)
+%t26 = icmp sge i32 %t22, %t25
+br i1 %t26, label %rhs171, label %skip172
+rhs171:
+%t31 = icmp sle i32 %t27, %t30
+br label %end173
+skip172:
+br label %end173
+end173:
+%t21 = phi i1 [ false, %skip172 ], [ %t31, %rhs171 ]
+br i1 %t21, label %if174, label %else175
+if174:
+%t32 = load ptr, ptr %t4
+%t33 = load i32, ptr %t20
+%t34 = sub i32 %t33, 32
+%t35 = call ptr @_int_to_string_ascii(i32 %t34)
+%t36 = call ptr @_str_concat(ptr %t32, ptr %t35)
+%t38 = load ptr, ptr %t4
+call void @_zen_string_free(ptr %t38)
+store ptr %t36, ptr %t4
+br label %end170
+else175:
+%t39 = load ptr, ptr %t4
+%t40 = load ptr, ptr %t11
+%t41 = call ptr @_str_concat(ptr %t39, ptr %t40)
+%t43 = load ptr, ptr %t4
+call void @_zen_string_free(ptr %t43)
+store ptr %t41, ptr %t4
+br label %end170
+end170:
+%t44 = load i32, ptr %t7
+%t45 = add i32 %t44, 1
+store i32 %t45, ptr %t7
+br label %whileCond167
+whileEnd169:
+%t47 = load ptr, ptr %t4
+ret ptr %t47
 }
-
-define ptr @lowerCase(ptr %t0) local_unnamed_addr {
+define ptr @lowerCase (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t93 = icmp sgt i32 %t2, 0
-  br i1 %t93, label %whileBody177, label %whileEnd178
-
-whileBody177:                                     ; preds = %entry, %end179
-  %t6.05 = phi i32 [ %t38, %end179 ], [ 0, %entry ]
-  %t4.04 = phi ptr [ %t36, %end179 ], [ @.str_stdlib_stdlib_0, %entry ]
-  %0 = zext nneg i32 %t6.05 to i64
-  %t13 = getelementptr i8, ptr %t0, i64 %0
-  %t14 = load i8, ptr %t13, align 1
-  %t15 = tail call ptr @_zen_char_to_string(i8 %t14)
-  %t18 = tail call i32 @_string_to_int_ascii(ptr %t15)
-  %t23 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_3)
-  %t27 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_4)
-  %t24 = icmp sge i32 %t18, %t23
-  %t28 = icmp sle i32 %t18, %t27
-  %t20 = select i1 %t24, i1 %t28, i1 false
-  br i1 %t20, label %if183, label %end179
-
-if183:                                            ; preds = %whileBody177
-  %t31 = add i32 %t18, 32
-  %t32 = tail call ptr @_int_to_string_ascii(i32 %t31)
-  br label %end179
-
-end179:                                           ; preds = %whileBody177, %if183
-  %t15.sink = phi ptr [ %t32, %if183 ], [ %t15, %whileBody177 ]
-  %t36 = tail call ptr @_str_concat(ptr %t4.04, ptr %t15.sink)
-  %t38 = add nuw nsw i32 %t6.05, 1
-  %t9 = icmp slt i32 %t38, %t2
-  br i1 %t9, label %whileBody177, label %whileEnd178
-
-whileEnd178:                                      ; preds = %end179, %entry
-  %t4.0.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %t36, %end179 ]
-  ret ptr %t4.0.lcssa
+%t3 = alloca i32
+%t4 = alloca ptr
+%t7 = alloca i32
+%t11 = alloca ptr
+%t20 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%t1 = load ptr, ptr %s.addr
+%t2 = call i32 @strlen(ptr %t1)
+store i32 %t2, ptr %t3
+%t5 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t6 = call ptr @_str_dup(ptr %t5)
+store ptr %t6, ptr %t4
+store i32 0, ptr %t7
+br label %whileCond176
+whileCond176:
+%t8 = load i32, ptr %t7
+%t9 = load i32, ptr %t3
+%t10 = icmp slt i32 %t8, %t9
+br i1 %t10, label %whileBody177, label %whileEnd178
+whileBody177:
+%t12 = load ptr, ptr %s.addr
+%t13 = load i32, ptr %t7
+%t14 = getelementptr i8, ptr %t12, i32 %t13
+%t15 = load i8, ptr %t14
+%t16 = call ptr @_zen_char_to_string(i8 %t15)
+store ptr %t16, ptr %t11
+%t18 = load ptr, ptr %t11
+%t19 = call i32 @_string_to_int_ascii(ptr %t18)
+store i32 %t19, ptr %t20
+%t22 = load i32, ptr %t20
+%t23 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_3, i64 0, i64 0
+%t24 = call ptr @_str_dup(ptr %t23)
+%t25 = call i32 @_string_to_int_ascii(ptr %t24)
+%t27 = load i32, ptr %t20
+%t28 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_4, i64 0, i64 0
+%t29 = call ptr @_str_dup(ptr %t28)
+%t30 = call i32 @_string_to_int_ascii(ptr %t29)
+%t26 = icmp sge i32 %t22, %t25
+br i1 %t26, label %rhs180, label %skip181
+rhs180:
+%t31 = icmp sle i32 %t27, %t30
+br label %end182
+skip181:
+br label %end182
+end182:
+%t21 = phi i1 [ false, %skip181 ], [ %t31, %rhs180 ]
+br i1 %t21, label %if183, label %else184
+if183:
+%t32 = load ptr, ptr %t4
+%t33 = load i32, ptr %t20
+%t34 = add i32 %t33, 32
+%t35 = call ptr @_int_to_string_ascii(i32 %t34)
+%t36 = call ptr @_str_concat(ptr %t32, ptr %t35)
+%t38 = load ptr, ptr %t4
+call void @_zen_string_free(ptr %t38)
+store ptr %t36, ptr %t4
+br label %end179
+else184:
+%t39 = load ptr, ptr %t4
+%t40 = load ptr, ptr %t11
+%t41 = call ptr @_str_concat(ptr %t39, ptr %t40)
+%t43 = load ptr, ptr %t4
+call void @_zen_string_free(ptr %t43)
+store ptr %t41, ptr %t4
+br label %end179
+end179:
+%t44 = load i32, ptr %t7
+%t45 = add i32 %t44, 1
+store i32 %t45, ptr %t7
+br label %whileCond176
+whileEnd178:
+%t47 = load ptr, ptr %t4
+ret ptr %t47
 }
-
-define noundef i1 @startsWith(ptr %t0, ptr %t1) local_unnamed_addr {
+define i1 @startsWith (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t6 = tail call i32 @strlen(ptr %t1)
-  %t10 = icmp sgt i32 %t6, %t3
-  br i1 %t10, label %common.ret, label %whileCond187.preheader
-
-whileCond187.preheader:                           ; preds = %entry
-  %t142 = icmp sgt i32 %t6, 0
-  br i1 %t142, label %whileBody188, label %common.ret
-
-common.ret:                                       ; preds = %whileBody188, %whileCond187.preheader, %entry
-  %common.ret.op = phi i1 [ false, %entry ], [ true, %whileCond187.preheader ], [ %t29.not, %whileBody188 ]
-  ret i1 %common.ret.op
-
-whileBody188:                                     ; preds = %whileCond187.preheader, %whileBody188
-  %storemerge3 = phi i32 [ %t31, %whileBody188 ], [ 0, %whileCond187.preheader ]
-  %0 = zext nneg i32 %storemerge3 to i64
-  %t17 = getelementptr i8, ptr %t0, i64 %0
-  %t18 = load i8, ptr %t17, align 1
-  %t19 = tail call ptr @_zen_char_to_string(i8 %t18)
-  %t23 = getelementptr i8, ptr %t1, i64 %0
-  %t24 = load i8, ptr %t23, align 1
-  %t25 = tail call ptr @_zen_char_to_string(i8 %t24)
-  %t28 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t19, ptr noundef nonnull dereferenceable(1) %t25)
-  %t29.not = icmp eq i32 %t28, 0
-  %t31 = add nuw nsw i32 %storemerge3, 1
-  %t14 = icmp slt i32 %t31, %t6
-  %or.cond = select i1 %t29.not, i1 %t14, i1 false
-  br i1 %or.cond, label %whileBody188, label %common.ret
+%t4 = alloca i32
+%t7 = alloca i32
+%t11 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%prefix.addr = alloca ptr
+store ptr %t1, ptr %prefix.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = call i32 @strlen(ptr %t2)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %prefix.addr
+%t6 = call i32 @strlen(ptr %t5)
+store i32 %t6, ptr %t7
+%t8 = load i32, ptr %t7
+%t9 = load i32, ptr %t4
+%t10 = icmp sgt i32 %t8, %t9
+br i1 %t10, label %if186, label %end185
+if186:
+ret i1 0
+end185:
+store i32 0, ptr %t11
+br label %whileCond187
+whileCond187:
+%t12 = load i32, ptr %t11
+%t13 = load i32, ptr %t7
+%t14 = icmp slt i32 %t12, %t13
+br i1 %t14, label %whileBody188, label %whileEnd189
+whileBody188:
+%t15 = load ptr, ptr %s.addr
+%t16 = load i32, ptr %t11
+%t21 = load ptr, ptr %prefix.addr
+%t22 = load i32, ptr %t11
+%t17 = getelementptr i8, ptr %t15, i32 %t16
+%t18 = load i8, ptr %t17
+%t19 = call ptr @_zen_char_to_string(i8 %t18)
+%t23 = getelementptr i8, ptr %t21, i32 %t22
+%t24 = load i8, ptr %t23
+%t25 = call ptr @_zen_char_to_string(i8 %t24)
+%t27 = call i32 @strcmp(ptr %t19, ptr %t25)
+%t28 = icmp ne i32 %t27, 0
+br i1 %t28, label %if191, label %end190
+if191:
+ret i1 0
+end190:
+%t29 = load i32, ptr %t11
+%t30 = add i32 %t29, 1
+store i32 %t30, ptr %t11
+br label %whileCond187
+whileEnd189:
+ret i1 1
 }
-
-define noundef i1 @endsWith(ptr %t0, ptr %t1) local_unnamed_addr {
+define i1 @endsWith (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t6 = tail call i32 @strlen(ptr %t1)
-  %t10 = icmp sgt i32 %t6, %t3
-  br i1 %t10, label %common.ret, label %whileCond194.preheader
-
-whileCond194.preheader:                           ; preds = %entry
-  %t18 = sub i32 %t3, %t6
-  %t144 = icmp sgt i32 %t6, 0
-  br i1 %t144, label %whileBody195, label %common.ret
-
-common.ret:                                       ; preds = %whileBody195, %whileCond194.preheader, %entry
-  %common.ret.op = phi i1 [ false, %entry ], [ true, %whileCond194.preheader ], [ %t33.not, %whileBody195 ]
-  ret i1 %common.ret.op
-
-whileBody195:                                     ; preds = %whileCond194.preheader, %whileBody195
-  %storemerge5 = phi i32 [ %t35, %whileBody195 ], [ 0, %whileCond194.preheader ]
-  %t20 = add i32 %t18, %storemerge5
-  %0 = sext i32 %t20 to i64
-  %t21 = getelementptr i8, ptr %t0, i64 %0
-  %t22 = load i8, ptr %t21, align 1
-  %t23 = tail call ptr @_zen_char_to_string(i8 %t22)
-  %1 = zext nneg i32 %storemerge5 to i64
-  %t27 = getelementptr i8, ptr %t1, i64 %1
-  %t28 = load i8, ptr %t27, align 1
-  %t29 = tail call ptr @_zen_char_to_string(i8 %t28)
-  %t32 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t23, ptr noundef nonnull dereferenceable(1) %t29)
-  %t33.not = icmp eq i32 %t32, 0
-  %t35 = add nuw nsw i32 %storemerge5, 1
-  %t14 = icmp slt i32 %t35, %t6
-  %or.cond = select i1 %t33.not, i1 %t14, i1 false
-  br i1 %or.cond, label %whileBody195, label %common.ret
+%t4 = alloca i32
+%t7 = alloca i32
+%t11 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%suffix.addr = alloca ptr
+store ptr %t1, ptr %suffix.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = call i32 @strlen(ptr %t2)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %suffix.addr
+%t6 = call i32 @strlen(ptr %t5)
+store i32 %t6, ptr %t7
+%t8 = load i32, ptr %t7
+%t9 = load i32, ptr %t4
+%t10 = icmp sgt i32 %t8, %t9
+br i1 %t10, label %if193, label %end192
+if193:
+ret i1 0
+end192:
+store i32 0, ptr %t11
+br label %whileCond194
+whileCond194:
+%t12 = load i32, ptr %t11
+%t13 = load i32, ptr %t7
+%t14 = icmp slt i32 %t12, %t13
+br i1 %t14, label %whileBody195, label %whileEnd196
+whileBody195:
+%t15 = load ptr, ptr %s.addr
+%t16 = load i32, ptr %t4
+%t17 = load i32, ptr %t7
+%t19 = load i32, ptr %t11
+%t18 = sub i32 %t16, %t17
+%t20 = add i32 %t18, %t19
+%t25 = load ptr, ptr %suffix.addr
+%t26 = load i32, ptr %t11
+%t21 = getelementptr i8, ptr %t15, i32 %t20
+%t22 = load i8, ptr %t21
+%t23 = call ptr @_zen_char_to_string(i8 %t22)
+%t27 = getelementptr i8, ptr %t25, i32 %t26
+%t28 = load i8, ptr %t27
+%t29 = call ptr @_zen_char_to_string(i8 %t28)
+%t31 = call i32 @strcmp(ptr %t23, ptr %t29)
+%t32 = icmp ne i32 %t31, 0
+br i1 %t32, label %if198, label %end197
+if198:
+ret i1 0
+end197:
+%t33 = load i32, ptr %t11
+%t34 = add i32 %t33, 1
+store i32 %t34, ptr %t11
+br label %whileCond194
+whileEnd196:
+ret i1 1
 }
-
-define ptr @trim(ptr %t0) local_unnamed_addr {
+define ptr @trim (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t1024 = icmp sgt i32 %t2, 0
-  br i1 %t1024, label %whileBody200, label %whileEnd201
-
-whileBody200:                                     ; preds = %entry, %if209
-  %t4.025 = phi i32 [ %t36, %if209 ], [ 0, %entry ]
-  %0 = zext nneg i32 %t4.025 to i64
-  %t14 = getelementptr i8, ptr %t0, i64 %0
-  %t15 = load i8, ptr %t14, align 1
-  %t16 = tail call ptr @_zen_char_to_string(i8 %t15)
-  %1 = load i8, ptr %t16, align 1
-  switch i8 %1, label %whileEnd201 [
-    i8 32, label %whileBody200.tail
-    i8 10, label %rhs206.tail
-    i8 9, label %rhs203.tail
-  ]
-
-whileBody200.tail:                                ; preds = %whileBody200
-  %2 = getelementptr inbounds nuw i8, ptr %t16, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %if209, label %whileEnd201
-
-rhs206.tail:                                      ; preds = %whileBody200
-  %5 = getelementptr inbounds nuw i8, ptr %t16, i64 1
-  %6 = load i8, ptr %5, align 1
-  %7 = icmp eq i8 %6, 0
-  br i1 %7, label %if209, label %whileEnd201
-
-rhs203.tail:                                      ; preds = %whileBody200
-  %8 = getelementptr inbounds nuw i8, ptr %t16, i64 1
-  %9 = load i8, ptr %8, align 1
-  %10 = icmp eq i8 %9, 0
-  br i1 %10, label %if209, label %whileEnd201
-
-if209:                                            ; preds = %whileBody200.tail, %rhs206.tail, %rhs203.tail
-  %t36 = add nuw nsw i32 %t4.025, 1
-  %t10 = icmp slt i32 %t36, %t2
-  br i1 %t10, label %whileBody200, label %whileEnd201
-
-whileEnd201:                                      ; preds = %rhs206.tail, %whileBody200.tail, %if209, %rhs203.tail, %whileBody200, %entry
-  %t4.0.lcssa = phi i32 [ 0, %entry ], [ %t4.025, %rhs206.tail ], [ %t4.025, %whileBody200.tail ], [ %t4.025, %rhs203.tail ], [ %t2, %if209 ], [ %t4.025, %whileBody200 ]
-  %t5.027 = add i32 %t2, -1
-  %t39.not28 = icmp slt i32 %t5.027, %t4.0.lcssa
-  br i1 %t39.not28, label %whileEnd213, label %whileBody212
-
-whileBody212:                                     ; preds = %whileEnd201, %if221
-  %t5.029 = phi i32 [ %t5.0, %if221 ], [ %t5.027, %whileEnd201 ]
-  %11 = sext i32 %t5.029 to i64
-  %t43 = getelementptr i8, ptr %t0, i64 %11
-  %t44 = load i8, ptr %t43, align 1
-  %t45 = tail call ptr @_zen_char_to_string(i8 %t44)
-  %12 = load i8, ptr %t45, align 1
-  switch i8 %12, label %whileEnd213 [
-    i8 32, label %whileBody212.tail
-    i8 10, label %rhs218.tail
-    i8 9, label %rhs215.tail
-  ]
-
-whileBody212.tail:                                ; preds = %whileBody212
-  %13 = getelementptr inbounds nuw i8, ptr %t45, i64 1
-  %14 = load i8, ptr %13, align 1
-  %15 = icmp eq i8 %14, 0
-  br i1 %15, label %if221, label %whileEnd213
-
-rhs218.tail:                                      ; preds = %whileBody212
-  %16 = getelementptr inbounds nuw i8, ptr %t45, i64 1
-  %17 = load i8, ptr %16, align 1
-  %18 = icmp eq i8 %17, 0
-  br i1 %18, label %if221, label %whileEnd213
-
-rhs215.tail:                                      ; preds = %whileBody212
-  %19 = getelementptr inbounds nuw i8, ptr %t45, i64 1
-  %20 = load i8, ptr %19, align 1
-  %21 = icmp eq i8 %20, 0
-  br i1 %21, label %if221, label %whileEnd213
-
-if221:                                            ; preds = %whileBody212.tail, %rhs218.tail, %rhs215.tail
-  %t5.0 = add i32 %t5.029, -1
-  %t39.not = icmp slt i32 %t5.0, %t4.0.lcssa
-  br i1 %t39.not, label %whileEnd213, label %whileBody212
-
-whileEnd213:                                      ; preds = %rhs218.tail, %whileBody212.tail, %if221, %rhs215.tail, %whileBody212, %whileEnd201
-  %t5.0.lcssa = phi i32 [ %t5.027, %whileEnd201 ], [ %t5.029, %rhs218.tail ], [ %t5.029, %whileBody212.tail ], [ %t5.029, %rhs215.tail ], [ %t5.0, %if221 ], [ %t5.029, %whileBody212 ]
-  %t72.not33 = icmp sgt i32 %t4.0.lcssa, %t5.0.lcssa
-  br i1 %t72.not33, label %whileEnd225, label %whileBody224
-
-whileBody224:                                     ; preds = %whileEnd213, %whileBody224
-  %storemerge35 = phi i32 [ %t82, %whileBody224 ], [ %t4.0.lcssa, %whileEnd213 ]
-  %t803234 = phi ptr [ %t80, %whileBody224 ], [ @.str_stdlib_stdlib_0, %whileEnd213 ]
-  %22 = sext i32 %storemerge35 to i64
-  %t76 = getelementptr i8, ptr %t0, i64 %22
-  %t77 = load i8, ptr %t76, align 1
-  %t78 = tail call ptr @_zen_char_to_string(i8 %t77)
-  %t80 = tail call ptr @_str_concat(ptr %t803234, ptr %t78)
-  %t82 = add i32 %storemerge35, 1
-  %t72.not = icmp sgt i32 %t82, %t5.0.lcssa
-  br i1 %t72.not, label %whileEnd225, label %whileBody224
-
-whileEnd225:                                      ; preds = %whileBody224, %whileEnd213
-  %t8032.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd213 ], [ %t80, %whileBody224 ]
-  ret ptr %t8032.lcssa
+%t3 = alloca i32
+%t4 = alloca i32
+%t5 = alloca i32
+%t11 = alloca ptr
+%t41 = alloca ptr
+%t68 = alloca ptr
+%t71 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%t1 = load ptr, ptr %s.addr
+%t2 = call i32 @strlen(ptr %t1)
+store i32 %t2, ptr %t3
+store i32 0, ptr %t4
+%t6 = load i32, ptr %t3
+%t7 = sub i32 %t6, 1
+store i32 %t7, ptr %t5
+br label %whileCond199
+whileCond199:
+%t8 = load i32, ptr %t4
+%t9 = load i32, ptr %t3
+%t10 = icmp slt i32 %t8, %t9
+br i1 %t10, label %whileBody200, label %whileEnd201
+whileBody200:
+%t12 = load ptr, ptr %s.addr
+%t13 = load i32, ptr %t4
+%t14 = getelementptr i8, ptr %t12, i32 %t13
+%t15 = load i8, ptr %t14
+%t16 = call ptr @_zen_char_to_string(i8 %t15)
+store ptr %t16, ptr %t11
+%t20 = load ptr, ptr %t11
+%t21 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_5, i64 0, i64 0
+%t22 = call ptr @_str_dup(ptr %t21)
+%t25 = load ptr, ptr %t11
+%t26 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_6, i64 0, i64 0
+%t27 = call ptr @_str_dup(ptr %t26)
+%t30 = load ptr, ptr %t11
+%t31 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_7, i64 0, i64 0
+%t32 = call ptr @_str_dup(ptr %t31)
+%t23 = call i32 @strcmp(ptr %t20, ptr %t22)
+%t24 = icmp eq i32 %t23, 0
+br i1 %t24, label %skip207, label %rhs206
+rhs206:
+%t28 = call i32 @strcmp(ptr %t25, ptr %t27)
+%t29 = icmp eq i32 %t28, 0
+br label %end208
+skip207:
+br label %end208
+end208:
+%t19 = phi i1 [ true, %skip207 ], [ %t29, %rhs206 ]
+br i1 %t19, label %skip204, label %rhs203
+rhs203:
+%t33 = call i32 @strcmp(ptr %t30, ptr %t32)
+%t34 = icmp eq i32 %t33, 0
+br label %end205
+skip204:
+br label %end205
+end205:
+%t18 = phi i1 [ true, %skip204 ], [ %t34, %rhs203 ]
+br i1 %t18, label %if209, label %else210
+if209:
+%t35 = load i32, ptr %t4
+%t36 = add i32 %t35, 1
+store i32 %t36, ptr %t4
+br label %end202
+else210:
+br label %whileEnd201
+end202:
+br label %whileCond199
+whileEnd201:
+br label %whileCond211
+whileCond211:
+%t38 = load i32, ptr %t5
+%t39 = load i32, ptr %t4
+%t40 = icmp sge i32 %t38, %t39
+br i1 %t40, label %whileBody212, label %whileEnd213
+whileBody212:
+%t42 = load ptr, ptr %s.addr
+%t43 = load i32, ptr %t5
+%t44 = getelementptr i8, ptr %t42, i32 %t43
+%t45 = load i8, ptr %t44
+%t46 = call ptr @_zen_char_to_string(i8 %t45)
+store ptr %t46, ptr %t41
+%t50 = load ptr, ptr %t41
+%t51 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_5, i64 0, i64 0
+%t52 = call ptr @_str_dup(ptr %t51)
+%t55 = load ptr, ptr %t41
+%t56 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_6, i64 0, i64 0
+%t57 = call ptr @_str_dup(ptr %t56)
+%t60 = load ptr, ptr %t41
+%t61 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_7, i64 0, i64 0
+%t62 = call ptr @_str_dup(ptr %t61)
+%t53 = call i32 @strcmp(ptr %t50, ptr %t52)
+%t54 = icmp eq i32 %t53, 0
+br i1 %t54, label %skip219, label %rhs218
+rhs218:
+%t58 = call i32 @strcmp(ptr %t55, ptr %t57)
+%t59 = icmp eq i32 %t58, 0
+br label %end220
+skip219:
+br label %end220
+end220:
+%t49 = phi i1 [ true, %skip219 ], [ %t59, %rhs218 ]
+br i1 %t49, label %skip216, label %rhs215
+rhs215:
+%t63 = call i32 @strcmp(ptr %t60, ptr %t62)
+%t64 = icmp eq i32 %t63, 0
+br label %end217
+skip216:
+br label %end217
+end217:
+%t48 = phi i1 [ true, %skip216 ], [ %t64, %rhs215 ]
+br i1 %t48, label %if221, label %else222
+if221:
+%t65 = load i32, ptr %t5
+%t66 = sub i32 %t65, 1
+store i32 %t66, ptr %t5
+br label %end214
+else222:
+br label %whileEnd213
+end214:
+br label %whileCond211
+whileEnd213:
+%t69 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t70 = call ptr @_str_dup(ptr %t69)
+store ptr %t70, ptr %t68
+%t72 = load i32, ptr %t4
+store i32 %t72, ptr %t71
+br label %whileCond223
+whileCond223:
+%t73 = load i32, ptr %t71
+%t74 = load i32, ptr %t5
+%t75 = icmp sle i32 %t73, %t74
+br i1 %t75, label %whileBody224, label %whileEnd225
+whileBody224:
+%t76 = load ptr, ptr %t68
+%t77 = load ptr, ptr %s.addr
+%t78 = load i32, ptr %t71
+%t79 = getelementptr i8, ptr %t77, i32 %t78
+%t80 = load i8, ptr %t79
+%t81 = call ptr @_zen_char_to_string(i8 %t80)
+%t83 = call ptr @_str_concat(ptr %t76, ptr %t81)
+%t85 = load ptr, ptr %t68
+call void @_zen_string_free(ptr %t85)
+store ptr %t83, ptr %t68
+%t86 = load i32, ptr %t71
+%t87 = add i32 %t86, 1
+store i32 %t87, ptr %t71
+br label %whileCond223
+whileEnd225:
+%t89 = load ptr, ptr %t68
+ret ptr %t89
 }
-
-define ptr @splitAt(ptr %t0, ptr %t1, i32 %t2) local_unnamed_addr {
+define ptr @splitAt (ptr %t0, ptr %t1, i32 %t2) {
 entry:
-  %t4 = tail call i32 @strlen(ptr %t0)
-  %t7 = tail call i32 @strlen(ptr %t1)
-  %t10 = icmp eq i32 %t7, 0
-  br i1 %t10, label %common.ret, label %end226
-
-common.ret:                                       ; preds = %if240, %whileEnd230, %entry
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %spec.select, %whileEnd230 ], [ %t661620, %if240 ]
-  ret ptr %common.ret.op
-
-end226:                                           ; preds = %entry
-  %t1819 = icmp sgt i32 %t4, 0
-  br i1 %t1819, label %whileBody229.lr.ph, label %whileEnd230
-
-whileBody229.lr.ph:                               ; preds = %end226
-  %t24 = sub i32 %t4, %t7
-  %t288 = icmp sgt i32 %t7, 0
-  br label %whileBody229
-
-whileBody229:                                     ; preds = %whileBody229.lr.ph, %end239
-  %storemerge1122 = phi i32 [ 0, %whileBody229.lr.ph ], [ %t68, %end239 ]
-  %t541421 = phi i32 [ 0, %whileBody229.lr.ph ], [ %t5413, %end239 ]
-  %t661620 = phi ptr [ @.str_stdlib_stdlib_0, %whileBody229.lr.ph ], [ %t6617, %end239 ]
-  %t25.not = icmp sgt i32 %storemerge1122, %t24
-  br i1 %t25.not, label %else241, label %whileCond234.preheader
-
-whileCond234.preheader:                           ; preds = %whileBody229
-  br i1 %t288, label %whileBody235, label %if240
-
-whileBody235:                                     ; preds = %whileCond234.preheader, %whileBody235
-  %t4779 = phi i32 [ %t47, %whileBody235 ], [ 0, %whileCond234.preheader ]
-  %0 = phi i1 [ %spec.select26, %whileBody235 ], [ true, %whileCond234.preheader ]
-  %t32 = add i32 %t4779, %storemerge1122
-  %1 = sext i32 %t32 to i64
-  %t33 = getelementptr i8, ptr %t0, i64 %1
-  %t34 = load i8, ptr %t33, align 1
-  %t35 = tail call ptr @_zen_char_to_string(i8 %t34)
-  %2 = zext nneg i32 %t4779 to i64
-  %t39 = getelementptr i8, ptr %t1, i64 %2
-  %t40 = load i8, ptr %t39, align 1
-  %t41 = tail call ptr @_zen_char_to_string(i8 %t40)
-  %t44 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t35, ptr noundef nonnull dereferenceable(1) %t41)
-  %t45.not = icmp eq i32 %t44, 0
-  %spec.select26 = select i1 %t45.not, i1 %0, i1 false
-  %t47 = add nuw nsw i32 %t4779, 1
-  %t28 = icmp slt i32 %t47, %t7
-  br i1 %t28, label %whileBody235, label %end231
-
-end231:                                           ; preds = %whileBody235
-  br i1 %spec.select26, label %if240, label %else241
-
-if240:                                            ; preds = %whileCond234.preheader, %end231
-  %t51 = icmp eq i32 %t541421, %t2
-  br i1 %t51, label %common.ret, label %end242
-
-end242:                                           ; preds = %if240
-  %t54 = add i32 %t541421, 1
-  br label %end239
-
-else241:                                          ; preds = %whileBody229, %end231
-  %3 = sext i32 %storemerge1122 to i64
-  %t62 = getelementptr i8, ptr %t0, i64 %3
-  %t63 = load i8, ptr %t62, align 1
-  %t64 = tail call ptr @_zen_char_to_string(i8 %t63)
-  %t66 = tail call ptr @_str_concat(ptr %t661620, ptr %t64)
-  br label %end239
-
-end239:                                           ; preds = %else241, %end242
-  %.sink = phi i32 [ 1, %else241 ], [ %t7, %end242 ]
-  %t6617 = phi ptr [ %t66, %else241 ], [ @.str_stdlib_stdlib_0, %end242 ]
-  %t5413 = phi i32 [ %t541421, %else241 ], [ %t54, %end242 ]
-  %t68 = add i32 %storemerge1122, %.sink
-  %t18 = icmp slt i32 %t68, %t4
-  br i1 %t18, label %whileBody229, label %whileEnd230
-
-whileEnd230:                                      ; preds = %end239, %end226
-  %t6616.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %end226 ], [ %t6617, %end239 ]
-  %t5414.lcssa = phi i32 [ 0, %end226 ], [ %t5413, %end239 ]
-  %t71 = icmp eq i32 %t5414.lcssa, %t2
-  %spec.select = select i1 %t71, ptr %t6616.lcssa, ptr @.str_stdlib_stdlib_0
-  br label %common.ret
+%t5 = alloca i32
+%t8 = alloca i32
+%t13 = alloca i32
+%t14 = alloca i32
+%t15 = alloca ptr
+%t21 = alloca i1
+%t22 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%delim.addr = alloca ptr
+store ptr %t1, ptr %delim.addr
+%target.addr = alloca i32
+store i32 %t2, ptr %target.addr
+%t3 = load ptr, ptr %s.addr
+%t4 = call i32 @strlen(ptr %t3)
+store i32 %t4, ptr %t5
+%t6 = load ptr, ptr %delim.addr
+%t7 = call i32 @strlen(ptr %t6)
+store i32 %t7, ptr %t8
+%t9 = load i32, ptr %t8
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if227, label %end226
+if227:
+%t11 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t12 = call ptr @_str_dup(ptr %t11)
+ret ptr %t12
+end226:
+store i32 0, ptr %t13
+store i32 0, ptr %t14
+%t16 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t17 = call ptr @_str_dup(ptr %t16)
+store ptr %t17, ptr %t15
+br label %whileCond228
+whileCond228:
+%t18 = load i32, ptr %t13
+%t19 = load i32, ptr %t5
+%t20 = icmp slt i32 %t18, %t19
+br i1 %t20, label %whileBody229, label %whileEnd230
+whileBody229:
+store i1 1, ptr %t21
+store i32 0, ptr %t22
+%t23 = load i32, ptr %t13
+%t24 = load i32, ptr %t5
+%t25 = load i32, ptr %t8
+%t26 = sub i32 %t24, %t25
+%t27 = icmp sle i32 %t23, %t26
+br i1 %t27, label %if232, label %else233
+if232:
+br label %whileCond234
+whileCond234:
+%t28 = load i32, ptr %t22
+%t29 = load i32, ptr %t8
+%t30 = icmp slt i32 %t28, %t29
+br i1 %t30, label %whileBody235, label %whileEnd236
+whileBody235:
+%t31 = load ptr, ptr %s.addr
+%t32 = load i32, ptr %t13
+%t33 = load i32, ptr %t22
+%t34 = add i32 %t32, %t33
+%t39 = load ptr, ptr %delim.addr
+%t40 = load i32, ptr %t22
+%t35 = getelementptr i8, ptr %t31, i32 %t34
+%t36 = load i8, ptr %t35
+%t37 = call ptr @_zen_char_to_string(i8 %t36)
+%t41 = getelementptr i8, ptr %t39, i32 %t40
+%t42 = load i8, ptr %t41
+%t43 = call ptr @_zen_char_to_string(i8 %t42)
+%t45 = call i32 @strcmp(ptr %t37, ptr %t43)
+%t46 = icmp ne i32 %t45, 0
+br i1 %t46, label %if238, label %end237
+if238:
+store i1 0, ptr %t21
+br label %end237
+end237:
+%t48 = load i32, ptr %t22
+%t49 = add i32 %t48, 1
+store i32 %t49, ptr %t22
+br label %whileCond234
+whileEnd236:
+br label %end231
+else233:
+store i1 0, ptr %t21
+br label %end231
+end231:
+%t52 = load i1, ptr %t21
+br i1 %t52, label %if240, label %else241
+if240:
+%t53 = load i32, ptr %t14
+%t54 = load i32, ptr %target.addr
+%t55 = icmp eq i32 %t53, %t54
+br i1 %t55, label %if243, label %end242
+if243:
+%t56 = load ptr, ptr %t15
+ret ptr %t56
+end242:
+%t57 = load i32, ptr %t14
+%t58 = add i32 %t57, 1
+store i32 %t58, ptr %t14
+%t60 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t61 = call ptr @_str_dup(ptr %t60)
+%t63 = load ptr, ptr %t15
+call void @_zen_string_free(ptr %t63)
+store ptr %t61, ptr %t15
+%t64 = load i32, ptr %t13
+%t65 = load i32, ptr %t8
+%t66 = add i32 %t64, %t65
+store i32 %t66, ptr %t13
+br label %end239
+else241:
+%t68 = load ptr, ptr %t15
+%t69 = load ptr, ptr %s.addr
+%t70 = load i32, ptr %t13
+%t71 = getelementptr i8, ptr %t69, i32 %t70
+%t72 = load i8, ptr %t71
+%t73 = call ptr @_zen_char_to_string(i8 %t72)
+%t75 = call ptr @_str_concat(ptr %t68, ptr %t73)
+%t77 = load ptr, ptr %t15
+call void @_zen_string_free(ptr %t77)
+store ptr %t75, ptr %t15
+%t78 = load i32, ptr %t13
+%t79 = add i32 %t78, 1
+store i32 %t79, ptr %t13
+br label %end239
+end239:
+br label %whileCond228
+whileEnd230:
+%t81 = load i32, ptr %t14
+%t82 = load i32, ptr %target.addr
+%t83 = icmp eq i32 %t81, %t82
+br i1 %t83, label %if245, label %end244
+if245:
+%t84 = load ptr, ptr %t15
+ret ptr %t84
+end244:
+%t85 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t86 = call ptr @_str_dup(ptr %t85)
+ret ptr %t86
 }
-
-define ptr @repeat(ptr %t0, i32 %t1) local_unnamed_addr {
+define ptr @repeat (ptr %t0, i32 %t1) {
 entry:
-  %t3 = icmp slt i32 %t1, 1
-  br i1 %t3, label %common.ret, label %end246
-
-common.ret:                                       ; preds = %whileBody251, %end246, %entry
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ @.str_stdlib_stdlib_0, %end246 ], [ %t15, %whileBody251 ]
-  ret ptr %common.ret.op
-
-end246:                                           ; preds = %entry
-  %t6 = tail call i32 @strlen(ptr %t0)
-  %t7 = icmp eq i32 %t6, 0
-  br i1 %t7, label %common.ret, label %whileBody251
-
-whileBody251:                                     ; preds = %end246, %whileBody251
-  %count.addr.06 = phi i32 [ %t17, %whileBody251 ], [ %t1, %end246 ]
-  %t1535 = phi ptr [ %t15, %whileBody251 ], [ @.str_stdlib_stdlib_0, %end246 ]
-  %t15 = tail call ptr @_str_concat(ptr %t1535, ptr %t0)
-  %t17 = add nsw i32 %count.addr.06, -1
-  %t12 = icmp samesign ugt i32 %count.addr.06, 1
-  br i1 %t12, label %whileBody251, label %common.ret
+%t11 = alloca ptr
+%a.addr = alloca ptr
+store ptr %t0, ptr %a.addr
+%count.addr = alloca i32
+store i32 %t1, ptr %count.addr
+%t2 = load i32, ptr %count.addr
+%t3 = icmp sle i32 %t2, 0
+br i1 %t3, label %if247, label %end246
+if247:
+%t4 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t5 = call ptr @_str_dup(ptr %t4)
+ret ptr %t5
+end246:
+%t6 = load ptr, ptr %a.addr
+%t7 = call i32 @strlen(ptr %t6)
+%t8 = icmp eq i32 %t7, 0
+br i1 %t8, label %if249, label %end248
+if249:
+%t9 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t10 = call ptr @_str_dup(ptr %t9)
+ret ptr %t10
+end248:
+%t12 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t13 = call ptr @_str_dup(ptr %t12)
+store ptr %t13, ptr %t11
+br label %whileCond250
+whileCond250:
+%t14 = load i32, ptr %count.addr
+%t15 = icmp slt i32 0, %t14
+br i1 %t15, label %whileBody251, label %whileEnd252
+whileBody251:
+%t16 = load ptr, ptr %t11
+%t17 = load ptr, ptr %a.addr
+%t18 = call ptr @_str_concat(ptr %t16, ptr %t17)
+%t20 = load ptr, ptr %t11
+call void @_zen_string_free(ptr %t20)
+store ptr %t18, ptr %t11
+%t21 = load i32, ptr %count.addr
+%t22 = sub i32 %t21, 1
+store i32 %t22, ptr %count.addr
+br label %whileCond250
+whileEnd252:
+%t23 = load ptr, ptr %t11
+ret ptr %t23
 }
-
-define i32 @count(ptr %t0, ptr %t1) local_unnamed_addr {
+define i32 @count (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @strlen(ptr %t0)
-  %t4 = icmp eq i32 %t3, 0
-  br i1 %t4, label %common.ret, label %end253
-
-common.ret:                                       ; preds = %charAt.exit, %end255, %end253, %entry
-  %common.ret.op = phi i32 [ 0, %entry ], [ 0, %end253 ], [ 0, %end255 ], [ %spec.select, %charAt.exit ]
-  ret i32 %common.ret.op
-
-end253:                                           ; preds = %entry
-  %t6 = tail call i32 @strlen(ptr %t1)
-  %t7 = icmp eq i32 %t6, 0
-  br i1 %t7, label %common.ret, label %end255
-
-end255:                                           ; preds = %end253
-  %t123 = tail call i32 @strlen(ptr %t0)
-  %t134 = icmp sgt i32 %t123, 0
-  br i1 %t134, label %whileBody258, label %common.ret
-
-whileBody258:                                     ; preds = %end255, %charAt.exit
-  %storemerge6 = phi i32 [ %t24, %charAt.exit ], [ 0, %end255 ]
-  %t2225 = phi i32 [ %spec.select, %charAt.exit ], [ 0, %end255 ]
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t10.i.not = icmp slt i32 %storemerge6, %t3.i
-  br i1 %t10.i.not, label %end116.i, label %charAt.exit
-
-end116.i:                                         ; preds = %whileBody258
-  %0 = zext nneg i32 %storemerge6 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %charAt.exit
-
-charAt.exit:                                      ; preds = %whileBody258, %end116.i
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %whileBody258 ]
-  %t19 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i, ptr noundef nonnull dereferenceable(1) %t1)
-  %t20 = icmp eq i32 %t19, 0
-  %t22 = zext i1 %t20 to i32
-  %spec.select = add i32 %t2225, %t22
-  %t24 = add nuw nsw i32 %storemerge6, 1
-  %t12 = tail call i32 @strlen(ptr %t0)
-  %t13 = icmp slt i32 %t24, %t12
-  br i1 %t13, label %whileBody258, label %common.ret
+%t8 = alloca i32
+%t9 = alloca i32
+%text.addr = alloca ptr
+store ptr %t0, ptr %text.addr
+%search.addr = alloca ptr
+store ptr %t1, ptr %search.addr
+%t2 = load ptr, ptr %text.addr
+%t3 = call i32 @strlen(ptr %t2)
+%t4 = icmp eq i32 %t3, 0
+br i1 %t4, label %if254, label %end253
+if254:
+ret i32 0
+end253:
+%t5 = load ptr, ptr %search.addr
+%t6 = call i32 @strlen(ptr %t5)
+%t7 = icmp eq i32 %t6, 0
+br i1 %t7, label %if256, label %end255
+if256:
+ret i32 0
+end255:
+store i32 0, ptr %t8
+store i32 0, ptr %t9
+br label %whileCond257
+whileCond257:
+%t10 = load i32, ptr %t9
+%t11 = load ptr, ptr %text.addr
+%t12 = call i32 @strlen(ptr %t11)
+%t13 = icmp slt i32 %t10, %t12
+br i1 %t13, label %whileBody258, label %whileEnd259
+whileBody258:
+%t14 = load ptr, ptr %text.addr
+%t15 = load i32, ptr %t9
+%t17 = load ptr, ptr %search.addr
+%t16 = call ptr @charAt(ptr %t14, i32 %t15)
+%t18 = call i32 @strcmp(ptr %t16, ptr %t17)
+%t19 = icmp eq i32 %t18, 0
+br i1 %t19, label %if261, label %end260
+if261:
+%t20 = load i32, ptr %t8
+%t21 = add i32 %t20, 1
+store i32 %t21, ptr %t8
+br label %end260
+end260:
+%t22 = load i32, ptr %t9
+%t23 = add i32 %t22, 1
+store i32 %t23, ptr %t9
+br label %whileCond257
+whileEnd259:
+%t24 = load i32, ptr %t8
+ret i32 %t24
 }
-
-define ptr @padStart(ptr %t0, i32 %t1, ptr %t2) local_unnamed_addr {
+define ptr @padStart (ptr %t0, i32 %t1, ptr %t2) {
 entry:
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t6.not = icmp sgt i32 %t1, %t5
-  br i1 %t6.not, label %end262, label %common.ret
-
-common.ret:                                       ; preds = %end262, %entry, %whileEnd268
-  %common.ret.op = phi ptr [ %t28, %whileEnd268 ], [ %t0, %entry ], [ %t0, %end262 ]
-  ret ptr %common.ret.op
-
-end262:                                           ; preds = %entry
-  %t9 = tail call i32 @strlen(ptr %t2)
-  %t10 = icmp eq i32 %t9, 0
-  br i1 %t10, label %common.ret, label %end264
-
-end264:                                           ; preds = %end262
-  %t15 = tail call i32 @strlen(ptr %t0)
-  %t16 = sub i32 %t1, %t15
-  %t203 = icmp sgt i32 %t16, 0
-  br i1 %t203, label %whileBody267, label %whileEnd268
-
-whileBody267:                                     ; preds = %end264, %whileBody267
-  %t195 = phi i32 [ %t25, %whileBody267 ], [ %t16, %end264 ]
-  %t2324 = phi ptr [ %t23, %whileBody267 ], [ @.str_stdlib_stdlib_0, %end264 ]
-  %t23 = tail call ptr @_str_concat(ptr %t2324, ptr %t2)
-  %t25 = add nsw i32 %t195, -1
-  %t20 = icmp samesign ugt i32 %t195, 1
-  br i1 %t20, label %whileBody267, label %whileEnd268
-
-whileEnd268:                                      ; preds = %whileBody267, %end264
-  %t232.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %end264 ], [ %t23, %whileBody267 ]
-  %t28 = tail call ptr @_str_concat(ptr %t232.lcssa, ptr %t0)
-  br label %common.ret
+%t12 = alloca i32
+%t17 = alloca ptr
+%text.addr = alloca ptr
+store ptr %t0, ptr %text.addr
+%targetLength.addr = alloca i32
+store i32 %t1, ptr %targetLength.addr
+%pad.addr = alloca ptr
+store ptr %t2, ptr %pad.addr
+%t3 = load i32, ptr %targetLength.addr
+%t4 = load ptr, ptr %text.addr
+%t5 = call i32 @strlen(ptr %t4)
+%t6 = icmp sle i32 %t3, %t5
+br i1 %t6, label %if263, label %end262
+if263:
+%t7 = load ptr, ptr %text.addr
+ret ptr %t7
+end262:
+%t8 = load ptr, ptr %pad.addr
+%t9 = call i32 @strlen(ptr %t8)
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if265, label %end264
+if265:
+%t11 = load ptr, ptr %text.addr
+ret ptr %t11
+end264:
+%t13 = load i32, ptr %targetLength.addr
+%t14 = load ptr, ptr %text.addr
+%t15 = call i32 @strlen(ptr %t14)
+%t16 = sub i32 %t13, %t15
+store i32 %t16, ptr %t12
+%t18 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t19 = call ptr @_str_dup(ptr %t18)
+store ptr %t19, ptr %t17
+br label %whileCond266
+whileCond266:
+%t20 = load i32, ptr %t12
+%t21 = icmp slt i32 0, %t20
+br i1 %t21, label %whileBody267, label %whileEnd268
+whileBody267:
+%t22 = load ptr, ptr %t17
+%t23 = load ptr, ptr %pad.addr
+%t24 = call ptr @_str_concat(ptr %t22, ptr %t23)
+%t26 = load ptr, ptr %t17
+call void @_zen_string_free(ptr %t26)
+store ptr %t24, ptr %t17
+%t27 = load i32, ptr %t12
+%t28 = sub i32 %t27, 1
+store i32 %t28, ptr %t12
+br label %whileCond266
+whileEnd268:
+%t29 = load ptr, ptr %t17
+%t30 = load ptr, ptr %text.addr
+%t31 = call ptr @_str_concat(ptr %t29, ptr %t30)
+ret ptr %t31
 }
-
-define ptr @padEnd(ptr %t0, i32 %t1, ptr %t2) local_unnamed_addr {
+define ptr @padEnd (ptr %t0, i32 %t1, ptr %t2) {
 entry:
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t6.not = icmp sgt i32 %t1, %t5
-  br i1 %t6.not, label %end269, label %common.ret
-
-common.ret:                                       ; preds = %whileBody274, %end271, %end269, %entry
-  %common.ret.op = phi ptr [ %t0, %entry ], [ %t0, %end269 ], [ %t0, %end271 ], [ %t23, %whileBody274 ]
-  ret ptr %common.ret.op
-
-end269:                                           ; preds = %entry
-  %t9 = tail call i32 @strlen(ptr %t2)
-  %t10 = icmp eq i32 %t9, 0
-  br i1 %t10, label %common.ret, label %end271
-
-end271:                                           ; preds = %end269
-  %t15 = tail call i32 @strlen(ptr %t0)
-  %t16 = sub i32 %t1, %t15
-  %t203 = icmp sgt i32 %t16, 0
-  br i1 %t203, label %whileBody274, label %common.ret
-
-whileBody274:                                     ; preds = %end271, %whileBody274
-  %t195 = phi i32 [ %t25, %whileBody274 ], [ %t16, %end271 ]
-  %t2324 = phi ptr [ %t23, %whileBody274 ], [ %t0, %end271 ]
-  %t23 = tail call ptr @_str_concat(ptr %t2324, ptr %t2)
-  %t25 = add nsw i32 %t195, -1
-  %t20 = icmp samesign ugt i32 %t195, 1
-  br i1 %t20, label %whileBody274, label %common.ret
+%t12 = alloca i32
+%t17 = alloca ptr
+%text.addr = alloca ptr
+store ptr %t0, ptr %text.addr
+%targetLength.addr = alloca i32
+store i32 %t1, ptr %targetLength.addr
+%pad.addr = alloca ptr
+store ptr %t2, ptr %pad.addr
+%t3 = load i32, ptr %targetLength.addr
+%t4 = load ptr, ptr %text.addr
+%t5 = call i32 @strlen(ptr %t4)
+%t6 = icmp sle i32 %t3, %t5
+br i1 %t6, label %if270, label %end269
+if270:
+%t7 = load ptr, ptr %text.addr
+ret ptr %t7
+end269:
+%t8 = load ptr, ptr %pad.addr
+%t9 = call i32 @strlen(ptr %t8)
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if272, label %end271
+if272:
+%t11 = load ptr, ptr %text.addr
+ret ptr %t11
+end271:
+%t13 = load i32, ptr %targetLength.addr
+%t14 = load ptr, ptr %text.addr
+%t15 = call i32 @strlen(ptr %t14)
+%t16 = sub i32 %t13, %t15
+store i32 %t16, ptr %t12
+%t18 = load ptr, ptr %text.addr
+store ptr %t18, ptr %t17
+br label %whileCond273
+whileCond273:
+%t19 = load i32, ptr %t12
+%t20 = icmp slt i32 0, %t19
+br i1 %t20, label %whileBody274, label %whileEnd275
+whileBody274:
+%t21 = load ptr, ptr %t17
+%t22 = load ptr, ptr %pad.addr
+%t23 = call ptr @_str_concat(ptr %t21, ptr %t22)
+%t25 = load ptr, ptr %t17
+call void @_zen_string_free(ptr %t25)
+store ptr %t23, ptr %t17
+%t26 = load i32, ptr %t12
+%t27 = sub i32 %t26, 1
+store i32 %t27, ptr %t12
+br label %whileCond273
+whileEnd275:
+%t28 = load ptr, ptr %t17
+ret ptr %t28
 }
-
-define ptr @padCenter(ptr %t0, i32 %t1, ptr %t2) local_unnamed_addr {
+define ptr @padCenter (ptr %t0, i32 %t1, ptr %t2) {
 entry:
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t6.not = icmp sgt i32 %t1, %t5
-  br i1 %t6.not, label %end276, label %common.ret
-
-common.ret:                                       ; preds = %end276, %entry, %whileEnd285
-  %common.ret.op = phi ptr [ %t46, %whileEnd285 ], [ %t0, %entry ], [ %t0, %end276 ]
-  ret ptr %common.ret.op
-
-end276:                                           ; preds = %entry
-  %t9 = tail call i32 @strlen(ptr %t2)
-  %t10 = icmp eq i32 %t9, 0
-  br i1 %t10, label %common.ret, label %end278
-
-end278:                                           ; preds = %end276
-  %t15 = tail call i32 @strlen(ptr %t0)
-  %t16 = sub i32 %t1, %t15
-  %t19 = sdiv i32 %t16, 2
-  %t23 = sub i32 %t16, %t19
-  %t294 = icmp sgt i32 %t16, 1
-  br i1 %t294, label %whileBody281, label %whileCond283thread-pre-split
-
-whileBody281:                                     ; preds = %end278, %whileBody281
-  %t286 = phi i32 [ %t34, %whileBody281 ], [ %t19, %end278 ]
-  %t3225 = phi ptr [ %t32, %whileBody281 ], [ @.str_stdlib_stdlib_0, %end278 ]
-  %t32 = tail call ptr @_str_concat(ptr %t3225, ptr %t2)
-  %t34 = add nsw i32 %t286, -1
-  %t29 = icmp sgt i32 %t286, 1
-  br i1 %t29, label %whileBody281, label %whileCond283thread-pre-split
-
-whileCond283thread-pre-split:                     ; preds = %whileBody281, %end278
-  %t42 = phi ptr [ @.str_stdlib_stdlib_0, %end278 ], [ %t32, %whileBody281 ]
-  %t3610 = icmp sgt i32 %t23, 0
-  br i1 %t3610, label %whileBody284, label %whileEnd285
-
-whileBody284:                                     ; preds = %whileCond283thread-pre-split, %whileBody284
-  %t3512 = phi i32 [ %t41, %whileBody284 ], [ %t23, %whileCond283thread-pre-split ]
-  %t39811 = phi ptr [ %t39, %whileBody284 ], [ @.str_stdlib_stdlib_0, %whileCond283thread-pre-split ]
-  %t39 = tail call ptr @_str_concat(ptr %t39811, ptr %t2)
-  %t41 = add nsw i32 %t3512, -1
-  %t36 = icmp samesign ugt i32 %t3512, 1
-  br i1 %t36, label %whileBody284, label %whileEnd285
-
-whileEnd285:                                      ; preds = %whileBody284, %whileCond283thread-pre-split
-  %t398.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %whileCond283thread-pre-split ], [ %t39, %whileBody284 ]
-  %t44 = tail call ptr @_str_concat(ptr %t42, ptr %t0)
-  %t46 = tail call ptr @_str_concat(ptr %t44, ptr %t398.lcssa)
-  br label %common.ret
+%t12 = alloca i32
+%t17 = alloca i32
+%t20 = alloca i32
+%t24 = alloca ptr
+%t27 = alloca ptr
+%text.addr = alloca ptr
+store ptr %t0, ptr %text.addr
+%targetLength.addr = alloca i32
+store i32 %t1, ptr %targetLength.addr
+%pad.addr = alloca ptr
+store ptr %t2, ptr %pad.addr
+%t3 = load i32, ptr %targetLength.addr
+%t4 = load ptr, ptr %text.addr
+%t5 = call i32 @strlen(ptr %t4)
+%t6 = icmp sle i32 %t3, %t5
+br i1 %t6, label %if277, label %end276
+if277:
+%t7 = load ptr, ptr %text.addr
+ret ptr %t7
+end276:
+%t8 = load ptr, ptr %pad.addr
+%t9 = call i32 @strlen(ptr %t8)
+%t10 = icmp eq i32 %t9, 0
+br i1 %t10, label %if279, label %end278
+if279:
+%t11 = load ptr, ptr %text.addr
+ret ptr %t11
+end278:
+%t13 = load i32, ptr %targetLength.addr
+%t14 = load ptr, ptr %text.addr
+%t15 = call i32 @strlen(ptr %t14)
+%t16 = sub i32 %t13, %t15
+store i32 %t16, ptr %t12
+%t18 = load i32, ptr %t12
+%t19 = sdiv i32 %t18, 2
+store i32 %t19, ptr %t17
+%t21 = load i32, ptr %t12
+%t22 = load i32, ptr %t17
+%t23 = sub i32 %t21, %t22
+store i32 %t23, ptr %t20
+%t25 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t26 = call ptr @_str_dup(ptr %t25)
+store ptr %t26, ptr %t24
+%t28 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t29 = call ptr @_str_dup(ptr %t28)
+store ptr %t29, ptr %t27
+br label %whileCond280
+whileCond280:
+%t30 = load i32, ptr %t17
+%t31 = icmp slt i32 0, %t30
+br i1 %t31, label %whileBody281, label %whileEnd282
+whileBody281:
+%t32 = load ptr, ptr %t24
+%t33 = load ptr, ptr %pad.addr
+%t34 = call ptr @_str_concat(ptr %t32, ptr %t33)
+%t36 = load ptr, ptr %t24
+call void @_zen_string_free(ptr %t36)
+store ptr %t34, ptr %t24
+%t37 = load i32, ptr %t17
+%t38 = sub i32 %t37, 1
+store i32 %t38, ptr %t17
+br label %whileCond280
+whileEnd282:
+br label %whileCond283
+whileCond283:
+%t39 = load i32, ptr %t20
+%t40 = icmp slt i32 0, %t39
+br i1 %t40, label %whileBody284, label %whileEnd285
+whileBody284:
+%t41 = load ptr, ptr %t27
+%t42 = load ptr, ptr %pad.addr
+%t43 = call ptr @_str_concat(ptr %t41, ptr %t42)
+%t45 = load ptr, ptr %t27
+call void @_zen_string_free(ptr %t45)
+store ptr %t43, ptr %t27
+%t46 = load i32, ptr %t20
+%t47 = sub i32 %t46, 1
+store i32 %t47, ptr %t20
+br label %whileCond283
+whileEnd285:
+%t48 = load ptr, ptr %t24
+%t49 = load ptr, ptr %text.addr
+%t51 = load ptr, ptr %t27
+%t50 = call ptr @_str_concat(ptr %t48, ptr %t49)
+%t52 = call ptr @_str_concat(ptr %t50, ptr %t51)
+call void @_zen_string_free(ptr %t50)
+ret ptr %t52
 }
-
-define ptr @capitalize(ptr %t0) local_unnamed_addr {
+define ptr @capitalize (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t3 = icmp eq i32 %t2, 0
-  br i1 %t3, label %common.ret, label %end286
-
-common.ret:                                       ; preds = %whileBody295, %end288, %entry
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %entry ], [ %t32, %end288 ], [ %t47, %whileBody295 ]
-  ret ptr %common.ret.op
-
-end286:                                           ; preds = %entry
-  %t8 = load i8, ptr %t0, align 1
-  %t9 = tail call ptr @_zen_char_to_string(i8 %t8)
-  %t12 = tail call i32 @_string_to_int_ascii(ptr %t9)
-  %t19 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_1)
-  %t23 = tail call i32 @_string_to_int_ascii(ptr nonnull @.str_stdlib_stdlib_2)
-  %t20 = icmp sge i32 %t12, %t19
-  %t24 = icmp sle i32 %t12, %t23
-  %t16 = select i1 %t20, i1 %t24, i1 false
-  br i1 %t16, label %if292, label %end288
-
-if292:                                            ; preds = %end286
-  %t27 = add i32 %t12, -32
-  %t28 = tail call ptr @_int_to_string_ascii(i32 %t27)
-  br label %end288
-
-end288:                                           ; preds = %end286, %if292
-  %t9.sink = phi ptr [ %t28, %if292 ], [ %t9, %end286 ]
-  %t32 = tail call ptr @_str_concat(ptr nonnull @.str_stdlib_stdlib_0, ptr %t9.sink)
-  %t35 = tail call i32 @strlen(ptr nonnull %t0)
-  %t393 = icmp sgt i32 %t35, 1
-  br i1 %t393, label %whileBody295, label %common.ret
-
-whileBody295:                                     ; preds = %end288, %whileBody295
-  %t4915 = phi i32 [ %t49, %whileBody295 ], [ 1, %end288 ]
-  %t4724 = phi ptr [ %t47, %whileBody295 ], [ %t32, %end288 ]
-  %0 = zext nneg i32 %t4915 to i64
-  %t43 = getelementptr i8, ptr %t0, i64 %0
-  %t44 = load i8, ptr %t43, align 1
-  %t45 = tail call ptr @_zen_char_to_string(i8 %t44)
-  %t47 = tail call ptr @_str_concat(ptr %t4724, ptr %t45)
-  %t49 = add nuw nsw i32 %t4915, 1
-  %t39 = icmp slt i32 %t49, %t35
-  br i1 %t39, label %whileBody295, label %common.ret
+%t6 = alloca ptr
+%t14 = alloca i32
+%t15 = alloca ptr
+%t41 = alloca i32
+%t44 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%t1 = load ptr, ptr %s.addr
+%t2 = call i32 @strlen(ptr %t1)
+%t3 = icmp eq i32 %t2, 0
+br i1 %t3, label %if287, label %end286
+if287:
+%t4 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t5 = call ptr @_str_dup(ptr %t4)
+ret ptr %t5
+end286:
+%t7 = load ptr, ptr %s.addr
+%t8 = getelementptr i8, ptr %t7, i32 0
+%t9 = load i8, ptr %t8
+%t10 = call ptr @_zen_char_to_string(i8 %t9)
+store ptr %t10, ptr %t6
+%t12 = load ptr, ptr %t6
+%t13 = call i32 @_string_to_int_ascii(ptr %t12)
+store i32 %t13, ptr %t14
+%t16 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t17 = call ptr @_str_dup(ptr %t16)
+store ptr %t17, ptr %t15
+%t19 = load i32, ptr %t14
+%t20 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_1, i64 0, i64 0
+%t21 = call ptr @_str_dup(ptr %t20)
+%t22 = call i32 @_string_to_int_ascii(ptr %t21)
+%t24 = load i32, ptr %t14
+%t25 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_2, i64 0, i64 0
+%t26 = call ptr @_str_dup(ptr %t25)
+%t27 = call i32 @_string_to_int_ascii(ptr %t26)
+%t23 = icmp sge i32 %t19, %t22
+br i1 %t23, label %rhs289, label %skip290
+rhs289:
+%t28 = icmp sle i32 %t24, %t27
+br label %end291
+skip290:
+br label %end291
+end291:
+%t18 = phi i1 [ false, %skip290 ], [ %t28, %rhs289 ]
+br i1 %t18, label %if292, label %else293
+if292:
+%t29 = load ptr, ptr %t15
+%t30 = load i32, ptr %t14
+%t31 = sub i32 %t30, 32
+%t32 = call ptr @_int_to_string_ascii(i32 %t31)
+%t33 = call ptr @_str_concat(ptr %t29, ptr %t32)
+%t35 = load ptr, ptr %t15
+call void @_zen_string_free(ptr %t35)
+store ptr %t33, ptr %t15
+br label %end288
+else293:
+%t36 = load ptr, ptr %t15
+%t37 = load ptr, ptr %t6
+%t38 = call ptr @_str_concat(ptr %t36, ptr %t37)
+%t40 = load ptr, ptr %t15
+call void @_zen_string_free(ptr %t40)
+store ptr %t38, ptr %t15
+br label %end288
+end288:
+store i32 1, ptr %t41
+%t42 = load ptr, ptr %s.addr
+%t43 = call i32 @strlen(ptr %t42)
+store i32 %t43, ptr %t44
+br label %whileCond294
+whileCond294:
+%t45 = load i32, ptr %t41
+%t46 = load i32, ptr %t44
+%t47 = icmp slt i32 %t45, %t46
+br i1 %t47, label %whileBody295, label %whileEnd296
+whileBody295:
+%t48 = load ptr, ptr %t15
+%t49 = load ptr, ptr %s.addr
+%t50 = load i32, ptr %t41
+%t51 = getelementptr i8, ptr %t49, i32 %t50
+%t52 = load i8, ptr %t51
+%t53 = call ptr @_zen_char_to_string(i8 %t52)
+%t55 = call ptr @_str_concat(ptr %t48, ptr %t53)
+%t57 = load ptr, ptr %t15
+call void @_zen_string_free(ptr %t57)
+store ptr %t55, ptr %t15
+%t58 = load i32, ptr %t41
+%t59 = add i32 %t58, 1
+store i32 %t59, ptr %t41
+br label %whileCond294
+whileEnd296:
+%t61 = load ptr, ptr %t15
+ret ptr %t61
 }
-
-define ptr @extName(ptr %t0) local_unnamed_addr {
+define ptr @extName (ptr %t0) {
 entry:
-  %t2 = tail call i32 @strlen(ptr %t0)
-  %t4.017 = add i32 %t2, -1
-  %t818 = icmp sgt i32 %t4.017, -1
-  br i1 %t818, label %whileBody298, label %common.ret
-
-whileBody298:                                     ; preds = %entry, %whileCond297.backedge
-  %t4.020 = phi i32 [ %t4.0, %whileCond297.backedge ], [ %t4.017, %entry ]
-  %t4.0.in19 = phi i32 [ %t4.020, %whileCond297.backedge ], [ %t2, %entry ]
-  %0 = zext nneg i32 %t4.020 to i64
-  %t11 = getelementptr i8, ptr %t0, i64 %0
-  %t12 = load i8, ptr %t11, align 1
-  %t13 = tail call ptr @_zen_char_to_string(i8 %t12)
-  %1 = load i8, ptr %t13, align 1
-  %.not = icmp eq i8 %1, 46
-  br i1 %.not, label %sub_1, label %whileCond297.backedge
-
-sub_1:                                            ; preds = %whileBody298
-  %2 = getelementptr inbounds nuw i8, ptr %t13, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %if301, label %whileCond297.backedge
-
-whileCond297.backedge:                            ; preds = %whileBody298, %sub_1
-  %t4.0 = add nsw i32 %t4.020, -1
-  %t8 = icmp sgt i32 %t4.020, 0
-  br i1 %t8, label %whileBody298, label %common.ret
-
-if301:                                            ; preds = %sub_1
-  %t268 = icmp slt i32 %t4.0.in19, %t2
-  br i1 %t268, label %whileBody303, label %common.ret
-
-whileBody303:                                     ; preds = %if301, %whileBody303
-  %t36610 = phi i32 [ %t36, %whileBody303 ], [ %t4.0.in19, %if301 ]
-  %t3479 = phi ptr [ %t34, %whileBody303 ], [ @.str_stdlib_stdlib_0, %if301 ]
-  %5 = sext i32 %t36610 to i64
-  %t30 = getelementptr i8, ptr %t0, i64 %5
-  %t31 = load i8, ptr %t30, align 1
-  %t32 = tail call ptr @_zen_char_to_string(i8 %t31)
-  %t34 = tail call ptr @_str_concat(ptr %t3479, ptr %t32)
-  %t36 = add nsw i32 %t36610, 1
-  %t26 = icmp slt i32 %t36, %t2
-  br i1 %t26, label %whileBody303, label %common.ret
-
-common.ret:                                       ; preds = %whileCond297.backedge, %whileBody303, %entry, %if301
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %if301 ], [ @.str_stdlib_stdlib_0, %entry ], [ %t34, %whileBody303 ], [ @.str_stdlib_stdlib_0, %whileCond297.backedge ]
-  ret ptr %common.ret.op
+%t3 = alloca i32
+%t4 = alloca i32
+%t19 = alloca i32
+%t22 = alloca ptr
+%path.addr = alloca ptr
+store ptr %t0, ptr %path.addr
+%t1 = load ptr, ptr %path.addr
+%t2 = call i32 @strlen(ptr %t1)
+store i32 %t2, ptr %t3
+%t5 = load i32, ptr %t3
+%t6 = sub i32 %t5, 1
+store i32 %t6, ptr %t4
+br label %whileCond297
+whileCond297:
+%t7 = load i32, ptr %t4
+%t8 = icmp sge i32 %t7, 0
+br i1 %t8, label %whileBody298, label %whileEnd299
+whileBody298:
+%t9 = load ptr, ptr %path.addr
+%t10 = load i32, ptr %t4
+%t15 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_8, i64 0, i64 0
+%t16 = call ptr @_str_dup(ptr %t15)
+%t11 = getelementptr i8, ptr %t9, i32 %t10
+%t12 = load i8, ptr %t11
+%t13 = call ptr @_zen_char_to_string(i8 %t12)
+%t17 = call i32 @strcmp(ptr %t13, ptr %t16)
+%t18 = icmp eq i32 %t17, 0
+br i1 %t18, label %if301, label %end300
+if301:
+%t20 = load i32, ptr %t4
+%t21 = add i32 %t20, 1
+store i32 %t21, ptr %t19
+%t23 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t24 = call ptr @_str_dup(ptr %t23)
+store ptr %t24, ptr %t22
+br label %whileCond302
+whileCond302:
+%t25 = load i32, ptr %t19
+%t26 = load i32, ptr %t3
+%t27 = icmp slt i32 %t25, %t26
+br i1 %t27, label %whileBody303, label %whileEnd304
+whileBody303:
+%t28 = load ptr, ptr %t22
+%t29 = load ptr, ptr %path.addr
+%t30 = load i32, ptr %t19
+%t31 = getelementptr i8, ptr %t29, i32 %t30
+%t32 = load i8, ptr %t31
+%t33 = call ptr @_zen_char_to_string(i8 %t32)
+%t35 = call ptr @_str_concat(ptr %t28, ptr %t33)
+%t37 = load ptr, ptr %t22
+call void @_zen_string_free(ptr %t37)
+store ptr %t35, ptr %t22
+%t38 = load i32, ptr %t19
+%t39 = add i32 %t38, 1
+store i32 %t39, ptr %t19
+br label %whileCond302
+whileEnd304:
+%t41 = load ptr, ptr %t22
+ret ptr %t41
+end300:
+%t42 = load i32, ptr %t4
+%t43 = sub i32 %t42, 1
+store i32 %t43, ptr %t4
+br label %whileCond297
+whileEnd299:
+%t45 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t46 = call ptr @_str_dup(ptr %t45)
+ret ptr %t46
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @sin(double %t0) local_unnamed_addr #2 {
+define double @sin (double %t0) {
 entry:
-  %t2 = load double, ptr @PI, align 8
-  %t31 = fcmp ogt double %t0, %t2
-  br i1 %t31, label %whileBody306.lr.ph, label %whileCond308.preheader
 
-whileBody306.lr.ph:                               ; preds = %entry
-  %t5 = load double, ptr @TAU, align 8
-  br label %whileBody306
-
-whileCond308.preheader:                           ; preds = %whileBody306, %entry
-  %x.addr.0.lcssa = phi double [ %t0, %entry ], [ %t6, %whileBody306 ]
-  %t10 = fsub double 0.000000e+00, %t2
-  %t114 = fcmp olt double %x.addr.0.lcssa, %t10
-  br i1 %t114, label %whileBody309.lr.ph, label %whileEnd310
-
-whileBody309.lr.ph:                               ; preds = %whileCond308.preheader
-  %t13 = load double, ptr @TAU, align 8
-  br label %whileBody309
-
-whileBody306:                                     ; preds = %whileBody306.lr.ph, %whileBody306
-  %x.addr.02 = phi double [ %t0, %whileBody306.lr.ph ], [ %t6, %whileBody306 ]
-  %t6 = fsub double %x.addr.02, %t5
-  %t3 = fcmp ogt double %t6, %t2
-  br i1 %t3, label %whileBody306, label %whileCond308.preheader
-
-whileBody309:                                     ; preds = %whileBody309.lr.ph, %whileBody309
-  %x.addr.15 = phi double [ %x.addr.0.lcssa, %whileBody309.lr.ph ], [ %t14, %whileBody309 ]
-  %t14 = fadd double %x.addr.15, %t13
-  %t11 = fcmp olt double %t14, %t10
-  br i1 %t11, label %whileBody309, label %whileEnd310
-
-whileEnd310:                                      ; preds = %whileBody309, %whileCond308.preheader
-  %x.addr.1.lcssa = phi double [ %x.addr.0.lcssa, %whileCond308.preheader ], [ %t14, %whileBody309 ]
-  %t18 = fmul double %x.addr.1.lcssa, %x.addr.1.lcssa
-  %t20 = fmul double %x.addr.1.lcssa, %t18
-  %t21 = fdiv double %t20, 6.000000e+00
-  %t22 = fsub double %x.addr.1.lcssa, %t21
-  ret double %t22
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+br label %whileCond305
+whileCond305:
+%t1 = load double, ptr %x.addr
+%t2 = load double, ptr @PI
+%t3 = fcmp ogt double %t1, %t2
+br i1 %t3, label %whileBody306, label %whileEnd307
+whileBody306:
+%t4 = load double, ptr %x.addr
+%t5 = load double, ptr @TAU
+%t6 = fsub double %t4, %t5
+store double %t6, ptr %x.addr
+br label %whileCond305
+whileEnd307:
+br label %whileCond308
+whileCond308:
+%t8 = load double, ptr %x.addr
+%t9 = load double, ptr @PI
+%t10 = fsub double 0.0, %t9
+%t11 = fcmp olt double %t8, %t10
+br i1 %t11, label %whileBody309, label %whileEnd310
+whileBody309:
+%t12 = load double, ptr %x.addr
+%t13 = load double, ptr @TAU
+%t14 = fadd double %t12, %t13
+store double %t14, ptr %x.addr
+br label %whileCond308
+whileEnd310:
+%t16 = load double, ptr %x.addr
+%t17 = load double, ptr %x.addr
+%t18 = load double, ptr %x.addr
+%t20 = load double, ptr %x.addr
+%t19 = fmul double %t17, %t18
+%t21 = fmul double %t19, %t20
+%t22 = fdiv double %t21, 6.0
+%t23 = fsub double %t16, %t22
+ret double %t23
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @cos(double %t0) local_unnamed_addr #2 {
+define double @cos (double %t0) {
 entry:
-  %t2 = load double, ptr @PI, align 8
-  %t31 = fcmp ogt double %t0, %t2
-  br i1 %t31, label %whileBody312.lr.ph, label %whileCond314.preheader
 
-whileBody312.lr.ph:                               ; preds = %entry
-  %t5 = load double, ptr @TAU, align 8
-  br label %whileBody312
-
-whileCond314.preheader:                           ; preds = %whileBody312, %entry
-  %x.addr.0.lcssa = phi double [ %t0, %entry ], [ %t6, %whileBody312 ]
-  %t10 = fsub double 0.000000e+00, %t2
-  %t114 = fcmp olt double %x.addr.0.lcssa, %t10
-  br i1 %t114, label %whileBody315.lr.ph, label %whileEnd316
-
-whileBody315.lr.ph:                               ; preds = %whileCond314.preheader
-  %t13 = load double, ptr @TAU, align 8
-  br label %whileBody315
-
-whileBody312:                                     ; preds = %whileBody312.lr.ph, %whileBody312
-  %x.addr.02 = phi double [ %t0, %whileBody312.lr.ph ], [ %t6, %whileBody312 ]
-  %t6 = fsub double %x.addr.02, %t5
-  %t3 = fcmp ogt double %t6, %t2
-  br i1 %t3, label %whileBody312, label %whileCond314.preheader
-
-whileBody315:                                     ; preds = %whileBody315.lr.ph, %whileBody315
-  %x.addr.15 = phi double [ %x.addr.0.lcssa, %whileBody315.lr.ph ], [ %t14, %whileBody315 ]
-  %t14 = fadd double %x.addr.15, %t13
-  %t11 = fcmp olt double %t14, %t10
-  br i1 %t11, label %whileBody315, label %whileEnd316
-
-whileEnd316:                                      ; preds = %whileBody315, %whileCond314.preheader
-  %x.addr.1.lcssa = phi double [ %x.addr.0.lcssa, %whileCond314.preheader ], [ %t14, %whileBody315 ]
-  %t17 = fmul double %x.addr.1.lcssa, %x.addr.1.lcssa
-  %t18 = fmul double %t17, 5.000000e-01
-  %t19 = fsub double 1.000000e+00, %t18
-  ret double %t19
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+br label %whileCond311
+whileCond311:
+%t1 = load double, ptr %x.addr
+%t2 = load double, ptr @PI
+%t3 = fcmp ogt double %t1, %t2
+br i1 %t3, label %whileBody312, label %whileEnd313
+whileBody312:
+%t4 = load double, ptr %x.addr
+%t5 = load double, ptr @TAU
+%t6 = fsub double %t4, %t5
+store double %t6, ptr %x.addr
+br label %whileCond311
+whileEnd313:
+br label %whileCond314
+whileCond314:
+%t8 = load double, ptr %x.addr
+%t9 = load double, ptr @PI
+%t10 = fsub double 0.0, %t9
+%t11 = fcmp olt double %t8, %t10
+br i1 %t11, label %whileBody315, label %whileEnd316
+whileBody315:
+%t12 = load double, ptr %x.addr
+%t13 = load double, ptr @TAU
+%t14 = fadd double %t12, %t13
+store double %t14, ptr %x.addr
+br label %whileCond314
+whileEnd316:
+%t16 = load double, ptr %x.addr
+%t17 = load double, ptr %x.addr
+%t18 = fmul double %t16, %t17
+%t19 = fdiv double %t18, 2.0
+%t20 = fsub double 1.0, %t19
+ret double %t20
 }
-
-; Function Attrs: nofree norecurse nosync nounwind memory(none)
-define double @tan(double %t0) local_unnamed_addr #2 {
+define double @tan (double %t0) {
 entry:
-  %t2.i = load double, ptr @PI, align 8
-  %t31.i = fcmp ogt double %t0, %t2.i
-  br i1 %t31.i, label %whileBody306.lr.ph.i, label %whileCond308.preheader.i
-
-whileBody306.lr.ph.i:                             ; preds = %entry
-  %t5.i = load double, ptr @TAU, align 8
-  br label %whileBody306.i
-
-whileCond308.preheader.i:                         ; preds = %whileBody306.i, %entry
-  %x.addr.0.lcssa.i = phi double [ %t0, %entry ], [ %t6.i, %whileBody306.i ]
-  %t10.i = fsub double 0.000000e+00, %t2.i
-  %t114.i = fcmp olt double %x.addr.0.lcssa.i, %t10.i
-  br i1 %t114.i, label %whileBody309.lr.ph.i, label %sin.exit
-
-whileBody309.lr.ph.i:                             ; preds = %whileCond308.preheader.i
-  %t13.i = load double, ptr @TAU, align 8
-  br label %whileBody309.i
-
-whileBody306.i:                                   ; preds = %whileBody306.i, %whileBody306.lr.ph.i
-  %x.addr.02.i = phi double [ %t0, %whileBody306.lr.ph.i ], [ %t6.i, %whileBody306.i ]
-  %t6.i = fsub double %x.addr.02.i, %t5.i
-  %t3.i = fcmp ogt double %t6.i, %t2.i
-  br i1 %t3.i, label %whileBody306.i, label %whileCond308.preheader.i
-
-whileBody309.i:                                   ; preds = %whileBody309.i, %whileBody309.lr.ph.i
-  %x.addr.15.i = phi double [ %x.addr.0.lcssa.i, %whileBody309.lr.ph.i ], [ %t14.i, %whileBody309.i ]
-  %t14.i = fadd double %t13.i, %x.addr.15.i
-  %t11.i = fcmp olt double %t14.i, %t10.i
-  br i1 %t11.i, label %whileBody309.i, label %sin.exit
-
-sin.exit:                                         ; preds = %whileBody309.i, %whileCond308.preheader.i
-  %x.addr.1.lcssa.i = phi double [ %x.addr.0.lcssa.i, %whileCond308.preheader.i ], [ %t14.i, %whileBody309.i ]
-  br i1 %t31.i, label %whileBody312.lr.ph.i, label %whileCond314.preheader.i
-
-whileBody312.lr.ph.i:                             ; preds = %sin.exit
-  %t5.i12 = load double, ptr @TAU, align 8
-  br label %whileBody312.i
-
-whileCond314.preheader.i:                         ; preds = %whileBody312.i, %sin.exit
-  %x.addr.0.lcssa.i3 = phi double [ %t0, %sin.exit ], [ %t6.i14, %whileBody312.i ]
-  %t114.i5 = fcmp olt double %x.addr.0.lcssa.i3, %t10.i
-  br i1 %t114.i5, label %whileBody315.lr.ph.i, label %cos.exit
-
-whileBody315.lr.ph.i:                             ; preds = %whileCond314.preheader.i
-  %t13.i8 = load double, ptr @TAU, align 8
-  br label %whileBody315.i
-
-whileBody312.i:                                   ; preds = %whileBody312.i, %whileBody312.lr.ph.i
-  %x.addr.02.i13 = phi double [ %t0, %whileBody312.lr.ph.i ], [ %t6.i14, %whileBody312.i ]
-  %t6.i14 = fsub double %x.addr.02.i13, %t5.i12
-  %t3.i15 = fcmp ogt double %t6.i14, %t2.i
-  br i1 %t3.i15, label %whileBody312.i, label %whileCond314.preheader.i
-
-whileBody315.i:                                   ; preds = %whileBody315.i, %whileBody315.lr.ph.i
-  %x.addr.15.i9 = phi double [ %x.addr.0.lcssa.i3, %whileBody315.lr.ph.i ], [ %t14.i10, %whileBody315.i ]
-  %t14.i10 = fadd double %t13.i8, %x.addr.15.i9
-  %t11.i11 = fcmp olt double %t14.i10, %t10.i
-  br i1 %t11.i11, label %whileBody315.i, label %cos.exit
-
-cos.exit:                                         ; preds = %whileBody315.i, %whileCond314.preheader.i
-  %x.addr.1.lcssa.i6 = phi double [ %x.addr.0.lcssa.i3, %whileCond314.preheader.i ], [ %t14.i10, %whileBody315.i ]
-  %t18.i = fmul double %x.addr.1.lcssa.i, %x.addr.1.lcssa.i
-  %t20.i = fmul double %x.addr.1.lcssa.i, %t18.i
-  %t21.i = fdiv double %t20.i, 6.000000e+00
-  %t22.i = fsub double %x.addr.1.lcssa.i, %t21.i
-  %t17.i = fmul double %x.addr.1.lcssa.i6, %x.addr.1.lcssa.i6
-  %t18.i7 = fmul double %t17.i, 5.000000e-01
-  %t19.i = fsub double 1.000000e+00, %t18.i7
-  %t9 = fdiv double %t22.i, %t19.i
-  ret double %t9
+%t3 = alloca double
+%t6 = alloca double
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t1 = load double, ptr %x.addr
+%t2 = call double @sin(double %t1)
+store double %t2, ptr %t3
+%t4 = load double, ptr %x.addr
+%t5 = call double @cos(double %t4)
+store double %t5, ptr %t6
+%t7 = load double, ptr %t3
+%t8 = load double, ptr %t6
+%t9 = fdiv double %t7, %t8
+ret double %t9
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define double @log(double %t0) local_unnamed_addr #1 {
+define double @log (double %t0) {
 entry:
-  %t7 = fadd double %t0, -1.000000e+00
-  %t10 = fdiv double %t0, %t0
-  %t11 = fadd double %t7, %t10
-  %t7.1 = fadd double %t11, -1.000000e+00
-  %t10.1 = fdiv double %t0, %t11
-  %t11.1 = fadd double %t7.1, %t10.1
-  %t7.2 = fadd double %t11.1, -1.000000e+00
-  %t10.2 = fdiv double %t0, %t11.1
-  %t11.2 = fadd double %t7.2, %t10.2
-  %t7.3 = fadd double %t11.2, -1.000000e+00
-  %t10.3 = fdiv double %t0, %t11.2
-  %t11.3 = fadd double %t7.3, %t10.3
-  %t7.4 = fadd double %t11.3, -1.000000e+00
-  %t10.4 = fdiv double %t0, %t11.3
-  %t11.4 = fadd double %t7.4, %t10.4
-  %t7.5 = fadd double %t11.4, -1.000000e+00
-  %t10.5 = fdiv double %t0, %t11.4
-  %t11.5 = fadd double %t7.5, %t10.5
-  %t7.6 = fadd double %t11.5, -1.000000e+00
-  %t10.6 = fdiv double %t0, %t11.5
-  %t11.6 = fadd double %t7.6, %t10.6
-  %t7.7 = fadd double %t11.6, -1.000000e+00
-  %t10.7 = fdiv double %t0, %t11.6
-  %t11.7 = fadd double %t7.7, %t10.7
-  %t7.8 = fadd double %t11.7, -1.000000e+00
-  %t10.8 = fdiv double %t0, %t11.7
-  %t11.8 = fadd double %t7.8, %t10.8
-  %t7.9 = fadd double %t11.8, -1.000000e+00
-  %t10.9 = fdiv double %t0, %t11.8
-  %t11.9 = fadd double %t7.9, %t10.9
-  ret double %t11.9
+%t1 = alloca double
+%t3 = alloca i32
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+%t2 = load double, ptr %x.addr
+store double %t2, ptr %t1
+store i32 0, ptr %t3
+br label %whileCond317
+whileCond317:
+%t4 = load i32, ptr %t3
+%t5 = icmp slt i32 %t4, 10
+br i1 %t5, label %whileBody318, label %whileEnd319
+whileBody318:
+%t6 = load double, ptr %t1
+%t8 = load double, ptr %x.addr
+%t9 = load double, ptr %t1
+%t7 = fsub double %t6, 1.0
+%t10 = fdiv double %t8, %t9
+%t11 = fadd double %t7, %t10
+store double %t11, ptr %t1
+%t13 = load i32, ptr %t3
+%t14 = add i32 %t13, 1
+store i32 %t14, ptr %t3
+br label %whileCond317
+whileEnd319:
+%t16 = load double, ptr %t1
+ret double %t16
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define double @exp(double %t0) local_unnamed_addr #1 {
+define double @exp (double %t0) {
 entry:
-  %t14 = fadd double %t0, 1.000000e+00
-  %t8.1 = fmul double %t0, %t0
-  %t11.1 = fmul double %t8.1, 5.000000e-01
-  %t14.1 = fadd double %t14, %t11.1
-  %t8.2 = fmul double %t0, %t11.1
-  %t11.2 = fdiv double %t8.2, 3.000000e+00
-  %t14.2 = fadd double %t14.1, %t11.2
-  %t8.3 = fmul double %t0, %t11.2
-  %t11.3 = fmul double %t8.3, 2.500000e-01
-  %t14.3 = fadd double %t14.2, %t11.3
-  %t8.4 = fmul double %t0, %t11.3
-  %t11.4 = fdiv double %t8.4, 5.000000e+00
-  %t14.4 = fadd double %t14.3, %t11.4
-  %t8.5 = fmul double %t0, %t11.4
-  %t11.5 = fdiv double %t8.5, 6.000000e+00
-  %t14.5 = fadd double %t14.4, %t11.5
-  %t8.6 = fmul double %t0, %t11.5
-  %t11.6 = fdiv double %t8.6, 7.000000e+00
-  %t14.6 = fadd double %t14.5, %t11.6
-  %t8.7 = fmul double %t0, %t11.6
-  %t11.7 = fmul double %t8.7, 1.250000e-01
-  %t14.7 = fadd double %t14.6, %t11.7
-  %t8.8 = fmul double %t0, %t11.7
-  %t11.8 = fdiv double %t8.8, 9.000000e+00
-  %t14.8 = fadd double %t14.7, %t11.8
-  ret double %t14.8
+%t1 = alloca double
+%t2 = alloca double
+%t3 = alloca i32
+%x.addr = alloca double
+store double %t0, ptr %x.addr
+store double 1.0, ptr %t1
+store double 1.0, ptr %t2
+store i32 1, ptr %t3
+br label %whileCond320
+whileCond320:
+%t4 = load i32, ptr %t3
+%t5 = icmp slt i32 %t4, 10
+br i1 %t5, label %whileBody321, label %whileEnd322
+whileBody321:
+%t6 = load double, ptr %t2
+%t7 = load double, ptr %x.addr
+%t9 = load i32, ptr %t3
+%t8 = fmul double %t6, %t7
+%t10 = sitofp i32 %t9 to double
+%t11 = fdiv double %t8, %t10
+store double %t11, ptr %t2
+%t13 = load double, ptr %t1
+%t14 = load double, ptr %t2
+%t15 = fadd double %t13, %t14
+store double %t15, ptr %t1
+%t17 = load i32, ptr %t3
+%t18 = add i32 %t17, 1
+store i32 %t18, ptr %t3
+br label %whileCond320
+whileEnd322:
+%t20 = load double, ptr %t1
+ret double %t20
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none)
-define i32 @randomInt(i32 %t0, i32 %t1) local_unnamed_addr #3 {
+define i32 @randomInt (i32 %t0, i32 %t1) {
 entry:
-  %t0.i = load i32, ptr @SEED, align 4
-  %t3.i = load i32, ptr @I32_MAX, align 4
-  %t1.i = mul i32 %t0.i, 1103515245
-  %t2.i = add i32 %t1.i, 12345
-  %t4.i = srem i32 %t2.i, %t3.i
-  %t6.i = icmp slt i32 %t4.i, 0
-  %t9.i = select i1 %t6.i, i32 %t3.i, i32 0
-  %spec.select.i = add i32 %t9.i, %t4.i
-  store i32 %spec.select.i, ptr @SEED, align 4
-  %t11.i = sitofp i32 %spec.select.i to double
-  %t12.i = fdiv double %t11.i, 0x41DFFFFFFFC00000
-  %reass.sub = sub i32 %t1, %t0
-  %t9 = add i32 %reass.sub, 1
-  %t10 = sitofp i32 %t9 to double
-  %t11 = fmul double %t12.i, %t10
-  %t12 = fptosi double %t11 to i32
-  %t13 = add i32 %t0, %t12
-  ret i32 %t13
+%t3 = alloca double
+%a.addr = alloca i32
+store i32 %t0, ptr %a.addr
+%b.addr = alloca i32
+store i32 %t1, ptr %b.addr
+%t2 = call double @random()
+store double %t2, ptr %t3
+%t4 = load i32, ptr %a.addr
+%t5 = load double, ptr %t3
+%t6 = load i32, ptr %b.addr
+%t7 = load i32, ptr %a.addr
+%t8 = sub i32 %t6, %t7
+%t9 = add i32 %t8, 1
+%t10 = sitofp i32 %t9 to double
+%t11 = fmul double %t5, %t10
+%t12 = fptosi double %t11 to i32
+%t13 = add i32 %t4, %t12
+ret i32 %t13
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none)
-define double @random() local_unnamed_addr #3 {
+define double @random () {
 entry:
-  %t0 = load i32, ptr @SEED, align 4
-  %t3 = load i32, ptr @I32_MAX, align 4
-  %t1 = mul i32 %t0, 1103515245
-  %t2 = add i32 %t1, 12345
-  %t4 = srem i32 %t2, %t3
-  %t6 = icmp slt i32 %t4, 0
-  %t9 = select i1 %t6, i32 %t3, i32 0
-  %spec.select = add i32 %t4, %t9
-  store i32 %spec.select, ptr @SEED, align 4
-  %t11 = sitofp i32 %spec.select to double
-  %t12 = fdiv double %t11, 0x41DFFFFFFFC00000
-  ret double %t12
-}
 
-define i1 @match(ptr %t0, ptr %t1) local_unnamed_addr {
+
+%t0 = load i32, ptr @SEED
+%t3 = load i32, ptr @I32_MAX
+%t1 = mul i32 %t0, 1103515245
+%t2 = add i32 %t1, 12345
+%t4 = srem i32 %t2, %t3
+store i32 %t4, ptr @SEED
+%t6 = load i32, ptr @SEED
+%t7 = icmp slt i32 %t6, 0
+br i1 %t7, label %if324, label %end323
+if324:
+%t8 = load i32, ptr @SEED
+%t9 = load i32, ptr @I32_MAX
+%t10 = add i32 %t8, %t9
+store i32 %t10, ptr @SEED
+br label %end323
+end323:
+%t12 = load i32, ptr @SEED
+%t13 = sitofp i32 %t12 to double
+%t14 = fdiv double %t13, 2147483647.0
+ret double %t14
+}
+define i1 @match (ptr %t0, ptr %t1) {
 entry:
-  br label %tailrecurse
-
-tailrecurse:                                      ; preds = %whileEnd329, %entry
-  %t1.tr = phi ptr [ %t1, %entry ], [ %storemerge5321.lcssa, %whileEnd329 ]
-  %t4 = tail call i1 @contains(ptr %t1.tr, ptr nonnull @.str_stdlib_stdlib_9)
-  %t10323 = tail call i32 @strlen(ptr %t1.tr)
-  %t11324 = icmp sgt i32 %t10323, 0
-  br i1 %t4, label %if326, label %end325
-
-if326:                                            ; preds = %tailrecurse
-  br i1 %t11324, label %whileBody328, label %whileEnd329
-
-whileBody328:                                     ; preds = %if326, %end330
-  %storemerge4326 = phi i32 [ %t29, %end330 ], [ 0, %if326 ]
-  %storemerge5321325 = phi ptr [ %storemerge5, %end330 ], [ @.str_stdlib_stdlib_0, %if326 ]
-  %t3.i = tail call i32 @strlen(ptr %t1.tr)
-  %t10.i.not = icmp slt i32 %storemerge4326, %t3.i
-  br i1 %t10.i.not, label %end116.i, label %sub_0
-
-end116.i:                                         ; preds = %whileBody328
-  %0 = zext nneg i32 %storemerge4326 to i64
-  %t14.i = getelementptr i8, ptr %t1.tr, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %whileBody328
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %whileBody328 ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not350 = icmp eq i8 %1, 124
-  br i1 %.not350, label %charAt.exit.tail, label %else332
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %if331, label %else332
-
-if331:                                            ; preds = %charAt.exit.tail
-  %t23 = tail call i1 @match(ptr %t0, ptr %storemerge5321325)
-  br i1 %t23, label %common.ret, label %end330
-
-common.ret:                                       ; preds = %sub_0227, %charAt.exit84.tail, %charAt.exit178, %rhs471, %else469, %charAt.exit54.tail, %charAt.exit198, %end455, %slice.exit141, %rhs379.tail, %if375, %charAt.exit74, %if369, %charAt.exit64, %if363, %rhs358.tail, %if354, %if339, %whileCond475.backedge, %slice.exit34, %whileCond346, %if331, %sub_0251, %whileCond402.preheader, %end344, %rhs417.tail, %if413, %whileEnd404, %end395, %if343, %whileEnd337, %if454, %whileEnd432, %end410
-  %common.ret.op = phi i1 [ %t285, %end410 ], [ %t386, %whileEnd432 ], [ %t395, %if454 ], [ %t506, %whileEnd337 ], [ true, %if343 ], [ false, %end395 ], [ false, %whileEnd404 ], [ false, %if413 ], [ false, %rhs417.tail ], [ false, %end344 ], [ false, %whileCond402.preheader ], [ false, %sub_0251 ], [ true, %if331 ], [ %t87, %whileCond346 ], [ %t87, %slice.exit34 ], [ false, %whileCond475.backedge ], [ false, %if339 ], [ false, %if354 ], [ false, %rhs358.tail ], [ false, %if363 ], [ false, %charAt.exit64 ], [ false, %if369 ], [ false, %charAt.exit74 ], [ false, %if375 ], [ false, %rhs379.tail ], [ false, %slice.exit141 ], [ false, %end455 ], [ false, %charAt.exit198 ], [ false, %charAt.exit54.tail ], [ false, %else469 ], [ false, %rhs471 ], [ false, %charAt.exit178 ], [ false, %charAt.exit84.tail ], [ false, %sub_0227 ]
-  ret i1 %common.ret.op
-
-else332:                                          ; preds = %sub_0, %charAt.exit.tail
-  %t27 = tail call ptr @_str_concat(ptr %storemerge5321325, ptr nonnull %common.ret.op.i)
-  br label %end330
-
-end330:                                           ; preds = %if331, %else332
-  %storemerge5 = phi ptr [ %t27, %else332 ], [ @.str_stdlib_stdlib_0, %if331 ]
-  %t29 = add nuw nsw i32 %storemerge4326, 1
-  %t10 = tail call i32 @strlen(ptr %t1.tr)
-  %t11 = icmp slt i32 %t29, %t10
-  br i1 %t11, label %whileBody328, label %whileEnd329
-
-whileEnd329:                                      ; preds = %end330, %if326
-  %storemerge5321.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %if326 ], [ %storemerge5, %end330 ]
-  br label %tailrecurse
-
-end325:                                           ; preds = %tailrecurse
-  br i1 %t11324, label %whileBody336, label %whileEnd337
-
-whileBody336:                                     ; preds = %end325, %whileCond335.backedge
-  %storemerge1.in.peel = phi i32 [ %t502287, %whileCond335.backedge ], [ 0, %end325 ]
-  %t67 = phi i32 [ %t500289, %whileCond335.backedge ], [ 0, %end325 ]
-  %t3.i6 = tail call i32 @strlen(ptr %t1.tr)
-  %t7.i7 = icmp slt i32 %storemerge1.in.peel, 0
-  %t10.i8 = icmp sge i32 %storemerge1.in.peel, %t3.i6
-  %t5.i9 = select i1 %t7.i7, i1 true, i1 %t10.i8
-  br i1 %t5.i9, label %sub_0200, label %end116.i10
-
-end116.i10:                                       ; preds = %whileBody336
-  %5 = zext nneg i32 %storemerge1.in.peel to i64
-  %t14.i11 = getelementptr i8, ptr %t1.tr, i64 %5
-  %t15.i12 = load i8, ptr %t14.i11, align 1
-  %t16.i13 = tail call ptr @_zen_char_to_string(i8 %t15.i12)
-  br label %sub_0200
-
-sub_0200:                                         ; preds = %end116.i10, %whileBody336
-  %common.ret.op.i14 = phi ptr [ %t16.i13, %end116.i10 ], [ @.str_stdlib_stdlib_0, %whileBody336 ]
-  %6 = load i8, ptr %common.ret.op.i14, align 1
-  switch i8 %6, label %sub_0233 [
-    i8 63, label %charAt.exit15.tail
-    i8 42, label %end338.tail
-    i8 35, label %end342.tail
-  ]
-
-charAt.exit15.tail:                               ; preds = %sub_0200
-  %7 = getelementptr inbounds nuw i8, ptr %common.ret.op.i14, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br i1 %9, label %if339, label %end455
-
-if339:                                            ; preds = %charAt.exit15.tail
-  %t50 = tail call i32 @strlen(ptr %t0)
-  %t51.not = icmp slt i32 %t67, %t50
-  br i1 %t51.not, label %end340, label %common.ret
-
-end340:                                           ; preds = %if339
-  %t55 = add nsw i32 %storemerge1.in.peel, 1
-  br label %whileCond335.backedge
-
-whileCond335.backedge:                            ; preds = %end340, %end357, %end366, %end372, %end378, %end482, %end486
-  %t502287 = phi i32 [ %t55, %end340 ], [ %t127, %end357 ], [ %t148, %end366 ], [ %t169, %end372 ], [ %t197, %end378 ], [ %t487, %end482 ], [ %t502, %end486 ]
-  %t500289 = add i32 %t67, 1
-  %t37 = tail call i32 @strlen(ptr %t1.tr)
-  %t38 = icmp slt i32 %t502287, %t37
-  br i1 %t38, label %whileBody336, label %whileEnd337
-
-end338.tail:                                      ; preds = %sub_0200
-  %10 = getelementptr inbounds nuw i8, ptr %common.ret.op.i14, i64 1
-  %11 = load i8, ptr %10, align 1
-  %12 = icmp eq i8 %11, 0
-  br i1 %12, label %if343, label %end455
-
-if343:                                            ; preds = %end338.tail
-  %t64 = tail call i32 @strlen(ptr %t1.tr)
-  %t62 = add nsw i32 %storemerge1.in.peel, 1
-  %t65.not = icmp slt i32 %t62, %t64
-  br i1 %t65.not, label %end344, label %common.ret
-
-end344:                                           ; preds = %if343
-  %t70316 = tail call i32 @strlen(ptr %t0)
-  %t71.not317 = icmp sgt i32 %t67, %t70316
-  br i1 %t71.not317, label %common.ret, label %whileBody347.lr.ph
-
-whileBody347.lr.ph:                               ; preds = %end344
-  %spec.store.select.i19 = tail call i32 @llvm.smax.i32(i32 %t62, i32 0)
-  br label %whileBody347
-
-whileCond346:                                     ; preds = %slice.exit34
-  %t89 = add i32 %storemerge3318, 1
-  %t70 = tail call i32 @strlen(ptr %t0)
-  %t71.not = icmp sgt i32 %t89, %t70
-  br i1 %t71.not, label %common.ret, label %whileBody347
-
-whileBody347:                                     ; preds = %whileBody347.lr.ph, %whileCond346
-  %storemerge3318 = phi i32 [ %t67, %whileBody347.lr.ph ], [ %t89, %whileCond346 ]
-  %t75 = tail call i32 @strlen(ptr %t0)
-  %t4.i = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i = tail call i32 @llvm.smax.i32(i32 %storemerge3318, i32 0)
-  %spec.select.i = tail call i32 @llvm.smin.i32(i32 %t75, i32 %t4.i)
-  %t14.i16 = icmp sle i32 %spec.store.select.i, %spec.select.i
-  %t227.i = icmp samesign ult i32 %spec.store.select.i, %spec.select.i
-  %or.cond.i = select i1 %t14.i16, i1 %t227.i, i1 false
-  br i1 %or.cond.i, label %whileBody114.i, label %slice.exit
-
-whileBody114.i:                                   ; preds = %whileBody347, %whileBody114.i
-  %storemerge9.i = phi i32 [ %t32.i, %whileBody114.i ], [ %spec.store.select.i, %whileBody347 ]
-  %t3068.i = phi ptr [ %t30.i, %whileBody114.i ], [ @.str_stdlib_stdlib_0, %whileBody347 ]
-  %13 = zext nneg i32 %storemerge9.i to i64
-  %t26.i = getelementptr i8, ptr %t0, i64 %13
-  %t27.i = load i8, ptr %t26.i, align 1
-  %t28.i = tail call ptr @_zen_char_to_string(i8 %t27.i)
-  %t30.i = tail call ptr @_str_concat(ptr %t3068.i, ptr %t28.i)
-  %t32.i = add nuw nsw i32 %storemerge9.i, 1
-  %t22.i = icmp slt i32 %t32.i, %spec.select.i
-  br i1 %t22.i, label %whileBody114.i, label %slice.exit
-
-slice.exit:                                       ; preds = %whileBody114.i, %whileBody347
-  %common.ret.op.i17 = phi ptr [ @.str_stdlib_stdlib_0, %whileBody347 ], [ %t30.i, %whileBody114.i ]
-  %t82 = tail call i32 @strlen(ptr %t1.tr)
-  %t4.i18 = tail call i32 @strlen(ptr %t1.tr)
-  %spec.select.i20 = tail call i32 @llvm.smin.i32(i32 %t82, i32 %t4.i18)
-  %t14.i21 = icmp sle i32 %spec.store.select.i19, %spec.select.i20
-  %t227.i22 = icmp samesign ult i32 %spec.store.select.i19, %spec.select.i20
-  %or.cond.i23 = select i1 %t14.i21, i1 %t227.i22, i1 false
-  br i1 %or.cond.i23, label %whileBody114.i25, label %slice.exit34
-
-whileBody114.i25:                                 ; preds = %slice.exit, %whileBody114.i25
-  %storemerge9.i26 = phi i32 [ %t32.i32, %whileBody114.i25 ], [ %spec.store.select.i19, %slice.exit ]
-  %t3068.i27 = phi ptr [ %t30.i31, %whileBody114.i25 ], [ @.str_stdlib_stdlib_0, %slice.exit ]
-  %14 = zext nneg i32 %storemerge9.i26 to i64
-  %t26.i28 = getelementptr i8, ptr %t1.tr, i64 %14
-  %t27.i29 = load i8, ptr %t26.i28, align 1
-  %t28.i30 = tail call ptr @_zen_char_to_string(i8 %t27.i29)
-  %t30.i31 = tail call ptr @_str_concat(ptr %t3068.i27, ptr %t28.i30)
-  %t32.i32 = add nuw nsw i32 %storemerge9.i26, 1
-  %t22.i33 = icmp slt i32 %t32.i32, %spec.select.i20
-  br i1 %t22.i33, label %whileBody114.i25, label %slice.exit34
-
-slice.exit34:                                     ; preds = %whileBody114.i25, %slice.exit
-  %common.ret.op.i24 = phi ptr [ @.str_stdlib_stdlib_0, %slice.exit ], [ %t30.i31, %whileBody114.i25 ]
-  %t87 = tail call i1 @match(ptr %common.ret.op.i17, ptr %common.ret.op.i24)
-  br i1 %t87, label %common.ret, label %whileCond346
-
-end342.tail:                                      ; preds = %sub_0200
-  %15 = getelementptr inbounds nuw i8, ptr %common.ret.op.i14, i64 1
-  %16 = load i8, ptr %15, align 1
-  %17 = icmp eq i8 %16, 0
-  br i1 %17, label %if352, label %end455
-
-if352:                                            ; preds = %end342.tail
-  %t97 = add nsw i32 %storemerge1.in.peel, 1
-  %t3.i35 = tail call i32 @strlen(ptr %t1.tr)
-  %t7.i36 = icmp slt i32 %storemerge1.in.peel, -1
-  %t10.i37 = icmp sge i32 %t97, %t3.i35
-  %t5.i38 = select i1 %t7.i36, i1 true, i1 %t10.i37
-  br i1 %t5.i38, label %sub_0209, label %end116.i39
-
-end116.i39:                                       ; preds = %if352
-  %18 = zext nneg i32 %t97 to i64
-  %t14.i40 = getelementptr i8, ptr %t1.tr, i64 %18
-  %t15.i41 = load i8, ptr %t14.i40, align 1
-  %t16.i42 = tail call ptr @_zen_char_to_string(i8 %t15.i41)
-  br label %sub_0209
-
-sub_0209:                                         ; preds = %end116.i39, %if352
-  %common.ret.op.i43 = phi ptr [ %t16.i42, %end116.i39 ], [ @.str_stdlib_stdlib_0, %if352 ]
-  %19 = load i8, ptr %common.ret.op.i43, align 1
-  switch i8 %19, label %end368.tail.sub_0233_crit_edge [
-    i8 100, label %charAt.exit44.tail
-    i8 97, label %end353.tail
-    i8 120, label %end362.tail
-    i8 115, label %end368.tail
-  ]
-
-charAt.exit44.tail:                               ; preds = %sub_0209
-  %20 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %21 = load i8, ptr %20, align 1
-  %22 = icmp eq i8 %21, 0
-  br i1 %22, label %if354, label %end368.tail.sub_0233_crit_edge
-
-if354:                                            ; preds = %charAt.exit44.tail
-  %t107 = tail call i32 @strlen(ptr %t0)
-  %t108.not = icmp slt i32 %t67, %t107
-  br i1 %t108.not, label %end355, label %common.ret
-
-end355:                                           ; preds = %if354
-  %t3.i45 = tail call i32 @strlen(ptr %t0)
-  %t7.i46 = icmp slt i32 %t67, 0
-  %t10.i47 = icmp sge i32 %t67, %t3.i45
-  %t5.i48 = select i1 %t7.i46, i1 true, i1 %t10.i47
-  br i1 %t5.i48, label %sub_0212, label %end116.i49
-
-end116.i49:                                       ; preds = %end355
-  %23 = zext nneg i32 %t67 to i64
-  %t14.i50 = getelementptr i8, ptr %t0, i64 %23
-  %t15.i51 = load i8, ptr %t14.i50, align 1
-  %t16.i52 = tail call ptr @_zen_char_to_string(i8 %t15.i51)
-  br label %sub_0212
-
-sub_0212:                                         ; preds = %end116.i49, %end355
-  %common.ret.op.i53 = phi ptr [ %t16.i52, %end116.i49 ], [ @.str_stdlib_stdlib_0, %end355 ]
-  %24 = load i8, ptr %common.ret.op.i53, align 1
-  %25 = zext i8 %24 to i32
-  %.not348 = icmp eq i8 %24, 48
-  br i1 %.not348, label %end357, label %charAt.exit54.tail
-
-charAt.exit54.tail:                               ; preds = %sub_0212
-  %t118 = icmp ult i8 %24, 48
-  br i1 %t118, label %common.ret, label %sub_0215
-
-sub_0215:                                         ; preds = %charAt.exit54.tail
-  %26 = add nsw i32 %25, -57
-  %.not349 = icmp eq i32 %26, 0
-  br i1 %.not349, label %sub_1216, label %rhs358.tail
-
-sub_1216:                                         ; preds = %sub_0215
-  %27 = getelementptr inbounds nuw i8, ptr %common.ret.op.i53, i64 1
-  %28 = load i8, ptr %27, align 1
-  %29 = zext i8 %28 to i32
-  br label %rhs358.tail
-
-rhs358.tail:                                      ; preds = %sub_0215, %sub_1216
-  %30 = phi i32 [ %26, %sub_0215 ], [ %29, %sub_1216 ]
-  %t123 = icmp sgt i32 %30, 0
-  br i1 %t123, label %common.ret, label %end357
-
-end357:                                           ; preds = %sub_0212, %rhs358.tail
-  %t127 = add i32 %storemerge1.in.peel, 2
-  br label %whileCond335.backedge
-
-end353.tail:                                      ; preds = %sub_0209
-  %31 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %32 = load i8, ptr %31, align 1
-  %33 = icmp eq i8 %32, 0
-  br i1 %33, label %if363, label %end368.tail.sub_0233_crit_edge
-
-if363:                                            ; preds = %end353.tail
-  %t135 = tail call i32 @strlen(ptr %t0)
-  %t136.not = icmp slt i32 %t67, %t135
-  br i1 %t136.not, label %end364, label %common.ret
-
-end364:                                           ; preds = %if363
-  %t3.i55 = tail call i32 @strlen(ptr %t0)
-  %t7.i56 = icmp slt i32 %t67, 0
-  %t10.i57 = icmp sge i32 %t67, %t3.i55
-  %t5.i58 = select i1 %t7.i56, i1 true, i1 %t10.i57
-  br i1 %t5.i58, label %charAt.exit64, label %end116.i59
-
-end116.i59:                                       ; preds = %end364
-  %34 = zext nneg i32 %t67 to i64
-  %t14.i60 = getelementptr i8, ptr %t0, i64 %34
-  %t15.i61 = load i8, ptr %t14.i60, align 1
-  %t16.i62 = tail call ptr @_zen_char_to_string(i8 %t15.i61)
-  br label %charAt.exit64
-
-charAt.exit64:                                    ; preds = %end364, %end116.i59
-  %common.ret.op.i63 = phi ptr [ %t16.i62, %end116.i59 ], [ @.str_stdlib_stdlib_0, %end364 ]
-  %t143 = tail call i1 @contains(ptr nonnull @.str_stdlib_stdlib_16, ptr %common.ret.op.i63)
-  br i1 %t143, label %end366, label %common.ret
-
-end366:                                           ; preds = %charAt.exit64
-  %t148 = add i32 %storemerge1.in.peel, 2
-  br label %whileCond335.backedge
-
-end362.tail:                                      ; preds = %sub_0209
-  %35 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %36 = load i8, ptr %35, align 1
-  %37 = icmp eq i8 %36, 0
-  br i1 %37, label %if369, label %end368.tail.sub_0233_crit_edge
-
-if369:                                            ; preds = %end362.tail
-  %t156 = tail call i32 @strlen(ptr %t0)
-  %t157.not = icmp slt i32 %t67, %t156
-  br i1 %t157.not, label %end370, label %common.ret
-
-end370:                                           ; preds = %if369
-  %t3.i65 = tail call i32 @strlen(ptr %t0)
-  %t7.i66 = icmp slt i32 %t67, 0
-  %t10.i67 = icmp sge i32 %t67, %t3.i65
-  %t5.i68 = select i1 %t7.i66, i1 true, i1 %t10.i67
-  br i1 %t5.i68, label %charAt.exit74, label %end116.i69
-
-end116.i69:                                       ; preds = %end370
-  %38 = zext nneg i32 %t67 to i64
-  %t14.i70 = getelementptr i8, ptr %t0, i64 %38
-  %t15.i71 = load i8, ptr %t14.i70, align 1
-  %t16.i72 = tail call ptr @_zen_char_to_string(i8 %t15.i71)
-  br label %charAt.exit74
-
-charAt.exit74:                                    ; preds = %end370, %end116.i69
-  %common.ret.op.i73 = phi ptr [ %t16.i72, %end116.i69 ], [ @.str_stdlib_stdlib_0, %end370 ]
-  %t164 = tail call i1 @contains(ptr nonnull @.str_stdlib_stdlib_18, ptr %common.ret.op.i73)
-  br i1 %t164, label %end372, label %common.ret
-
-end372:                                           ; preds = %charAt.exit74
-  %t169 = add i32 %storemerge1.in.peel, 2
-  br label %whileCond335.backedge
-
-end368.tail:                                      ; preds = %sub_0209
-  %39 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %40 = load i8, ptr %39, align 1
-  %41 = icmp eq i8 %40, 0
-  br i1 %41, label %if375, label %end368.tail.sub_0233_crit_edge
-
-end368.tail.sub_0233_crit_edge:                   ; preds = %sub_0209, %end353.tail, %charAt.exit44.tail, %end362.tail, %end368.tail
-  %.pre = load i8, ptr %common.ret.op.i14, align 1
-  br label %sub_0233
-
-if375:                                            ; preds = %end368.tail
-  %t177 = tail call i32 @strlen(ptr %t0)
-  %t178.not = icmp slt i32 %t67, %t177
-  br i1 %t178.not, label %end376, label %common.ret
-
-end376:                                           ; preds = %if375
-  %t3.i75 = tail call i32 @strlen(ptr %t0)
-  %t7.i76 = icmp slt i32 %t67, 0
-  %t10.i77 = icmp sge i32 %t67, %t3.i75
-  %t5.i78 = select i1 %t7.i76, i1 true, i1 %t10.i77
-  br i1 %t5.i78, label %sub_0227, label %end116.i79
-
-end116.i79:                                       ; preds = %end376
-  %42 = zext nneg i32 %t67 to i64
-  %t14.i80 = getelementptr i8, ptr %t0, i64 %42
-  %t15.i81 = load i8, ptr %t14.i80, align 1
-  %t16.i82 = tail call ptr @_zen_char_to_string(i8 %t15.i81)
-  br label %sub_0227
-
-sub_0227:                                         ; preds = %end116.i79, %end376
-  %common.ret.op.i83 = phi ptr [ %t16.i82, %end116.i79 ], [ @.str_stdlib_stdlib_0, %end376 ]
-  %43 = load i8, ptr %common.ret.op.i83, align 1
-  switch i8 %43, label %common.ret [
-    i8 32, label %charAt.exit84.tail
-    i8 9, label %rhs379.tail
-  ]
-
-charAt.exit84.tail:                               ; preds = %sub_0227
-  %44 = getelementptr inbounds nuw i8, ptr %common.ret.op.i83, i64 1
-  %45 = load i8, ptr %44, align 1
-  %46 = icmp eq i8 %45, 0
-  br i1 %46, label %end378, label %common.ret
-
-rhs379.tail:                                      ; preds = %sub_0227
-  %47 = getelementptr inbounds nuw i8, ptr %common.ret.op.i83, i64 1
-  %48 = load i8, ptr %47, align 1
-  %49 = icmp eq i8 %48, 0
-  br i1 %49, label %end378, label %common.ret
-
-end378:                                           ; preds = %charAt.exit84.tail, %rhs379.tail
-  %t197 = add i32 %storemerge1.in.peel, 2
-  br label %whileCond335.backedge
-
-sub_0233:                                         ; preds = %sub_0200, %end368.tail.sub_0233_crit_edge
-  %50 = phi i8 [ %.pre, %end368.tail.sub_0233_crit_edge ], [ %6, %sub_0200 ]
-  %.not334 = icmp eq i8 %50, 58
-  br i1 %.not334, label %end351.tail, label %sub_0257
-
-end351.tail:                                      ; preds = %sub_0233
-  %51 = getelementptr inbounds nuw i8, ptr %common.ret.op.i14, i64 1
-  %52 = load i8, ptr %51, align 1
-  %53 = icmp eq i8 %52, 0
-  br i1 %53, label %if384, label %end455
-
-if384:                                            ; preds = %end351.tail
-  %t209277 = tail call i32 @strlen(ptr %t1.tr)
-  %t210278 = icmp slt i32 %storemerge1.in.peel, %t209277
-  br i1 %t210278, label %whileBody386, label %whileEnd387
-
-whileBody386:                                     ; preds = %if384, %end388
-  %storemerge280 = phi i32 [ %t230, %end388 ], [ %storemerge1.in.peel, %if384 ]
-  %t228276279 = phi ptr [ %t228, %end388 ], [ @.str_stdlib_stdlib_0, %if384 ]
-  %t3.i85 = tail call i32 @strlen(ptr %t1.tr)
-  %t7.i86 = icmp slt i32 %storemerge280, 0
-  %t10.i87 = icmp sge i32 %storemerge280, %t3.i85
-  %t5.i88 = select i1 %t7.i86, i1 true, i1 %t10.i87
-  br i1 %t5.i88, label %sub_0236, label %end116.i89
-
-end116.i89:                                       ; preds = %whileBody386
-  %54 = zext nneg i32 %storemerge280 to i64
-  %t14.i90 = getelementptr i8, ptr %t1.tr, i64 %54
-  %t15.i91 = load i8, ptr %t14.i90, align 1
-  %t16.i92 = tail call ptr @_zen_char_to_string(i8 %t15.i91)
-  br label %sub_0236
-
-sub_0236:                                         ; preds = %end116.i89, %whileBody386
-  %common.ret.op.i93 = phi ptr [ %t16.i92, %end116.i89 ], [ @.str_stdlib_stdlib_0, %whileBody386 ]
-  %55 = load i8, ptr %common.ret.op.i93, align 1
-  switch i8 %55, label %end388 [
-    i8 32, label %charAt.exit94.tail
-    i8 124, label %rhs389.tail
-  ]
-
-charAt.exit94.tail:                               ; preds = %sub_0236
-  %56 = getelementptr inbounds nuw i8, ptr %common.ret.op.i93, i64 1
-  %57 = load i8, ptr %56, align 1
-  %58 = icmp eq i8 %57, 0
-  br i1 %58, label %whileEnd387, label %end388
-
-rhs389.tail:                                      ; preds = %sub_0236
-  %59 = getelementptr inbounds nuw i8, ptr %common.ret.op.i93, i64 1
-  %60 = load i8, ptr %59, align 1
-  %61 = icmp eq i8 %60, 0
-  br i1 %61, label %whileEnd387, label %end388
-
-end388:                                           ; preds = %sub_0236, %charAt.exit94.tail, %rhs389.tail
-  %t228 = tail call ptr @_str_concat(ptr %t228276279, ptr nonnull %common.ret.op.i93)
-  %t230 = add nsw i32 %storemerge280, 1
-  %t209 = tail call i32 @strlen(ptr %t1.tr)
-  %t210 = icmp slt i32 %t230, %t209
-  br i1 %t210, label %whileBody386, label %whileEnd387
-
-whileEnd387:                                      ; preds = %end388, %rhs389.tail, %charAt.exit94.tail, %if384
-  %t228276.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %if384 ], [ %t228276279, %charAt.exit94.tail ], [ %t228276279, %rhs389.tail ], [ %t228, %end388 ]
-  %t234 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t228276.lcssa, ptr noundef nonnull dereferenceable(5) @.str_stdlib_stdlib_21)
-  %t235 = icmp eq i32 %t234, 0
-  br i1 %t235, label %if394, label %end393
-
-if394:                                            ; preds = %whileEnd387
-  %t241 = tail call i32 @strlen(ptr %t0)
-  %t242 = icmp slt i32 %t67, %t241
-  br i1 %t242, label %rhs396, label %end395
-
-rhs396:                                           ; preds = %if394
-  %t245 = tail call ptr @charAt(ptr %t0, i32 %t67)
-  %62 = load i8, ptr %t245, align 1
-  %.not343 = icmp eq i8 %62, 45
-  br i1 %.not343, label %rhs396.tail, label %end395
-
-rhs396.tail:                                      ; preds = %rhs396
-  %63 = getelementptr inbounds nuw i8, ptr %t245, i64 1
-  %64 = load i8, ptr %63, align 1
-  %65 = icmp eq i8 %64, 0
-  %t251 = zext i1 %65 to i32
-  %spec.select = add nsw i32 %t67, %t251
-  br label %end395
-
-end395:                                           ; preds = %rhs396.tail, %rhs396, %if394
-  %t33.promoted305 = phi i32 [ %t67, %if394 ], [ %t67, %rhs396 ], [ %spec.select, %rhs396.tail ]
-  %t254 = tail call i32 @strlen(ptr %t0)
-  %t255.not = icmp slt i32 %t33.promoted305, %t254
-  br i1 %t255.not, label %whileCond402.preheader, label %common.ret
-
-whileCond402.preheader:                           ; preds = %end395
-  %t260307 = tail call i32 @strlen(ptr %t0)
-  %t261308 = icmp slt i32 %t33.promoted305, %t260307
-  br i1 %t261308, label %whileBody403, label %common.ret
-
-whileBody403:                                     ; preds = %whileCond402.preheader, %end405
-  %t278306309 = phi i32 [ %t278, %end405 ], [ %t33.promoted305, %whileCond402.preheader ]
-  %t3.i95 = tail call i32 @strlen(ptr %t0)
-  %t7.i96 = icmp slt i32 %t278306309, 0
-  %t10.i97 = icmp sge i32 %t278306309, %t3.i95
-  %t5.i98 = select i1 %t7.i96, i1 true, i1 %t10.i97
-  br i1 %t5.i98, label %sub_0245, label %end116.i99
-
-end116.i99:                                       ; preds = %whileBody403
-  %66 = zext nneg i32 %t278306309 to i64
-  %t14.i100 = getelementptr i8, ptr %t0, i64 %66
-  %t15.i101 = load i8, ptr %t14.i100, align 1
-  %t16.i102 = tail call ptr @_zen_char_to_string(i8 %t15.i101)
-  br label %sub_0245
-
-sub_0245:                                         ; preds = %end116.i99, %whileBody403
-  %common.ret.op.i103 = phi ptr [ %t16.i102, %end116.i99 ], [ @.str_stdlib_stdlib_0, %whileBody403 ]
-  %67 = load i8, ptr %common.ret.op.i103, align 1
-  %68 = zext i8 %67 to i32
-  %.not344 = icmp eq i8 %67, 48
-  br i1 %.not344, label %end405, label %charAt.exit104.tail
-
-charAt.exit104.tail:                              ; preds = %sub_0245
-  %t271 = icmp ult i8 %67, 48
-  br i1 %t271, label %whileEnd404, label %sub_0248
-
-sub_0248:                                         ; preds = %charAt.exit104.tail
-  %69 = add nsw i32 %68, -57
-  %.not345 = icmp eq i32 %69, 0
-  br i1 %.not345, label %sub_1249, label %rhs406.tail
-
-sub_1249:                                         ; preds = %sub_0248
-  %70 = getelementptr inbounds nuw i8, ptr %common.ret.op.i103, i64 1
-  %71 = load i8, ptr %70, align 1
-  %72 = zext i8 %71 to i32
-  br label %rhs406.tail
-
-rhs406.tail:                                      ; preds = %sub_0248, %sub_1249
-  %73 = phi i32 [ %69, %sub_0248 ], [ %72, %sub_1249 ]
-  %t276 = icmp sgt i32 %73, 0
-  br i1 %t276, label %whileEnd404, label %end405
-
-end405:                                           ; preds = %sub_0245, %rhs406.tail
-  %t278 = add nsw i32 %t278306309, 1
-  %t260 = tail call i32 @strlen(ptr %t0)
-  %t261 = icmp slt i32 %t278, %t260
-  br i1 %t261, label %whileBody403, label %whileEnd404
-
-whileEnd404:                                      ; preds = %end405, %rhs406.tail, %charAt.exit104.tail
-  %t278306.lcssa = phi i32 [ %t278, %end405 ], [ %t278306309, %rhs406.tail ], [ %t278306309, %charAt.exit104.tail ]
-  %t281.not = icmp sgt i32 %t278306.lcssa, %t33.promoted305
-  br i1 %t281.not, label %end410, label %common.ret
-
-end410:                                           ; preds = %whileEnd404
-  %t284 = tail call i32 @strlen(ptr %t0)
-  %t285 = icmp eq i32 %t278306.lcssa, %t284
-  br label %common.ret
-
-end393:                                           ; preds = %whileEnd387
-  %t289 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t228276.lcssa, ptr noundef nonnull dereferenceable(4) @.str_stdlib_stdlib_23)
-  %t290 = icmp eq i32 %t289, 0
-  br i1 %t290, label %if413, label %end412
-
-if413:                                            ; preds = %end393
-  %t293 = tail call i32 @strlen(ptr %t0)
-  %t294.not = icmp slt i32 %t67, %t293
-  br i1 %t294.not, label %end414, label %common.ret
-
-end414:                                           ; preds = %if413
-  %t297 = tail call ptr @charAt(ptr %t0, i32 %t67)
-  %t305 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t297, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_1)
-  %t306 = icmp sgt i32 %t305, -1
-  br i1 %t306, label %rhs423, label %rhs420
-
-rhs423:                                           ; preds = %end414
-  %t310 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t297, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_2)
-  %t311 = icmp slt i32 %t310, 1
-  br i1 %t311, label %end416, label %rhs420
-
-rhs420:                                           ; preds = %end414, %rhs423
-  %t316 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t297, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_3)
-  %t317 = icmp sgt i32 %t316, -1
-  br i1 %t317, label %rhs426, label %sub_0251
-
-rhs426:                                           ; preds = %rhs420
-  %t321 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t297, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_4)
-  %t322 = icmp slt i32 %t321, 1
-  br i1 %t322, label %end416, label %sub_0251
-
-sub_0251:                                         ; preds = %rhs426, %rhs420
-  %74 = load i8, ptr %t297, align 1
-  %.not341 = icmp eq i8 %74, 95
-  br i1 %.not341, label %rhs417.tail, label %common.ret
-
-rhs417.tail:                                      ; preds = %sub_0251
-  %75 = getelementptr inbounds nuw i8, ptr %t297, i64 1
-  %76 = load i8, ptr %75, align 1
-  %77 = icmp eq i8 %76, 0
-  br i1 %77, label %end416, label %common.ret
-
-end416:                                           ; preds = %rhs423, %rhs426, %rhs417.tail
-  %storemerge2297 = add nsw i32 %t67, 1
-  %t333298 = tail call i32 @strlen(ptr %t0)
-  %t334299 = icmp slt i32 %storemerge2297, %t333298
-  br i1 %t334299, label %whileBody431, label %whileEnd432
-
-whileBody431:                                     ; preds = %end416, %end433
-  %storemerge2300 = phi i32 [ %storemerge2, %end433 ], [ %storemerge2297, %end416 ]
-  %t3.i105 = tail call i32 @strlen(ptr %t0)
-  %t7.i106 = icmp slt i32 %storemerge2300, 0
-  %t10.i107 = icmp sge i32 %storemerge2300, %t3.i105
-  %t5.i108 = select i1 %t7.i106, i1 true, i1 %t10.i107
-  br i1 %t5.i108, label %charAt.exit114, label %end116.i109
-
-end116.i109:                                      ; preds = %whileBody431
-  %78 = zext nneg i32 %storemerge2300 to i64
-  %t14.i110 = getelementptr i8, ptr %t0, i64 %78
-  %t15.i111 = load i8, ptr %t14.i110, align 1
-  %t16.i112 = tail call ptr @_zen_char_to_string(i8 %t15.i111)
-  br label %charAt.exit114
-
-charAt.exit114:                                   ; preds = %whileBody431, %end116.i109
-  %common.ret.op.i113 = phi ptr [ %t16.i112, %end116.i109 ], [ @.str_stdlib_stdlib_0, %whileBody431 ]
-  %t346 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_1)
-  %t347 = icmp sgt i32 %t346, -1
-  br i1 %t347, label %rhs443, label %rhs440
-
-rhs443:                                           ; preds = %charAt.exit114
-  %t351 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_2)
-  %t352 = icmp slt i32 %t351, 1
-  br i1 %t352, label %end433, label %rhs440
-
-rhs440:                                           ; preds = %charAt.exit114, %rhs443
-  %t357 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_3)
-  %t358 = icmp sgt i32 %t357, -1
-  br i1 %t358, label %rhs446, label %rhs437
-
-rhs446:                                           ; preds = %rhs440
-  %t362 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_4)
-  %t363 = icmp slt i32 %t362, 1
-  br i1 %t363, label %end433, label %rhs437
-
-rhs437:                                           ; preds = %rhs440, %rhs446
-  %t368 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_14)
-  %t369 = icmp sgt i32 %t368, -1
-  br i1 %t369, label %rhs449, label %sub_0254
-
-rhs449:                                           ; preds = %rhs437
-  %t373 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i113, ptr noundef nonnull dereferenceable(2) @.str_stdlib_stdlib_15)
-  %t374 = icmp slt i32 %t373, 1
-  br i1 %t374, label %end433, label %sub_0254
-
-sub_0254:                                         ; preds = %rhs449, %rhs437
-  %79 = load i8, ptr %common.ret.op.i113, align 1
-  %.not342 = icmp eq i8 %79, 95
-  br i1 %.not342, label %rhs434.tail, label %whileEnd432
-
-rhs434.tail:                                      ; preds = %sub_0254
-  %80 = getelementptr inbounds nuw i8, ptr %common.ret.op.i113, i64 1
-  %81 = load i8, ptr %80, align 1
-  %82 = icmp eq i8 %81, 0
-  br i1 %82, label %end433, label %whileEnd432
-
-end433:                                           ; preds = %rhs443, %rhs446, %rhs449, %rhs434.tail
-  %storemerge2 = add nsw i32 %storemerge2300, 1
-  %t333 = tail call i32 @strlen(ptr %t0)
-  %t334 = icmp slt i32 %storemerge2, %t333
-  br i1 %t334, label %whileBody431, label %whileEnd432
-
-whileEnd432:                                      ; preds = %sub_0254, %end433, %rhs434.tail, %end416
-  %storemerge2.lcssa296 = phi i32 [ %storemerge2297, %end416 ], [ %storemerge2300, %sub_0254 ], [ %storemerge2300, %rhs434.tail ], [ %storemerge2, %end433 ]
-  %t385 = tail call i32 @strlen(ptr %t0)
-  %t386 = icmp eq i32 %storemerge2.lcssa296, %t385
-  br label %common.ret
-
-end412:                                           ; preds = %end393
-  %t390 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t228276.lcssa, ptr noundef nonnull dereferenceable(8) @.str_stdlib_stdlib_25)
-  %t391 = icmp eq i32 %t390, 0
-  br i1 %t391, label %if454, label %end412.sub_0257_crit_edge
-
-end412.sub_0257_crit_edge:                        ; preds = %end412
-  %.pre359 = load i8, ptr %common.ret.op.i14, align 1
-  br label %sub_0257
-
-if454:                                            ; preds = %end412
-  %t394 = tail call i32 @strlen(ptr %t0)
-  %t395 = icmp slt i32 %t67, %t394
-  br label %common.ret
-
-sub_0257:                                         ; preds = %sub_0233, %end412.sub_0257_crit_edge
-  %83 = phi i8 [ %.pre359, %end412.sub_0257_crit_edge ], [ %50, %sub_0233 ]
-  %.not337 = icmp eq i8 %83, 91
-  br i1 %.not337, label %end383.tail, label %end455
-
-end383.tail:                                      ; preds = %sub_0257
-  %84 = getelementptr inbounds nuw i8, ptr %common.ret.op.i14, i64 1
-  %85 = load i8, ptr %84, align 1
-  %86 = icmp eq i8 %85, 0
-  br i1 %86, label %if456, label %end455
-
-if456:                                            ; preds = %end383.tail
-  %storemerge1.peel = add i32 %storemerge1.in.peel, 1
-  %t406.peel = tail call i32 @strlen(ptr %t1.tr)
-  %t407.peel = icmp slt i32 %storemerge1.peel, %t406.peel
-  br i1 %t407.peel, label %whileBody458.peel, label %whileEnd459
-
-whileBody458.peel:                                ; preds = %if456
-  %t3.i115.peel = tail call i32 @strlen(ptr %t1.tr)
-  %t7.i116.peel = icmp slt i32 %storemerge1.peel, 0
-  %t10.i117.peel = icmp sge i32 %storemerge1.peel, %t3.i115.peel
-  %t5.i118.peel = select i1 %t7.i116.peel, i1 true, i1 %t10.i117.peel
-  br i1 %t5.i118.peel, label %sub_0260.peel, label %end116.i119.peel
-
-end116.i119.peel:                                 ; preds = %whileBody458.peel
-  %87 = zext nneg i32 %storemerge1.peel to i64
-  %t14.i120.peel = getelementptr i8, ptr %t1.tr, i64 %87
-  %t15.i121.peel = load i8, ptr %t14.i120.peel, align 1
-  %t16.i122.peel = tail call ptr @_zen_char_to_string(i8 %t15.i121.peel)
-  br label %sub_0260.peel
-
-sub_0260.peel:                                    ; preds = %end116.i119.peel, %whileBody458.peel
-  %common.ret.op.i123.peel = phi ptr [ %t16.i122.peel, %end116.i119.peel ], [ @.str_stdlib_stdlib_0, %whileBody458.peel ]
-  %88 = load i8, ptr %common.ret.op.i123.peel, align 1
-  %.not338.peel = icmp eq i8 %88, 93
-  br i1 %.not338.peel, label %charAt.exit124.tail.peel, label %whileCond457.peel.next
-
-charAt.exit124.tail.peel:                         ; preds = %sub_0260.peel
-  %89 = getelementptr inbounds nuw i8, ptr %common.ret.op.i123.peel, i64 1
-  %90 = load i8, ptr %89, align 1
-  %91 = icmp eq i8 %90, 0
-  br i1 %91, label %whileEnd459, label %whileCond457.peel.next
-
-whileCond457.peel.next:                           ; preds = %sub_0260.peel, %charAt.exit124.tail.peel
-  %storemerge1444 = add i32 %storemerge1.in.peel, 2
-  %t406445 = tail call i32 @strlen(ptr %t1.tr)
-  %t407446 = icmp slt i32 %storemerge1444, %t406445
-  br i1 %t407446, label %whileBody458, label %whileEnd459
-
-whileBody458:                                     ; preds = %whileCond457.peel.next, %whileCond457.backedge
-  %storemerge1448 = phi i32 [ %storemerge1, %whileCond457.backedge ], [ %storemerge1444, %whileCond457.peel.next ]
-  %storemerge1.in447 = phi i32 [ %storemerge1448, %whileCond457.backedge ], [ %storemerge1.peel, %whileCond457.peel.next ]
-  %t3.i115 = tail call i32 @strlen(ptr %t1.tr)
-  %t7.i116 = icmp slt i32 %storemerge1.in447, -1
-  %t10.i117 = icmp sge i32 %storemerge1448, %t3.i115
-  %t5.i118 = select i1 %t7.i116, i1 true, i1 %t10.i117
-  br i1 %t5.i118, label %sub_0260, label %end116.i119
-
-end116.i119:                                      ; preds = %whileBody458
-  %92 = zext nneg i32 %storemerge1448 to i64
-  %t14.i120 = getelementptr i8, ptr %t1.tr, i64 %92
-  %t15.i121 = load i8, ptr %t14.i120, align 1
-  %t16.i122 = tail call ptr @_zen_char_to_string(i8 %t15.i121)
-  br label %sub_0260
-
-sub_0260:                                         ; preds = %end116.i119, %whileBody458
-  %common.ret.op.i123 = phi ptr [ %t16.i122, %end116.i119 ], [ @.str_stdlib_stdlib_0, %whileBody458 ]
-  %93 = load i8, ptr %common.ret.op.i123, align 1
-  %.not338 = icmp eq i8 %93, 93
-  br i1 %.not338, label %sub_1261, label %whileCond457.backedge
-
-sub_1261:                                         ; preds = %sub_0260
-  %94 = getelementptr inbounds nuw i8, ptr %common.ret.op.i123, i64 1
-  %95 = load i8, ptr %94, align 1
-  %96 = icmp eq i8 %95, 0
-  br i1 %96, label %whileEnd459, label %whileCond457.backedge
-
-whileCond457.backedge:                            ; preds = %sub_0260, %sub_1261
-  %storemerge1 = add nsw i32 %storemerge1448, 1
-  %t406 = tail call i32 @strlen(ptr %t1.tr)
-  %t407 = icmp slt i32 %storemerge1, %t406
-  br i1 %t407, label %whileBody458, label %whileEnd459, !llvm.loop !0
-
-whileEnd459:                                      ; preds = %sub_1261, %whileCond457.backedge, %whileCond457.peel.next, %charAt.exit124.tail.peel, %if456
-  %storemerge1.in.lcssa = phi i32 [ %storemerge1.in.peel, %if456 ], [ %storemerge1.in.peel, %charAt.exit124.tail.peel ], [ %storemerge1.peel, %whileCond457.peel.next ], [ %storemerge1448, %whileCond457.backedge ], [ %storemerge1.in447, %sub_1261 ]
-  %storemerge1.lcssa = phi i32 [ %storemerge1.peel, %if456 ], [ %storemerge1.peel, %charAt.exit124.tail.peel ], [ %storemerge1444, %whileCond457.peel.next ], [ %storemerge1, %whileCond457.backedge ], [ %storemerge1448, %sub_1261 ]
-  %t4.i125 = tail call i32 @strlen(ptr %t1.tr)
-  %spec.store.select.i126 = tail call i32 @llvm.smax.i32(i32 %storemerge1.peel, i32 0)
-  %spec.select.i127 = tail call i32 @llvm.smin.i32(i32 %storemerge1.lcssa, i32 %t4.i125)
-  %t14.i128 = icmp sle i32 %spec.store.select.i126, %spec.select.i127
-  %t227.i129 = icmp samesign ult i32 %spec.store.select.i126, %spec.select.i127
-  %or.cond.i130 = select i1 %t14.i128, i1 %t227.i129, i1 false
-  br i1 %or.cond.i130, label %whileBody114.i132, label %slice.exit141
-
-whileBody114.i132:                                ; preds = %whileEnd459, %whileBody114.i132
-  %storemerge9.i133 = phi i32 [ %t32.i139, %whileBody114.i132 ], [ %spec.store.select.i126, %whileEnd459 ]
-  %t3068.i134 = phi ptr [ %t30.i138, %whileBody114.i132 ], [ @.str_stdlib_stdlib_0, %whileEnd459 ]
-  %97 = zext nneg i32 %storemerge9.i133 to i64
-  %t26.i135 = getelementptr i8, ptr %t1.tr, i64 %97
-  %t27.i136 = load i8, ptr %t26.i135, align 1
-  %t28.i137 = tail call ptr @_zen_char_to_string(i8 %t27.i136)
-  %t30.i138 = tail call ptr @_str_concat(ptr %t3068.i134, ptr %t28.i137)
-  %t32.i139 = add nuw nsw i32 %storemerge9.i133, 1
-  %t22.i140 = icmp slt i32 %t32.i139, %spec.select.i127
-  br i1 %t22.i140, label %whileBody114.i132, label %slice.exit141
-
-slice.exit141:                                    ; preds = %whileBody114.i132, %whileEnd459
-  %common.ret.op.i131 = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd459 ], [ %t30.i138, %whileBody114.i132 ]
-  %t425 = tail call i32 @strlen(ptr %t0)
-  %t426.not = icmp slt i32 %t67, %t425
-  br i1 %t426.not, label %end462, label %common.ret
-
-end462:                                           ; preds = %slice.exit141
-  %t3.i142 = tail call i32 @strlen(ptr %t0)
-  %t7.i143 = icmp slt i32 %t67, 0
-  %t10.i144 = icmp sge i32 %t67, %t3.i142
-  %t5.i145 = select i1 %t7.i143, i1 true, i1 %t10.i144
-  br i1 %t5.i145, label %charAt.exit151, label %end116.i146
-
-end116.i146:                                      ; preds = %end462
-  %98 = zext nneg i32 %t67 to i64
-  %t14.i147 = getelementptr i8, ptr %t0, i64 %98
-  %t15.i148 = load i8, ptr %t14.i147, align 1
-  %t16.i149 = tail call ptr @_zen_char_to_string(i8 %t15.i148)
-  br label %charAt.exit151
-
-charAt.exit151:                                   ; preds = %end462, %end116.i146
-  %common.ret.op.i150 = phi ptr [ %t16.i149, %end116.i146 ], [ @.str_stdlib_stdlib_0, %end462 ]
-  %t434 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t435 = icmp eq i32 %t434, 3
-  br i1 %t435, label %rhs465, label %else469
-
-rhs465:                                           ; preds = %charAt.exit151
-  %t3.i152 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t10.i153 = icmp slt i32 %t3.i152, 2
-  br i1 %t10.i153, label %sub_0263, label %end116.i155
-
-end116.i155:                                      ; preds = %rhs465
-  %t14.i156 = getelementptr i8, ptr %common.ret.op.i131, i64 1
-  %t15.i157 = load i8, ptr %t14.i156, align 1
-  %t16.i158 = tail call ptr @_zen_char_to_string(i8 %t15.i157)
-  br label %sub_0263
-
-sub_0263:                                         ; preds = %end116.i155, %rhs465
-  %common.ret.op.i159 = phi ptr [ %t16.i158, %end116.i155 ], [ @.str_stdlib_stdlib_0, %rhs465 ]
-  %99 = load i8, ptr %common.ret.op.i159, align 1
-  %.not339 = icmp eq i8 %99, 45
-  br i1 %.not339, label %charAt.exit160.tail, label %else469
-
-charAt.exit160.tail:                              ; preds = %sub_0263
-  %100 = getelementptr inbounds nuw i8, ptr %common.ret.op.i159, i64 1
-  %101 = load i8, ptr %100, align 1
-  %102 = icmp eq i8 %101, 0
-  br i1 %102, label %if468, label %else469
-
-if468:                                            ; preds = %charAt.exit160.tail
-  %t3.i161 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t10.i162 = icmp slt i32 %t3.i161, 1
-  br i1 %t10.i162, label %charAt.exit169, label %end116.i164
-
-end116.i164:                                      ; preds = %if468
-  %t15.i166 = load i8, ptr %common.ret.op.i131, align 1
-  %t16.i167 = tail call ptr @_zen_char_to_string(i8 %t15.i166)
-  br label %charAt.exit169
-
-charAt.exit169:                                   ; preds = %if468, %end116.i164
-  %common.ret.op.i168 = phi ptr [ %t16.i167, %end116.i164 ], [ @.str_stdlib_stdlib_0, %if468 ]
-  %t3.i170 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t10.i171 = icmp slt i32 %t3.i170, 3
-  br i1 %t10.i171, label %charAt.exit178, label %end116.i173
-
-end116.i173:                                      ; preds = %charAt.exit169
-  %t14.i174 = getelementptr i8, ptr %common.ret.op.i131, i64 2
-  %t15.i175 = load i8, ptr %t14.i174, align 1
-  %t16.i176 = tail call ptr @_zen_char_to_string(i8 %t15.i175)
-  br label %charAt.exit178
-
-charAt.exit178:                                   ; preds = %charAt.exit169, %end116.i173
-  %common.ret.op.i177 = phi ptr [ %t16.i176, %end116.i173 ], [ @.str_stdlib_stdlib_0, %charAt.exit169 ]
-  %t452 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i150, ptr noundef nonnull dereferenceable(1) %common.ret.op.i168)
-  %t453 = icmp sgt i32 %t452, -1
-  br i1 %t453, label %rhs471, label %common.ret
-
-rhs471:                                           ; preds = %charAt.exit178
-  %t457 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i150, ptr noundef nonnull dereferenceable(1) %common.ret.op.i177)
-  %t458 = icmp slt i32 %t457, 1
-  br i1 %t458, label %end482, label %common.ret
-
-else469:                                          ; preds = %sub_0263, %charAt.exit151, %charAt.exit160.tail
-  %t460283 = load i32, ptr @t_stdlib_78, align 4
-  %t462284 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t463285 = icmp slt i32 %t460283, %t462284
-  br i1 %t463285, label %whileBody476, label %common.ret
-
-whileBody476:                                     ; preds = %else469, %whileCond475.backedge
-  %t465 = load i32, ptr @t_stdlib_78, align 4
-  %t3.i179 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t7.i180 = icmp slt i32 %t465, 0
-  %t10.i181 = icmp sge i32 %t465, %t3.i179
-  %t5.i182 = select i1 %t7.i180, i1 true, i1 %t10.i181
-  br i1 %t5.i182, label %sub_0266, label %end116.i183
-
-end116.i183:                                      ; preds = %whileBody476
-  %103 = zext nneg i32 %t465 to i64
-  %t14.i184 = getelementptr i8, ptr %common.ret.op.i131, i64 %103
-  %t15.i185 = load i8, ptr %t14.i184, align 1
-  %t16.i186 = tail call ptr @_zen_char_to_string(i8 %t15.i185)
-  br label %sub_0266
-
-sub_0266:                                         ; preds = %end116.i183, %whileBody476
-  %common.ret.op.i187 = phi ptr [ %t16.i186, %end116.i183 ], [ @.str_stdlib_stdlib_0, %whileBody476 ]
-  %104 = load i8, ptr %common.ret.op.i187, align 1
-  %.not340 = icmp eq i8 %104, 44
-  br i1 %.not340, label %charAt.exit188.tail, label %end478
-
-charAt.exit188.tail:                              ; preds = %sub_0266
-  %105 = getelementptr inbounds nuw i8, ptr %common.ret.op.i187, i64 1
-  %106 = load i8, ptr %105, align 1
-  %107 = icmp eq i8 %106, 0
-  br i1 %107, label %whileCond475.backedge, label %end478
-
-whileCond475.backedge:                            ; preds = %end478, %charAt.exit188.tail
-  %storemerge.in = load i32, ptr @t_stdlib_78, align 4
-  %storemerge = add i32 %storemerge.in, 1
-  store i32 %storemerge, ptr @t_stdlib_78, align 4
-  %t462 = tail call i32 @strlen(ptr %common.ret.op.i131)
-  %t463 = icmp slt i32 %storemerge, %t462
-  br i1 %t463, label %whileBody476, label %common.ret
-
-end478:                                           ; preds = %sub_0266, %charAt.exit188.tail
-  %t478 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i187, ptr noundef nonnull dereferenceable(1) %common.ret.op.i150)
-  %t479 = icmp eq i32 %t478, 0
-  br i1 %t479, label %end482, label %whileCond475.backedge
-
-end482:                                           ; preds = %end478, %rhs471
-  %t487 = add i32 %storemerge1.in.lcssa, 2
-  br label %whileCond335.backedge
-
-end455:                                           ; preds = %end338.tail, %charAt.exit15.tail, %end342.tail, %end351.tail, %sub_0257, %end383.tail
-  %t490 = tail call i32 @strlen(ptr %t0)
-  %t491.not = icmp slt i32 %t67, %t490
-  br i1 %t491.not, label %end484, label %common.ret
-
-end484:                                           ; preds = %end455
-  %t3.i189 = tail call i32 @strlen(ptr %t0)
-  %t7.i190 = icmp slt i32 %t67, 0
-  %t10.i191 = icmp sge i32 %t67, %t3.i189
-  %t5.i192 = select i1 %t7.i190, i1 true, i1 %t10.i191
-  br i1 %t5.i192, label %charAt.exit198, label %end116.i193
-
-end116.i193:                                      ; preds = %end484
-  %108 = zext nneg i32 %t67 to i64
-  %t14.i194 = getelementptr i8, ptr %t0, i64 %108
-  %t15.i195 = load i8, ptr %t14.i194, align 1
-  %t16.i196 = tail call ptr @_zen_char_to_string(i8 %t15.i195)
-  br label %charAt.exit198
-
-charAt.exit198:                                   ; preds = %end484, %end116.i193
-  %common.ret.op.i197 = phi ptr [ %t16.i196, %end116.i193 ], [ @.str_stdlib_stdlib_0, %end484 ]
-  %t497 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i197, ptr noundef nonnull dereferenceable(1) %common.ret.op.i14)
-  %t498.not = icmp eq i32 %t497, 0
-  br i1 %t498.not, label %end486, label %common.ret
-
-end486:                                           ; preds = %charAt.exit198
-  %t502 = add i32 %storemerge1.in.peel, 1
-  br label %whileCond335.backedge
-
-whileEnd337:                                      ; preds = %whileCond335.backedge, %end325
-  %t503 = phi i32 [ 0, %end325 ], [ %t500289, %whileCond335.backedge ]
-  %t505 = tail call i32 @strlen(ptr %t0)
-  %t506 = icmp eq i32 %t503, %t505
-  br label %common.ret
+%t6 = alloca ptr
+%t9 = alloca i32
+%t17 = alloca ptr
+%t41 = alloca i32
+%t42 = alloca i32
+%t50 = alloca ptr
+%t76 = alloca i32
+%t87 = alloca ptr
+%t94 = alloca ptr
+%t110 = alloca ptr
+%t123 = alloca ptr
+%t153 = alloca ptr
+%t177 = alloca ptr
+%t201 = alloca ptr
+%t224 = alloca ptr
+%t227 = alloca i32
+%t236 = alloca ptr
+%t261 = alloca i32
+%t282 = alloca i32
+%t291 = alloca ptr
+%t325 = alloca ptr
+%t366 = alloca ptr
+%t430 = alloca i32
+%t452 = alloca ptr
+%t460 = alloca ptr
+%t461 = alloca i1
+%t474 = alloca ptr
+%t477 = alloca ptr
+%t488 = alloca i32
+%t496 = alloca ptr
+%text.addr = alloca ptr
+store ptr %t0, ptr %text.addr
+%pattern.addr = alloca ptr
+store ptr %t1, ptr %pattern.addr
+%t2 = load ptr, ptr %pattern.addr
+%t3 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_9, i64 0, i64 0
+%t4 = call ptr @_str_dup(ptr %t3)
+%t5 = call i1 @contains(ptr %t2, ptr %t4)
+br i1 %t5, label %if326, label %end325
+if326:
+%t7 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t8 = call ptr @_str_dup(ptr %t7)
+store ptr %t8, ptr %t6
+store i32 0, ptr %t9
+br label %whileCond327
+whileCond327:
+%t10 = load i32, ptr %t9
+%t11 = load ptr, ptr %pattern.addr
+%t12 = call i32 @strlen(ptr %t11)
+%t13 = icmp slt i32 %t10, %t12
+br i1 %t13, label %whileBody328, label %whileEnd329
+whileBody328:
+%t14 = load ptr, ptr %pattern.addr
+%t15 = load i32, ptr %t9
+%t16 = call ptr @charAt(ptr %t14, i32 %t15)
+store ptr %t16, ptr %t17
+%t18 = load ptr, ptr %t17
+%t19 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_9, i64 0, i64 0
+%t20 = call ptr @_str_dup(ptr %t19)
+%t21 = call i32 @strcmp(ptr %t18, ptr %t20)
+%t22 = icmp eq i32 %t21, 0
+br i1 %t22, label %if331, label %else332
+if331:
+%t23 = load ptr, ptr %text.addr
+%t24 = load ptr, ptr %t6
+%t25 = call i1 @match(ptr %t23, ptr %t24)
+br i1 %t25, label %if334, label %end333
+if334:
+ret i1 1
+end333:
+%t26 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t27 = call ptr @_str_dup(ptr %t26)
+%t29 = load ptr, ptr %t6
+call void @_zen_string_free(ptr %t29)
+store ptr %t27, ptr %t6
+br label %end330
+else332:
+%t30 = load ptr, ptr %t6
+%t31 = load ptr, ptr %t17
+%t32 = call ptr @_str_concat(ptr %t30, ptr %t31)
+%t34 = load ptr, ptr %t6
+call void @_zen_string_free(ptr %t34)
+store ptr %t32, ptr %t6
+br label %end330
+end330:
+%t35 = load i32, ptr %t9
+%t36 = add i32 %t35, 1
+store i32 %t36, ptr %t9
+br label %whileCond327
+whileEnd329:
+%t38 = load ptr, ptr %text.addr
+%t39 = load ptr, ptr %t6
+%t40 = call i1 @match(ptr %t38, ptr %t39)
+ret i1 %t40
+end325:
+store i32 0, ptr %t41
+store i32 0, ptr %t42
+br label %whileCond335
+whileCond335:
+%t43 = load i32, ptr %t42
+%t44 = load ptr, ptr %pattern.addr
+%t45 = call i32 @strlen(ptr %t44)
+%t46 = icmp slt i32 %t43, %t45
+br i1 %t46, label %whileBody336, label %whileEnd337
+whileBody336:
+%t47 = load ptr, ptr %pattern.addr
+%t48 = load i32, ptr %t42
+%t49 = call ptr @charAt(ptr %t47, i32 %t48)
+store ptr %t49, ptr %t50
+%t51 = load ptr, ptr %t50
+%t52 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_10, i64 0, i64 0
+%t53 = call ptr @_str_dup(ptr %t52)
+%t54 = call i32 @strcmp(ptr %t51, ptr %t53)
+%t55 = icmp eq i32 %t54, 0
+br i1 %t55, label %if339, label %end338
+if339:
+%t56 = load i32, ptr %t41
+%t57 = load ptr, ptr %text.addr
+%t58 = call i32 @strlen(ptr %t57)
+%t59 = icmp sge i32 %t56, %t58
+br i1 %t59, label %if341, label %end340
+if341:
+ret i1 0
+end340:
+%t60 = load i32, ptr %t41
+%t61 = add i32 %t60, 1
+store i32 %t61, ptr %t41
+%t63 = load i32, ptr %t42
+%t64 = add i32 %t63, 1
+store i32 %t64, ptr %t42
+br label %whileCond335
+end338:
+%t66 = load ptr, ptr %t50
+%t67 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_11, i64 0, i64 0
+%t68 = call ptr @_str_dup(ptr %t67)
+%t69 = call i32 @strcmp(ptr %t66, ptr %t68)
+%t70 = icmp eq i32 %t69, 0
+br i1 %t70, label %if343, label %end342
+if343:
+%t71 = load i32, ptr %t42
+%t73 = load ptr, ptr %pattern.addr
+%t74 = call i32 @strlen(ptr %t73)
+%t72 = add i32 %t71, 1
+%t75 = icmp sge i32 %t72, %t74
+br i1 %t75, label %if345, label %end344
+if345:
+ret i1 1
+end344:
+%t77 = load i32, ptr %t41
+store i32 %t77, ptr %t76
+br label %whileCond346
+whileCond346:
+%t78 = load i32, ptr %t76
+%t79 = load ptr, ptr %text.addr
+%t80 = call i32 @strlen(ptr %t79)
+%t81 = icmp sle i32 %t78, %t80
+br i1 %t81, label %whileBody347, label %whileEnd348
+whileBody347:
+%t82 = load ptr, ptr %text.addr
+%t83 = load i32, ptr %t76
+%t84 = load ptr, ptr %text.addr
+%t85 = call i32 @strlen(ptr %t84)
+%t86 = call ptr @slice(ptr %t82, i32 %t83, i32 %t85)
+store ptr %t86, ptr %t87
+%t88 = load ptr, ptr %pattern.addr
+%t89 = load i32, ptr %t42
+%t90 = add i32 %t89, 1
+%t91 = load ptr, ptr %pattern.addr
+%t92 = call i32 @strlen(ptr %t91)
+%t93 = call ptr @slice(ptr %t88, i32 %t90, i32 %t92)
+store ptr %t93, ptr %t94
+%t95 = load ptr, ptr %t87
+%t96 = load ptr, ptr %t94
+%t97 = call i1 @match(ptr %t95, ptr %t96)
+br i1 %t97, label %if350, label %end349
+if350:
+ret i1 1
+end349:
+%t98 = load i32, ptr %t76
+%t99 = add i32 %t98, 1
+store i32 %t99, ptr %t76
+br label %whileCond346
+whileEnd348:
+ret i1 0
+end342:
+%t101 = load ptr, ptr %t50
+%t102 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_12, i64 0, i64 0
+%t103 = call ptr @_str_dup(ptr %t102)
+%t104 = call i32 @strcmp(ptr %t101, ptr %t103)
+%t105 = icmp eq i32 %t104, 0
+br i1 %t105, label %if352, label %end351
+if352:
+%t106 = load ptr, ptr %pattern.addr
+%t107 = load i32, ptr %t42
+%t108 = add i32 %t107, 1
+%t109 = call ptr @charAt(ptr %t106, i32 %t108)
+store ptr %t109, ptr %t110
+%t111 = load ptr, ptr %t110
+%t112 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_13, i64 0, i64 0
+%t113 = call ptr @_str_dup(ptr %t112)
+%t114 = call i32 @strcmp(ptr %t111, ptr %t113)
+%t115 = icmp eq i32 %t114, 0
+br i1 %t115, label %if354, label %end353
+if354:
+%t116 = load i32, ptr %t41
+%t117 = load ptr, ptr %text.addr
+%t118 = call i32 @strlen(ptr %t117)
+%t119 = icmp sge i32 %t116, %t118
+br i1 %t119, label %if356, label %end355
+if356:
+ret i1 0
+end355:
+%t120 = load ptr, ptr %text.addr
+%t121 = load i32, ptr %t41
+%t122 = call ptr @charAt(ptr %t120, i32 %t121)
+store ptr %t122, ptr %t123
+%t125 = load ptr, ptr %t123
+%t126 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_14, i64 0, i64 0
+%t127 = call ptr @_str_dup(ptr %t126)
+%t130 = load ptr, ptr %t123
+%t131 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_15, i64 0, i64 0
+%t132 = call ptr @_str_dup(ptr %t131)
+%t128 = call i32 @strcmp(ptr %t125, ptr %t127)
+%t129 = icmp slt i32 %t128, 0
+br i1 %t129, label %skip359, label %rhs358
+rhs358:
+%t133 = call i32 @strcmp(ptr %t130, ptr %t132)
+%t134 = icmp sgt i32 %t133, 0
+br label %end360
+skip359:
+br label %end360
+end360:
+%t124 = phi i1 [ true, %skip359 ], [ %t134, %rhs358 ]
+br i1 %t124, label %if361, label %end357
+if361:
+ret i1 0
+end357:
+%t135 = load i32, ptr %t41
+%t136 = add i32 %t135, 1
+store i32 %t136, ptr %t41
+%t138 = load i32, ptr %t42
+%t139 = add i32 %t138, 2
+store i32 %t139, ptr %t42
+br label %whileCond335
+end353:
+%t141 = load ptr, ptr %t110
+%t142 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_1, i64 0, i64 0
+%t143 = call ptr @_str_dup(ptr %t142)
+%t144 = call i32 @strcmp(ptr %t141, ptr %t143)
+%t145 = icmp eq i32 %t144, 0
+br i1 %t145, label %if363, label %end362
+if363:
+%t146 = load i32, ptr %t41
+%t147 = load ptr, ptr %text.addr
+%t148 = call i32 @strlen(ptr %t147)
+%t149 = icmp sge i32 %t146, %t148
+br i1 %t149, label %if365, label %end364
+if365:
+ret i1 0
+end364:
+%t150 = load ptr, ptr %text.addr
+%t151 = load i32, ptr %t41
+%t152 = call ptr @charAt(ptr %t150, i32 %t151)
+store ptr %t152, ptr %t153
+%t154 = getelementptr inbounds [53 x i8], ptr @.str_stdlib_stdlib_16, i64 0, i64 0
+%t155 = call ptr @_str_dup(ptr %t154)
+%t156 = load ptr, ptr %t153
+%t157 = call i1 @contains(ptr %t155, ptr %t156)
+%t158 = xor i1 %t157, true
+br i1 %t158, label %if367, label %end366
+if367:
+ret i1 0
+end366:
+%t159 = load i32, ptr %t41
+%t160 = add i32 %t159, 1
+store i32 %t160, ptr %t41
+%t162 = load i32, ptr %t42
+%t163 = add i32 %t162, 2
+store i32 %t163, ptr %t42
+br label %whileCond335
+end362:
+%t165 = load ptr, ptr %t110
+%t166 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_17, i64 0, i64 0
+%t167 = call ptr @_str_dup(ptr %t166)
+%t168 = call i32 @strcmp(ptr %t165, ptr %t167)
+%t169 = icmp eq i32 %t168, 0
+br i1 %t169, label %if369, label %end368
+if369:
+%t170 = load i32, ptr %t41
+%t171 = load ptr, ptr %text.addr
+%t172 = call i32 @strlen(ptr %t171)
+%t173 = icmp sge i32 %t170, %t172
+br i1 %t173, label %if371, label %end370
+if371:
+ret i1 0
+end370:
+%t174 = load ptr, ptr %text.addr
+%t175 = load i32, ptr %t41
+%t176 = call ptr @charAt(ptr %t174, i32 %t175)
+store ptr %t176, ptr %t177
+%t178 = getelementptr inbounds [63 x i8], ptr @.str_stdlib_stdlib_18, i64 0, i64 0
+%t179 = call ptr @_str_dup(ptr %t178)
+%t180 = load ptr, ptr %t177
+%t181 = call i1 @contains(ptr %t179, ptr %t180)
+%t182 = xor i1 %t181, true
+br i1 %t182, label %if373, label %end372
+if373:
+ret i1 0
+end372:
+%t183 = load i32, ptr %t41
+%t184 = add i32 %t183, 1
+store i32 %t184, ptr %t41
+%t186 = load i32, ptr %t42
+%t187 = add i32 %t186, 2
+store i32 %t187, ptr %t42
+br label %whileCond335
+end368:
+%t189 = load ptr, ptr %t110
+%t190 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_19, i64 0, i64 0
+%t191 = call ptr @_str_dup(ptr %t190)
+%t192 = call i32 @strcmp(ptr %t189, ptr %t191)
+%t193 = icmp eq i32 %t192, 0
+br i1 %t193, label %if375, label %end374
+if375:
+%t194 = load i32, ptr %t41
+%t195 = load ptr, ptr %text.addr
+%t196 = call i32 @strlen(ptr %t195)
+%t197 = icmp sge i32 %t194, %t196
+br i1 %t197, label %if377, label %end376
+if377:
+ret i1 0
+end376:
+%t198 = load ptr, ptr %text.addr
+%t199 = load i32, ptr %t41
+%t200 = call ptr @charAt(ptr %t198, i32 %t199)
+store ptr %t200, ptr %t201
+%t203 = load ptr, ptr %t201
+%t204 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_5, i64 0, i64 0
+%t205 = call ptr @_str_dup(ptr %t204)
+%t208 = load ptr, ptr %t201
+%t209 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_7, i64 0, i64 0
+%t210 = call ptr @_str_dup(ptr %t209)
+%t206 = call i32 @strcmp(ptr %t203, ptr %t205)
+%t207 = icmp ne i32 %t206, 0
+br i1 %t207, label %rhs379, label %skip380
+rhs379:
+%t211 = call i32 @strcmp(ptr %t208, ptr %t210)
+%t212 = icmp ne i32 %t211, 0
+br label %end381
+skip380:
+br label %end381
+end381:
+%t202 = phi i1 [ false, %skip380 ], [ %t212, %rhs379 ]
+br i1 %t202, label %if382, label %end378
+if382:
+ret i1 0
+end378:
+%t213 = load i32, ptr %t41
+%t214 = add i32 %t213, 1
+store i32 %t214, ptr %t41
+%t216 = load i32, ptr %t42
+%t217 = add i32 %t216, 2
+store i32 %t217, ptr %t42
+br label %whileCond335
+end374:
+br label %end351
+end351:
+%t219 = load ptr, ptr %t50
+%t220 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_20, i64 0, i64 0
+%t221 = call ptr @_str_dup(ptr %t220)
+%t222 = call i32 @strcmp(ptr %t219, ptr %t221)
+%t223 = icmp eq i32 %t222, 0
+br i1 %t223, label %if384, label %end383
+if384:
+%t225 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t226 = call ptr @_str_dup(ptr %t225)
+store ptr %t226, ptr %t224
+%t228 = load i32, ptr %t42
+store i32 %t228, ptr %t227
+br label %whileCond385
+whileCond385:
+%t229 = load i32, ptr %t227
+%t230 = load ptr, ptr %pattern.addr
+%t231 = call i32 @strlen(ptr %t230)
+%t232 = icmp slt i32 %t229, %t231
+br i1 %t232, label %whileBody386, label %whileEnd387
+whileBody386:
+%t233 = load ptr, ptr %pattern.addr
+%t234 = load i32, ptr %t227
+%t235 = call ptr @charAt(ptr %t233, i32 %t234)
+store ptr %t235, ptr %t236
+%t238 = load ptr, ptr %t236
+%t239 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_5, i64 0, i64 0
+%t240 = call ptr @_str_dup(ptr %t239)
+%t243 = load ptr, ptr %t236
+%t244 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_9, i64 0, i64 0
+%t245 = call ptr @_str_dup(ptr %t244)
+%t241 = call i32 @strcmp(ptr %t238, ptr %t240)
+%t242 = icmp eq i32 %t241, 0
+br i1 %t242, label %skip390, label %rhs389
+rhs389:
+%t246 = call i32 @strcmp(ptr %t243, ptr %t245)
+%t247 = icmp eq i32 %t246, 0
+br label %end391
+skip390:
+br label %end391
+end391:
+%t237 = phi i1 [ true, %skip390 ], [ %t247, %rhs389 ]
+br i1 %t237, label %if392, label %end388
+if392:
+br label %whileEnd387
+end388:
+%t248 = load ptr, ptr %t224
+%t249 = load ptr, ptr %t236
+%t250 = call ptr @_str_concat(ptr %t248, ptr %t249)
+%t252 = load ptr, ptr %t224
+call void @_zen_string_free(ptr %t252)
+store ptr %t250, ptr %t224
+%t253 = load i32, ptr %t227
+%t254 = add i32 %t253, 1
+store i32 %t254, ptr %t227
+br label %whileCond385
+whileEnd387:
+%t256 = load ptr, ptr %t224
+%t257 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_21, i64 0, i64 0
+%t258 = call ptr @_str_dup(ptr %t257)
+%t259 = call i32 @strcmp(ptr %t256, ptr %t258)
+%t260 = icmp eq i32 %t259, 0
+br i1 %t260, label %if394, label %end393
+if394:
+%t262 = load i32, ptr %t41
+store i32 %t262, ptr %t261
+%t264 = load i32, ptr %t41
+%t265 = load ptr, ptr %text.addr
+%t266 = call i32 @strlen(ptr %t265)
+%t268 = load ptr, ptr %text.addr
+%t269 = load i32, ptr %t41
+%t271 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_22, i64 0, i64 0
+%t272 = call ptr @_str_dup(ptr %t271)
+%t267 = icmp slt i32 %t264, %t266
+br i1 %t267, label %rhs396, label %skip397
+rhs396:
+%t270 = call ptr @charAt(ptr %t268, i32 %t269)
+%t273 = call i32 @strcmp(ptr %t270, ptr %t272)
+%t274 = icmp eq i32 %t273, 0
+br label %end398
+skip397:
+br label %end398
+end398:
+%t263 = phi i1 [ false, %skip397 ], [ %t274, %rhs396 ]
+br i1 %t263, label %if399, label %end395
+if399:
+%t275 = load i32, ptr %t41
+%t276 = add i32 %t275, 1
+store i32 %t276, ptr %t41
+br label %end395
+end395:
+%t278 = load i32, ptr %t41
+%t279 = load ptr, ptr %text.addr
+%t280 = call i32 @strlen(ptr %t279)
+%t281 = icmp sge i32 %t278, %t280
+br i1 %t281, label %if401, label %end400
+if401:
+ret i1 0
+end400:
+%t283 = load i32, ptr %t41
+store i32 %t283, ptr %t282
+br label %whileCond402
+whileCond402:
+%t284 = load i32, ptr %t41
+%t285 = load ptr, ptr %text.addr
+%t286 = call i32 @strlen(ptr %t285)
+%t287 = icmp slt i32 %t284, %t286
+br i1 %t287, label %whileBody403, label %whileEnd404
+whileBody403:
+%t288 = load ptr, ptr %text.addr
+%t289 = load i32, ptr %t41
+%t290 = call ptr @charAt(ptr %t288, i32 %t289)
+store ptr %t290, ptr %t291
+%t293 = load ptr, ptr %t291
+%t294 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_14, i64 0, i64 0
+%t295 = call ptr @_str_dup(ptr %t294)
+%t298 = load ptr, ptr %t291
+%t299 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_15, i64 0, i64 0
+%t300 = call ptr @_str_dup(ptr %t299)
+%t296 = call i32 @strcmp(ptr %t293, ptr %t295)
+%t297 = icmp slt i32 %t296, 0
+br i1 %t297, label %skip407, label %rhs406
+rhs406:
+%t301 = call i32 @strcmp(ptr %t298, ptr %t300)
+%t302 = icmp sgt i32 %t301, 0
+br label %end408
+skip407:
+br label %end408
+end408:
+%t292 = phi i1 [ true, %skip407 ], [ %t302, %rhs406 ]
+br i1 %t292, label %if409, label %end405
+if409:
+br label %whileEnd404
+end405:
+%t303 = load i32, ptr %t41
+%t304 = add i32 %t303, 1
+store i32 %t304, ptr %t41
+br label %whileCond402
+whileEnd404:
+%t306 = load i32, ptr %t41
+%t307 = load i32, ptr %t282
+%t308 = icmp sle i32 %t306, %t307
+br i1 %t308, label %if411, label %end410
+if411:
+ret i1 0
+end410:
+%t309 = load i32, ptr %t41
+%t310 = load ptr, ptr %text.addr
+%t311 = call i32 @strlen(ptr %t310)
+%t312 = icmp eq i32 %t309, %t311
+ret i1 %t312
+end393:
+%t313 = load ptr, ptr %t224
+%t314 = getelementptr inbounds [4 x i8], ptr @.str_stdlib_stdlib_23, i64 0, i64 0
+%t315 = call ptr @_str_dup(ptr %t314)
+%t316 = call i32 @strcmp(ptr %t313, ptr %t315)
+%t317 = icmp eq i32 %t316, 0
+br i1 %t317, label %if413, label %end412
+if413:
+%t318 = load i32, ptr %t41
+%t319 = load ptr, ptr %text.addr
+%t320 = call i32 @strlen(ptr %t319)
+%t321 = icmp sge i32 %t318, %t320
+br i1 %t321, label %if415, label %end414
+if415:
+ret i1 0
+end414:
+%t322 = load ptr, ptr %text.addr
+%t323 = load i32, ptr %t41
+%t324 = call ptr @charAt(ptr %t322, i32 %t323)
+store ptr %t324, ptr %t325
+%t329 = load ptr, ptr %t325
+%t330 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_1, i64 0, i64 0
+%t331 = call ptr @_str_dup(ptr %t330)
+%t334 = load ptr, ptr %t325
+%t335 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_2, i64 0, i64 0
+%t336 = call ptr @_str_dup(ptr %t335)
+%t340 = load ptr, ptr %t325
+%t341 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_3, i64 0, i64 0
+%t342 = call ptr @_str_dup(ptr %t341)
+%t345 = load ptr, ptr %t325
+%t346 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_4, i64 0, i64 0
+%t347 = call ptr @_str_dup(ptr %t346)
+%t350 = load ptr, ptr %t325
+%t351 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_24, i64 0, i64 0
+%t352 = call ptr @_str_dup(ptr %t351)
+%t332 = call i32 @strcmp(ptr %t329, ptr %t331)
+%t333 = icmp sge i32 %t332, 0
+br i1 %t333, label %rhs423, label %skip424
+rhs423:
+%t337 = call i32 @strcmp(ptr %t334, ptr %t336)
+%t338 = icmp sle i32 %t337, 0
+br label %end425
+skip424:
+br label %end425
+end425:
+%t328 = phi i1 [ false, %skip424 ], [ %t338, %rhs423 ]
+br i1 %t328, label %skip421, label %rhs420
+rhs420:
+%t343 = call i32 @strcmp(ptr %t340, ptr %t342)
+%t344 = icmp sge i32 %t343, 0
+br i1 %t344, label %rhs426, label %skip427
+rhs426:
+%t348 = call i32 @strcmp(ptr %t345, ptr %t347)
+%t349 = icmp sle i32 %t348, 0
+br label %end428
+skip427:
+br label %end428
+end428:
+%t339 = phi i1 [ false, %skip427 ], [ %t349, %rhs426 ]
+br label %end422
+skip421:
+br label %end422
+end422:
+%t327 = phi i1 [ true, %skip421 ], [ %t339, %end428 ]
+br i1 %t327, label %skip418, label %rhs417
+rhs417:
+%t353 = call i32 @strcmp(ptr %t350, ptr %t352)
+%t354 = icmp eq i32 %t353, 0
+br label %end419
+skip418:
+br label %end419
+end419:
+%t326 = phi i1 [ true, %skip418 ], [ %t354, %rhs417 ]
+%t355 = xor i1 %t326, true
+br i1 %t355, label %if429, label %end416
+if429:
+ret i1 0
+end416:
+%t356 = load i32, ptr %t41
+%t357 = add i32 %t356, 1
+store i32 %t357, ptr %t41
+br label %whileCond430
+whileCond430:
+%t359 = load i32, ptr %t41
+%t360 = load ptr, ptr %text.addr
+%t361 = call i32 @strlen(ptr %t360)
+%t362 = icmp slt i32 %t359, %t361
+br i1 %t362, label %whileBody431, label %whileEnd432
+whileBody431:
+%t363 = load ptr, ptr %text.addr
+%t364 = load i32, ptr %t41
+%t365 = call ptr @charAt(ptr %t363, i32 %t364)
+store ptr %t365, ptr %t366
+%t371 = load ptr, ptr %t366
+%t372 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_1, i64 0, i64 0
+%t373 = call ptr @_str_dup(ptr %t372)
+%t376 = load ptr, ptr %t366
+%t377 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_2, i64 0, i64 0
+%t378 = call ptr @_str_dup(ptr %t377)
+%t382 = load ptr, ptr %t366
+%t383 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_3, i64 0, i64 0
+%t384 = call ptr @_str_dup(ptr %t383)
+%t387 = load ptr, ptr %t366
+%t388 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_4, i64 0, i64 0
+%t389 = call ptr @_str_dup(ptr %t388)
+%t393 = load ptr, ptr %t366
+%t394 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_14, i64 0, i64 0
+%t395 = call ptr @_str_dup(ptr %t394)
+%t398 = load ptr, ptr %t366
+%t399 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_15, i64 0, i64 0
+%t400 = call ptr @_str_dup(ptr %t399)
+%t403 = load ptr, ptr %t366
+%t404 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_24, i64 0, i64 0
+%t405 = call ptr @_str_dup(ptr %t404)
+%t374 = call i32 @strcmp(ptr %t371, ptr %t373)
+%t375 = icmp sge i32 %t374, 0
+br i1 %t375, label %rhs443, label %skip444
+rhs443:
+%t379 = call i32 @strcmp(ptr %t376, ptr %t378)
+%t380 = icmp sle i32 %t379, 0
+br label %end445
+skip444:
+br label %end445
+end445:
+%t370 = phi i1 [ false, %skip444 ], [ %t380, %rhs443 ]
+br i1 %t370, label %skip441, label %rhs440
+rhs440:
+%t385 = call i32 @strcmp(ptr %t382, ptr %t384)
+%t386 = icmp sge i32 %t385, 0
+br i1 %t386, label %rhs446, label %skip447
+rhs446:
+%t390 = call i32 @strcmp(ptr %t387, ptr %t389)
+%t391 = icmp sle i32 %t390, 0
+br label %end448
+skip447:
+br label %end448
+end448:
+%t381 = phi i1 [ false, %skip447 ], [ %t391, %rhs446 ]
+br label %end442
+skip441:
+br label %end442
+end442:
+%t369 = phi i1 [ true, %skip441 ], [ %t381, %end448 ]
+br i1 %t369, label %skip438, label %rhs437
+rhs437:
+%t396 = call i32 @strcmp(ptr %t393, ptr %t395)
+%t397 = icmp sge i32 %t396, 0
+br i1 %t397, label %rhs449, label %skip450
+rhs449:
+%t401 = call i32 @strcmp(ptr %t398, ptr %t400)
+%t402 = icmp sle i32 %t401, 0
+br label %end451
+skip450:
+br label %end451
+end451:
+%t392 = phi i1 [ false, %skip450 ], [ %t402, %rhs449 ]
+br label %end439
+skip438:
+br label %end439
+end439:
+%t368 = phi i1 [ true, %skip438 ], [ %t392, %end451 ]
+br i1 %t368, label %skip435, label %rhs434
+rhs434:
+%t406 = call i32 @strcmp(ptr %t403, ptr %t405)
+%t407 = icmp eq i32 %t406, 0
+br label %end436
+skip435:
+br label %end436
+end436:
+%t367 = phi i1 [ true, %skip435 ], [ %t407, %rhs434 ]
+%t408 = xor i1 %t367, true
+br i1 %t408, label %if452, label %end433
+if452:
+br label %whileEnd432
+end433:
+%t409 = load i32, ptr %t41
+%t410 = add i32 %t409, 1
+store i32 %t410, ptr %t41
+br label %whileCond430
+whileEnd432:
+%t412 = load i32, ptr %t41
+%t413 = load ptr, ptr %text.addr
+%t414 = call i32 @strlen(ptr %t413)
+%t415 = icmp eq i32 %t412, %t414
+ret i1 %t415
+end412:
+%t416 = load ptr, ptr %t224
+%t417 = getelementptr inbounds [8 x i8], ptr @.str_stdlib_stdlib_25, i64 0, i64 0
+%t418 = call ptr @_str_dup(ptr %t417)
+%t419 = call i32 @strcmp(ptr %t416, ptr %t418)
+%t420 = icmp eq i32 %t419, 0
+br i1 %t420, label %if454, label %end453
+if454:
+%t421 = load i32, ptr %t41
+%t422 = load ptr, ptr %text.addr
+%t423 = call i32 @strlen(ptr %t422)
+%t424 = icmp slt i32 %t421, %t423
+ret i1 %t424
+end453:
+br label %end383
+end383:
+%t425 = load ptr, ptr %t50
+%t426 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t427 = call ptr @_str_dup(ptr %t426)
+%t428 = call i32 @strcmp(ptr %t425, ptr %t427)
+%t429 = icmp eq i32 %t428, 0
+br i1 %t429, label %if456, label %end455
+if456:
+%t431 = load i32, ptr %t42
+%t432 = add i32 %t431, 1
+store i32 %t432, ptr %t430
+br label %whileCond457
+whileCond457:
+%t433 = load i32, ptr %t430
+%t434 = load ptr, ptr %pattern.addr
+%t435 = call i32 @strlen(ptr %t434)
+%t436 = icmp slt i32 %t433, %t435
+br i1 %t436, label %whileBody458, label %whileEnd459
+whileBody458:
+%t437 = load ptr, ptr %pattern.addr
+%t438 = load i32, ptr %t430
+%t440 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t441 = call ptr @_str_dup(ptr %t440)
+%t439 = call ptr @charAt(ptr %t437, i32 %t438)
+%t442 = call i32 @strcmp(ptr %t439, ptr %t441)
+%t443 = icmp eq i32 %t442, 0
+br i1 %t443, label %if461, label %end460
+if461:
+br label %whileEnd459
+end460:
+%t444 = load i32, ptr %t430
+%t445 = add i32 %t444, 1
+store i32 %t445, ptr %t430
+br label %whileCond457
+whileEnd459:
+%t447 = load ptr, ptr %pattern.addr
+%t448 = load i32, ptr %t42
+%t449 = add i32 %t448, 1
+%t450 = load i32, ptr %t430
+%t451 = call ptr @slice(ptr %t447, i32 %t449, i32 %t450)
+store ptr %t451, ptr %t452
+%t453 = load i32, ptr %t41
+%t454 = load ptr, ptr %text.addr
+%t455 = call i32 @strlen(ptr %t454)
+%t456 = icmp sge i32 %t453, %t455
+br i1 %t456, label %if463, label %end462
+if463:
+ret i1 0
+end462:
+%t457 = load ptr, ptr %text.addr
+%t458 = load i32, ptr %t41
+%t459 = call ptr @charAt(ptr %t457, i32 %t458)
+store ptr %t459, ptr %t460
+store i1 0, ptr %t461
+%t463 = load ptr, ptr %t452
+%t464 = call i32 @strlen(ptr %t463)
+%t466 = load ptr, ptr %t452
+%t468 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_22, i64 0, i64 0
+%t469 = call ptr @_str_dup(ptr %t468)
+%t465 = icmp eq i32 %t464, 3
+br i1 %t465, label %rhs465, label %skip466
+rhs465:
+%t467 = call ptr @charAt(ptr %t466, i32 1)
+%t470 = call i32 @strcmp(ptr %t467, ptr %t469)
+%t471 = icmp eq i32 %t470, 0
+br label %end467
+skip466:
+br label %end467
+end467:
+%t462 = phi i1 [ false, %skip466 ], [ %t471, %rhs465 ]
+br i1 %t462, label %if468, label %else469
+if468:
+%t472 = load ptr, ptr %t452
+%t473 = call ptr @charAt(ptr %t472, i32 0)
+store ptr %t473, ptr %t474
+%t475 = load ptr, ptr %t452
+%t476 = call ptr @charAt(ptr %t475, i32 2)
+store ptr %t476, ptr %t477
+%t479 = load ptr, ptr %t460
+%t480 = load ptr, ptr %t474
+%t483 = load ptr, ptr %t460
+%t484 = load ptr, ptr %t477
+%t481 = call i32 @strcmp(ptr %t479, ptr %t480)
+%t482 = icmp sge i32 %t481, 0
+br i1 %t482, label %rhs471, label %skip472
+rhs471:
+%t485 = call i32 @strcmp(ptr %t483, ptr %t484)
+%t486 = icmp sle i32 %t485, 0
+br label %end473
+skip472:
+br label %end473
+end473:
+%t478 = phi i1 [ false, %skip472 ], [ %t486, %rhs471 ]
+br i1 %t478, label %if474, label %end470
+if474:
+store i1 1, ptr %t461
+br label %end470
+end470:
+br label %end464
+else469:
+store i32 0, ptr %t488
+br label %whileCond475
+whileCond475:
+%t489 = load i32, ptr %t488
+%t490 = load ptr, ptr %t452
+%t491 = call i32 @strlen(ptr %t490)
+%t492 = icmp slt i32 %t489, %t491
+br i1 %t492, label %whileBody476, label %whileEnd477
+whileBody476:
+%t493 = load ptr, ptr %t452
+%t494 = load i32, ptr %t488
+%t495 = call ptr @charAt(ptr %t493, i32 %t494)
+store ptr %t495, ptr %t496
+%t497 = load ptr, ptr %t496
+%t498 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_28, i64 0, i64 0
+%t499 = call ptr @_str_dup(ptr %t498)
+%t500 = call i32 @strcmp(ptr %t497, ptr %t499)
+%t501 = icmp eq i32 %t500, 0
+br i1 %t501, label %if479, label %end478
+if479:
+%t502 = load i32, ptr %t488
+%t503 = add i32 %t502, 1
+store i32 %t503, ptr %t488
+br label %whileCond475
+end478:
+%t505 = load ptr, ptr %t496
+%t506 = load ptr, ptr %t460
+%t507 = call i32 @strcmp(ptr %t505, ptr %t506)
+%t508 = icmp eq i32 %t507, 0
+br i1 %t508, label %if481, label %end480
+if481:
+store i1 1, ptr %t461
+br label %whileEnd477
+end480:
+%t510 = load i32, ptr %t488
+%t511 = add i32 %t510, 1
+store i32 %t511, ptr %t488
+br label %whileCond475
+whileEnd477:
+br label %end464
+end464:
+%t513 = load i1, ptr %t461
+%t514 = xor i1 %t513, true
+br i1 %t514, label %if483, label %end482
+if483:
+ret i1 0
+end482:
+%t515 = load i32, ptr %t41
+%t516 = add i32 %t515, 1
+store i32 %t516, ptr %t41
+%t518 = load i32, ptr %t430
+%t519 = add i32 %t518, 1
+store i32 %t519, ptr %t42
+br label %whileCond335
+end455:
+%t521 = load i32, ptr %t41
+%t522 = load ptr, ptr %text.addr
+%t523 = call i32 @strlen(ptr %t522)
+%t524 = icmp sge i32 %t521, %t523
+br i1 %t524, label %if485, label %end484
+if485:
+ret i1 0
+end484:
+%t525 = load ptr, ptr %text.addr
+%t526 = load i32, ptr %t41
+%t528 = load ptr, ptr %t50
+%t527 = call ptr @charAt(ptr %t525, i32 %t526)
+%t529 = call i32 @strcmp(ptr %t527, ptr %t528)
+%t530 = icmp ne i32 %t529, 0
+br i1 %t530, label %if487, label %end486
+if487:
+ret i1 0
+end486:
+%t531 = load i32, ptr %t41
+%t532 = add i32 %t531, 1
+store i32 %t532, ptr %t41
+%t534 = load i32, ptr %t42
+%t535 = add i32 %t534, 1
+store i32 %t535, ptr %t42
+br label %whileCond335
+whileEnd337:
+%t537 = load i32, ptr %t41
+%t538 = load ptr, ptr %text.addr
+%t539 = call i32 @strlen(ptr %t538)
+%t540 = icmp eq i32 %t537, %t539
+ret i1 %t540
 }
-
-define i32 @_json_skipWS(ptr %t0, i32 %t1) local_unnamed_addr {
+define i32 @_json_skipWS (ptr %t0, i32 %t1) {
 entry:
-  br label %whileCond488
 
-whileCond488:                                     ; preds = %whileBody489, %entry
-  %i.addr.0 = phi i32 [ %t1, %entry ], [ %t12, %whileBody489 ]
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t7.i = icmp slt i32 %i.addr.0, 0
-  %t10.i = icmp sge i32 %i.addr.0, %t3.i
-  %t5.i = select i1 %t7.i, i1 true, i1 %t10.i
-  br i1 %t5.i, label %charAt.exit, label %end116.i
-
-end116.i:                                         ; preds = %whileCond488
-  %0 = zext nneg i32 %i.addr.0 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %charAt.exit
-
-charAt.exit:                                      ; preds = %whileCond488, %end116.i
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %whileCond488 ]
-  %t6 = icmp slt i32 %i.addr.0, %t5
-  br i1 %t6, label %rhs491, label %whileEnd490
-
-rhs491:                                           ; preds = %charAt.exit
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  switch i8 %1, label %whileEnd490 [
-    i8 32, label %entry.tail.i
-    i8 10, label %rhs500.tail.i
-    i8 9, label %isWhitespace.exit
-    i8 13, label %sub_18.i
-  ]
-
-entry.tail.i:                                     ; preds = %rhs491
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %whileBody489, label %whileEnd490
-
-rhs500.tail.i:                                    ; preds = %rhs491
-  %5 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %6 = load i8, ptr %5, align 1
-  %7 = icmp eq i8 %6, 0
-  br i1 %7, label %whileBody489, label %whileEnd490
-
-sub_18.i:                                         ; preds = %rhs491
-  %8 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %9 = load i8, ptr %8, align 1
-  %10 = icmp eq i8 %9, 0
-  br i1 %10, label %whileBody489, label %whileEnd490
-
-isWhitespace.exit:                                ; preds = %rhs491
-  %11 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %12 = load i8, ptr %11, align 1
-  %13 = icmp eq i8 %12, 0
-  br i1 %13, label %whileBody489, label %whileEnd490
-
-whileBody489:                                     ; preds = %rhs500.tail.i, %entry.tail.i, %sub_18.i, %isWhitespace.exit
-  %t12 = add nsw i32 %i.addr.0, 1
-  br label %whileCond488
-
-whileEnd490:                                      ; preds = %entry.tail.i, %rhs500.tail.i, %rhs491, %sub_18.i, %charAt.exit, %isWhitespace.exit
-  ret i32 %i.addr.0
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%i.addr = alloca i32
+store i32 %t1, ptr %i.addr
+br label %whileCond488
+whileCond488:
+%t3 = load i32, ptr %i.addr
+%t4 = load ptr, ptr %s.addr
+%t5 = call i32 @strlen(ptr %t4)
+%t7 = load ptr, ptr %s.addr
+%t8 = load i32, ptr %i.addr
+%t9 = call ptr @charAt(ptr %t7, i32 %t8)
+%t6 = icmp slt i32 %t3, %t5
+br i1 %t6, label %rhs491, label %skip492
+rhs491:
+%t10 = call i1 @isWhitespace(ptr %t9)
+br label %end493
+skip492:
+br label %end493
+end493:
+%t2 = phi i1 [ false, %skip492 ], [ %t10, %rhs491 ]
+br i1 %t2, label %whileBody489, label %whileEnd490
+whileBody489:
+%t11 = load i32, ptr %i.addr
+%t12 = add i32 %t11, 1
+store i32 %t12, ptr %i.addr
+br label %whileCond488
+whileEnd490:
+%t14 = load i32, ptr %i.addr
+ret i32 %t14
 }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: read)
-define i1 @isWhitespace(ptr readonly captures(none) %t0) local_unnamed_addr #4 {
+define i1 @isWhitespace (ptr %t0) {
 entry:
-  %0 = load i8, ptr %t0, align 1
-  switch i8 %0, label %end496 [
-    i8 32, label %entry.tail
-    i8 10, label %rhs500.tail
-    i8 9, label %rhs497.tail
-    i8 13, label %sub_18
-  ]
 
-entry.tail:                                       ; preds = %entry
-  %1 = getelementptr inbounds nuw i8, ptr %t0, i64 1
-  %2 = load i8, ptr %1, align 1
-  %3 = icmp eq i8 %2, 0
-  br i1 %3, label %end496, label %sub_07.thread21
-
-rhs500.tail:                                      ; preds = %entry
-  %4 = getelementptr inbounds nuw i8, ptr %t0, i64 1
-  %5 = load i8, ptr %4, align 1
-  %6 = icmp eq i8 %5, 0
-  br i1 %6, label %end496, label %sub_07.thread21
-
-rhs497.tail:                                      ; preds = %entry
-  %7 = getelementptr inbounds nuw i8, ptr %t0, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br label %end496
-
-sub_07.thread21:                                  ; preds = %entry.tail, %rhs500.tail
-  br label %end496
-
-sub_18:                                           ; preds = %entry
-  %10 = getelementptr inbounds nuw i8, ptr %t0, i64 1
-  %11 = load i8, ptr %10, align 1
-  %12 = icmp eq i8 %11, 0
-  br label %end496
-
-end496:                                           ; preds = %rhs497.tail, %entry, %sub_18, %sub_07.thread21, %rhs500.tail, %entry.tail
-  %t1 = phi i1 [ true, %entry.tail ], [ true, %rhs500.tail ], [ %12, %sub_18 ], [ false, %sub_07.thread21 ], [ %9, %rhs497.tail ], [ false, %entry ]
-  ret i1 %t1
+%c.addr = alloca ptr
+store ptr %t0, ptr %c.addr
+%t4 = load ptr, ptr %c.addr
+%t5 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_5, i64 0, i64 0
+%t6 = call ptr @_str_dup(ptr %t5)
+%t9 = load ptr, ptr %c.addr
+%t10 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_6, i64 0, i64 0
+%t11 = call ptr @_str_dup(ptr %t10)
+%t14 = load ptr, ptr %c.addr
+%t15 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_7, i64 0, i64 0
+%t16 = call ptr @_str_dup(ptr %t15)
+%t19 = load ptr, ptr %c.addr
+%t20 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_29, i64 0, i64 0
+%t21 = call ptr @_str_dup(ptr %t20)
+%t7 = call i32 @strcmp(ptr %t4, ptr %t6)
+%t8 = icmp eq i32 %t7, 0
+br i1 %t8, label %skip501, label %rhs500
+rhs500:
+%t12 = call i32 @strcmp(ptr %t9, ptr %t11)
+%t13 = icmp eq i32 %t12, 0
+br label %end502
+skip501:
+br label %end502
+end502:
+%t3 = phi i1 [ true, %skip501 ], [ %t13, %rhs500 ]
+br i1 %t3, label %skip498, label %rhs497
+rhs497:
+%t17 = call i32 @strcmp(ptr %t14, ptr %t16)
+%t18 = icmp eq i32 %t17, 0
+br label %end499
+skip498:
+br label %end499
+end499:
+%t2 = phi i1 [ true, %skip498 ], [ %t18, %rhs497 ]
+br i1 %t2, label %skip495, label %rhs494
+rhs494:
+%t22 = call i32 @strcmp(ptr %t19, ptr %t21)
+%t23 = icmp eq i32 %t22, 0
+br label %end496
+skip495:
+br label %end496
+end496:
+%t1 = phi i1 [ true, %skip495 ], [ %t23, %rhs494 ]
+ret i1 %t1
 }
-
-define ptr @_json_extractValue(ptr %t0, i32 %t1) local_unnamed_addr {
+define ptr @_json_extractValue (ptr %t0, i32 %t1) {
 entry:
-  %t4 = tail call i32 @_json_skipWS(ptr %t0, i32 %t1)
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t7.i = icmp slt i32 %t4, 0
-  %t10.i = icmp sge i32 %t4, %t3.i
-  %t5.i = select i1 %t7.i, i1 true, i1 %t10.i
-  br i1 %t5.i, label %sub_0, label %end116.i
-
-end116.i:                                         ; preds = %entry
-  %0 = zext nneg i32 %t4 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %entry
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %entry ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not = icmp eq i8 %1, 34
-  br i1 %.not, label %charAt.exit.tail, label %end503
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %if504, label %end503
-
-if504:                                            ; preds = %charAt.exit.tail
-  %t14 = add i32 %t4, 1
-  %t17235 = tail call i32 @strlen(ptr %t0)
-  %t18236 = icmp slt i32 %t14, %t17235
-  br i1 %t18236, label %whileBody506, label %whileEnd507
-
-whileBody506:                                     ; preds = %if504, %end508
-  %storemerge12237 = phi i32 [ %t27, %end508 ], [ %t14, %if504 ]
-  %t3.i13 = tail call i32 @strlen(ptr %t0)
-  %t7.i14 = icmp slt i32 %storemerge12237, 0
-  %t10.i15 = icmp sge i32 %storemerge12237, %t3.i13
-  %t5.i16 = select i1 %t7.i14, i1 true, i1 %t10.i15
-  br i1 %t5.i16, label %sub_0166, label %end116.i17
-
-end116.i17:                                       ; preds = %whileBody506
-  %5 = zext nneg i32 %storemerge12237 to i64
-  %t14.i18 = getelementptr i8, ptr %t0, i64 %5
-  %t15.i19 = load i8, ptr %t14.i18, align 1
-  %t16.i20 = tail call ptr @_zen_char_to_string(i8 %t15.i19)
-  br label %sub_0166
-
-sub_0166:                                         ; preds = %end116.i17, %whileBody506
-  %common.ret.op.i21 = phi ptr [ %t16.i20, %end116.i17 ], [ @.str_stdlib_stdlib_0, %whileBody506 ]
-  %6 = load i8, ptr %common.ret.op.i21, align 1
-  %.not250 = icmp eq i8 %6, 34
-  br i1 %.not250, label %charAt.exit22.tail, label %end508
-
-charAt.exit22.tail:                               ; preds = %sub_0166
-  %7 = getelementptr inbounds nuw i8, ptr %common.ret.op.i21, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br i1 %9, label %whileEnd507, label %end508
-
-end508:                                           ; preds = %sub_0166, %charAt.exit22.tail
-  %t27 = add nsw i32 %storemerge12237, 1
-  %t17 = tail call i32 @strlen(ptr %t0)
-  %t18 = icmp slt i32 %t27, %t17
-  br i1 %t18, label %whileBody506, label %whileEnd507
-
-common.ret:                                       ; preds = %whileBody114.i156, %whileBody114.i109, %whileBody114.i62, %whileBody114.i, %whileEnd534, %whileEnd525, %whileEnd514, %whileEnd507
-  %common.ret.op = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd507 ], [ @.str_stdlib_stdlib_0, %whileEnd514 ], [ @.str_stdlib_stdlib_0, %whileEnd525 ], [ @.str_stdlib_stdlib_0, %whileEnd534 ], [ %t30.i, %whileBody114.i ], [ %t30.i68, %whileBody114.i62 ], [ %t30.i115, %whileBody114.i109 ], [ %t30.i162, %whileBody114.i156 ]
-  ret ptr %common.ret.op
-
-whileEnd507:                                      ; preds = %end508, %charAt.exit22.tail, %if504
-  %storemerge12.lcssa = phi i32 [ %t14, %if504 ], [ %storemerge12237, %charAt.exit22.tail ], [ %t27, %end508 ]
-  %t4.i = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i = tail call i32 @llvm.smax.i32(i32 %t14, i32 0)
-  %spec.select.i = tail call i32 @llvm.smin.i32(i32 %storemerge12.lcssa, i32 %t4.i)
-  %t14.i23 = icmp sle i32 %spec.store.select.i, %spec.select.i
-  %t227.i = icmp samesign ult i32 %spec.store.select.i, %spec.select.i
-  %or.cond.i = select i1 %t14.i23, i1 %t227.i, i1 false
-  br i1 %or.cond.i, label %whileBody114.i, label %common.ret
-
-whileBody114.i:                                   ; preds = %whileEnd507, %whileBody114.i
-  %storemerge9.i = phi i32 [ %t32.i, %whileBody114.i ], [ %spec.store.select.i, %whileEnd507 ]
-  %t3068.i = phi ptr [ %t30.i, %whileBody114.i ], [ @.str_stdlib_stdlib_0, %whileEnd507 ]
-  %10 = zext nneg i32 %storemerge9.i to i64
-  %t26.i = getelementptr i8, ptr %t0, i64 %10
-  %t27.i = load i8, ptr %t26.i, align 1
-  %t28.i = tail call ptr @_zen_char_to_string(i8 %t27.i)
-  %t30.i = tail call ptr @_str_concat(ptr %t3068.i, ptr %t28.i)
-  %t32.i = add nuw nsw i32 %storemerge9.i, 1
-  %t22.i = icmp slt i32 %t32.i, %spec.select.i
-  br i1 %t22.i, label %whileBody114.i, label %common.ret
-
-end503:                                           ; preds = %sub_0, %charAt.exit.tail
-  %t3.i25 = tail call i32 @strlen(ptr %t0)
-  %t10.i27 = icmp sge i32 %t4, %t3.i25
-  %t5.i28 = select i1 %t7.i, i1 true, i1 %t10.i27
-  br i1 %t5.i28, label %sub_0169, label %end116.i29
-
-end116.i29:                                       ; preds = %end503
-  %11 = zext nneg i32 %t4 to i64
-  %t14.i30 = getelementptr i8, ptr %t0, i64 %11
-  %t15.i31 = load i8, ptr %t14.i30, align 1
-  %t16.i32 = tail call ptr @_zen_char_to_string(i8 %t15.i31)
-  br label %sub_0169
-
-sub_0169:                                         ; preds = %end116.i29, %end503
-  %common.ret.op.i33 = phi ptr [ %t16.i32, %end116.i29 ], [ @.str_stdlib_stdlib_0, %end503 ]
-  %12 = load i8, ptr %common.ret.op.i33, align 1
-  %.not241 = icmp eq i8 %12, 123
-  br i1 %.not241, label %charAt.exit34.tail, label %end510
-
-charAt.exit34.tail:                               ; preds = %sub_0169
-  %13 = getelementptr inbounds nuw i8, ptr %common.ret.op.i33, i64 1
-  %14 = load i8, ptr %13, align 1
-  %15 = icmp eq i8 %14, 0
-  br i1 %15, label %if511, label %end510
-
-if511:                                            ; preds = %charAt.exit34.tail
-  %t45225 = tail call i32 @strlen(ptr %t0)
-  %t46226 = icmp slt i32 %t4, %t45225
-  br i1 %t46226, label %whileBody513, label %whileEnd514
-
-whileBody513:                                     ; preds = %if511, %end519
-  %t68220228 = phi i32 [ %t68, %end519 ], [ %t4, %if511 ]
-  %t65.pr221227 = phi i32 [ %t65.pr222, %end519 ], [ 0, %if511 ]
-  %t3.i35 = tail call i32 @strlen(ptr %t0)
-  %t7.i36 = icmp slt i32 %t68220228, 0
-  %t10.i37 = icmp sge i32 %t68220228, %t3.i35
-  %t5.i38 = select i1 %t7.i36, i1 true, i1 %t10.i37
-  br i1 %t5.i38, label %sub_0172, label %end116.i39
-
-end116.i39:                                       ; preds = %whileBody513
-  %16 = zext nneg i32 %t68220228 to i64
-  %t14.i40 = getelementptr i8, ptr %t0, i64 %16
-  %t15.i41 = load i8, ptr %t14.i40, align 1
-  %t16.i42 = tail call ptr @_zen_char_to_string(i8 %t15.i41)
-  br label %sub_0172
-
-sub_0172:                                         ; preds = %end116.i39, %whileBody513
-  %common.ret.op.i43 = phi ptr [ %t16.i42, %end116.i39 ], [ @.str_stdlib_stdlib_0, %whileBody513 ]
-  %17 = load i8, ptr %common.ret.op.i43, align 1
-  %.not248 = icmp eq i8 %17, 123
-  br i1 %.not248, label %sub_1173, label %charAt.exit44.tail
-
-sub_1173:                                         ; preds = %sub_0172
-  %18 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %19 = load i8, ptr %18, align 1
-  %20 = icmp eq i8 %19, 0
-  br label %charAt.exit44.tail
-
-charAt.exit44.tail:                               ; preds = %sub_0172, %sub_1173
-  %t53 = phi i1 [ false, %sub_0172 ], [ %20, %sub_1173 ]
-  %t55 = zext i1 %t53 to i32
-  %spec.select = add i32 %t65.pr221227, %t55
-  %t3.i45 = tail call i32 @strlen(ptr %t0)
-  %t10.i47 = icmp sge i32 %t68220228, %t3.i45
-  %t5.i48 = select i1 %t7.i36, i1 true, i1 %t10.i47
-  br i1 %t5.i48, label %sub_0175, label %end116.i49
-
-end116.i49:                                       ; preds = %charAt.exit44.tail
-  %21 = zext nneg i32 %t68220228 to i64
-  %t14.i50 = getelementptr i8, ptr %t0, i64 %21
-  %t15.i51 = load i8, ptr %t14.i50, align 1
-  %t16.i52 = tail call ptr @_zen_char_to_string(i8 %t15.i51)
-  br label %sub_0175
-
-sub_0175:                                         ; preds = %end116.i49, %charAt.exit44.tail
-  %common.ret.op.i53 = phi ptr [ %t16.i52, %end116.i49 ], [ @.str_stdlib_stdlib_0, %charAt.exit44.tail ]
-  %22 = load i8, ptr %common.ret.op.i53, align 1
-  %.not249 = icmp eq i8 %22, 125
-  br i1 %.not249, label %sub_1176, label %charAt.exit54.tail
-
-sub_1176:                                         ; preds = %sub_0175
-  %23 = getelementptr inbounds nuw i8, ptr %common.ret.op.i53, i64 1
-  %24 = load i8, ptr %23, align 1
-  %25 = icmp eq i8 %24, 0
-  br label %charAt.exit54.tail
-
-charAt.exit54.tail:                               ; preds = %sub_0175, %sub_1176
-  %t62 = phi i1 [ false, %sub_0175 ], [ %25, %sub_1176 ]
-  %t64 = sext i1 %t62 to i32
-  %t65.pr222 = add i32 %spec.select, %t64
-  %t66 = icmp eq i32 %t65.pr222, 0
-  br i1 %t66, label %whileEnd514, label %end519
-
-end519:                                           ; preds = %charAt.exit54.tail
-  %t68 = add nsw i32 %t68220228, 1
-  %t45 = tail call i32 @strlen(ptr %t0)
-  %t46 = icmp slt i32 %t68, %t45
-  br i1 %t46, label %whileBody513, label %whileEnd514
-
-whileEnd514:                                      ; preds = %end519, %charAt.exit54.tail, %if511
-  %t68220.lcssa = phi i32 [ %t4, %if511 ], [ %t68220228, %charAt.exit54.tail ], [ %t68, %end519 ]
-  %t72 = add i32 %t68220.lcssa, 1
-  %t4.i55 = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i56 = tail call i32 @llvm.smax.i32(i32 %t4, i32 0)
-  %spec.select.i57 = tail call i32 @llvm.smin.i32(i32 %t72, i32 %t4.i55)
-  %t14.i58 = icmp sle i32 %spec.store.select.i56, %spec.select.i57
-  %t227.i59 = icmp samesign ult i32 %spec.store.select.i56, %spec.select.i57
-  %or.cond.i60 = select i1 %t14.i58, i1 %t227.i59, i1 false
-  br i1 %or.cond.i60, label %whileBody114.i62, label %common.ret
-
-whileBody114.i62:                                 ; preds = %whileEnd514, %whileBody114.i62
-  %storemerge9.i63 = phi i32 [ %t32.i69, %whileBody114.i62 ], [ %spec.store.select.i56, %whileEnd514 ]
-  %t3068.i64 = phi ptr [ %t30.i68, %whileBody114.i62 ], [ @.str_stdlib_stdlib_0, %whileEnd514 ]
-  %26 = zext nneg i32 %storemerge9.i63 to i64
-  %t26.i65 = getelementptr i8, ptr %t0, i64 %26
-  %t27.i66 = load i8, ptr %t26.i65, align 1
-  %t28.i67 = tail call ptr @_zen_char_to_string(i8 %t27.i66)
-  %t30.i68 = tail call ptr @_str_concat(ptr %t3068.i64, ptr %t28.i67)
-  %t32.i69 = add nuw nsw i32 %storemerge9.i63, 1
-  %t22.i70 = icmp slt i32 %t32.i69, %spec.select.i57
-  br i1 %t22.i70, label %whileBody114.i62, label %common.ret
-
-end510:                                           ; preds = %sub_0169, %charAt.exit34.tail
-  %t3.i72 = tail call i32 @strlen(ptr %t0)
-  %t10.i74 = icmp sge i32 %t4, %t3.i72
-  %t5.i75 = select i1 %t7.i, i1 true, i1 %t10.i74
-  br i1 %t5.i75, label %sub_0178, label %end116.i76
-
-end116.i76:                                       ; preds = %end510
-  %27 = zext nneg i32 %t4 to i64
-  %t14.i77 = getelementptr i8, ptr %t0, i64 %27
-  %t15.i78 = load i8, ptr %t14.i77, align 1
-  %t16.i79 = tail call ptr @_zen_char_to_string(i8 %t15.i78)
-  br label %sub_0178
-
-sub_0178:                                         ; preds = %end116.i76, %end510
-  %common.ret.op.i80 = phi ptr [ %t16.i79, %end116.i76 ], [ @.str_stdlib_stdlib_0, %end510 ]
-  %28 = load i8, ptr %common.ret.op.i80, align 1
-  %.not242 = icmp eq i8 %28, 91
-  br i1 %.not242, label %charAt.exit81.tail, label %whileCond532.preheader
-
-charAt.exit81.tail:                               ; preds = %sub_0178
-  %29 = getelementptr inbounds nuw i8, ptr %common.ret.op.i80, i64 1
-  %30 = load i8, ptr %29, align 1
-  %31 = icmp eq i8 %30, 0
-  br i1 %31, label %if522, label %whileCond532.preheader
-
-whileCond532.preheader:                           ; preds = %sub_0178, %charAt.exit81.tail
-  %t119199 = tail call i32 @strlen(ptr %t0)
-  %t120200 = icmp slt i32 %t4, %t119199
-  br i1 %t120200, label %whileBody533, label %whileEnd534
-
-if522:                                            ; preds = %charAt.exit81.tail
-  %t86210 = tail call i32 @strlen(ptr %t0)
-  %t87211 = icmp slt i32 %t4, %t86210
-  br i1 %t87211, label %whileBody524, label %whileEnd525
-
-whileBody524:                                     ; preds = %if522, %end530
-  %t109205213 = phi i32 [ %t109, %end530 ], [ %t4, %if522 ]
-  %t106.pr206212 = phi i32 [ %t106.pr207, %end530 ], [ 0, %if522 ]
-  %t3.i82 = tail call i32 @strlen(ptr %t0)
-  %t7.i83 = icmp slt i32 %t109205213, 0
-  %t10.i84 = icmp sge i32 %t109205213, %t3.i82
-  %t5.i85 = select i1 %t7.i83, i1 true, i1 %t10.i84
-  br i1 %t5.i85, label %sub_0181, label %end116.i86
-
-end116.i86:                                       ; preds = %whileBody524
-  %32 = zext nneg i32 %t109205213 to i64
-  %t14.i87 = getelementptr i8, ptr %t0, i64 %32
-  %t15.i88 = load i8, ptr %t14.i87, align 1
-  %t16.i89 = tail call ptr @_zen_char_to_string(i8 %t15.i88)
-  br label %sub_0181
-
-sub_0181:                                         ; preds = %end116.i86, %whileBody524
-  %common.ret.op.i90 = phi ptr [ %t16.i89, %end116.i86 ], [ @.str_stdlib_stdlib_0, %whileBody524 ]
-  %33 = load i8, ptr %common.ret.op.i90, align 1
-  %.not246 = icmp eq i8 %33, 91
-  br i1 %.not246, label %sub_1182, label %charAt.exit91.tail
-
-sub_1182:                                         ; preds = %sub_0181
-  %34 = getelementptr inbounds nuw i8, ptr %common.ret.op.i90, i64 1
-  %35 = load i8, ptr %34, align 1
-  %36 = icmp eq i8 %35, 0
-  br label %charAt.exit91.tail
-
-charAt.exit91.tail:                               ; preds = %sub_0181, %sub_1182
-  %t94 = phi i1 [ false, %sub_0181 ], [ %36, %sub_1182 ]
-  %t96 = zext i1 %t94 to i32
-  %spec.select240 = add i32 %t106.pr206212, %t96
-  %t3.i92 = tail call i32 @strlen(ptr %t0)
-  %t10.i94 = icmp sge i32 %t109205213, %t3.i92
-  %t5.i95 = select i1 %t7.i83, i1 true, i1 %t10.i94
-  br i1 %t5.i95, label %sub_0184, label %end116.i96
-
-end116.i96:                                       ; preds = %charAt.exit91.tail
-  %37 = zext nneg i32 %t109205213 to i64
-  %t14.i97 = getelementptr i8, ptr %t0, i64 %37
-  %t15.i98 = load i8, ptr %t14.i97, align 1
-  %t16.i99 = tail call ptr @_zen_char_to_string(i8 %t15.i98)
-  br label %sub_0184
-
-sub_0184:                                         ; preds = %end116.i96, %charAt.exit91.tail
-  %common.ret.op.i100 = phi ptr [ %t16.i99, %end116.i96 ], [ @.str_stdlib_stdlib_0, %charAt.exit91.tail ]
-  %38 = load i8, ptr %common.ret.op.i100, align 1
-  %.not247 = icmp eq i8 %38, 93
-  br i1 %.not247, label %sub_1185, label %charAt.exit101.tail
-
-sub_1185:                                         ; preds = %sub_0184
-  %39 = getelementptr inbounds nuw i8, ptr %common.ret.op.i100, i64 1
-  %40 = load i8, ptr %39, align 1
-  %41 = icmp eq i8 %40, 0
-  br label %charAt.exit101.tail
-
-charAt.exit101.tail:                              ; preds = %sub_0184, %sub_1185
-  %t103 = phi i1 [ false, %sub_0184 ], [ %41, %sub_1185 ]
-  %t105 = sext i1 %t103 to i32
-  %t106.pr207 = add i32 %spec.select240, %t105
-  %t107 = icmp eq i32 %t106.pr207, 0
-  br i1 %t107, label %whileEnd525, label %end530
-
-end530:                                           ; preds = %charAt.exit101.tail
-  %t109 = add nsw i32 %t109205213, 1
-  %t86 = tail call i32 @strlen(ptr %t0)
-  %t87 = icmp slt i32 %t109, %t86
-  br i1 %t87, label %whileBody524, label %whileEnd525
-
-whileEnd525:                                      ; preds = %end530, %charAt.exit101.tail, %if522
-  %t109205.lcssa = phi i32 [ %t4, %if522 ], [ %t109205213, %charAt.exit101.tail ], [ %t109, %end530 ]
-  %t113 = add i32 %t109205.lcssa, 1
-  %t4.i102 = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i103 = tail call i32 @llvm.smax.i32(i32 %t4, i32 0)
-  %spec.select.i104 = tail call i32 @llvm.smin.i32(i32 %t113, i32 %t4.i102)
-  %t14.i105 = icmp sle i32 %spec.store.select.i103, %spec.select.i104
-  %t227.i106 = icmp samesign ult i32 %spec.store.select.i103, %spec.select.i104
-  %or.cond.i107 = select i1 %t14.i105, i1 %t227.i106, i1 false
-  br i1 %or.cond.i107, label %whileBody114.i109, label %common.ret
-
-whileBody114.i109:                                ; preds = %whileEnd525, %whileBody114.i109
-  %storemerge9.i110 = phi i32 [ %t32.i116, %whileBody114.i109 ], [ %spec.store.select.i103, %whileEnd525 ]
-  %t3068.i111 = phi ptr [ %t30.i115, %whileBody114.i109 ], [ @.str_stdlib_stdlib_0, %whileEnd525 ]
-  %42 = zext nneg i32 %storemerge9.i110 to i64
-  %t26.i112 = getelementptr i8, ptr %t0, i64 %42
-  %t27.i113 = load i8, ptr %t26.i112, align 1
-  %t28.i114 = tail call ptr @_zen_char_to_string(i8 %t27.i113)
-  %t30.i115 = tail call ptr @_str_concat(ptr %t3068.i111, ptr %t28.i114)
-  %t32.i116 = add nuw nsw i32 %storemerge9.i110, 1
-  %t22.i117 = icmp slt i32 %t32.i116, %spec.select.i104
-  br i1 %t22.i117, label %whileBody114.i109, label %common.ret
-
-whileBody533:                                     ; preds = %whileCond532.preheader, %end535
-  %storemerge201 = phi i32 [ %t145, %end535 ], [ %t4, %whileCond532.preheader ]
-  %t3.i119 = tail call i32 @strlen(ptr %t0)
-  %t7.i120 = icmp slt i32 %storemerge201, 0
-  %t10.i121 = icmp sge i32 %storemerge201, %t3.i119
-  %t5.i122 = select i1 %t7.i120, i1 true, i1 %t10.i121
-  br i1 %t5.i122, label %sub_0187, label %end116.i123
-
-end116.i123:                                      ; preds = %whileBody533
-  %43 = zext nneg i32 %storemerge201 to i64
-  %t14.i124 = getelementptr i8, ptr %t0, i64 %43
-  %t15.i125 = load i8, ptr %t14.i124, align 1
-  %t16.i126 = tail call ptr @_zen_char_to_string(i8 %t15.i125)
-  br label %sub_0187
-
-sub_0187:                                         ; preds = %end116.i123, %whileBody533
-  %common.ret.op.i127 = phi ptr [ %t16.i126, %end116.i123 ], [ @.str_stdlib_stdlib_0, %whileBody533 ]
-  %44 = load i8, ptr %common.ret.op.i127, align 1
-  %.not243 = icmp eq i8 %44, 44
-  br i1 %.not243, label %charAt.exit128.tail, label %rhs539
-
-charAt.exit128.tail:                              ; preds = %sub_0187
-  %45 = getelementptr inbounds nuw i8, ptr %common.ret.op.i127, i64 1
-  %46 = load i8, ptr %45, align 1
-  %47 = icmp eq i8 %46, 0
-  br i1 %47, label %whileEnd534, label %rhs539
-
-rhs539:                                           ; preds = %sub_0187, %charAt.exit128.tail
-  %t3.i129 = tail call i32 @strlen(ptr %t0)
-  %t10.i131 = icmp sge i32 %storemerge201, %t3.i129
-  %t5.i132 = select i1 %t7.i120, i1 true, i1 %t10.i131
-  br i1 %t5.i132, label %sub_0190, label %end116.i133
-
-end116.i133:                                      ; preds = %rhs539
-  %48 = zext nneg i32 %storemerge201 to i64
-  %t14.i134 = getelementptr i8, ptr %t0, i64 %48
-  %t15.i135 = load i8, ptr %t14.i134, align 1
-  %t16.i136 = tail call ptr @_zen_char_to_string(i8 %t15.i135)
-  br label %sub_0190
-
-sub_0190:                                         ; preds = %end116.i133, %rhs539
-  %common.ret.op.i137 = phi ptr [ %t16.i136, %end116.i133 ], [ @.str_stdlib_stdlib_0, %rhs539 ]
-  %49 = load i8, ptr %common.ret.op.i137, align 1
-  %.not244 = icmp eq i8 %49, 125
-  br i1 %.not244, label %charAt.exit138.tail, label %rhs536
-
-charAt.exit138.tail:                              ; preds = %sub_0190
-  %50 = getelementptr inbounds nuw i8, ptr %common.ret.op.i137, i64 1
-  %51 = load i8, ptr %50, align 1
-  %52 = icmp eq i8 %51, 0
-  br i1 %52, label %whileEnd534, label %rhs536
-
-rhs536:                                           ; preds = %sub_0190, %charAt.exit138.tail
-  %t3.i139 = tail call i32 @strlen(ptr %t0)
-  %t10.i141 = icmp sge i32 %storemerge201, %t3.i139
-  %t5.i142 = select i1 %t7.i120, i1 true, i1 %t10.i141
-  br i1 %t5.i142, label %sub_0193, label %end116.i143
-
-end116.i143:                                      ; preds = %rhs536
-  %53 = zext nneg i32 %storemerge201 to i64
-  %t14.i144 = getelementptr i8, ptr %t0, i64 %53
-  %t15.i145 = load i8, ptr %t14.i144, align 1
-  %t16.i146 = tail call ptr @_zen_char_to_string(i8 %t15.i145)
-  br label %sub_0193
-
-sub_0193:                                         ; preds = %end116.i143, %rhs536
-  %common.ret.op.i147 = phi ptr [ %t16.i146, %end116.i143 ], [ @.str_stdlib_stdlib_0, %rhs536 ]
-  %54 = load i8, ptr %common.ret.op.i147, align 1
-  %.not245 = icmp eq i8 %54, 93
-  br i1 %.not245, label %charAt.exit148.tail, label %end535
-
-charAt.exit148.tail:                              ; preds = %sub_0193
-  %55 = getelementptr inbounds nuw i8, ptr %common.ret.op.i147, i64 1
-  %56 = load i8, ptr %55, align 1
-  %57 = icmp eq i8 %56, 0
-  br i1 %57, label %whileEnd534, label %end535
-
-end535:                                           ; preds = %sub_0193, %charAt.exit148.tail
-  %t145 = add nsw i32 %storemerge201, 1
-  %t119 = tail call i32 @strlen(ptr %t0)
-  %t120 = icmp slt i32 %t145, %t119
-  br i1 %t120, label %whileBody533, label %whileEnd534
-
-whileEnd534:                                      ; preds = %end535, %charAt.exit148.tail, %charAt.exit138.tail, %charAt.exit128.tail, %whileCond532.preheader
-  %storemerge.lcssa = phi i32 [ %t4, %whileCond532.preheader ], [ %storemerge201, %charAt.exit128.tail ], [ %storemerge201, %charAt.exit138.tail ], [ %storemerge201, %charAt.exit148.tail ], [ %t145, %end535 ]
-  %t4.i149 = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i150 = tail call i32 @llvm.smax.i32(i32 %t4, i32 0)
-  %spec.select.i151 = tail call i32 @llvm.smin.i32(i32 %storemerge.lcssa, i32 %t4.i149)
-  %t14.i152 = icmp sle i32 %spec.store.select.i150, %spec.select.i151
-  %t227.i153 = icmp samesign ult i32 %spec.store.select.i150, %spec.select.i151
-  %or.cond.i154 = select i1 %t14.i152, i1 %t227.i153, i1 false
-  br i1 %or.cond.i154, label %whileBody114.i156, label %common.ret
-
-whileBody114.i156:                                ; preds = %whileEnd534, %whileBody114.i156
-  %storemerge9.i157 = phi i32 [ %t32.i163, %whileBody114.i156 ], [ %spec.store.select.i150, %whileEnd534 ]
-  %t3068.i158 = phi ptr [ %t30.i162, %whileBody114.i156 ], [ @.str_stdlib_stdlib_0, %whileEnd534 ]
-  %58 = zext nneg i32 %storemerge9.i157 to i64
-  %t26.i159 = getelementptr i8, ptr %t0, i64 %58
-  %t27.i160 = load i8, ptr %t26.i159, align 1
-  %t28.i161 = tail call ptr @_zen_char_to_string(i8 %t27.i160)
-  %t30.i162 = tail call ptr @_str_concat(ptr %t3068.i158, ptr %t28.i161)
-  %t32.i163 = add nuw nsw i32 %storemerge9.i157, 1
-  %t22.i164 = icmp slt i32 %t32.i163, %spec.select.i151
-  br i1 %t22.i164, label %whileBody114.i156, label %common.ret
+%t12 = alloca i32
+%t41 = alloca i32
+%t43 = alloca i32
+%t85 = alloca i32
+%t87 = alloca i32
+%t122 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%start.addr = alloca i32
+store i32 %t1, ptr %start.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = load i32, ptr %start.addr
+%t4 = call i32 @_json_skipWS(ptr %t2, i32 %t3)
+store i32 %t4, ptr %start.addr
+%t5 = load ptr, ptr %s.addr
+%t6 = load i32, ptr %start.addr
+%t8 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t9 = call ptr @_str_dup(ptr %t8)
+%t7 = call ptr @charAt(ptr %t5, i32 %t6)
+%t10 = call i32 @strcmp(ptr %t7, ptr %t9)
+%t11 = icmp eq i32 %t10, 0
+br i1 %t11, label %if504, label %end503
+if504:
+%t13 = load i32, ptr %start.addr
+%t14 = add i32 %t13, 1
+store i32 %t14, ptr %t12
+br label %whileCond505
+whileCond505:
+%t15 = load i32, ptr %t12
+%t16 = load ptr, ptr %s.addr
+%t17 = call i32 @strlen(ptr %t16)
+%t18 = icmp slt i32 %t15, %t17
+br i1 %t18, label %whileBody506, label %whileEnd507
+whileBody506:
+%t19 = load ptr, ptr %s.addr
+%t20 = load i32, ptr %t12
+%t22 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t23 = call ptr @_str_dup(ptr %t22)
+%t21 = call ptr @charAt(ptr %t19, i32 %t20)
+%t24 = call i32 @strcmp(ptr %t21, ptr %t23)
+%t25 = icmp eq i32 %t24, 0
+br i1 %t25, label %if509, label %end508
+if509:
+br label %whileEnd507
+end508:
+%t26 = load i32, ptr %t12
+%t27 = add i32 %t26, 1
+store i32 %t27, ptr %t12
+br label %whileCond505
+whileEnd507:
+%t29 = load ptr, ptr %s.addr
+%t30 = load i32, ptr %start.addr
+%t31 = add i32 %t30, 1
+%t32 = load i32, ptr %t12
+%t33 = call ptr @slice(ptr %t29, i32 %t31, i32 %t32)
+ret ptr %t33
+end503:
+%t34 = load ptr, ptr %s.addr
+%t35 = load i32, ptr %start.addr
+%t37 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_31, i64 0, i64 0
+%t38 = call ptr @_str_dup(ptr %t37)
+%t36 = call ptr @charAt(ptr %t34, i32 %t35)
+%t39 = call i32 @strcmp(ptr %t36, ptr %t38)
+%t40 = icmp eq i32 %t39, 0
+br i1 %t40, label %if511, label %end510
+if511:
+%t42 = load i32, ptr %start.addr
+store i32 %t42, ptr %t41
+store i32 0, ptr %t43
+br label %whileCond512
+whileCond512:
+%t44 = load i32, ptr %t41
+%t45 = load ptr, ptr %s.addr
+%t46 = call i32 @strlen(ptr %t45)
+%t47 = icmp slt i32 %t44, %t46
+br i1 %t47, label %whileBody513, label %whileEnd514
+whileBody513:
+%t48 = load ptr, ptr %s.addr
+%t49 = load i32, ptr %t41
+%t51 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_31, i64 0, i64 0
+%t52 = call ptr @_str_dup(ptr %t51)
+%t50 = call ptr @charAt(ptr %t48, i32 %t49)
+%t53 = call i32 @strcmp(ptr %t50, ptr %t52)
+%t54 = icmp eq i32 %t53, 0
+br i1 %t54, label %if516, label %end515
+if516:
+%t55 = load i32, ptr %t43
+%t56 = add i32 %t55, 1
+store i32 %t56, ptr %t43
+br label %end515
+end515:
+%t58 = load ptr, ptr %s.addr
+%t59 = load i32, ptr %t41
+%t61 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_32, i64 0, i64 0
+%t62 = call ptr @_str_dup(ptr %t61)
+%t60 = call ptr @charAt(ptr %t58, i32 %t59)
+%t63 = call i32 @strcmp(ptr %t60, ptr %t62)
+%t64 = icmp eq i32 %t63, 0
+br i1 %t64, label %if518, label %end517
+if518:
+%t65 = load i32, ptr %t43
+%t66 = sub i32 %t65, 1
+store i32 %t66, ptr %t43
+br label %end517
+end517:
+%t68 = load i32, ptr %t43
+%t69 = icmp eq i32 %t68, 0
+br i1 %t69, label %if520, label %end519
+if520:
+br label %whileEnd514
+end519:
+%t70 = load i32, ptr %t41
+%t71 = add i32 %t70, 1
+store i32 %t71, ptr %t41
+br label %whileCond512
+whileEnd514:
+%t73 = load ptr, ptr %s.addr
+%t74 = load i32, ptr %start.addr
+%t75 = load i32, ptr %t41
+%t76 = add i32 %t75, 1
+%t77 = call ptr @slice(ptr %t73, i32 %t74, i32 %t76)
+ret ptr %t77
+end510:
+%t78 = load ptr, ptr %s.addr
+%t79 = load i32, ptr %start.addr
+%t81 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t82 = call ptr @_str_dup(ptr %t81)
+%t80 = call ptr @charAt(ptr %t78, i32 %t79)
+%t83 = call i32 @strcmp(ptr %t80, ptr %t82)
+%t84 = icmp eq i32 %t83, 0
+br i1 %t84, label %if522, label %end521
+if522:
+%t86 = load i32, ptr %start.addr
+store i32 %t86, ptr %t85
+store i32 0, ptr %t87
+br label %whileCond523
+whileCond523:
+%t88 = load i32, ptr %t85
+%t89 = load ptr, ptr %s.addr
+%t90 = call i32 @strlen(ptr %t89)
+%t91 = icmp slt i32 %t88, %t90
+br i1 %t91, label %whileBody524, label %whileEnd525
+whileBody524:
+%t92 = load ptr, ptr %s.addr
+%t93 = load i32, ptr %t85
+%t95 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t96 = call ptr @_str_dup(ptr %t95)
+%t94 = call ptr @charAt(ptr %t92, i32 %t93)
+%t97 = call i32 @strcmp(ptr %t94, ptr %t96)
+%t98 = icmp eq i32 %t97, 0
+br i1 %t98, label %if527, label %end526
+if527:
+%t99 = load i32, ptr %t87
+%t100 = add i32 %t99, 1
+store i32 %t100, ptr %t87
+br label %end526
+end526:
+%t102 = load ptr, ptr %s.addr
+%t103 = load i32, ptr %t85
+%t105 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t106 = call ptr @_str_dup(ptr %t105)
+%t104 = call ptr @charAt(ptr %t102, i32 %t103)
+%t107 = call i32 @strcmp(ptr %t104, ptr %t106)
+%t108 = icmp eq i32 %t107, 0
+br i1 %t108, label %if529, label %end528
+if529:
+%t109 = load i32, ptr %t87
+%t110 = sub i32 %t109, 1
+store i32 %t110, ptr %t87
+br label %end528
+end528:
+%t112 = load i32, ptr %t87
+%t113 = icmp eq i32 %t112, 0
+br i1 %t113, label %if531, label %end530
+if531:
+br label %whileEnd525
+end530:
+%t114 = load i32, ptr %t85
+%t115 = add i32 %t114, 1
+store i32 %t115, ptr %t85
+br label %whileCond523
+whileEnd525:
+%t117 = load ptr, ptr %s.addr
+%t118 = load i32, ptr %start.addr
+%t119 = load i32, ptr %t85
+%t120 = add i32 %t119, 1
+%t121 = call ptr @slice(ptr %t117, i32 %t118, i32 %t120)
+ret ptr %t121
+end521:
+%t123 = load i32, ptr %start.addr
+store i32 %t123, ptr %t122
+br label %whileCond532
+whileCond532:
+%t124 = load i32, ptr %t122
+%t125 = load ptr, ptr %s.addr
+%t126 = call i32 @strlen(ptr %t125)
+%t127 = icmp slt i32 %t124, %t126
+br i1 %t127, label %whileBody533, label %whileEnd534
+whileBody533:
+%t130 = load ptr, ptr %s.addr
+%t131 = load i32, ptr %t122
+%t133 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_28, i64 0, i64 0
+%t134 = call ptr @_str_dup(ptr %t133)
+%t137 = load ptr, ptr %s.addr
+%t138 = load i32, ptr %t122
+%t140 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_32, i64 0, i64 0
+%t141 = call ptr @_str_dup(ptr %t140)
+%t144 = load ptr, ptr %s.addr
+%t145 = load i32, ptr %t122
+%t147 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t148 = call ptr @_str_dup(ptr %t147)
+%t132 = call ptr @charAt(ptr %t130, i32 %t131)
+%t135 = call i32 @strcmp(ptr %t132, ptr %t134)
+%t136 = icmp eq i32 %t135, 0
+br i1 %t136, label %skip540, label %rhs539
+rhs539:
+%t139 = call ptr @charAt(ptr %t137, i32 %t138)
+%t142 = call i32 @strcmp(ptr %t139, ptr %t141)
+%t143 = icmp eq i32 %t142, 0
+br label %end541
+skip540:
+br label %end541
+end541:
+%t129 = phi i1 [ true, %skip540 ], [ %t143, %rhs539 ]
+br i1 %t129, label %skip537, label %rhs536
+rhs536:
+%t146 = call ptr @charAt(ptr %t144, i32 %t145)
+%t149 = call i32 @strcmp(ptr %t146, ptr %t148)
+%t150 = icmp eq i32 %t149, 0
+br label %end538
+skip537:
+br label %end538
+end538:
+%t128 = phi i1 [ true, %skip537 ], [ %t150, %rhs536 ]
+br i1 %t128, label %if542, label %end535
+if542:
+br label %whileEnd534
+end535:
+%t151 = load i32, ptr %t122
+%t152 = add i32 %t151, 1
+store i32 %t152, ptr %t122
+br label %whileCond532
+whileEnd534:
+%t154 = load ptr, ptr %s.addr
+%t155 = load i32, ptr %start.addr
+%t156 = load i32, ptr %t122
+%t157 = call ptr @slice(ptr %t154, i32 %t155, i32 %t156)
+ret ptr %t157
 }
-
-define i32 @_json_skipElement(ptr %t0, i32 %t1) local_unnamed_addr {
+define i32 @_json_skipElement (ptr %t0, i32 %t1) {
 entry:
-  %t4 = tail call i32 @_json_skipWS(ptr %t0, i32 %t1)
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t7.i = icmp slt i32 %t4, 0
-  %t10.i = icmp sge i32 %t4, %t3.i
-  %t5.i = select i1 %t7.i, i1 true, i1 %t10.i
-  br i1 %t5.i, label %sub_0, label %end116.i
-
-end116.i:                                         ; preds = %entry
-  %0 = zext nneg i32 %t4 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %entry
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %entry ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not = icmp eq i8 %1, 34
-  br i1 %.not, label %charAt.exit.tail, label %end543
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %whileCond545.preheader, label %end543
-
-whileCond545.preheader:                           ; preds = %charAt.exit.tail
-  %i.addr.0202 = add i32 %t4, 1
-  %t16203 = tail call i32 @strlen(ptr %t0)
-  %t17204 = icmp slt i32 %i.addr.0202, %t16203
-  br i1 %t17204, label %whileBody546, label %whileEnd547
-
-whileBody546:                                     ; preds = %whileCond545.preheader, %whileCond545.backedge
-  %i.addr.0206 = phi i32 [ %i.addr.0, %whileCond545.backedge ], [ %i.addr.0202, %whileCond545.preheader ]
-  %i.addr.0.in205 = phi i32 [ %i.addr.0206, %whileCond545.backedge ], [ %t4, %whileCond545.preheader ]
-  %t3.i25 = tail call i32 @strlen(ptr %t0)
-  %t7.i26 = icmp slt i32 %i.addr.0206, 0
-  %t10.i27 = icmp sge i32 %i.addr.0206, %t3.i25
-  %t5.i28 = select i1 %t7.i26, i1 true, i1 %t10.i27
-  br i1 %t5.i28, label %sub_0125, label %end116.i29
-
-end116.i29:                                       ; preds = %whileBody546
-  %5 = zext nneg i32 %i.addr.0206 to i64
-  %t14.i30 = getelementptr i8, ptr %t0, i64 %5
-  %t15.i31 = load i8, ptr %t14.i30, align 1
-  %t16.i32 = tail call ptr @_zen_char_to_string(i8 %t15.i31)
-  br label %sub_0125
-
-sub_0125:                                         ; preds = %end116.i29, %whileBody546
-  %common.ret.op.i33 = phi ptr [ %t16.i32, %end116.i29 ], [ @.str_stdlib_stdlib_0, %whileBody546 ]
-  %6 = load i8, ptr %common.ret.op.i33, align 1
-  %.not195 = icmp eq i8 %6, 34
-  br i1 %.not195, label %sub_1126, label %whileCond545.backedge
-
-sub_1126:                                         ; preds = %sub_0125
-  %7 = getelementptr inbounds nuw i8, ptr %common.ret.op.i33, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br i1 %9, label %whileEnd547, label %whileCond545.backedge
-
-whileCond545.backedge:                            ; preds = %sub_0125, %sub_1126
-  %i.addr.0 = add i32 %i.addr.0206, 1
-  %t16 = tail call i32 @strlen(ptr %t0)
-  %t17 = icmp slt i32 %i.addr.0, %t16
-  br i1 %t17, label %whileBody546, label %whileEnd547
-
-common.ret:                                       ; preds = %charAt.exit104.tail, %charAt.exit114.tail, %charAt.exit124.tail, %end575, %whileCond572.preheader, %whileEnd565, %whileEnd554, %whileEnd547
-  %common.ret.op = phi i32 [ %t28, %whileEnd547 ], [ %t64, %whileEnd554 ], [ %t100, %whileEnd565 ], [ %t4, %whileCond572.preheader ], [ %i.addr.3157, %charAt.exit104.tail ], [ %i.addr.3157, %charAt.exit114.tail ], [ %i.addr.3157, %charAt.exit124.tail ], [ %t129, %end575 ]
-  ret i32 %common.ret.op
-
-whileEnd547:                                      ; preds = %whileCond545.backedge, %sub_1126, %whileCond545.preheader
-  %i.addr.0.in.lcssa = phi i32 [ %t4, %whileCond545.preheader ], [ %i.addr.0206, %whileCond545.backedge ], [ %i.addr.0.in205, %sub_1126 ]
-  %t28 = add i32 %i.addr.0.in.lcssa, 2
-  br label %common.ret
-
-end543:                                           ; preds = %sub_0, %charAt.exit.tail
-  %t3.i35 = tail call i32 @strlen(ptr %t0)
-  %t10.i37 = icmp sge i32 %t4, %t3.i35
-  %t5.i38 = select i1 %t7.i, i1 true, i1 %t10.i37
-  br i1 %t5.i38, label %sub_0128, label %end116.i39
-
-end116.i39:                                       ; preds = %end543
-  %10 = zext nneg i32 %t4 to i64
-  %t14.i40 = getelementptr i8, ptr %t0, i64 %10
-  %t15.i41 = load i8, ptr %t14.i40, align 1
-  %t16.i42 = tail call ptr @_zen_char_to_string(i8 %t15.i41)
-  br label %sub_0128
-
-sub_0128:                                         ; preds = %end116.i39, %end543
-  %common.ret.op.i43 = phi ptr [ %t16.i42, %end116.i39 ], [ @.str_stdlib_stdlib_0, %end543 ]
-  %11 = load i8, ptr %common.ret.op.i43, align 1
-  %.not186 = icmp eq i8 %11, 123
-  br i1 %.not186, label %charAt.exit44.tail, label %end550
-
-charAt.exit44.tail:                               ; preds = %sub_0128
-  %12 = getelementptr inbounds nuw i8, ptr %common.ret.op.i43, i64 1
-  %13 = load i8, ptr %12, align 1
-  %14 = icmp eq i8 %13, 0
-  br i1 %14, label %if551, label %end550
-
-if551:                                            ; preds = %charAt.exit44.tail
-  %t39177 = tail call i32 @strlen(ptr %t0)
-  %t40178 = icmp slt i32 %t4, %t39177
-  br i1 %t40178, label %whileBody553, label %whileEnd554
-
-whileBody553:                                     ; preds = %if551, %end559
-  %i.addr.1180 = phi i32 [ %t62, %end559 ], [ %t4, %if551 ]
-  %t59.pr173179 = phi i32 [ %t59.pr174, %end559 ], [ 0, %if551 ]
-  %t3.i45 = tail call i32 @strlen(ptr %t0)
-  %t7.i46 = icmp slt i32 %i.addr.1180, 0
-  %t10.i47 = icmp sge i32 %i.addr.1180, %t3.i45
-  %t5.i48 = select i1 %t7.i46, i1 true, i1 %t10.i47
-  br i1 %t5.i48, label %sub_0131, label %end116.i49
-
-end116.i49:                                       ; preds = %whileBody553
-  %15 = zext nneg i32 %i.addr.1180 to i64
-  %t14.i50 = getelementptr i8, ptr %t0, i64 %15
-  %t15.i51 = load i8, ptr %t14.i50, align 1
-  %t16.i52 = tail call ptr @_zen_char_to_string(i8 %t15.i51)
-  br label %sub_0131
-
-sub_0131:                                         ; preds = %end116.i49, %whileBody553
-  %common.ret.op.i53 = phi ptr [ %t16.i52, %end116.i49 ], [ @.str_stdlib_stdlib_0, %whileBody553 ]
-  %16 = load i8, ptr %common.ret.op.i53, align 1
-  %.not193 = icmp eq i8 %16, 123
-  br i1 %.not193, label %sub_1132, label %charAt.exit54.tail
-
-sub_1132:                                         ; preds = %sub_0131
-  %17 = getelementptr inbounds nuw i8, ptr %common.ret.op.i53, i64 1
-  %18 = load i8, ptr %17, align 1
-  %19 = icmp eq i8 %18, 0
-  br label %charAt.exit54.tail
-
-charAt.exit54.tail:                               ; preds = %sub_0131, %sub_1132
-  %t47 = phi i1 [ false, %sub_0131 ], [ %19, %sub_1132 ]
-  %t49 = zext i1 %t47 to i32
-  %spec.select = add i32 %t59.pr173179, %t49
-  %t3.i55 = tail call i32 @strlen(ptr %t0)
-  %t10.i57 = icmp sge i32 %i.addr.1180, %t3.i55
-  %t5.i58 = select i1 %t7.i46, i1 true, i1 %t10.i57
-  br i1 %t5.i58, label %sub_0134, label %end116.i59
-
-end116.i59:                                       ; preds = %charAt.exit54.tail
-  %20 = zext nneg i32 %i.addr.1180 to i64
-  %t14.i60 = getelementptr i8, ptr %t0, i64 %20
-  %t15.i61 = load i8, ptr %t14.i60, align 1
-  %t16.i62 = tail call ptr @_zen_char_to_string(i8 %t15.i61)
-  br label %sub_0134
-
-sub_0134:                                         ; preds = %end116.i59, %charAt.exit54.tail
-  %common.ret.op.i63 = phi ptr [ %t16.i62, %end116.i59 ], [ @.str_stdlib_stdlib_0, %charAt.exit54.tail ]
-  %21 = load i8, ptr %common.ret.op.i63, align 1
-  %.not194 = icmp eq i8 %21, 125
-  br i1 %.not194, label %sub_1135, label %charAt.exit64.tail
-
-sub_1135:                                         ; preds = %sub_0134
-  %22 = getelementptr inbounds nuw i8, ptr %common.ret.op.i63, i64 1
-  %23 = load i8, ptr %22, align 1
-  %24 = icmp eq i8 %23, 0
-  br label %charAt.exit64.tail
-
-charAt.exit64.tail:                               ; preds = %sub_0134, %sub_1135
-  %t56 = phi i1 [ false, %sub_0134 ], [ %24, %sub_1135 ]
-  %t58 = sext i1 %t56 to i32
-  %t59.pr174 = add i32 %spec.select, %t58
-  %t60 = icmp eq i32 %t59.pr174, 0
-  br i1 %t60, label %whileEnd554, label %end559
-
-end559:                                           ; preds = %charAt.exit64.tail
-  %t62 = add nsw i32 %i.addr.1180, 1
-  %t39 = tail call i32 @strlen(ptr %t0)
-  %t40 = icmp slt i32 %t62, %t39
-  br i1 %t40, label %whileBody553, label %whileEnd554
-
-whileEnd554:                                      ; preds = %end559, %charAt.exit64.tail, %if551
-  %i.addr.1.lcssa = phi i32 [ %t4, %if551 ], [ %i.addr.1180, %charAt.exit64.tail ], [ %t62, %end559 ]
-  %t64 = add i32 %i.addr.1.lcssa, 1
-  br label %common.ret
-
-end550:                                           ; preds = %sub_0128, %charAt.exit44.tail
-  %t3.i65 = tail call i32 @strlen(ptr %t0)
-  %t10.i67 = icmp sge i32 %t4, %t3.i65
-  %t5.i68 = select i1 %t7.i, i1 true, i1 %t10.i67
-  br i1 %t5.i68, label %sub_0137, label %end116.i69
-
-end116.i69:                                       ; preds = %end550
-  %25 = zext nneg i32 %t4 to i64
-  %t14.i70 = getelementptr i8, ptr %t0, i64 %25
-  %t15.i71 = load i8, ptr %t14.i70, align 1
-  %t16.i72 = tail call ptr @_zen_char_to_string(i8 %t15.i71)
-  br label %sub_0137
-
-sub_0137:                                         ; preds = %end116.i69, %end550
-  %common.ret.op.i73 = phi ptr [ %t16.i72, %end116.i69 ], [ @.str_stdlib_stdlib_0, %end550 ]
-  %26 = load i8, ptr %common.ret.op.i73, align 1
-  %.not187 = icmp eq i8 %26, 91
-  br i1 %.not187, label %charAt.exit74.tail, label %whileCond572.preheader
-
-charAt.exit74.tail:                               ; preds = %sub_0137
-  %27 = getelementptr inbounds nuw i8, ptr %common.ret.op.i73, i64 1
-  %28 = load i8, ptr %27, align 1
-  %29 = icmp eq i8 %28, 0
-  br i1 %29, label %if562, label %whileCond572.preheader
-
-whileCond572.preheader:                           ; preds = %sub_0137, %charAt.exit74.tail
-  %t103155 = tail call i32 @strlen(ptr %t0)
-  %t104156 = icmp slt i32 %t4, %t103155
-  br i1 %t104156, label %whileBody573, label %common.ret
-
-if562:                                            ; preds = %charAt.exit74.tail
-  %t75165 = tail call i32 @strlen(ptr %t0)
-  %t76166 = icmp slt i32 %t4, %t75165
-  br i1 %t76166, label %whileBody564, label %whileEnd565
-
-whileBody564:                                     ; preds = %if562, %end570
-  %i.addr.2168 = phi i32 [ %t98, %end570 ], [ %t4, %if562 ]
-  %t95.pr161167 = phi i32 [ %t95.pr162, %end570 ], [ 0, %if562 ]
-  %t3.i75 = tail call i32 @strlen(ptr %t0)
-  %t7.i76 = icmp slt i32 %i.addr.2168, 0
-  %t10.i77 = icmp sge i32 %i.addr.2168, %t3.i75
-  %t5.i78 = select i1 %t7.i76, i1 true, i1 %t10.i77
-  br i1 %t5.i78, label %sub_0140, label %end116.i79
-
-end116.i79:                                       ; preds = %whileBody564
-  %30 = zext nneg i32 %i.addr.2168 to i64
-  %t14.i80 = getelementptr i8, ptr %t0, i64 %30
-  %t15.i81 = load i8, ptr %t14.i80, align 1
-  %t16.i82 = tail call ptr @_zen_char_to_string(i8 %t15.i81)
-  br label %sub_0140
-
-sub_0140:                                         ; preds = %end116.i79, %whileBody564
-  %common.ret.op.i83 = phi ptr [ %t16.i82, %end116.i79 ], [ @.str_stdlib_stdlib_0, %whileBody564 ]
-  %31 = load i8, ptr %common.ret.op.i83, align 1
-  %.not191 = icmp eq i8 %31, 91
-  br i1 %.not191, label %sub_1141, label %charAt.exit84.tail
-
-sub_1141:                                         ; preds = %sub_0140
-  %32 = getelementptr inbounds nuw i8, ptr %common.ret.op.i83, i64 1
-  %33 = load i8, ptr %32, align 1
-  %34 = icmp eq i8 %33, 0
-  br label %charAt.exit84.tail
-
-charAt.exit84.tail:                               ; preds = %sub_0140, %sub_1141
-  %t83 = phi i1 [ false, %sub_0140 ], [ %34, %sub_1141 ]
-  %t85 = zext i1 %t83 to i32
-  %spec.select185 = add i32 %t95.pr161167, %t85
-  %t3.i85 = tail call i32 @strlen(ptr %t0)
-  %t10.i87 = icmp sge i32 %i.addr.2168, %t3.i85
-  %t5.i88 = select i1 %t7.i76, i1 true, i1 %t10.i87
-  br i1 %t5.i88, label %sub_0143, label %end116.i89
-
-end116.i89:                                       ; preds = %charAt.exit84.tail
-  %35 = zext nneg i32 %i.addr.2168 to i64
-  %t14.i90 = getelementptr i8, ptr %t0, i64 %35
-  %t15.i91 = load i8, ptr %t14.i90, align 1
-  %t16.i92 = tail call ptr @_zen_char_to_string(i8 %t15.i91)
-  br label %sub_0143
-
-sub_0143:                                         ; preds = %end116.i89, %charAt.exit84.tail
-  %common.ret.op.i93 = phi ptr [ %t16.i92, %end116.i89 ], [ @.str_stdlib_stdlib_0, %charAt.exit84.tail ]
-  %36 = load i8, ptr %common.ret.op.i93, align 1
-  %.not192 = icmp eq i8 %36, 93
-  br i1 %.not192, label %sub_1144, label %charAt.exit94.tail
-
-sub_1144:                                         ; preds = %sub_0143
-  %37 = getelementptr inbounds nuw i8, ptr %common.ret.op.i93, i64 1
-  %38 = load i8, ptr %37, align 1
-  %39 = icmp eq i8 %38, 0
-  br label %charAt.exit94.tail
-
-charAt.exit94.tail:                               ; preds = %sub_0143, %sub_1144
-  %t92 = phi i1 [ false, %sub_0143 ], [ %39, %sub_1144 ]
-  %t94 = sext i1 %t92 to i32
-  %t95.pr162 = add i32 %spec.select185, %t94
-  %t96 = icmp eq i32 %t95.pr162, 0
-  br i1 %t96, label %whileEnd565, label %end570
-
-end570:                                           ; preds = %charAt.exit94.tail
-  %t98 = add nsw i32 %i.addr.2168, 1
-  %t75 = tail call i32 @strlen(ptr %t0)
-  %t76 = icmp slt i32 %t98, %t75
-  br i1 %t76, label %whileBody564, label %whileEnd565
-
-whileEnd565:                                      ; preds = %end570, %charAt.exit94.tail, %if562
-  %i.addr.2.lcssa = phi i32 [ %t4, %if562 ], [ %i.addr.2168, %charAt.exit94.tail ], [ %t98, %end570 ]
-  %t100 = add i32 %i.addr.2.lcssa, 1
-  br label %common.ret
-
-whileBody573:                                     ; preds = %whileCond572.preheader, %end575
-  %i.addr.3157 = phi i32 [ %t129, %end575 ], [ %t4, %whileCond572.preheader ]
-  %t3.i95 = tail call i32 @strlen(ptr %t0)
-  %t7.i96 = icmp slt i32 %i.addr.3157, 0
-  %t10.i97 = icmp sge i32 %i.addr.3157, %t3.i95
-  %t5.i98 = select i1 %t7.i96, i1 true, i1 %t10.i97
-  br i1 %t5.i98, label %sub_0146, label %end116.i99
-
-end116.i99:                                       ; preds = %whileBody573
-  %40 = zext nneg i32 %i.addr.3157 to i64
-  %t14.i100 = getelementptr i8, ptr %t0, i64 %40
-  %t15.i101 = load i8, ptr %t14.i100, align 1
-  %t16.i102 = tail call ptr @_zen_char_to_string(i8 %t15.i101)
-  br label %sub_0146
-
-sub_0146:                                         ; preds = %end116.i99, %whileBody573
-  %common.ret.op.i103 = phi ptr [ %t16.i102, %end116.i99 ], [ @.str_stdlib_stdlib_0, %whileBody573 ]
-  %41 = load i8, ptr %common.ret.op.i103, align 1
-  %.not188 = icmp eq i8 %41, 44
-  br i1 %.not188, label %charAt.exit104.tail, label %rhs579
-
-charAt.exit104.tail:                              ; preds = %sub_0146
-  %42 = getelementptr inbounds nuw i8, ptr %common.ret.op.i103, i64 1
-  %43 = load i8, ptr %42, align 1
-  %44 = icmp eq i8 %43, 0
-  br i1 %44, label %common.ret, label %rhs579
-
-rhs579:                                           ; preds = %sub_0146, %charAt.exit104.tail
-  %t3.i105 = tail call i32 @strlen(ptr %t0)
-  %t10.i107 = icmp sge i32 %i.addr.3157, %t3.i105
-  %t5.i108 = select i1 %t7.i96, i1 true, i1 %t10.i107
-  br i1 %t5.i108, label %sub_0149, label %end116.i109
-
-end116.i109:                                      ; preds = %rhs579
-  %45 = zext nneg i32 %i.addr.3157 to i64
-  %t14.i110 = getelementptr i8, ptr %t0, i64 %45
-  %t15.i111 = load i8, ptr %t14.i110, align 1
-  %t16.i112 = tail call ptr @_zen_char_to_string(i8 %t15.i111)
-  br label %sub_0149
-
-sub_0149:                                         ; preds = %end116.i109, %rhs579
-  %common.ret.op.i113 = phi ptr [ %t16.i112, %end116.i109 ], [ @.str_stdlib_stdlib_0, %rhs579 ]
-  %46 = load i8, ptr %common.ret.op.i113, align 1
-  %.not189 = icmp eq i8 %46, 93
-  br i1 %.not189, label %charAt.exit114.tail, label %rhs576
-
-charAt.exit114.tail:                              ; preds = %sub_0149
-  %47 = getelementptr inbounds nuw i8, ptr %common.ret.op.i113, i64 1
-  %48 = load i8, ptr %47, align 1
-  %49 = icmp eq i8 %48, 0
-  br i1 %49, label %common.ret, label %rhs576
-
-rhs576:                                           ; preds = %sub_0149, %charAt.exit114.tail
-  %t3.i115 = tail call i32 @strlen(ptr %t0)
-  %t10.i117 = icmp sge i32 %i.addr.3157, %t3.i115
-  %t5.i118 = select i1 %t7.i96, i1 true, i1 %t10.i117
-  br i1 %t5.i118, label %sub_0152, label %end116.i119
-
-end116.i119:                                      ; preds = %rhs576
-  %50 = zext nneg i32 %i.addr.3157 to i64
-  %t14.i120 = getelementptr i8, ptr %t0, i64 %50
-  %t15.i121 = load i8, ptr %t14.i120, align 1
-  %t16.i122 = tail call ptr @_zen_char_to_string(i8 %t15.i121)
-  br label %sub_0152
-
-sub_0152:                                         ; preds = %end116.i119, %rhs576
-  %common.ret.op.i123 = phi ptr [ %t16.i122, %end116.i119 ], [ @.str_stdlib_stdlib_0, %rhs576 ]
-  %51 = load i8, ptr %common.ret.op.i123, align 1
-  %.not190 = icmp eq i8 %51, 125
-  br i1 %.not190, label %charAt.exit124.tail, label %end575
-
-charAt.exit124.tail:                              ; preds = %sub_0152
-  %52 = getelementptr inbounds nuw i8, ptr %common.ret.op.i123, i64 1
-  %53 = load i8, ptr %52, align 1
-  %54 = icmp eq i8 %53, 0
-  br i1 %54, label %common.ret, label %end575
-
-end575:                                           ; preds = %sub_0152, %charAt.exit124.tail
-  %t129 = add nsw i32 %i.addr.3157, 1
-  %t103 = tail call i32 @strlen(ptr %t0)
-  %t104 = icmp slt i32 %t129, %t103
-  br i1 %t104, label %whileBody573, label %common.ret
+%t38 = alloca i32
+%t77 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%i.addr = alloca i32
+store i32 %t1, ptr %i.addr
+%t2 = load ptr, ptr %s.addr
+%t3 = load i32, ptr %i.addr
+%t4 = call i32 @_json_skipWS(ptr %t2, i32 %t3)
+store i32 %t4, ptr %i.addr
+%t5 = load ptr, ptr %s.addr
+%t6 = load i32, ptr %i.addr
+%t8 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t9 = call ptr @_str_dup(ptr %t8)
+%t7 = call ptr @charAt(ptr %t5, i32 %t6)
+%t10 = call i32 @strcmp(ptr %t7, ptr %t9)
+%t11 = icmp eq i32 %t10, 0
+br i1 %t11, label %if544, label %end543
+if544:
+%t12 = load i32, ptr %i.addr
+%t13 = add i32 %t12, 1
+store i32 %t13, ptr %i.addr
+br label %whileCond545
+whileCond545:
+%t15 = load i32, ptr %i.addr
+%t16 = load ptr, ptr %s.addr
+%t17 = call i32 @strlen(ptr %t16)
+%t18 = icmp slt i32 %t15, %t17
+br i1 %t18, label %whileBody546, label %whileEnd547
+whileBody546:
+%t19 = load ptr, ptr %s.addr
+%t20 = load i32, ptr %i.addr
+%t22 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t23 = call ptr @_str_dup(ptr %t22)
+%t21 = call ptr @charAt(ptr %t19, i32 %t20)
+%t24 = call i32 @strcmp(ptr %t21, ptr %t23)
+%t25 = icmp eq i32 %t24, 0
+br i1 %t25, label %if549, label %end548
+if549:
+br label %whileEnd547
+end548:
+%t26 = load i32, ptr %i.addr
+%t27 = add i32 %t26, 1
+store i32 %t27, ptr %i.addr
+br label %whileCond545
+whileEnd547:
+%t29 = load i32, ptr %i.addr
+%t30 = add i32 %t29, 1
+ret i32 %t30
+end543:
+%t31 = load ptr, ptr %s.addr
+%t32 = load i32, ptr %i.addr
+%t34 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_31, i64 0, i64 0
+%t35 = call ptr @_str_dup(ptr %t34)
+%t33 = call ptr @charAt(ptr %t31, i32 %t32)
+%t36 = call i32 @strcmp(ptr %t33, ptr %t35)
+%t37 = icmp eq i32 %t36, 0
+br i1 %t37, label %if551, label %end550
+if551:
+store i32 0, ptr %t38
+br label %whileCond552
+whileCond552:
+%t39 = load i32, ptr %i.addr
+%t40 = load ptr, ptr %s.addr
+%t41 = call i32 @strlen(ptr %t40)
+%t42 = icmp slt i32 %t39, %t41
+br i1 %t42, label %whileBody553, label %whileEnd554
+whileBody553:
+%t43 = load ptr, ptr %s.addr
+%t44 = load i32, ptr %i.addr
+%t46 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_31, i64 0, i64 0
+%t47 = call ptr @_str_dup(ptr %t46)
+%t45 = call ptr @charAt(ptr %t43, i32 %t44)
+%t48 = call i32 @strcmp(ptr %t45, ptr %t47)
+%t49 = icmp eq i32 %t48, 0
+br i1 %t49, label %if556, label %end555
+if556:
+%t50 = load i32, ptr %t38
+%t51 = add i32 %t50, 1
+store i32 %t51, ptr %t38
+br label %end555
+end555:
+%t53 = load ptr, ptr %s.addr
+%t54 = load i32, ptr %i.addr
+%t56 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_32, i64 0, i64 0
+%t57 = call ptr @_str_dup(ptr %t56)
+%t55 = call ptr @charAt(ptr %t53, i32 %t54)
+%t58 = call i32 @strcmp(ptr %t55, ptr %t57)
+%t59 = icmp eq i32 %t58, 0
+br i1 %t59, label %if558, label %end557
+if558:
+%t60 = load i32, ptr %t38
+%t61 = sub i32 %t60, 1
+store i32 %t61, ptr %t38
+br label %end557
+end557:
+%t63 = load i32, ptr %t38
+%t64 = icmp eq i32 %t63, 0
+br i1 %t64, label %if560, label %end559
+if560:
+br label %whileEnd554
+end559:
+%t65 = load i32, ptr %i.addr
+%t66 = add i32 %t65, 1
+store i32 %t66, ptr %i.addr
+br label %whileCond552
+whileEnd554:
+%t68 = load i32, ptr %i.addr
+%t69 = add i32 %t68, 1
+ret i32 %t69
+end550:
+%t70 = load ptr, ptr %s.addr
+%t71 = load i32, ptr %i.addr
+%t73 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t74 = call ptr @_str_dup(ptr %t73)
+%t72 = call ptr @charAt(ptr %t70, i32 %t71)
+%t75 = call i32 @strcmp(ptr %t72, ptr %t74)
+%t76 = icmp eq i32 %t75, 0
+br i1 %t76, label %if562, label %end561
+if562:
+store i32 0, ptr %t77
+br label %whileCond563
+whileCond563:
+%t78 = load i32, ptr %i.addr
+%t79 = load ptr, ptr %s.addr
+%t80 = call i32 @strlen(ptr %t79)
+%t81 = icmp slt i32 %t78, %t80
+br i1 %t81, label %whileBody564, label %whileEnd565
+whileBody564:
+%t82 = load ptr, ptr %s.addr
+%t83 = load i32, ptr %i.addr
+%t85 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t86 = call ptr @_str_dup(ptr %t85)
+%t84 = call ptr @charAt(ptr %t82, i32 %t83)
+%t87 = call i32 @strcmp(ptr %t84, ptr %t86)
+%t88 = icmp eq i32 %t87, 0
+br i1 %t88, label %if567, label %end566
+if567:
+%t89 = load i32, ptr %t77
+%t90 = add i32 %t89, 1
+store i32 %t90, ptr %t77
+br label %end566
+end566:
+%t92 = load ptr, ptr %s.addr
+%t93 = load i32, ptr %i.addr
+%t95 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t96 = call ptr @_str_dup(ptr %t95)
+%t94 = call ptr @charAt(ptr %t92, i32 %t93)
+%t97 = call i32 @strcmp(ptr %t94, ptr %t96)
+%t98 = icmp eq i32 %t97, 0
+br i1 %t98, label %if569, label %end568
+if569:
+%t99 = load i32, ptr %t77
+%t100 = sub i32 %t99, 1
+store i32 %t100, ptr %t77
+br label %end568
+end568:
+%t102 = load i32, ptr %t77
+%t103 = icmp eq i32 %t102, 0
+br i1 %t103, label %if571, label %end570
+if571:
+br label %whileEnd565
+end570:
+%t104 = load i32, ptr %i.addr
+%t105 = add i32 %t104, 1
+store i32 %t105, ptr %i.addr
+br label %whileCond563
+whileEnd565:
+%t107 = load i32, ptr %i.addr
+%t108 = add i32 %t107, 1
+ret i32 %t108
+end561:
+br label %whileCond572
+whileCond572:
+%t109 = load i32, ptr %i.addr
+%t110 = load ptr, ptr %s.addr
+%t111 = call i32 @strlen(ptr %t110)
+%t112 = icmp slt i32 %t109, %t111
+br i1 %t112, label %whileBody573, label %whileEnd574
+whileBody573:
+%t115 = load ptr, ptr %s.addr
+%t116 = load i32, ptr %i.addr
+%t118 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_28, i64 0, i64 0
+%t119 = call ptr @_str_dup(ptr %t118)
+%t122 = load ptr, ptr %s.addr
+%t123 = load i32, ptr %i.addr
+%t125 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t126 = call ptr @_str_dup(ptr %t125)
+%t129 = load ptr, ptr %s.addr
+%t130 = load i32, ptr %i.addr
+%t132 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_32, i64 0, i64 0
+%t133 = call ptr @_str_dup(ptr %t132)
+%t117 = call ptr @charAt(ptr %t115, i32 %t116)
+%t120 = call i32 @strcmp(ptr %t117, ptr %t119)
+%t121 = icmp eq i32 %t120, 0
+br i1 %t121, label %skip580, label %rhs579
+rhs579:
+%t124 = call ptr @charAt(ptr %t122, i32 %t123)
+%t127 = call i32 @strcmp(ptr %t124, ptr %t126)
+%t128 = icmp eq i32 %t127, 0
+br label %end581
+skip580:
+br label %end581
+end581:
+%t114 = phi i1 [ true, %skip580 ], [ %t128, %rhs579 ]
+br i1 %t114, label %skip577, label %rhs576
+rhs576:
+%t131 = call ptr @charAt(ptr %t129, i32 %t130)
+%t134 = call i32 @strcmp(ptr %t131, ptr %t133)
+%t135 = icmp eq i32 %t134, 0
+br label %end578
+skip577:
+br label %end578
+end578:
+%t113 = phi i1 [ true, %skip577 ], [ %t135, %rhs576 ]
+br i1 %t113, label %if582, label %end575
+if582:
+br label %whileEnd574
+end575:
+%t136 = load i32, ptr %i.addr
+%t137 = add i32 %t136, 1
+store i32 %t137, ptr %i.addr
+br label %whileCond572
+whileEnd574:
+%t139 = load i32, ptr %i.addr
+ret i32 %t139
 }
-
-define ptr @_json_getArrayIndex(ptr %t0, i32 %t1) local_unnamed_addr {
+define ptr @_json_getArrayIndex (ptr %t0, i32 %t1) {
 entry:
-  %t3 = tail call i32 @_json_skipWS(ptr %t0, i32 0)
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t7.i = icmp slt i32 %t3, 0
-  %t10.i = icmp sge i32 %t3, %t3.i
-  %t5.i = select i1 %t7.i, i1 true, i1 %t10.i
-  br i1 %t5.i, label %sub_0, label %end116.i
-
-end116.i:                                         ; preds = %entry
-  %0 = zext nneg i32 %t3 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %entry
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %entry ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not = icmp eq i8 %1, 91
-  br i1 %.not, label %charAt.exit.tail, label %common.ret
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %end583, label %common.ret
-
-common.ret:                                       ; preds = %end590, %charAt.exit30.tail, %end594, %sub_0, %end583, %charAt.exit.tail, %if595
-  %common.ret.op = phi ptr [ %t51, %if595 ], [ @.str_stdlib_stdlib_33, %charAt.exit.tail ], [ @.str_stdlib_stdlib_33, %end583 ], [ @.str_stdlib_stdlib_33, %sub_0 ], [ @.str_stdlib_stdlib_33, %end594 ], [ @.str_stdlib_stdlib_33, %charAt.exit30.tail ], [ @.str_stdlib_stdlib_33, %end590 ]
-  ret ptr %common.ret.op
-
-end583:                                           ; preds = %charAt.exit.tail
-  %t14 = add i32 %t3, 1
-  %t1837 = tail call i32 @strlen(ptr %t0)
-  %t1938 = icmp slt i32 %t14, %t1837
-  br i1 %t1938, label %whileBody586, label %common.ret
-
-whileBody586:                                     ; preds = %end583, %end594
-  %t4.040 = phi i32 [ %t54, %end594 ], [ %t14, %end583 ]
-  %storemerge39 = phi i32 [ %t56, %end594 ], [ 0, %end583 ]
-  %t22 = tail call i32 @_json_skipWS(ptr %t0, i32 %t4.040)
-  %t3.i11 = tail call i32 @strlen(ptr %t0)
-  %t7.i12 = icmp slt i32 %t22, 0
-  %t10.i13 = icmp sge i32 %t22, %t3.i11
-  %t5.i14 = select i1 %t7.i12, i1 true, i1 %t10.i13
-  br i1 %t5.i14, label %sub_031, label %end116.i15
-
-end116.i15:                                       ; preds = %whileBody586
-  %5 = zext nneg i32 %t22 to i64
-  %t14.i16 = getelementptr i8, ptr %t0, i64 %5
-  %t15.i17 = load i8, ptr %t14.i16, align 1
-  %t16.i18 = tail call ptr @_zen_char_to_string(i8 %t15.i17)
-  br label %sub_031
-
-sub_031:                                          ; preds = %end116.i15, %whileBody586
-  %common.ret.op.i19 = phi ptr [ %t16.i18, %end116.i15 ], [ @.str_stdlib_stdlib_0, %whileBody586 ]
-  %6 = load i8, ptr %common.ret.op.i19, align 1
-  %.not41 = icmp eq i8 %6, 44
-  br i1 %.not41, label %charAt.exit20.tail, label %end588
-
-charAt.exit20.tail:                               ; preds = %sub_031
-  %7 = getelementptr inbounds nuw i8, ptr %common.ret.op.i19, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br i1 %9, label %if589, label %end588
-
-if589:                                            ; preds = %charAt.exit20.tail
-  %t31 = add i32 %t22, 1
-  %t34 = tail call i32 @_json_skipWS(ptr %t0, i32 %t31)
-  br label %end588
-
-end588:                                           ; preds = %sub_031, %if589, %charAt.exit20.tail
-  %t4.1 = phi i32 [ %t34, %if589 ], [ %t22, %charAt.exit20.tail ], [ %t22, %sub_031 ]
-  %t3.i21 = tail call i32 @strlen(ptr %t0)
-  %t7.i22 = icmp slt i32 %t4.1, 0
-  %t10.i23 = icmp sge i32 %t4.1, %t3.i21
-  %t5.i24 = select i1 %t7.i22, i1 true, i1 %t10.i23
-  br i1 %t5.i24, label %sub_034, label %end116.i25
-
-end116.i25:                                       ; preds = %end588
-  %10 = zext nneg i32 %t4.1 to i64
-  %t14.i26 = getelementptr i8, ptr %t0, i64 %10
-  %t15.i27 = load i8, ptr %t14.i26, align 1
-  %t16.i28 = tail call ptr @_zen_char_to_string(i8 %t15.i27)
-  br label %sub_034
-
-sub_034:                                          ; preds = %end116.i25, %end588
-  %common.ret.op.i29 = phi ptr [ %t16.i28, %end116.i25 ], [ @.str_stdlib_stdlib_0, %end588 ]
-  %11 = load i8, ptr %common.ret.op.i29, align 1
-  %.not42 = icmp eq i8 %11, 93
-  br i1 %.not42, label %charAt.exit30.tail, label %end590
-
-charAt.exit30.tail:                               ; preds = %sub_034
-  %12 = getelementptr inbounds nuw i8, ptr %common.ret.op.i29, i64 1
-  %13 = load i8, ptr %12, align 1
-  %14 = icmp eq i8 %13, 0
-  br i1 %14, label %common.ret, label %end590
-
-end590:                                           ; preds = %sub_034, %charAt.exit30.tail
-  %t44 = tail call i32 @strlen(ptr %t0)
-  %t45.not = icmp slt i32 %t4.1, %t44
-  br i1 %t45.not, label %end592, label %common.ret
-
-end592:                                           ; preds = %end590
-  %t48 = icmp eq i32 %storemerge39, %t1
-  br i1 %t48, label %if595, label %end594
-
-if595:                                            ; preds = %end592
-  %t51 = tail call ptr @_json_extractValue(ptr %t0, i32 %t4.1)
-  br label %common.ret
-
-end594:                                           ; preds = %end592
-  %t54 = tail call i32 @_json_skipElement(ptr %t0, i32 %t4.1)
-  %t56 = add i32 %storemerge39, 1
-  %t18 = tail call i32 @strlen(ptr %t0)
-  %t19 = icmp slt i32 %t54, %t18
-  br i1 %t19, label %whileBody586, label %common.ret
+%t4 = alloca i32
+%t17 = alloca i32
+%arr.addr = alloca ptr
+store ptr %t0, ptr %arr.addr
+%index.addr = alloca i32
+store i32 %t1, ptr %index.addr
+%t2 = load ptr, ptr %arr.addr
+%t3 = call i32 @_json_skipWS(ptr %t2, i32 0)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %arr.addr
+%t6 = load i32, ptr %t4
+%t8 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t9 = call ptr @_str_dup(ptr %t8)
+%t7 = call ptr @charAt(ptr %t5, i32 %t6)
+%t10 = call i32 @strcmp(ptr %t7, ptr %t9)
+%t11 = icmp ne i32 %t10, 0
+br i1 %t11, label %if584, label %end583
+if584:
+%t12 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t13 = call ptr @_str_dup(ptr %t12)
+ret ptr %t13
+end583:
+%t14 = load i32, ptr %t4
+%t15 = add i32 %t14, 1
+store i32 %t15, ptr %t4
+store i32 0, ptr %t17
+br label %whileCond585
+whileCond585:
+%t18 = load i32, ptr %t4
+%t19 = load ptr, ptr %arr.addr
+%t20 = call i32 @strlen(ptr %t19)
+%t21 = icmp slt i32 %t18, %t20
+br i1 %t21, label %whileBody586, label %whileEnd587
+whileBody586:
+%t22 = load ptr, ptr %arr.addr
+%t23 = load i32, ptr %t4
+%t24 = call i32 @_json_skipWS(ptr %t22, i32 %t23)
+store i32 %t24, ptr %t4
+%t25 = load ptr, ptr %arr.addr
+%t26 = load i32, ptr %t4
+%t28 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_28, i64 0, i64 0
+%t29 = call ptr @_str_dup(ptr %t28)
+%t27 = call ptr @charAt(ptr %t25, i32 %t26)
+%t30 = call i32 @strcmp(ptr %t27, ptr %t29)
+%t31 = icmp eq i32 %t30, 0
+br i1 %t31, label %if589, label %end588
+if589:
+%t32 = load i32, ptr %t4
+%t33 = add i32 %t32, 1
+store i32 %t33, ptr %t4
+%t35 = load ptr, ptr %arr.addr
+%t36 = load i32, ptr %t4
+%t37 = call i32 @_json_skipWS(ptr %t35, i32 %t36)
+store i32 %t37, ptr %t4
+br label %end588
+end588:
+%t38 = load ptr, ptr %arr.addr
+%t39 = load i32, ptr %t4
+%t41 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t42 = call ptr @_str_dup(ptr %t41)
+%t40 = call ptr @charAt(ptr %t38, i32 %t39)
+%t43 = call i32 @strcmp(ptr %t40, ptr %t42)
+%t44 = icmp eq i32 %t43, 0
+br i1 %t44, label %if591, label %end590
+if591:
+br label %whileEnd587
+end590:
+%t45 = load i32, ptr %t4
+%t46 = load ptr, ptr %arr.addr
+%t47 = call i32 @strlen(ptr %t46)
+%t48 = icmp sge i32 %t45, %t47
+br i1 %t48, label %if593, label %end592
+if593:
+br label %whileEnd587
+end592:
+%t49 = load i32, ptr %t17
+%t50 = load i32, ptr %index.addr
+%t51 = icmp eq i32 %t49, %t50
+br i1 %t51, label %if595, label %end594
+if595:
+%t52 = load ptr, ptr %arr.addr
+%t53 = load i32, ptr %t4
+%t54 = call ptr @_json_extractValue(ptr %t52, i32 %t53)
+ret ptr %t54
+end594:
+%t55 = load ptr, ptr %arr.addr
+%t56 = load i32, ptr %t4
+%t57 = call i32 @_json_skipElement(ptr %t55, i32 %t56)
+store i32 %t57, ptr %t4
+%t58 = load i32, ptr %t17
+%t59 = add i32 %t58, 1
+store i32 %t59, ptr %t17
+br label %whileCond585
+whileEnd587:
+%t61 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t62 = call ptr @_str_dup(ptr %t61)
+ret ptr %t62
 }
-
-define ptr @_json_getKey(ptr %t0, ptr readonly captures(none) %t1) local_unnamed_addr {
+define ptr @_json_getKey (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call i32 @_json_skipWS(ptr %t0, i32 0)
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t7.i = icmp slt i32 %t3, 0
-  %t10.i = icmp sge i32 %t3, %t3.i
-  %t5.i = select i1 %t7.i, i1 true, i1 %t10.i
-  br i1 %t5.i, label %sub_0, label %end116.i
-
-end116.i:                                         ; preds = %entry
-  %0 = zext nneg i32 %t3 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %entry
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %entry ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not = icmp eq i8 %1, 123
-  br i1 %.not, label %charAt.exit.tail, label %common.ret
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %end596, label %common.ret
-
-common.ret:                                       ; preds = %sub_080, %sub_074, %charAt.exit67.tail, %charAt.exit45.tail, %charAt.exit25.tail, %end615, %sub_0, %end596, %charAt.exit.tail, %if616
-  %common.ret.op = phi ptr [ %t96, %if616 ], [ @.str_stdlib_stdlib_33, %charAt.exit.tail ], [ @.str_stdlib_stdlib_33, %end596 ], [ @.str_stdlib_stdlib_33, %sub_0 ], [ @.str_stdlib_stdlib_33, %end615 ], [ @.str_stdlib_stdlib_33, %charAt.exit25.tail ], [ @.str_stdlib_stdlib_33, %charAt.exit45.tail ], [ @.str_stdlib_stdlib_33, %charAt.exit67.tail ], [ @.str_stdlib_stdlib_33, %sub_074 ], [ @.str_stdlib_stdlib_33, %sub_080 ]
-  ret ptr %common.ret.op
-
-end596:                                           ; preds = %charAt.exit.tail
-  %t14 = add i32 %t3, 1
-  %t1787 = tail call i32 @strlen(ptr %t0)
-  %t1888 = icmp slt i32 %t14, %t1787
-  br i1 %t1888, label %whileBody599, label %common.ret
-
-whileBody599:                                     ; preds = %end596, %end615
-  %t4.089 = phi i32 [ %t99, %end615 ], [ %t14, %end596 ]
-  %t21 = tail call i32 @_json_skipWS(ptr %t0, i32 %t4.089)
-  %t3.i16 = tail call i32 @strlen(ptr %t0)
-  %t7.i17 = icmp slt i32 %t21, 0
-  %t10.i18 = icmp sge i32 %t21, %t3.i16
-  %t5.i19 = select i1 %t7.i17, i1 true, i1 %t10.i18
-  br i1 %t5.i19, label %sub_068, label %end116.i20
-
-end116.i20:                                       ; preds = %whileBody599
-  %5 = zext nneg i32 %t21 to i64
-  %t14.i21 = getelementptr i8, ptr %t0, i64 %5
-  %t15.i22 = load i8, ptr %t14.i21, align 1
-  %t16.i23 = tail call ptr @_zen_char_to_string(i8 %t15.i22)
-  br label %sub_068
-
-sub_068:                                          ; preds = %end116.i20, %whileBody599
-  %common.ret.op.i24 = phi ptr [ %t16.i23, %end116.i20 ], [ @.str_stdlib_stdlib_0, %whileBody599 ]
-  %6 = load i8, ptr %common.ret.op.i24, align 1
-  %.not90 = icmp eq i8 %6, 125
-  br i1 %.not90, label %charAt.exit25.tail, label %end601
-
-charAt.exit25.tail:                               ; preds = %sub_068
-  %7 = getelementptr inbounds nuw i8, ptr %common.ret.op.i24, i64 1
-  %8 = load i8, ptr %7, align 1
-  %9 = icmp eq i8 %8, 0
-  br i1 %9, label %common.ret, label %end601
-
-end601:                                           ; preds = %sub_068, %charAt.exit25.tail
-  %t3.i26 = tail call i32 @strlen(ptr %t0)
-  %t10.i28 = icmp sge i32 %t21, %t3.i26
-  %t5.i29 = select i1 %t7.i17, i1 true, i1 %t10.i28
-  br i1 %t5.i29, label %sub_071, label %end116.i30
-
-end116.i30:                                       ; preds = %end601
-  %10 = zext nneg i32 %t21 to i64
-  %t14.i31 = getelementptr i8, ptr %t0, i64 %10
-  %t15.i32 = load i8, ptr %t14.i31, align 1
-  %t16.i33 = tail call ptr @_zen_char_to_string(i8 %t15.i32)
-  br label %sub_071
-
-sub_071:                                          ; preds = %end116.i30, %end601
-  %common.ret.op.i34 = phi ptr [ %t16.i33, %end116.i30 ], [ @.str_stdlib_stdlib_0, %end601 ]
-  %11 = load i8, ptr %common.ret.op.i34, align 1
-  %.not91 = icmp eq i8 %11, 44
-  br i1 %.not91, label %charAt.exit35.tail, label %end603
-
-charAt.exit35.tail:                               ; preds = %sub_071
-  %12 = getelementptr inbounds nuw i8, ptr %common.ret.op.i34, i64 1
-  %13 = load i8, ptr %12, align 1
-  %14 = icmp eq i8 %13, 0
-  br i1 %14, label %if604, label %end603
-
-if604:                                            ; preds = %charAt.exit35.tail
-  %t37 = add i32 %t21, 1
-  %t40 = tail call i32 @_json_skipWS(ptr %t0, i32 %t37)
-  br label %end603
-
-end603:                                           ; preds = %sub_071, %if604, %charAt.exit35.tail
-  %t4.1 = phi i32 [ %t40, %if604 ], [ %t21, %charAt.exit35.tail ], [ %t21, %sub_071 ]
-  %t3.i36 = tail call i32 @strlen(ptr %t0)
-  %t7.i37 = icmp slt i32 %t4.1, 0
-  %t10.i38 = icmp sge i32 %t4.1, %t3.i36
-  %t5.i39 = select i1 %t7.i37, i1 true, i1 %t10.i38
-  br i1 %t5.i39, label %sub_074, label %end116.i40
-
-end116.i40:                                       ; preds = %end603
-  %15 = zext nneg i32 %t4.1 to i64
-  %t14.i41 = getelementptr i8, ptr %t0, i64 %15
-  %t15.i42 = load i8, ptr %t14.i41, align 1
-  %t16.i43 = tail call ptr @_zen_char_to_string(i8 %t15.i42)
-  br label %sub_074
-
-sub_074:                                          ; preds = %end116.i40, %end603
-  %common.ret.op.i44 = phi ptr [ %t16.i43, %end116.i40 ], [ @.str_stdlib_stdlib_0, %end603 ]
-  %16 = load i8, ptr %common.ret.op.i44, align 1
-  %.not92 = icmp eq i8 %16, 34
-  br i1 %.not92, label %charAt.exit45.tail, label %common.ret
-
-charAt.exit45.tail:                               ; preds = %sub_074
-  %17 = getelementptr inbounds nuw i8, ptr %common.ret.op.i44, i64 1
-  %18 = load i8, ptr %17, align 1
-  %19 = icmp eq i8 %18, 0
-  br i1 %19, label %end605, label %common.ret
-
-end605:                                           ; preds = %charAt.exit45.tail
-  %t50 = add i32 %t4.1, 1
-  %t5683 = tail call i32 @strlen(ptr %t0)
-  %t5784 = icmp slt i32 %t50, %t5683
-  br i1 %t5784, label %rhs610, label %whileEnd609
-
-rhs610:                                           ; preds = %end605, %whileBody608
-  %storemerge85 = phi i32 [ %t66, %whileBody608 ], [ %t50, %end605 ]
-  %t3.i46 = tail call i32 @strlen(ptr %t0)
-  %t7.i47 = icmp slt i32 %storemerge85, 0
-  %t10.i48 = icmp sge i32 %storemerge85, %t3.i46
-  %t5.i49 = select i1 %t7.i47, i1 true, i1 %t10.i48
-  br i1 %t5.i49, label %sub_077, label %end116.i50
-
-end116.i50:                                       ; preds = %rhs610
-  %20 = zext nneg i32 %storemerge85 to i64
-  %t14.i51 = getelementptr i8, ptr %t0, i64 %20
-  %t15.i52 = load i8, ptr %t14.i51, align 1
-  %t16.i53 = tail call ptr @_zen_char_to_string(i8 %t15.i52)
-  br label %sub_077
-
-sub_077:                                          ; preds = %end116.i50, %rhs610
-  %common.ret.op.i54 = phi ptr [ %t16.i53, %end116.i50 ], [ @.str_stdlib_stdlib_0, %rhs610 ]
-  %21 = load i8, ptr %common.ret.op.i54, align 1
-  %.not93 = icmp eq i8 %21, 34
-  br i1 %.not93, label %charAt.exit55.tail, label %whileBody608
-
-charAt.exit55.tail:                               ; preds = %sub_077
-  %22 = getelementptr inbounds nuw i8, ptr %common.ret.op.i54, i64 1
-  %23 = load i8, ptr %22, align 1
-  %24 = icmp eq i8 %23, 0
-  br i1 %24, label %whileEnd609, label %whileBody608
-
-whileBody608:                                     ; preds = %sub_077, %charAt.exit55.tail
-  %t66 = add nsw i32 %storemerge85, 1
-  %t56 = tail call i32 @strlen(ptr %t0)
-  %t57 = icmp slt i32 %t66, %t56
-  br i1 %t57, label %rhs610, label %whileEnd609
-
-whileEnd609:                                      ; preds = %charAt.exit55.tail, %whileBody608, %end605
-  %storemerge.lcssa = phi i32 [ %t50, %end605 ], [ %t66, %whileBody608 ], [ %storemerge85, %charAt.exit55.tail ]
-  %t4.i = tail call i32 @strlen(ptr %t0)
-  %spec.store.select.i = tail call i32 @llvm.smax.i32(i32 %t50, i32 0)
-  %spec.select.i = tail call i32 @llvm.smin.i32(i32 %storemerge.lcssa, i32 %t4.i)
-  %t14.i56 = icmp sle i32 %spec.store.select.i, %spec.select.i
-  %t227.i = icmp samesign ult i32 %spec.store.select.i, %spec.select.i
-  %or.cond.i = select i1 %t14.i56, i1 %t227.i, i1 false
-  br i1 %or.cond.i, label %whileBody114.i, label %slice.exit
-
-whileBody114.i:                                   ; preds = %whileEnd609, %whileBody114.i
-  %storemerge9.i = phi i32 [ %t32.i, %whileBody114.i ], [ %spec.store.select.i, %whileEnd609 ]
-  %t3068.i = phi ptr [ %t30.i, %whileBody114.i ], [ @.str_stdlib_stdlib_0, %whileEnd609 ]
-  %25 = zext nneg i32 %storemerge9.i to i64
-  %t26.i = getelementptr i8, ptr %t0, i64 %25
-  %t27.i = load i8, ptr %t26.i, align 1
-  %t28.i = tail call ptr @_zen_char_to_string(i8 %t27.i)
-  %t30.i = tail call ptr @_str_concat(ptr %t3068.i, ptr %t28.i)
-  %t32.i = add nuw nsw i32 %storemerge9.i, 1
-  %t22.i = icmp slt i32 %t32.i, %spec.select.i
-  br i1 %t22.i, label %whileBody114.i, label %slice.exit
-
-slice.exit:                                       ; preds = %whileBody114.i, %whileEnd609
-  %common.ret.op.i57 = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd609 ], [ %t30.i, %whileBody114.i ]
-  %t73 = add i32 %storemerge.lcssa, 1
-  %t76 = tail call i32 @_json_skipWS(ptr %t0, i32 %t73)
-  %t3.i58 = tail call i32 @strlen(ptr %t0)
-  %t7.i59 = icmp slt i32 %t76, 0
-  %t10.i60 = icmp sge i32 %t76, %t3.i58
-  %t5.i61 = select i1 %t7.i59, i1 true, i1 %t10.i60
-  br i1 %t5.i61, label %sub_080, label %end116.i62
-
-end116.i62:                                       ; preds = %slice.exit
-  %26 = zext nneg i32 %t76 to i64
-  %t14.i63 = getelementptr i8, ptr %t0, i64 %26
-  %t15.i64 = load i8, ptr %t14.i63, align 1
-  %t16.i65 = tail call ptr @_zen_char_to_string(i8 %t15.i64)
-  br label %sub_080
-
-sub_080:                                          ; preds = %end116.i62, %slice.exit
-  %common.ret.op.i66 = phi ptr [ %t16.i65, %end116.i62 ], [ @.str_stdlib_stdlib_0, %slice.exit ]
-  %27 = load i8, ptr %common.ret.op.i66, align 1
-  %.not94 = icmp eq i8 %27, 58
-  br i1 %.not94, label %charAt.exit67.tail, label %common.ret
-
-charAt.exit67.tail:                               ; preds = %sub_080
-  %28 = getelementptr inbounds nuw i8, ptr %common.ret.op.i66, i64 1
-  %29 = load i8, ptr %28, align 1
-  %30 = icmp eq i8 %29, 0
-  br i1 %30, label %end613, label %common.ret
-
-end613:                                           ; preds = %charAt.exit67.tail
-  %t85 = add i32 %t76, 1
-  %t88 = tail call i32 @_json_skipWS(ptr %t0, i32 %t85)
-  %t92 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %common.ret.op.i57, ptr noundef nonnull dereferenceable(1) %t1)
-  %t93 = icmp eq i32 %t92, 0
-  br i1 %t93, label %if616, label %end615
-
-if616:                                            ; preds = %end613
-  %t96 = tail call ptr @_json_extractValue(ptr %t0, i32 %t88)
-  br label %common.ret
-
-end615:                                           ; preds = %end613
-  %t99 = tail call i32 @_json_skipElement(ptr %t0, i32 %t88)
-  %t17 = tail call i32 @strlen(ptr %t0)
-  %t18 = icmp slt i32 %t99, %t17
-  br i1 %t18, label %whileBody599, label %common.ret
+%t4 = alloca i32
+%t51 = alloca i32
+%t54 = alloca i32
+%t75 = alloca ptr
+%obj.addr = alloca ptr
+store ptr %t0, ptr %obj.addr
+%key.addr = alloca ptr
+store ptr %t1, ptr %key.addr
+%t2 = load ptr, ptr %obj.addr
+%t3 = call i32 @_json_skipWS(ptr %t2, i32 0)
+store i32 %t3, ptr %t4
+%t5 = load ptr, ptr %obj.addr
+%t6 = load i32, ptr %t4
+%t8 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_31, i64 0, i64 0
+%t9 = call ptr @_str_dup(ptr %t8)
+%t7 = call ptr @charAt(ptr %t5, i32 %t6)
+%t10 = call i32 @strcmp(ptr %t7, ptr %t9)
+%t11 = icmp ne i32 %t10, 0
+br i1 %t11, label %if597, label %end596
+if597:
+%t12 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t13 = call ptr @_str_dup(ptr %t12)
+ret ptr %t13
+end596:
+%t14 = load i32, ptr %t4
+%t15 = add i32 %t14, 1
+store i32 %t15, ptr %t4
+br label %whileCond598
+whileCond598:
+%t17 = load i32, ptr %t4
+%t18 = load ptr, ptr %obj.addr
+%t19 = call i32 @strlen(ptr %t18)
+%t20 = icmp slt i32 %t17, %t19
+br i1 %t20, label %whileBody599, label %whileEnd600
+whileBody599:
+%t21 = load ptr, ptr %obj.addr
+%t22 = load i32, ptr %t4
+%t23 = call i32 @_json_skipWS(ptr %t21, i32 %t22)
+store i32 %t23, ptr %t4
+%t24 = load ptr, ptr %obj.addr
+%t25 = load i32, ptr %t4
+%t27 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_32, i64 0, i64 0
+%t28 = call ptr @_str_dup(ptr %t27)
+%t26 = call ptr @charAt(ptr %t24, i32 %t25)
+%t29 = call i32 @strcmp(ptr %t26, ptr %t28)
+%t30 = icmp eq i32 %t29, 0
+br i1 %t30, label %if602, label %end601
+if602:
+br label %whileEnd600
+end601:
+%t31 = load ptr, ptr %obj.addr
+%t32 = load i32, ptr %t4
+%t34 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_28, i64 0, i64 0
+%t35 = call ptr @_str_dup(ptr %t34)
+%t33 = call ptr @charAt(ptr %t31, i32 %t32)
+%t36 = call i32 @strcmp(ptr %t33, ptr %t35)
+%t37 = icmp eq i32 %t36, 0
+br i1 %t37, label %if604, label %end603
+if604:
+%t38 = load i32, ptr %t4
+%t39 = add i32 %t38, 1
+store i32 %t39, ptr %t4
+%t41 = load ptr, ptr %obj.addr
+%t42 = load i32, ptr %t4
+%t43 = call i32 @_json_skipWS(ptr %t41, i32 %t42)
+store i32 %t43, ptr %t4
+br label %end603
+end603:
+%t44 = load ptr, ptr %obj.addr
+%t45 = load i32, ptr %t4
+%t47 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t48 = call ptr @_str_dup(ptr %t47)
+%t46 = call ptr @charAt(ptr %t44, i32 %t45)
+%t49 = call i32 @strcmp(ptr %t46, ptr %t48)
+%t50 = icmp ne i32 %t49, 0
+br i1 %t50, label %if606, label %end605
+if606:
+br label %whileEnd600
+end605:
+%t52 = load i32, ptr %t4
+%t53 = add i32 %t52, 1
+store i32 %t53, ptr %t51
+%t55 = load i32, ptr %t51
+store i32 %t55, ptr %t54
+br label %whileCond607
+whileCond607:
+%t57 = load i32, ptr %t54
+%t58 = load ptr, ptr %obj.addr
+%t59 = call i32 @strlen(ptr %t58)
+%t61 = load ptr, ptr %obj.addr
+%t62 = load i32, ptr %t54
+%t64 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_30, i64 0, i64 0
+%t65 = call ptr @_str_dup(ptr %t64)
+%t60 = icmp slt i32 %t57, %t59
+br i1 %t60, label %rhs610, label %skip611
+rhs610:
+%t63 = call ptr @charAt(ptr %t61, i32 %t62)
+%t66 = call i32 @strcmp(ptr %t63, ptr %t65)
+%t67 = icmp ne i32 %t66, 0
+br label %end612
+skip611:
+br label %end612
+end612:
+%t56 = phi i1 [ false, %skip611 ], [ %t67, %rhs610 ]
+br i1 %t56, label %whileBody608, label %whileEnd609
+whileBody608:
+%t68 = load i32, ptr %t54
+%t69 = add i32 %t68, 1
+store i32 %t69, ptr %t54
+br label %whileCond607
+whileEnd609:
+%t71 = load ptr, ptr %obj.addr
+%t72 = load i32, ptr %t51
+%t73 = load i32, ptr %t54
+%t74 = call ptr @slice(ptr %t71, i32 %t72, i32 %t73)
+store ptr %t74, ptr %t75
+%t76 = load i32, ptr %t54
+%t77 = add i32 %t76, 1
+store i32 %t77, ptr %t4
+%t79 = load ptr, ptr %obj.addr
+%t80 = load i32, ptr %t4
+%t81 = call i32 @_json_skipWS(ptr %t79, i32 %t80)
+store i32 %t81, ptr %t4
+%t82 = load ptr, ptr %obj.addr
+%t83 = load i32, ptr %t4
+%t85 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_20, i64 0, i64 0
+%t86 = call ptr @_str_dup(ptr %t85)
+%t84 = call ptr @charAt(ptr %t82, i32 %t83)
+%t87 = call i32 @strcmp(ptr %t84, ptr %t86)
+%t88 = icmp ne i32 %t87, 0
+br i1 %t88, label %if614, label %end613
+if614:
+br label %whileEnd600
+end613:
+%t89 = load i32, ptr %t4
+%t90 = add i32 %t89, 1
+store i32 %t90, ptr %t4
+%t92 = load ptr, ptr %obj.addr
+%t93 = load i32, ptr %t4
+%t94 = call i32 @_json_skipWS(ptr %t92, i32 %t93)
+store i32 %t94, ptr %t4
+%t95 = load ptr, ptr %t75
+%t96 = load ptr, ptr %key.addr
+%t97 = call i32 @strcmp(ptr %t95, ptr %t96)
+%t98 = icmp eq i32 %t97, 0
+br i1 %t98, label %if616, label %end615
+if616:
+%t99 = load ptr, ptr %obj.addr
+%t100 = load i32, ptr %t4
+%t101 = call ptr @_json_extractValue(ptr %t99, i32 %t100)
+ret ptr %t101
+end615:
+%t102 = load ptr, ptr %obj.addr
+%t103 = load i32, ptr %t4
+%t104 = call i32 @_json_skipElement(ptr %t102, i32 %t103)
+store i32 %t104, ptr %t4
+br label %whileCond598
+whileEnd600:
+%t105 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t106 = call ptr @_str_dup(ptr %t105)
+ret ptr %t106
 }
-
-define i32 @_json_parseInt(ptr %t0) local_unnamed_addr {
+define i32 @_json_parseInt (ptr %t0) {
 entry:
-  %t54 = tail call i32 @strlen(ptr %t0)
-  %t65 = icmp sgt i32 %t54, 0
-  br i1 %t65, label %whileBody618, label %whileEnd619
-
-whileBody618:                                     ; preds = %entry, %charAt.exit
-  %t2.07 = phi i32 [ %t18, %charAt.exit ], [ 0, %entry ]
-  %t1.06 = phi i32 [ %t16, %charAt.exit ], [ 0, %entry ]
-  %t3.i = tail call i32 @strlen(ptr %t0)
-  %t10.i.not = icmp slt i32 %t2.07, %t3.i
-  br i1 %t10.i.not, label %end116.i, label %charAt.exit
-
-end116.i:                                         ; preds = %whileBody618
-  %0 = zext nneg i32 %t2.07 to i64
-  %t14.i = getelementptr i8, ptr %t0, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %charAt.exit
-
-charAt.exit:                                      ; preds = %whileBody618, %end116.i
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %whileBody618 ]
-  %t11 = tail call i32 @_string_to_int_ascii(ptr %common.ret.op.i)
-  %t14 = mul i32 %t1.06, 10
-  %t12 = add i32 %t14, -48
-  %t16 = add i32 %t12, %t11
-  %t18 = add nuw nsw i32 %t2.07, 1
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t6 = icmp slt i32 %t18, %t5
-  br i1 %t6, label %whileBody618, label %whileEnd619
-
-whileEnd619:                                      ; preds = %charAt.exit, %entry
-  %t1.0.lcssa = phi i32 [ 0, %entry ], [ %t16, %charAt.exit ]
-  ret i32 %t1.0.lcssa
+%t1 = alloca i32
+%t2 = alloca i32
+%t7 = alloca i32
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+store i32 0, ptr %t1
+store i32 0, ptr %t2
+br label %whileCond617
+whileCond617:
+%t3 = load i32, ptr %t2
+%t4 = load ptr, ptr %s.addr
+%t5 = call i32 @strlen(ptr %t4)
+%t6 = icmp slt i32 %t3, %t5
+br i1 %t6, label %whileBody618, label %whileEnd619
+whileBody618:
+%t8 = load ptr, ptr %s.addr
+%t9 = load i32, ptr %t2
+%t10 = call ptr @charAt(ptr %t8, i32 %t9)
+%t11 = call i32 @_string_to_int_ascii(ptr %t10)
+%t12 = sub i32 %t11, 48
+store i32 %t12, ptr %t7
+%t13 = load i32, ptr %t1
+%t15 = load i32, ptr %t7
+%t14 = mul i32 %t13, 10
+%t16 = add i32 %t14, %t15
+store i32 %t16, ptr %t1
+%t18 = load i32, ptr %t2
+%t19 = add i32 %t18, 1
+store i32 %t19, ptr %t2
+br label %whileCond617
+whileEnd619:
+%t21 = load i32, ptr %t1
+ret i32 %t21
 }
-
-define ptr @json(ptr %t0, ptr %t1) local_unnamed_addr {
+define ptr @json (ptr %t0, ptr %t1) {
 entry:
-  %t881 = tail call ptr @splitAt(ptr %t1, ptr nonnull @.str_stdlib_stdlib_8, i32 0)
-  %strcmpload82 = load i8, ptr %t881, align 1
-  %t1483 = icmp eq i8 %strcmpload82, 0
-  br i1 %t1483, label %common.ret, label %whileCond625.preheader
-
-whileCond625.preheader:                           ; preds = %entry, %whileEnd636
-  %t886 = phi ptr [ %t8, %whileEnd636 ], [ %t881, %entry ]
-  %t4.085 = phi i32 [ %t102, %whileEnd636 ], [ 0, %entry ]
-  %t2.084 = phi ptr [ %t2.2.lcssa, %whileEnd636 ], [ %t0, %entry ]
-  %t1871 = tail call i32 @strlen(ptr nonnull %t886)
-  %t1972 = icmp sgt i32 %t1871, 0
-  br i1 %t1972, label %whileBody626, label %whileEnd627
-
-whileBody626:                                     ; preds = %whileCond625.preheader, %end628
-  %storemerge73 = phi i32 [ %t28, %end628 ], [ 0, %whileCond625.preheader ]
-  %t3.i = tail call i32 @strlen(ptr nonnull %t886)
-  %t10.i.not = icmp slt i32 %storemerge73, %t3.i
-  br i1 %t10.i.not, label %end116.i, label %sub_0
-
-end116.i:                                         ; preds = %whileBody626
-  %0 = zext nneg i32 %storemerge73 to i64
-  %t14.i = getelementptr i8, ptr %t886, i64 %0
-  %t15.i = load i8, ptr %t14.i, align 1
-  %t16.i = tail call ptr @_zen_char_to_string(i8 %t15.i)
-  br label %sub_0
-
-sub_0:                                            ; preds = %end116.i, %whileBody626
-  %common.ret.op.i = phi ptr [ %t16.i, %end116.i ], [ @.str_stdlib_stdlib_0, %whileBody626 ]
-  %1 = load i8, ptr %common.ret.op.i, align 1
-  %.not = icmp eq i8 %1, 91
-  br i1 %.not, label %charAt.exit.tail, label %end628
-
-charAt.exit.tail:                                 ; preds = %sub_0
-  %2 = getelementptr inbounds nuw i8, ptr %common.ret.op.i, i64 1
-  %3 = load i8, ptr %2, align 1
-  %4 = icmp eq i8 %3, 0
-  br i1 %4, label %whileEnd627, label %end628
-
-end628:                                           ; preds = %sub_0, %charAt.exit.tail
-  %t28 = add nuw nsw i32 %storemerge73, 1
-  %t18 = tail call i32 @strlen(ptr nonnull %t886)
-  %t19 = icmp slt i32 %t28, %t18
-  br i1 %t19, label %whileBody626, label %whileEnd627
-
-whileEnd627:                                      ; preds = %end628, %charAt.exit.tail, %whileCond625.preheader
-  %storemerge.lcssa = phi i32 [ 0, %whileCond625.preheader ], [ %storemerge73, %charAt.exit.tail ], [ %t28, %end628 ]
-  %t4.i = tail call i32 @strlen(ptr nonnull %t886)
-  %spec.select.i = tail call i32 @llvm.smin.i32(i32 %storemerge.lcssa, i32 %t4.i)
-  %or.cond.i = icmp sgt i32 %spec.select.i, 0
-  br i1 %or.cond.i, label %whileBody114.i, label %slice.exit
-
-whileBody114.i:                                   ; preds = %whileEnd627, %whileBody114.i
-  %storemerge9.i = phi i32 [ %t32.i, %whileBody114.i ], [ 0, %whileEnd627 ]
-  %t3068.i = phi ptr [ %t30.i, %whileBody114.i ], [ @.str_stdlib_stdlib_0, %whileEnd627 ]
-  %5 = zext nneg i32 %storemerge9.i to i64
-  %t26.i = getelementptr i8, ptr %t886, i64 %5
-  %t27.i = load i8, ptr %t26.i, align 1
-  %t28.i = tail call ptr @_zen_char_to_string(i8 %t27.i)
-  %t30.i = tail call ptr @_str_concat(ptr %t3068.i, ptr %t28.i)
-  %t32.i = add nuw nsw i32 %storemerge9.i, 1
-  %t22.i = icmp slt i32 %t32.i, %spec.select.i
-  br i1 %t22.i, label %whileBody114.i, label %slice.exit
-
-slice.exit:                                       ; preds = %whileBody114.i, %whileEnd627
-  %common.ret.op.i6 = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd627 ], [ %t30.i, %whileBody114.i ]
-  %t36 = tail call i32 @strlen(ptr nonnull %t886)
-  %t4.i7 = tail call i32 @strlen(ptr nonnull %t886)
-  %spec.select.i8 = tail call i32 @llvm.smin.i32(i32 %t36, i32 %t4.i7)
-  %t14.i9 = icmp sle i32 %storemerge.lcssa, %spec.select.i8
-  %t227.i10 = icmp samesign ult i32 %storemerge.lcssa, %spec.select.i8
-  %or.cond.i11 = select i1 %t14.i9, i1 %t227.i10, i1 false
-  br i1 %or.cond.i11, label %whileBody114.i13, label %slice.exit22
-
-whileBody114.i13:                                 ; preds = %slice.exit, %whileBody114.i13
-  %storemerge9.i14 = phi i32 [ %t32.i20, %whileBody114.i13 ], [ %storemerge.lcssa, %slice.exit ]
-  %t3068.i15 = phi ptr [ %t30.i19, %whileBody114.i13 ], [ @.str_stdlib_stdlib_0, %slice.exit ]
-  %6 = zext nneg i32 %storemerge9.i14 to i64
-  %t26.i16 = getelementptr i8, ptr %t886, i64 %6
-  %t27.i17 = load i8, ptr %t26.i16, align 1
-  %t28.i18 = tail call ptr @_zen_char_to_string(i8 %t27.i17)
-  %t30.i19 = tail call ptr @_str_concat(ptr %t3068.i15, ptr %t28.i18)
-  %t32.i20 = add nuw nsw i32 %storemerge9.i14, 1
-  %t22.i21 = icmp slt i32 %t32.i20, %spec.select.i8
-  br i1 %t22.i21, label %whileBody114.i13, label %slice.exit22
-
-slice.exit22:                                     ; preds = %whileBody114.i13, %slice.exit
-  %t55 = phi ptr [ @.str_stdlib_stdlib_0, %slice.exit ], [ %t30.i19, %whileBody114.i13 ]
-  %strcmpload2 = load i8, ptr %common.ret.op.i6, align 1
-  %t43.not = icmp eq i8 %strcmpload2, 0
-  br i1 %t43.not, label %end630, label %if631
-
-if631:                                            ; preds = %slice.exit22
-  %t46 = tail call ptr @_json_getKey(ptr %t2.084, ptr nonnull %common.ret.op.i6)
-  %t50 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t46, ptr noundef nonnull dereferenceable(5) @.str_stdlib_stdlib_33)
-  %t51 = icmp eq i32 %t50, 0
-  br i1 %t51, label %common.ret, label %end630
-
-common.ret:                                       ; preds = %if631, %whileEnd636, %_json_parseInt.exit, %entry
-  %common.ret.op = phi ptr [ %t0, %entry ], [ @.str_stdlib_stdlib_33, %_json_parseInt.exit ], [ @.str_stdlib_stdlib_33, %if631 ], [ %t2.2.lcssa, %whileEnd636 ]
-  ret ptr %common.ret.op
-
-end630:                                           ; preds = %if631, %slice.exit22
-  %t2.1 = phi ptr [ %t46, %if631 ], [ %t2.084, %slice.exit22 ]
-  %t5675 = tail call i32 @strlen(ptr %t55)
-  %t5776 = icmp sgt i32 %t5675, 0
-  br i1 %t5776, label %whileBody635, label %whileEnd636
-
-whileBody635:                                     ; preds = %end630, %end644
-  %t2.278 = phi ptr [ %t92, %end644 ], [ %t2.1, %end630 ]
-  %storemerge4.in.peel = phi i32 [ %t100, %end644 ], [ 0, %end630 ]
-  %t3.i23 = tail call i32 @strlen(ptr %t55)
-  %t7.i24 = icmp slt i32 %storemerge4.in.peel, 0
-  %t10.i25 = icmp sge i32 %storemerge4.in.peel, %t3.i23
-  %t5.i26 = select i1 %t7.i24, i1 true, i1 %t10.i25
-  br i1 %t5.i26, label %sub_063, label %end116.i27
-
-end116.i27:                                       ; preds = %whileBody635
-  %7 = zext nneg i32 %storemerge4.in.peel to i64
-  %t14.i28 = getelementptr i8, ptr %t55, i64 %7
-  %t15.i29 = load i8, ptr %t14.i28, align 1
-  %t16.i30 = tail call ptr @_zen_char_to_string(i8 %t15.i29)
-  br label %sub_063
-
-sub_063:                                          ; preds = %end116.i27, %whileBody635
-  %common.ret.op.i31 = phi ptr [ %t16.i30, %end116.i27 ], [ @.str_stdlib_stdlib_0, %whileBody635 ]
-  %8 = load i8, ptr %common.ret.op.i31, align 1
-  %.not89 = icmp eq i8 %8, 91
-  br i1 %.not89, label %charAt.exit32.tail, label %whileEnd636
-
-charAt.exit32.tail:                               ; preds = %sub_063
-  %9 = getelementptr inbounds nuw i8, ptr %common.ret.op.i31, i64 1
-  %10 = load i8, ptr %9, align 1
-  %11 = icmp eq i8 %10, 0
-  br i1 %11, label %end637, label %whileEnd636
-
-end637:                                           ; preds = %charAt.exit32.tail
-  %storemerge4.peel = add nsw i32 %storemerge4.in.peel, 1
-  %t70.peel = tail call i32 @strlen(ptr %t55)
-  %t71.peel = icmp slt i32 %storemerge4.peel, %t70.peel
-  br i1 %t71.peel, label %whileBody640.peel, label %whileEnd641
-
-whileBody640.peel:                                ; preds = %end637
-  %t3.i33.peel = tail call i32 @strlen(ptr %t55)
-  %t7.i34.peel = icmp slt i32 %storemerge4.in.peel, -1
-  %t10.i35.peel = icmp sge i32 %storemerge4.peel, %t3.i33.peel
-  %t5.i36.peel = select i1 %t7.i34.peel, i1 true, i1 %t10.i35.peel
-  br i1 %t5.i36.peel, label %sub_066.peel, label %end116.i37.peel
-
-end116.i37.peel:                                  ; preds = %whileBody640.peel
-  %12 = zext nneg i32 %storemerge4.peel to i64
-  %t14.i38.peel = getelementptr i8, ptr %t55, i64 %12
-  %t15.i39.peel = load i8, ptr %t14.i38.peel, align 1
-  %t16.i40.peel = tail call ptr @_zen_char_to_string(i8 %t15.i39.peel)
-  br label %sub_066.peel
-
-sub_066.peel:                                     ; preds = %end116.i37.peel, %whileBody640.peel
-  %common.ret.op.i41.peel = phi ptr [ %t16.i40.peel, %end116.i37.peel ], [ @.str_stdlib_stdlib_0, %whileBody640.peel ]
-  %13 = load i8, ptr %common.ret.op.i41.peel, align 1
-  %.not90.peel = icmp eq i8 %13, 93
-  br i1 %.not90.peel, label %charAt.exit42.tail.peel, label %whileCond639.peel.next
-
-charAt.exit42.tail.peel:                          ; preds = %sub_066.peel
-  %14 = getelementptr inbounds nuw i8, ptr %common.ret.op.i41.peel, i64 1
-  %15 = load i8, ptr %14, align 1
-  %16 = icmp eq i8 %15, 0
-  br i1 %16, label %whileEnd641, label %whileCond639.peel.next
-
-whileCond639.peel.next:                           ; preds = %sub_066.peel, %charAt.exit42.tail.peel
-  %storemerge499 = add nsw i32 %storemerge4.in.peel, 2
-  %t70100 = tail call i32 @strlen(ptr %t55)
-  %t71101 = icmp slt i32 %storemerge499, %t70100
-  br i1 %t71101, label %whileBody640, label %whileEnd641
-
-whileBody640:                                     ; preds = %whileCond639.peel.next, %whileCond639.backedge
-  %storemerge4103 = phi i32 [ %storemerge4, %whileCond639.backedge ], [ %storemerge499, %whileCond639.peel.next ]
-  %storemerge4.in102 = phi i32 [ %storemerge4103, %whileCond639.backedge ], [ %storemerge4.peel, %whileCond639.peel.next ]
-  %t3.i33 = tail call i32 @strlen(ptr %t55)
-  %t7.i34 = icmp slt i32 %storemerge4.in102, -1
-  %t10.i35 = icmp sge i32 %storemerge4103, %t3.i33
-  %t5.i36 = select i1 %t7.i34, i1 true, i1 %t10.i35
-  br i1 %t5.i36, label %sub_066, label %end116.i37
-
-end116.i37:                                       ; preds = %whileBody640
-  %17 = zext nneg i32 %storemerge4103 to i64
-  %t14.i38 = getelementptr i8, ptr %t55, i64 %17
-  %t15.i39 = load i8, ptr %t14.i38, align 1
-  %t16.i40 = tail call ptr @_zen_char_to_string(i8 %t15.i39)
-  br label %sub_066
-
-sub_066:                                          ; preds = %end116.i37, %whileBody640
-  %common.ret.op.i41 = phi ptr [ %t16.i40, %end116.i37 ], [ @.str_stdlib_stdlib_0, %whileBody640 ]
-  %18 = load i8, ptr %common.ret.op.i41, align 1
-  %.not90 = icmp eq i8 %18, 93
-  br i1 %.not90, label %sub_167, label %whileCond639.backedge
-
-sub_167:                                          ; preds = %sub_066
-  %19 = getelementptr inbounds nuw i8, ptr %common.ret.op.i41, i64 1
-  %20 = load i8, ptr %19, align 1
-  %21 = icmp eq i8 %20, 0
-  br i1 %21, label %whileEnd641, label %whileCond639.backedge
-
-whileCond639.backedge:                            ; preds = %sub_066, %sub_167
-  %storemerge4 = add nsw i32 %storemerge4103, 1
-  %t70 = tail call i32 @strlen(ptr %t55)
-  %t71 = icmp slt i32 %storemerge4, %t70
-  br i1 %t71, label %whileBody640, label %whileEnd641, !llvm.loop !2
-
-whileEnd641:                                      ; preds = %sub_167, %whileCond639.backedge, %whileCond639.peel.next, %charAt.exit42.tail.peel, %end637
-  %t99 = phi i32 [ %storemerge4.peel, %end637 ], [ %storemerge4.peel, %charAt.exit42.tail.peel ], [ %storemerge499, %whileCond639.peel.next ], [ %storemerge4, %whileCond639.backedge ], [ %storemerge4103, %sub_167 ]
-  %t4.i43 = tail call i32 @strlen(ptr %t55)
-  %spec.store.select.i44 = tail call i32 @llvm.smax.i32(i32 %storemerge4.peel, i32 0)
-  %spec.select.i45 = tail call i32 @llvm.smin.i32(i32 %t99, i32 %t4.i43)
-  %t14.i46 = icmp sle i32 %spec.store.select.i44, %spec.select.i45
-  %t227.i47 = icmp samesign ult i32 %spec.store.select.i44, %spec.select.i45
-  %or.cond.i48 = select i1 %t14.i46, i1 %t227.i47, i1 false
-  br i1 %or.cond.i48, label %whileBody114.i50, label %slice.exit59
-
-whileBody114.i50:                                 ; preds = %whileEnd641, %whileBody114.i50
-  %storemerge9.i51 = phi i32 [ %t32.i57, %whileBody114.i50 ], [ %spec.store.select.i44, %whileEnd641 ]
-  %t3068.i52 = phi ptr [ %t30.i56, %whileBody114.i50 ], [ @.str_stdlib_stdlib_0, %whileEnd641 ]
-  %22 = zext nneg i32 %storemerge9.i51 to i64
-  %t26.i53 = getelementptr i8, ptr %t55, i64 %22
-  %t27.i54 = load i8, ptr %t26.i53, align 1
-  %t28.i55 = tail call ptr @_zen_char_to_string(i8 %t27.i54)
-  %t30.i56 = tail call ptr @_str_concat(ptr %t3068.i52, ptr %t28.i55)
-  %t32.i57 = add nuw nsw i32 %storemerge9.i51, 1
-  %t22.i58 = icmp slt i32 %t32.i57, %spec.select.i45
-  br i1 %t22.i58, label %whileBody114.i50, label %slice.exit59
-
-slice.exit59:                                     ; preds = %whileBody114.i50, %whileEnd641
-  %common.ret.op.i49 = phi ptr [ @.str_stdlib_stdlib_0, %whileEnd641 ], [ %t30.i56, %whileBody114.i50 ]
-  %t54.i = tail call i32 @strlen(ptr %common.ret.op.i49)
-  %t65.i = icmp sgt i32 %t54.i, 0
-  br i1 %t65.i, label %whileBody618.i, label %_json_parseInt.exit
-
-whileBody618.i:                                   ; preds = %slice.exit59, %charAt.exit.i
-  %t2.07.i = phi i32 [ %t18.i, %charAt.exit.i ], [ 0, %slice.exit59 ]
-  %t1.06.i = phi i32 [ %t16.i61, %charAt.exit.i ], [ 0, %slice.exit59 ]
-  %t3.i.i = tail call i32 @strlen(ptr %common.ret.op.i49)
-  %t10.i.not.i = icmp slt i32 %t2.07.i, %t3.i.i
-  br i1 %t10.i.not.i, label %end116.i.i, label %charAt.exit.i
-
-end116.i.i:                                       ; preds = %whileBody618.i
-  %23 = zext nneg i32 %t2.07.i to i64
-  %t14.i.i = getelementptr i8, ptr %common.ret.op.i49, i64 %23
-  %t15.i.i = load i8, ptr %t14.i.i, align 1
-  %t16.i.i = tail call ptr @_zen_char_to_string(i8 %t15.i.i)
-  br label %charAt.exit.i
-
-charAt.exit.i:                                    ; preds = %end116.i.i, %whileBody618.i
-  %common.ret.op.i.i = phi ptr [ %t16.i.i, %end116.i.i ], [ @.str_stdlib_stdlib_0, %whileBody618.i ]
-  %t11.i = tail call i32 @_string_to_int_ascii(ptr %common.ret.op.i.i)
-  %t14.i60 = mul i32 %t1.06.i, 10
-  %t12.i = add i32 %t14.i60, -48
-  %t16.i61 = add i32 %t12.i, %t11.i
-  %t18.i = add nuw nsw i32 %t2.07.i, 1
-  %t5.i62 = tail call i32 @strlen(ptr %common.ret.op.i49)
-  %t6.i = icmp slt i32 %t18.i, %t5.i62
-  br i1 %t6.i, label %whileBody618.i, label %_json_parseInt.exit
-
-_json_parseInt.exit:                              ; preds = %charAt.exit.i, %slice.exit59
-  %t1.0.lcssa.i = phi i32 [ 0, %slice.exit59 ], [ %t16.i61, %charAt.exit.i ]
-  %t92 = tail call ptr @_json_getArrayIndex(ptr %t2.278, i32 %t1.0.lcssa.i)
-  %t96 = tail call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t92, ptr noundef nonnull dereferenceable(5) @.str_stdlib_stdlib_33)
-  %t97 = icmp eq i32 %t96, 0
-  br i1 %t97, label %common.ret, label %end644
-
-end644:                                           ; preds = %_json_parseInt.exit
-  %t100 = add i32 %t99, 1
-  %t56 = tail call i32 @strlen(ptr %t55)
-  %t57 = icmp slt i32 %t100, %t56
-  br i1 %t57, label %whileBody635, label %whileEnd636
-
-whileEnd636:                                      ; preds = %sub_063, %end644, %charAt.exit32.tail, %end630
-  %t2.2.lcssa = phi ptr [ %t2.1, %end630 ], [ %t2.278, %sub_063 ], [ %t2.278, %charAt.exit32.tail ], [ %t92, %end644 ]
-  %t102 = add i32 %t4.085, 1
-  %t8 = tail call ptr @splitAt(ptr %t1, ptr nonnull @.str_stdlib_stdlib_8, i32 %t102)
-  %strcmpload = load i8, ptr %t8, align 1
-  %t14 = icmp eq i8 %strcmpload, 0
-  br i1 %t14, label %common.ret, label %whileCond625.preheader
+%t2 = alloca ptr
+%t4 = alloca i32
+%t10 = alloca ptr
+%t16 = alloca i32
+%t34 = alloca ptr
+%t40 = alloca ptr
+%t56 = alloca i32
+%t68 = alloca i32
+%t90 = alloca ptr
+%t93 = alloca i32
+%data.addr = alloca ptr
+store ptr %t0, ptr %data.addr
+%path.addr = alloca ptr
+store ptr %t1, ptr %path.addr
+%t3 = load ptr, ptr %data.addr
+store ptr %t3, ptr %t2
+store i32 0, ptr %t4
+br label %whileCond620
+whileCond620:
+br i1 1, label %whileBody621, label %whileEnd622
+whileBody621:
+%t5 = load ptr, ptr %path.addr
+%t6 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_8, i64 0, i64 0
+%t7 = call ptr @_str_dup(ptr %t6)
+%t8 = load i32, ptr %t4
+%t9 = call ptr @splitAt(ptr %t5, ptr %t7, i32 %t8)
+store ptr %t9, ptr %t10
+%t11 = load ptr, ptr %t10
+%t12 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t13 = call ptr @_str_dup(ptr %t12)
+%t14 = call i32 @strcmp(ptr %t11, ptr %t13)
+%t15 = icmp eq i32 %t14, 0
+br i1 %t15, label %if624, label %end623
+if624:
+br label %whileEnd622
+end623:
+store i32 0, ptr %t16
+br label %whileCond625
+whileCond625:
+%t17 = load i32, ptr %t16
+%t18 = load ptr, ptr %t10
+%t19 = call i32 @strlen(ptr %t18)
+%t20 = icmp slt i32 %t17, %t19
+br i1 %t20, label %whileBody626, label %whileEnd627
+whileBody626:
+%t21 = load ptr, ptr %t10
+%t22 = load i32, ptr %t16
+%t24 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t25 = call ptr @_str_dup(ptr %t24)
+%t23 = call ptr @charAt(ptr %t21, i32 %t22)
+%t26 = call i32 @strcmp(ptr %t23, ptr %t25)
+%t27 = icmp eq i32 %t26, 0
+br i1 %t27, label %if629, label %end628
+if629:
+br label %whileEnd627
+end628:
+%t28 = load i32, ptr %t16
+%t29 = add i32 %t28, 1
+store i32 %t29, ptr %t16
+br label %whileCond625
+whileEnd627:
+%t31 = load ptr, ptr %t10
+%t32 = load i32, ptr %t16
+%t33 = call ptr @slice(ptr %t31, i32 0, i32 %t32)
+store ptr %t33, ptr %t34
+%t35 = load ptr, ptr %t10
+%t36 = load i32, ptr %t16
+%t37 = load ptr, ptr %t10
+%t38 = call i32 @strlen(ptr %t37)
+%t39 = call ptr @slice(ptr %t35, i32 %t36, i32 %t38)
+store ptr %t39, ptr %t40
+%t41 = load ptr, ptr %t34
+%t42 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t43 = call ptr @_str_dup(ptr %t42)
+%t44 = call i32 @strcmp(ptr %t41, ptr %t43)
+%t45 = icmp ne i32 %t44, 0
+br i1 %t45, label %if631, label %end630
+if631:
+%t46 = load ptr, ptr %t2
+%t47 = load ptr, ptr %t34
+%t48 = call ptr @_json_getKey(ptr %t46, ptr %t47)
+store ptr %t48, ptr %t2
+%t49 = load ptr, ptr %t2
+%t50 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t51 = call ptr @_str_dup(ptr %t50)
+%t52 = call i32 @strcmp(ptr %t49, ptr %t51)
+%t53 = icmp eq i32 %t52, 0
+br i1 %t53, label %if633, label %end632
+if633:
+%t54 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t55 = call ptr @_str_dup(ptr %t54)
+ret ptr %t55
+end632:
+br label %end630
+end630:
+store i32 0, ptr %t56
+br label %whileCond634
+whileCond634:
+%t57 = load i32, ptr %t56
+%t58 = load ptr, ptr %t40
+%t59 = call i32 @strlen(ptr %t58)
+%t60 = icmp slt i32 %t57, %t59
+br i1 %t60, label %whileBody635, label %whileEnd636
+whileBody635:
+%t61 = load ptr, ptr %t40
+%t62 = load i32, ptr %t56
+%t64 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_26, i64 0, i64 0
+%t65 = call ptr @_str_dup(ptr %t64)
+%t63 = call ptr @charAt(ptr %t61, i32 %t62)
+%t66 = call i32 @strcmp(ptr %t63, ptr %t65)
+%t67 = icmp ne i32 %t66, 0
+br i1 %t67, label %if638, label %end637
+if638:
+br label %whileEnd636
+end637:
+%t69 = load i32, ptr %t56
+%t70 = add i32 %t69, 1
+store i32 %t70, ptr %t68
+br label %whileCond639
+whileCond639:
+%t71 = load i32, ptr %t68
+%t72 = load ptr, ptr %t40
+%t73 = call i32 @strlen(ptr %t72)
+%t74 = icmp slt i32 %t71, %t73
+br i1 %t74, label %whileBody640, label %whileEnd641
+whileBody640:
+%t75 = load ptr, ptr %t40
+%t76 = load i32, ptr %t68
+%t78 = getelementptr inbounds [2 x i8], ptr @.str_stdlib_stdlib_27, i64 0, i64 0
+%t79 = call ptr @_str_dup(ptr %t78)
+%t77 = call ptr @charAt(ptr %t75, i32 %t76)
+%t80 = call i32 @strcmp(ptr %t77, ptr %t79)
+%t81 = icmp eq i32 %t80, 0
+br i1 %t81, label %if643, label %end642
+if643:
+br label %whileEnd641
+end642:
+%t82 = load i32, ptr %t68
+%t83 = add i32 %t82, 1
+store i32 %t83, ptr %t68
+br label %whileCond639
+whileEnd641:
+%t85 = load ptr, ptr %t40
+%t86 = load i32, ptr %t56
+%t87 = add i32 %t86, 1
+%t88 = load i32, ptr %t68
+%t89 = call ptr @slice(ptr %t85, i32 %t87, i32 %t88)
+store ptr %t89, ptr %t90
+%t91 = load ptr, ptr %t90
+%t92 = call i32 @_json_parseInt(ptr %t91)
+store i32 %t92, ptr %t93
+%t94 = load ptr, ptr %t2
+%t95 = load i32, ptr %t93
+%t96 = call ptr @_json_getArrayIndex(ptr %t94, i32 %t95)
+store ptr %t96, ptr %t2
+%t97 = load ptr, ptr %t2
+%t98 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t99 = call ptr @_str_dup(ptr %t98)
+%t100 = call i32 @strcmp(ptr %t97, ptr %t99)
+%t101 = icmp eq i32 %t100, 0
+br i1 %t101, label %if645, label %end644
+if645:
+%t102 = getelementptr inbounds [5 x i8], ptr @.str_stdlib_stdlib_33, i64 0, i64 0
+%t103 = call ptr @_str_dup(ptr %t102)
+ret ptr %t103
+end644:
+%t104 = load i32, ptr %t68
+%t105 = add i32 %t104, 1
+store i32 %t105, ptr %t56
+br label %whileCond634
+whileEnd636:
+%t107 = load i32, ptr %t4
+%t108 = add i32 %t107, 1
+store i32 %t108, ptr %t4
+br label %whileCond620
+whileEnd622:
+%t110 = load ptr, ptr %t2
+ret ptr %t110
 }
-
-define ptr @split(ptr %t0, ptr %t1) local_unnamed_addr {
+define ptr @split (ptr %t0, ptr %t1) {
 entry:
-  %t3 = tail call ptr @_zen_list_new(i64 8)
-  %t5 = tail call i32 @strlen(ptr %t0)
-  %t8 = tail call i32 @strlen(ptr %t1)
-  %t11 = icmp eq i32 %t8, 0
-  br i1 %t11, label %common.ret, label %end646
-
-common.ret:                                       ; preds = %entry, %whileEnd650
-  ret ptr %t3
-
-end646:                                           ; preds = %entry
-  %t1813 = icmp sgt i32 %t5, 0
-  br i1 %t1813, label %whileBody649.lr.ph, label %whileEnd650
-
-whileBody649.lr.ph:                               ; preds = %end646
-  %t24 = sub i32 %t5, %t8
-  %t288 = icmp sgt i32 %t8, 0
-  br label %whileBody649
-
-whileBody649:                                     ; preds = %whileBody649.lr.ph, %end659
-  %storemerge515 = phi i32 [ 0, %whileBody649.lr.ph ], [ %t65, %end659 ]
-  %t631114 = phi ptr [ @.str_stdlib_stdlib_0, %whileBody649.lr.ph ], [ %t6312, %end659 ]
-  %t25.not = icmp sgt i32 %storemerge515, %t24
-  br i1 %t25.not, label %else661, label %whileCond654.preheader
-
-whileCond654.preheader:                           ; preds = %whileBody649
-  br i1 %t288, label %whileBody655, label %if660
-
-whileBody655:                                     ; preds = %whileCond654.preheader, %whileBody655
-  %t4779 = phi i32 [ %t47, %whileBody655 ], [ 0, %whileCond654.preheader ]
-  %0 = phi i1 [ %spec.select, %whileBody655 ], [ true, %whileCond654.preheader ]
-  %t32 = add i32 %t4779, %storemerge515
-  %1 = sext i32 %t32 to i64
-  %t33 = getelementptr i8, ptr %t0, i64 %1
-  %t34 = load i8, ptr %t33, align 1
-  %t35 = call ptr @_zen_char_to_string(i8 %t34)
-  %2 = zext nneg i32 %t4779 to i64
-  %t39 = getelementptr i8, ptr %t1, i64 %2
-  %t40 = load i8, ptr %t39, align 1
-  %t41 = call ptr @_zen_char_to_string(i8 %t40)
-  %t44 = call i32 @strcmp(ptr noundef nonnull dereferenceable(1) %t35, ptr noundef nonnull dereferenceable(1) %t41)
-  %t45.not = icmp eq i32 %t44, 0
-  %spec.select = select i1 %t45.not, i1 %0, i1 false
-  %t47 = add nuw nsw i32 %t4779, 1
-  %t28 = icmp slt i32 %t47, %t8
-  br i1 %t28, label %whileBody655, label %end651
-
-end651:                                           ; preds = %whileBody655
-  br i1 %spec.select, label %if660, label %else661
-
-if660:                                            ; preds = %whileCond654.preheader, %end651
-  %t51 = alloca ptr, align 8
-  store ptr %t631114, ptr %t51, align 8
-  call void @_zen_list_push(ptr %t3, ptr nonnull %t51)
-  br label %end659
-
-else661:                                          ; preds = %whileBody649, %end651
-  %3 = sext i32 %storemerge515 to i64
-  %t59 = getelementptr i8, ptr %t0, i64 %3
-  %t60 = load i8, ptr %t59, align 1
-  %t61 = call ptr @_zen_char_to_string(i8 %t60)
-  %t63 = call ptr @_str_concat(ptr %t631114, ptr %t61)
-  br label %end659
-
-end659:                                           ; preds = %else661, %if660
-  %.sink = phi i32 [ 1, %else661 ], [ %t8, %if660 ]
-  %t6312 = phi ptr [ %t63, %else661 ], [ @.str_stdlib_stdlib_0, %if660 ]
-  %t65 = add i32 %storemerge515, %.sink
-  %t18 = icmp slt i32 %t65, %t5
-  br i1 %t18, label %whileBody649, label %whileEnd650
-
-whileEnd650:                                      ; preds = %end659, %end646
-  %t6311.lcssa = phi ptr [ @.str_stdlib_stdlib_0, %end646 ], [ %t6312, %end659 ]
-  %t68 = alloca ptr, align 8
-  store ptr %t6311.lcssa, ptr %t68, align 8
-  call void @_zen_list_push(ptr %t3, ptr nonnull %t68)
-  br label %common.ret
+%t2 = alloca ptr
+%t6 = alloca i32
+%t9 = alloca i32
+%t13 = alloca ptr
+%t16 = alloca i32
+%t20 = alloca i1
+%t21 = alloca i32
+%t54 = alloca ptr
+%t78 = alloca ptr
+%s.addr = alloca ptr
+store ptr %t0, ptr %s.addr
+%delim.addr = alloca ptr
+store ptr %t1, ptr %delim.addr
+%t3 = call ptr @_zen_list_new(i64 8)
+call void @_zen_list_set_meta(ptr %t3, i32 1, i32 4)
+store ptr %t3, ptr %t2
+%t4 = load ptr, ptr %s.addr
+%t5 = call i32 @strlen(ptr %t4)
+store i32 %t5, ptr %t6
+%t7 = load ptr, ptr %delim.addr
+%t8 = call i32 @strlen(ptr %t7)
+store i32 %t8, ptr %t9
+%t10 = load i32, ptr %t9
+%t11 = icmp eq i32 %t10, 0
+br i1 %t11, label %if647, label %end646
+if647:
+%t12 = load ptr, ptr %t2
+ret ptr %t12
+end646:
+%t14 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t15 = call ptr @_str_dup(ptr %t14)
+store ptr %t15, ptr %t13
+store i32 0, ptr %t16
+br label %whileCond648
+whileCond648:
+%t17 = load i32, ptr %t16
+%t18 = load i32, ptr %t6
+%t19 = icmp slt i32 %t17, %t18
+br i1 %t19, label %whileBody649, label %whileEnd650
+whileBody649:
+store i1 1, ptr %t20
+store i32 0, ptr %t21
+%t22 = load i32, ptr %t16
+%t23 = load i32, ptr %t6
+%t24 = load i32, ptr %t9
+%t25 = sub i32 %t23, %t24
+%t26 = icmp sle i32 %t22, %t25
+br i1 %t26, label %if652, label %else653
+if652:
+br label %whileCond654
+whileCond654:
+%t27 = load i32, ptr %t21
+%t28 = load i32, ptr %t9
+%t29 = icmp slt i32 %t27, %t28
+br i1 %t29, label %whileBody655, label %whileEnd656
+whileBody655:
+%t30 = load ptr, ptr %s.addr
+%t31 = load i32, ptr %t16
+%t32 = load i32, ptr %t21
+%t33 = add i32 %t31, %t32
+%t38 = load ptr, ptr %delim.addr
+%t39 = load i32, ptr %t21
+%t34 = getelementptr i8, ptr %t30, i32 %t33
+%t35 = load i8, ptr %t34
+%t36 = call ptr @_zen_char_to_string(i8 %t35)
+%t40 = getelementptr i8, ptr %t38, i32 %t39
+%t41 = load i8, ptr %t40
+%t42 = call ptr @_zen_char_to_string(i8 %t41)
+%t44 = call i32 @strcmp(ptr %t36, ptr %t42)
+%t45 = icmp ne i32 %t44, 0
+br i1 %t45, label %if658, label %end657
+if658:
+store i1 0, ptr %t20
+br label %end657
+end657:
+%t47 = load i32, ptr %t21
+%t48 = add i32 %t47, 1
+store i32 %t48, ptr %t21
+br label %whileCond654
+whileEnd656:
+br label %end651
+else653:
+store i1 0, ptr %t20
+br label %end651
+end651:
+%t51 = load i1, ptr %t20
+br i1 %t51, label %if660, label %else661
+if660:
+%t52 = load ptr, ptr %t2
+%t53 = load ptr, ptr %t13
+store ptr %t53, ptr %t54
+call void @_zen_list_push(ptr %t52, ptr %t54)
+%t55 = getelementptr inbounds [1 x i8], ptr @.str_stdlib_stdlib_0, i64 0, i64 0
+%t56 = call ptr @_str_dup(ptr %t55)
+%t58 = load ptr, ptr %t13
+call void @_zen_string_free(ptr %t58)
+store ptr %t56, ptr %t13
+%t59 = load i32, ptr %t16
+%t60 = load i32, ptr %t9
+%t61 = add i32 %t59, %t60
+store i32 %t61, ptr %t16
+br label %end659
+else661:
+%t63 = load ptr, ptr %t13
+%t64 = load ptr, ptr %s.addr
+%t65 = load i32, ptr %t16
+%t66 = getelementptr i8, ptr %t64, i32 %t65
+%t67 = load i8, ptr %t66
+%t68 = call ptr @_zen_char_to_string(i8 %t67)
+%t70 = call ptr @_str_concat(ptr %t63, ptr %t68)
+%t72 = load ptr, ptr %t13
+call void @_zen_string_free(ptr %t72)
+store ptr %t70, ptr %t13
+%t73 = load i32, ptr %t16
+%t74 = add i32 %t73, 1
+store i32 %t74, ptr %t16
+br label %end659
+end659:
+br label %whileCond648
+whileEnd650:
+%t76 = load ptr, ptr %t2
+%t77 = load ptr, ptr %t13
+store ptr %t77, ptr %t78
+call void @_zen_list_push(ptr %t76, ptr %t78)
+%t79 = load ptr, ptr %t2
+ret ptr %t79
 }
-
-; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-declare i32 @llvm.abs.i32(i32, i1 immarg) #5
-
-; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-declare i32 @llvm.smax.i32(i32, i32) #5
-
-; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-declare i32 @llvm.smin.i32(i32, i32) #5
-
-attributes #0 = { mustprogress nocallback nofree nounwind willreturn memory(argmem: read) }
-attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
-attributes #2 = { nofree norecurse nosync nounwind memory(none) }
-attributes #3 = { mustprogress nofree norecurse nosync nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) }
-attributes #4 = { mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: read) }
-attributes #5 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
-
-!0 = distinct !{!0, !1}
-!1 = !{!"llvm.loop.peeled.count", i32 1}
-!2 = distinct !{!2, !1}

@@ -109,6 +109,9 @@ export class ZenFileSystem {
 
     const listRetFn = ["_fs_readFileBytes"]; // only list return fn in fs namespace
     const generic = { generic: "Byte" };
+
+this.IRB.cleanupBuiltinStringTemps(exprs)
+    
     return {
       ptr: isVoidFn ? null : t,
       type: isVoidFn ? "void" : returnType,

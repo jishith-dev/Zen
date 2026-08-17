@@ -152,6 +152,8 @@ export class PATH {
     const t = this.IRB.newTemp();
     this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
 
+    this.IRB.cleanupBuiltinStringTemps(exprs)
+
     return {
       ptr: t,
       type: returnType,

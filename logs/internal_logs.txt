@@ -1,0 +1,10 @@
+v2 (continue)
+
+strings are now heap memory for consistency
+
+implicit free when exit scope, reassignments.
+
+issues:
+- buitin string return functions got memory leak
+- unexpected opt code
+- struct field string doest get freed

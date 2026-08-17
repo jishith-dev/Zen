@@ -380,12 +380,15 @@ fn upperCase(string s) string {
         int code = toInt(c)
 
         if (code >= toInt("a") && code <= toInt("z")) {
-            out = out + toString(code - 32)
+            string converted = toString(code - 32)
+            out = out + converted
+            converted.free()
         } else {
             out = out + c
         }
 
         i = i + 1
+        c.free()
     }
 
     return out
@@ -403,12 +406,15 @@ fn lowerCase(string s) string {
         int code = toInt(c)
 
         if (code >= toInt("A") && code <= toInt("Z")) {
-            out = out + toString(code + 32)
+            string converted = toString(code + 32)
+            out = out + converted
+            converted.free()
         } else {
             out = out + c
         }
 
         i = i + 1
+        c.free()
     }
 
     return out
@@ -512,7 +518,9 @@ fn splitAt(string s, string delim, int target) string {
 
         if (match) {
             if (k == target) return temp
+
             k = k + 1
+            temp.free()
             temp = ""
             i = i + dlen
         } else {
@@ -523,9 +531,9 @@ fn splitAt(string s, string delim, int target) string {
 
     if (k == target) return temp
 
+    temp.free()
     return ""
 }
-
 
 
 // new

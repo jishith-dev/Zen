@@ -39,6 +39,8 @@ export class Type {
 
     this.IRB.emitExpr(expr);
 
+    this.IRB.cleanupBuiltinStringTemps([expr])
+
     return {
       ptr: expr.ptr,
       llvmType: "ptr",
@@ -73,6 +75,9 @@ export class Type {
     }
     const cast = this.IRB.castExpression(expr, "int");
     this.IRB.emit(cast?.local.join("\n"));
+
+    this.IRB.cleanupBuiltinStringTemps([expr])
+    
     return {
       ptr: cast.ptr,
       type: "int",
@@ -107,6 +112,9 @@ export class Type {
       );
     }
     const cast = this.IRB.castExpression(expr, "int", "toInt");
+
+    this.IRB.cleanupBuiltinStringTemps([expr])
+    
     this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
@@ -142,6 +150,9 @@ export class Type {
 
     const cast = this.IRB.castExpression(expr, "double");
     this.IRB.emit(cast?.local.join("\n"));
+
+this.IRB.cleanupBuiltinStringTemps([expr])
+    
     return {
       ptr: cast.ptr,
       type: "double",
@@ -176,6 +187,9 @@ export class Type {
 
     const cast = this.IRB.castExpression(expr, "bool");
     this.IRB.emit(cast?.local.join("\n"));
+
+this.IRB.cleanupBuiltinStringTemps([expr])
+    
     return {
       ptr: cast.ptr,
       type: "bool",
@@ -210,6 +224,9 @@ export class Type {
 
     const cast = this.IRB.castExpression(expr, "string");
     this.IRB.emit(cast?.local.join("\n"));
+
+this.IRB.cleanupBuiltinStringTemps([expr])
+    
     return {
       ptr: cast.ptr,
       type: "string",
@@ -244,6 +261,9 @@ export class Type {
 
     const cast = this.IRB.castExpression(expr, "string", "toString");
     this.IRB.emit(cast?.local.join("\n"));
+
+this.IRB.cleanupBuiltinStringTemps([expr])
+    
     return {
       ptr: cast.ptr,
       type: "string",

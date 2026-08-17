@@ -631,6 +631,34 @@ In short, **the parent owns the lifetime of all of its children**. Only the owne
 
 ---
 
+### String Semantics
+
+`string` is a reference-semantic type.
+
+**All strings in Zen are heap-allocated.** A string variable holds a reference to heap memory containing the string data. Assigning or passing a string copies the reference rather than duplicating the underlying string.
+
+String literals are heap-managed string values at runtime, and runtime operations such as concatenation also produce heap-allocated strings.
+
+Strings are therefore subject to Zen's ownership and lifetime rules. When a string owns heap memory, it must be released using `free()` when it is no longer needed.
+
+```zen
+string name = "Jishith"
+
+name.free()
+```
+
+---
+
+### Heap Memory Release
+
+Every heap-owned type in Zen provides a `.free()` method for explicitly releasing the memory it owns.
+
+> **Any type that owns heap-allocated memory must expose `.free()` to release that memory.**
+
+This provides a consistent and explicit ownership model across Zen's type system.
+
+---
+
 ## Scope of This Specification
 
 Version 2.0.0 defines the **stable core** of the language:

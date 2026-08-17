@@ -1081,3 +1081,18 @@ void _zen_ptr_fill(void *p, int value, int bytes) {
 void _zen_ptr_free(void *p) {
     free(p);
 }
+
+char *_str_dup(const char *s) {
+    if (!s) s = "";
+
+    size_t len = strlen(s) + 1;
+    char *p = (char *)malloc(len);
+    if (!p) return NULL;
+
+    memcpy(p, s, len);
+    return p;
+}
+
+void _zen_string_free(char* s) {
+    free(s);
+}

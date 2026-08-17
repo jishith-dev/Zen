@@ -18,18 +18,18 @@ export class Ternary {
     const tType = t.type;
     const fType = f.type;
 
-    if (tType !== fType) {
+    if (t.isList || f.isList) {
+      if (t.isList !== f.isList) {
+        this.IRB.emitError(
+          "TypeError",
+          `ternary expression requires matching types, got '${t.isList ? "List" : tType}' and '${f.isList ? "List" : fType}'`,
+          node,
+        );
+      }
+    } else if (tType !== fType) {
       this.IRB.emitError(
         "TypeError",
         `ternary expression requires matching types, got '${tType}' and '${fType}'`,
-        node,
-      );
-    }
-
-    if (t.isList !== f.isList) {
-      this.IRB.emitError(
-        "TypeError",
-        `ternary expression requires matching types, got '${t.isList ? "List" : tType}' and '${f.isList ? "List" : fType}'`,
         node,
       );
     }

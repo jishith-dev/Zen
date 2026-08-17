@@ -84,16 +84,19 @@ export class ZenHttp {
       funcName,
       `declare ${llvmRet} @${funcName}(${exprs.map((e) => getArgType(e.type)).join(", ")})`,
     );
-
+    
     let t = this.IRB.newTemp();
-
+    
     if (returnType === "void") {
       this.IRB.emit(`call void @${funcName}(${callArgs})`);
       t = null;
     } else {
+
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
     }
 
+    this.IRB.cleanupBuiltinStringTemps(exprs)
+    
     return {
       ptr: t,
       type: returnType,

@@ -194,13 +194,6 @@ export class ZenList {
       this.IRB.emitAlloca(tmp, `${elementLLVM}`);
       let valueToStore = expr.ptr;
 
-      if (elementLLVM === "ptr" && expr.type === "string") {
-        this.IRB.declareOneTime("strdup", "declare ptr @strdup(ptr)");
-        const dup = this.IRB.newTemp();
-        this.IRB.emit(`${dup} = call ptr @strdup(ptr ${expr.ptr})`);
-        valueToStore = dup;
-      }
-
       this.IRB.emit(`store ${elementLLVM} ${valueToStore}, ptr ${tmp}`);
       this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
     };

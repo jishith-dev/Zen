@@ -108,14 +108,19 @@ export class IO {
 
       case "string": {
         let strFormat = format || "%s\n";
-        if (!strFormat.includes("%s")) {
-          strFormat = strFormat + "%s";
-        }
-        this.IRB.emitScreenString(valuePtr, strFormat);
+
+if (!/%[-+0-9.#]*s/.test(strFormat)) {
+  strFormat += "%s";
+}
+
+this.IRB.emitScreenString(valuePtr, strFormat);
+        this.IRB.cleanupBuiltinStringTemps([expr]);
+        
         break;
       }
 
       default:
+        
         this.IRB.emitError(
           "TypeError",
           `screen() unsupported type: ${type}`,
@@ -158,6 +163,8 @@ export class IO {
     }
 
     this.IRB.emit(`${ptr} = call ptr @_sys_input(ptr ${promptPtr})`);
+
+    this.IRB.cleanupBuiltinStringTemps([expr])
 
     return {
       ptr,

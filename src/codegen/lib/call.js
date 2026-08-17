@@ -12,6 +12,7 @@ import {
   THREAD_MAP,
   DEBUG_MAP,
   BUILTIN_STRUCT_ABI,
+  BUILTIN_STRUCTS
 } from "../../config/config.js";
 
 export class Call {
@@ -329,7 +330,18 @@ export class Call {
           }
 
           argStr.push(`ptr ${value}`);
-        } else if (a?.isStruct) {
+        } 
+        else if (a?.isStruct && BUILTIN_STRUCTS.includes(a?.type)) {
+        let value = a.ptr;
+
+        if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+          value = tmp;
+        }
+        argStr.push(`ptr ${value}`);
+      }
+        else if (a?.isStruct) {
           argStr.push(`ptr ${a.ptr}`);
         } else if (a.needsLoad) {
           const tmp = this.IRB.newTemp();
@@ -396,7 +408,7 @@ export class Call {
         }
         const tmp = this.IRB.newTemp();
 
-        local.push(`${tmp} = alloca ${llvmType}`);
+        this.IRB.emitAlloca(tmp, llvmType);
 
         local.push(`store ${llvmType} ${a.ptr}, ptr ${tmp}`);
 
@@ -414,6 +426,17 @@ export class Call {
           local.push(
             `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${argStr.join(", ")})`,
           );
+          
+          for (const a of args) {
+  if (a.type === "string" && a.isTemp) {
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
+          
           return {
             ptr: tmp,
             type: fn.returnType,
@@ -426,15 +449,36 @@ export class Call {
         } else if (isStruct) {
           const tmp = this.IRB.newTemp();
 
-          local.push(`${tmp} = alloca %${fn.returnType}`);
+          this.IRB.emitAlloca(tmp, `%${fn.returnType}`);
 
           local.push(
             `call void @${mangledName}(ptr sret(%${fn.returnType}) ${tmp}, ${argStr.join(", ")})`,
           );
+          
+          for (const a of args) {
+  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
         } else {
           const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
           local.push(`call void ${target}(${argStr.join(", ")})`);
+          
+          for (const a of args) {
+  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+    
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
         }
       } else {
         callTmp = this.IRB.newTemp();
@@ -444,6 +488,17 @@ export class Call {
         local.push(
           `${callTmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`,
         );
+        
+        for (const a of args) {
+  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+    
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
       }
 
       if (asStatement) {
@@ -489,7 +544,17 @@ export class Call {
         }
 
         argStr.push(`ptr ${value}`);
-      } else if (a?.isStruct) {
+      } else if (a?.isStruct && BUILTIN_STRUCTS.includes(a?.type)) {
+        let value = a.ptr;
+
+        if (a.needsLoad) {
+          const tmp = this.IRB.newTemp();
+          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+          value = tmp;
+        }
+        argStr.push(`ptr ${value}`);
+      }
+      else if (a?.isStruct) {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
@@ -527,7 +592,7 @@ export class Call {
       } else if (isStruct) {
         const tmp = this.IRB.newTemp();
 
-        local.push(`${tmp} = alloca %${fn.returnType}`);
+        this.IRB.emitAlloca(tmp, `%${fn.returnType}`);
 
         const callArgs = [`ptr sret(%${fn.returnType}) ${tmp}`, ...argStr];
 
@@ -558,6 +623,18 @@ export class Call {
 
         local.push(`call void ${target}(${argStr.join(", ")})`);
       }
+      
+      for (const a of args) {
+        
+  if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
+    
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
 
       if (asStatement) {
         this.IRB.emit(local.join("\n"));
@@ -582,6 +659,17 @@ export class Call {
     const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
     local.push(`${tmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`);
+    
+    for (const a of args) {
+      
+  if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
+    this.IRB.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+  }
+}
 
     if (asStatement) {
       this.IRB.emit(local.join("\n"));

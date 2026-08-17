@@ -149,15 +149,52 @@ export class Module {
 
         const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);
 
+        const retType = tables.structTable.has(fn.returnType)
+          ? "void"
+          : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
+
+        if (tables.structTable.has(fn.returnType)) {
+          fn.isStructReturn = true;
+        }
+
         this.IRB.globals.push(
-          `declare ${this.IRB.getLLVMType(fn.returnType)} @zen_${this.curruntModuleName}_${fn.name}${types}`,
+          `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`,
         );
+
         this.IRB.setFunction(name, fn);
         continue;
       }
 
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
+
+        // methods
+        for (const [fnName, fn] of tables.functionTable) {
+          if (fnName === name) continue;
+          if (!fnName.startsWith(`${name}_`)) continue;
+
+          fn.isImported = true;
+          fn.importedModuleName = this.curruntModuleName;
+
+          const { types } = this.IRB.buildParams(
+            fn.params,
+            true,
+            fn.returnType,
+          );
+
+          const retType = tables.structTable.has(fn.returnType)
+            ? "void"
+            : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
+
+          if (tables.structTable.has(fn.returnType)) {
+            fn.isStructReturn = true;
+          }
+
+          this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
+
+          this.IRB.setFunction(fnName, fn);
+        }
+
         const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
 
         this.IRB.globals.push(`%${name} = type { ${fields} }`);

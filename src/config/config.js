@@ -188,6 +188,8 @@ const RESERVED_FUNCTIONS = [
   "upperCase",
   "lowerCase",
   "startsWith",
+  "replace",
+  "replaceAll",
   "endsWith",
   "trim",
   "splitAt",
@@ -284,6 +286,8 @@ const BUILTIN_FUNCTIONS = [
   "reverse",
   "indexOf",
   "slice",
+  "replace",
+  "replaceAll",
   "charAt",
   "replace",
   "contains",
@@ -505,6 +509,8 @@ const STD_FUNCTIONS = [
   "reverse",
   "indexOf",
   "slice",
+  "replace",
+  "replaceAll",
   "charAt",
   "replace",
   "contains",
@@ -814,7 +820,7 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_zen_json_getObject",
     },
     has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
-    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" }
   },
 
   JsonArray: {
@@ -852,7 +858,7 @@ const BUILTIN_STRUCT_METHODS = {
       returnType: "JsonArray",
       args: ["int"],
       llvmName: "_zen_json_arrayGetArray",
-    },
+    }
   },
 
   HttpServer: {
@@ -1202,10 +1208,10 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "sizeOf",
   },
-
+  
   toByte: {
     returnType: "Byte",
-    llvmName: "toByte",
+    llvmName: "toByte"
   },
 
   panic: {
@@ -2001,6 +2007,8 @@ const STD_FUNCTIONS_SCHEMA = {
   indexOf: { ret: "i32", params: ["ptr", "ptr"] },
   slice: { ret: "ptr", params: ["ptr", "i32", "i32"] },
   charAt: { ret: "ptr", params: ["ptr", "i32"] },
+  replace: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },
+  replaceAll: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },
   replace: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },
   contains: { ret: "i1", params: ["ptr", "ptr"] },
   upperCase: { ret: "ptr", params: ["ptr"] },
