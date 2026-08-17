@@ -150,6 +150,9 @@ this.IRB.emitScreenString(valuePtr, strFormat);
       const expr = this.expr.handleExpression(args[0]);
       const displayType = expr?.isList ? "List" : expr.type;
 
+      this.IRB.cleanupBuiltinStringTemps([expr])
+
+
       if (expr.type !== "string" && expr.isList) {
         this.IRB.emitError(
           "TypeError",
@@ -164,8 +167,7 @@ this.IRB.emitScreenString(valuePtr, strFormat);
 
     this.IRB.emit(`${ptr} = call ptr @_sys_input(ptr ${promptPtr})`);
 
-    this.IRB.cleanupBuiltinStringTemps([expr])
-
+  
     return {
       ptr,
       type: "string",
