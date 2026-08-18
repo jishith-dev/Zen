@@ -275,6 +275,11 @@ Generated `zen.json`:
 > const int age = 10
 > ```
 
+- Added `.free()` method for `string` values
+- Introduced `.free()` methods for heap-owned values
+- Heap-owned values in Zen now provide an explicit `.free()` method for manual memory management
+- Improved ownership and memory management semantics for heap-allocated values
+
 > ⚠️ **Breaking Change**
 >
 > `byte` has been replaced by the built-in `Byte` struct.
@@ -317,6 +322,23 @@ Generated `zen.json`:
 - Added `debug.pretty()` for formatted printing of Lists, Maps, and structs
 
 ---
+
+## Package Registry
+
+- Added package version history and version-specific publishing
+- Added support for installing specific package versions:
+  `zen install <package>@<version>`
+- Added automatic dependency detection with `zen deps`
+- Added recursive dependency detection through imported `.zen` files
+- Added automatic dependency installation during package installation
+- Package dependencies are stored in `zen.json`
+- Added support for recursive package dependencies
+- Package versions are backed by Git tags
+- Registry now preserves previously published package versions
+- Added version-specific package metadata and repository resolution
+- Library packages are installed to `~/.zen/packages/<package>`
+- Installing a package automatically installs its dependencies
+- Added Semantic Versioning validation for package versions
 
 ## Compiler & Runtime
 

@@ -417,104 +417,203 @@ export class Package {
   }
 
   async install() {
-    const packageName = this.args[1];
+  const input = this.args[1];
 
-    if (!packageName) {
-      console.error("error: Usage zen install <package-name>");
+  if (!input) {
+    console.error("error: Usage zen install <package>[@version]");
+    process.exit(1);
+  }
+
+  // Parse package@version
+  const atIndex = input.lastIndexOf("@");
+
+  let packageName = input;
+  let requestedVersion = null;
+
+  if (atIndex > 0) {
+    packageName = input.slice(0, atIndex);
+    requestedVersion = input.slice(atIndex + 1);
+
+    if (!/^\d+\.\d+\.\d+$/.test(requestedVersion)) {
+      console.error(
+        `error: Invalid version '${requestedVersion}'. Expected x.y.z`
+      );
+      process.exit(1);
+    }
+  }
+
+  try {
+    const displayName = requestedVersion
+      ? `${packageName}@${requestedVersion}`
+      : packageName;
+
+    console.log(`Installing ${displayName}...`);
+
+    // Get package metadata / requested version
+    const registryUrl =
+      `${BACKEND_URL}/api/packages.json?name=${encodeURIComponent(packageName)}` +
+      (requestedVersion
+        ? `&version=${encodeURIComponent(requestedVersion)}`
+        : "");
+
+    const registryRes = await fetch(registryUrl);
+
+    if (!registryRes.ok) {
+      const error = await registryRes.json();
+      console.error(`error: ${error.error}`);
       process.exit(1);
     }
 
-    try {
-      console.log(`Installing ${packageName}...`);
+    const pkg = await registryRes.json();
 
-      const registryRes = await fetch(
-        `${BACKEND_URL}/api/packages.json?name=${packageName}`,
+    if (!pkg?.repo) {
+      console.error(
+        `error: Package '${displayName}' not found`
+      );
+      process.exit(1);
+    }
+
+    const installVersion = requestedVersion || pkg.latest;
+
+    // GitHub repository
+    const repoUrl = new URL(pkg.repo);
+
+    const [owner, repo] = repoUrl.pathname
+      .replace(/\.git$/, "")
+      .slice(1)
+      .split("/");
+
+    if (!owner || !repo) {
+      console.error("error: Invalid repository URL");
+      process.exit(1);
+    }
+
+    // Get zen.json from exact Git tag
+    const configRes = await fetch(
+      `https://raw.githubusercontent.com/${owner}/${repo}/v${installVersion}/zen.json`
+    );
+
+    if (!configRes.ok) {
+      console.error(
+        `error: Failed to fetch zen.json for v${installVersion}`
+      );
+      process.exit(1);
+    }
+
+    const config = await configRes.json();
+
+    const isRunnable = !!config.main;
+    const isLibrary = !!config.bin;
+
+    let installDir;
+
+    if (isRunnable) {
+      installDir = path.join(
+        process.cwd(),
+        packageName
+      );
+    } else if (isLibrary) {
+      // All library versions use the same directory.
+      installDir = path.join(
+        process.env.HOME || process.env.USERPROFILE,
+        ".zen",
+        "packages",
+        packageName
+      );
+    } else {
+      console.error("error: invalid package type");
+      process.exit(1);
+    }
+
+    /*
+     * Already installed
+     */
+    if (fs.existsSync(installDir)) {
+      const localConfigPath = path.join(
+        installDir,
+        "zen.json"
       );
 
-      if (!registryRes.ok) {
-        const error = await registryRes.json();
-        console.error(`error: ${error.error}`);
-        process.exit(1);
-      }
-
-      const pkg = await registryRes.json();
-
-      if (!pkg?.repo) {
-        console.error(`error: Package '${packageName}' not found`);
-        process.exit(1);
-      }
-
-      const repoUrl = new URL(pkg.repo);
-      const [owner, repo] = repoUrl.pathname.slice(1).split("/");
-
-      const repoRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}`,
-      );
-      const repoData = await repoRes.json();
-      const branch = repoData.default_branch;
-
-      const configRes = await fetch(
-        `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/zen.json`,
-      );
-
-      if (!configRes.ok) {
-        console.error("error: Failed to fetch zen.json");
-        process.exit(1);
-      }
-
-      const config = await configRes.json();
-
-      const isRunnable = !!config.main;
-      const isLibrary = !!config.bin;
-
-      let installDir;
-
-      if (isRunnable) {
-        installDir = path.join(process.cwd(), packageName);
-      } else if (isLibrary) {
-        installDir = path.join(
-          process.env.HOME || process.env.USERPROFILE,
-          ".zen",
-          "packages",
-          packageName,
-        );
-      } else {
-        console.error("error: invalid package type");
-        process.exit(1);
-      }
-
-      if (fs.existsSync(installDir)) {
-        const localConfigPath = path.join(installDir, "zen.json");
+      if (fs.existsSync(localConfigPath)) {
         const localConfig = JSON.parse(
-          fs.readFileSync(localConfigPath, "utf8"),
+          fs.readFileSync(localConfigPath, "utf8")
         );
 
-        if (localConfig.version === pkg.latest) {
-          console.log(`Already installed at ${installDir} (latest)`);
+        if (localConfig.version === installVersion) {
+          console.log(
+            `Already installed ${packageName} v${installVersion}`
+          );
           return;
         }
 
         console.log(
-          `Updating ${packageName} from v${localConfig.version} to v${pkg.latest}...`,
+          `Updating ${packageName} from v${localConfig.version} to v${installVersion}...`
         );
-        execSync(`cd ${installDir} && git pull`, { stdio: "inherit" });
-        console.log(`Updated to v${pkg.latest}`);
-        return;
+
+        fs.rmSync(installDir, {
+          recursive: true,
+          force: true
+        });
       }
-
-      fs.mkdirSync(installDir, { recursive: true });
-      console.log(`Cloning ${owner}/${repo}...`);
-      execSync(
-        `git clone https://github.com/${owner}/${repo}.git ${installDir}`,
-        { stdio: "inherit" },
-      );
-
-      console.log(`Installed ${packageName} v${pkg.latest}`);
-      console.log(`Location: ${installDir}`);
-    } catch (err) {
-      console.error(`error: Install failed: ${err.message}`);
-      process.exit(1);
     }
+
+    fs.mkdirSync(installDir, {
+      recursive: true
+    });
+
+    /*
+     * Clone exact version
+     */
+    console.log(
+      `Cloning ${owner}/${repo}@v${installVersion}...`
+    );
+
+    execSync(
+      `git clone --branch v${installVersion} --single-branch https://github.com/${owner}/${repo}.git ${installDir}`,
+      {
+        stdio: "inherit"
+      }
+    );
+
+    /*
+     * Install dependencies recursively
+     */
+    
+    if (
+      config.dependencies &&
+      Object.keys(config.dependencies).length > 0
+    ) {
+    
+      for (const [name, version] of Object.entries(
+        config.dependencies
+      )) {
+        console.log(
+          `Installing dependency ${name}@${version}...`
+        );
+
+        execSync(
+  `zen install ${name}@${version}`,
+  {
+    stdio: "inherit"
+  }
+);
+      }
+    }
+
+    console.log(
+      `Installed ${packageName} v${installVersion}`
+    );
+
+    console.log(
+      `Location: ${installDir}`
+    );
+
+  } catch (err) {
+    console.error(
+      `error: Install failed: ${err.message}`
+    );
+    process.exit(1);
+  }
   }
 
   async uninstall() {
@@ -583,6 +682,7 @@ export class Package {
         repo: `https://github.com/your-username/zen-${projectName}`,
         description: "",
         ...(isLibrary ? { bin: mainFile } : { main: mainFile }),
+        dependencies: {}
       };
 
       fs.writeFileSync(
@@ -613,5 +713,160 @@ export class Package {
       console.error("error: Update failed.");
       process.exit(1);
     }
+  }
+
+  async deps() {
+  try {
+    const projectDir = process.cwd();
+    const configPath = path.join(projectDir, "zen.json");
+
+    if (!fs.existsSync(configPath)) {
+      console.error("error: zen.json not found");
+      process.exit(1);
+    }
+
+    const config = JSON.parse(
+      fs.readFileSync(configPath, "utf8")
+    );
+
+    const dependencies = {};
+    const visited = new Set();
+
+    function scanFile(filePath) {
+      filePath = path.resolve(filePath);
+
+      if (visited.has(filePath)) {
+        return;
+      }
+
+      visited.add(filePath);
+
+      if (!fs.existsSync(filePath)) {
+        console.error(`error: File not found: ${filePath}`);
+        process.exit(1);
+      }
+
+      const source = fs.readFileSync(filePath, "utf8");
+
+      // Remove Zen comments before scanning imports
+      const sourceWithoutComments = source
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "")
+        .replace(/#.*$/gm, "");
+
+      const importRegex =
+        /import\s*\([^)]*\)\s*from\s*"([^"]+)"/g;
+
+      let match;
+
+      while (
+        (match = importRegex.exec(sourceWithoutComments)) !== null
+      ) {
+        const importPath = match[1];
+
+        /*
+         * Local Zen file
+         *
+         * Examples:
+         * from "utils.zen"
+         * from "./utils.zen"
+         * from "../utils.zen"
+         */
+        if (
+          importPath.endsWith(".zen") ||
+          importPath.startsWith("./") ||
+          importPath.startsWith("../")
+        ) {
+          const localPath = path.resolve(
+            path.dirname(filePath),
+            importPath
+          );
+
+          scanFile(localPath);
+          continue;
+        }
+
+        /*
+         * Package dependency
+         *
+         * Example:
+         * from "drift"
+         */
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(importPath)) {
+          continue;
+        }
+
+        const packageDir = path.join(
+          process.env.HOME || process.env.USERPROFILE,
+          ".zen",
+          "packages",
+          importPath
+        );
+
+        const packageConfigPath = path.join(
+          packageDir,
+          "zen.json"
+        );
+
+        if (!fs.existsSync(packageConfigPath)) {
+          console.error(
+            `error: Dependency '${importPath}' is not installed`
+          );
+          process.exit(1);
+        }
+
+        const packageConfig = JSON.parse(
+          fs.readFileSync(packageConfigPath, "utf8")
+        );
+
+        if (!packageConfig.version) {
+          console.error(
+            `error: Dependency '${importPath}' has no version`
+          );
+          process.exit(1);
+        }
+
+        dependencies[importPath] = packageConfig.version;
+      }
+    }
+
+    // Start with main/bin entry
+    const entry = config.main || config.bin;
+
+    if (!entry) {
+      console.error(
+        "error: zen.json must contain 'main' or 'bin'"
+      );
+      process.exit(1);
+    }
+
+    scanFile(path.join(projectDir, entry));
+
+    // Update zen.json
+    config.dependencies = dependencies;
+
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify(config, null, 2) + "\n"
+    );
+
+    console.log("Dependencies updated.");
+
+    if (Object.keys(dependencies).length === 0) {
+      console.log("No dependencies found.");
+      return;
+    }
+
+    for (const [name, version] of Object.entries(dependencies)) {
+      console.log(`  ${name}@${version}`);
+    }
+
+  } catch (err) {
+    console.error(
+      `error: Failed to update dependencies: ${err.message}`
+    );
+    process.exit(1);
+  }
   }
 }

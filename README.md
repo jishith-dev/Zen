@@ -191,6 +191,7 @@ zen init <name> --bin      # Create a new library Zen package
 
 ```bash
 zen install <package>      # Install a package
+zen install <package>@<semver> # Install a package for specific version
 zen uninstall <package>    # Remove an installed package
 zen search <package>       # Search packages
 zen kind <package>         # Show package kind (main/bin)
@@ -198,6 +199,7 @@ zen mine                   # List your published packages
 zen publish                # Publish/update your package
 zen unpublish              # Remove your package from registry
 zen list                   # Browse all available packages
+zen deps                   # automatically generates Dependencies
 ```
 
 ### Authentication

@@ -31,6 +31,7 @@ const VALID_COMMANDS = new Set([
   "update",
   "fmt",
   "lint",
+  "deps"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -51,6 +52,7 @@ const PACKAGE_COMMANDS = {
   kind: "kind",
   mine: "mine",
   install: "install",
+  deps: "deps"
 };
 
 const COMPILE_COMMANDS = new Set([
