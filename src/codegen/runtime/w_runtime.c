@@ -13,6 +13,11 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "psapi.lib")
 
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+#include <stdint.h>
+
 #define ZEN_MAX_THREADS 1024
 
 static void zen_error(const char *type, const char *msg) {
@@ -155,10 +160,6 @@ int _sys_clipboard_hasText(void) {
 }
 
 // ----
-
-void _time_sleep(int ms) {
-    Sleep((DWORD)ms);
-}
 
 static int _zen_matchstar(int c, const char *re, const char *text);
 
@@ -328,10 +329,6 @@ const char* _time_time() {
     );
 
     return buffer;
-}
-
-int _time_millis() {
-    return (int)GetTickCount64();
 }
 
 int _time_date() {
@@ -619,6 +616,43 @@ char* _int_to_string(int x) {
     return res;
 }
 
+char* _long_to_string(long long x) {
+    char* res = (char*)malloc(32);
+
+    int i = 0;
+    int isNeg = 0;
+
+    if (x == 0) {
+        res[i++] = '0';
+        res[i] = '\0';
+        return res;
+    }
+
+    if (x < 0) {
+        isNeg = 1;
+        x = -x;
+    }
+
+    char temp[32];
+    int t = 0;
+
+    while (x > 0) {
+        temp[t++] = (x % 10) + '0';
+        x /= 10;
+    }
+
+    if (isNeg) {
+        res[i++] = '-';
+    }
+
+    while (t > 0) {
+        res[i++] = temp[--t];
+    }
+
+    res[i] = '\0';
+    return res;
+}
+
 char* _double_to_string(double x) {
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "%f", x);
@@ -810,16 +844,21 @@ void _os_exit(int code) {
     exit(code);
 }
 
-int _os_pid(void) {
-    return (int)GetCurrentProcessId();
+long _os_pid(void) {
+    return (long)GetCurrentProcessId();
 }
 
-int _os_parentPid(void) {
+long _os_parentPid(void) {
     DWORD pid = GetCurrentProcessId();
     DWORD ppid = (DWORD)-1;
 
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snap == INVALID_HANDLE_VALUE) return -1;
+    HANDLE snap = CreateToolhelp32Snapshot(
+        TH32CS_SNAPPROCESS,
+        0
+    );
+
+    if (snap == INVALID_HANDLE_VALUE)
+        return -1;
 
     PROCESSENTRY32 pe;
     pe.dwSize = sizeof(PROCESSENTRY32);
@@ -834,7 +873,8 @@ int _os_parentPid(void) {
     }
 
     CloseHandle(snap);
-    return (int)ppid;
+
+    return (long)ppid;
 }
 
 char* _os_platform(void) {
@@ -945,11 +985,15 @@ char* _sys_execOutput(char* cmd) {
     return result;
 }
 
-int _time_now(void) {
-    return (int)time(NULL);
+long _time_millis(void) {
+    return (long)GetTickCount64();
 }
 
-char* _time_format(int t) {
+long _time_now(void) {
+    return (long)time(NULL);
+}
+
+char* _time_format(long t) {
     time_t timestamp = (time_t)t;
 
     struct tm *tm_info = localtime(&timestamp);
@@ -972,6 +1016,10 @@ char* _time_format(int t) {
     );
 
     return buffer;
+}
+
+void _time_sleep(long ms) {
+    Sleep((DWORD)ms);
 }
 
 char* _os_homeDir() {
@@ -1024,6 +1072,22 @@ void _zen_ptr_storeInt(void *p, int value) {
 
 int _zen_ptr_loadInt(void *p) {
     return *(int *)p;
+}
+
+void _zen_ptr_storeLong(void *p, long value) {
+    *(long *)p = value;
+}
+
+long _zen_ptr_loadLong(void *p) {
+    return *(long *)p;
+}
+
+void _zen_ptr_storeByte(void *p, int8_t value) {
+    *(int8_t *)p = value;
+}
+
+int8_t _zen_ptr_loadByte(void *p) {
+    return *(int8_t *)p;
 }
 
 void _zen_ptr_storeDouble(void *p, double value) {

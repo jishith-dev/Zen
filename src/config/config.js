@@ -5,6 +5,8 @@ const LLVM_TYPES_MAP = {
   double: "double",
   string: "ptr",
   bool: "i1",
+  byte: "i8",
+  long: "i64"
 };
 
 const ZEN_TYPES_MAP = {
@@ -12,6 +14,8 @@ const ZEN_TYPES_MAP = {
   double: "double",
   ptr: "string",
   i1: "bool",
+  i8: "byte",
+  i64: "long"
 };
 
 const TYPE_MAP = {
@@ -21,6 +25,8 @@ const TYPE_MAP = {
   string: 4,
   List: 5,
   map: 6,
+  long: 7,
+  byte: 8
 };
 
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
@@ -39,13 +45,11 @@ const BITWISE_OPS = ["^"];
 
 const LOGICAL_OPS = ["&&", "||"];
 
-const TYPES = ["int", "bool", "string", "double"];
+const TYPES = ["int", "bool", "string", "double", "byte", "long"];
 
-const SCALAR_TYPES = ["int", "bool", "double"];
+const SCALAR_TYPES = ["int", "bool", "double", "byte", "long"];
 
-const PRIMITIVE_TYPES = ["int", "double", "bool", "string"];
-
-const speacialTypes = ["Byte"]; // only use inside List<T>
+const PRIMITIVE_TYPES = ["int", "double", "bool", "string", "byte", "long"];
 
 const NON_SCALAR_TYPES = ["string"];
 
@@ -112,6 +116,8 @@ const TokenTypes = {
   BOOLEAN: "bool",
   DOUBLE: "double",
   INT: "int",
+  LONG: "long",
+  BYTE: "byte",
   NEWLINE: "NEWLINE",
   LEFT_PARENTHESIS: "LEFT_PARENTHESIS",
   RIGHT_PARENTHESIS: "RIGHT_PARENTHESIS",
@@ -139,7 +145,8 @@ const RESERVED_FUNCTIONS = [
   "toInt",
   "length",
   "sizeOf",
-  "toByte",
+  "Byte",
+  "Long",
 
   // BASIC
   "isEven",
@@ -215,7 +222,6 @@ const RESERVED_FUNCTIONS = [
 ];
 
 const BUILTIN_STRUCTS = [
-  "Byte", // speacial
   "HttpServer",
   "HttpRequest",
   "HttpResponse", // future
@@ -243,7 +249,8 @@ const BUILTIN_FUNCTIONS = [
   "toInt",
   "length",
   "sizeOf",
-  "toByte",
+  "Byte",
+  "Long",
 
   // BASIC
   "isEven",
@@ -406,6 +413,21 @@ const BUILTIN_FUNCTIONS = [
   "_http_setHeader",
   "_http_clearHeaders",
   "_http_lastStatus",
+
+  "_crypto_sha256",
+"_crypto_sha512",
+
+"_crypto_hmacSha256",
+"_crypto_hmacSha512",
+
+"_crypto_randomBytes",
+"_crypto_randomInt",
+
+"_crypto_base64Encode",
+"_crypto_base64Decode",
+
+"_crypto_base64UrlEncode",
+"_crypto_base64UrlDecode",
 
   // FFI
   "_ffi_printf",
@@ -577,6 +599,19 @@ const NAMESPACE_MAP = {
 
   debug: ["pretty"],
 
+  crypto: [
+  "sha256",
+  "sha512",
+  "hmacSha256",
+  "hmacSha512",
+ "randomBytes",
+  "randomInt",
+ "base64Encode",
+ "base64Decode",
+ "base64UrlEncode",
+  "base64UrlDecode",
+],
+
   fs: [
     "readFile",
     "writeFile",
@@ -697,6 +732,25 @@ const BUILTIN_STRUCT_METHODS = {
       args: ["string"],
       llvmName: "_zen_json_getInt",
     },
+
+    map: {
+      returnType: "Map",
+      args: [],
+      llvmName: "_zen_json_map"
+    },
+
+    getLong: {
+  returnType: "long",
+  args: ["string"],
+  llvmName: "_zen_json_getLong",
+},
+
+getByte: {
+  returnType: "byte",
+  args: ["string"],
+  llvmName: "_zen_json_getByte",
+},
+    
     getDouble: {
       returnType: "double",
       args: ["string"],
@@ -794,6 +848,17 @@ const BUILTIN_STRUCT_METHODS = {
       args: ["string"],
       llvmName: "_zen_json_getInt",
     },
+    getLong: {
+  returnType: "long",
+  args: ["string"],
+  llvmName: "_zen_json_getLong",
+},
+
+getByte: {
+  returnType: "byte",
+  args: ["string"],
+  llvmName: "_zen_json_getByte",
+},
     getDouble: {
       returnType: "double",
       args: ["string"],
@@ -834,6 +899,17 @@ const BUILTIN_STRUCT_METHODS = {
       args: ["int"],
       llvmName: "_zen_json_arrayGetInt",
     },
+    arrayGetLong: {
+  returnType: "long",
+  args: ["int"],
+  llvmName: "_zen_json_arrayGetLong",
+},
+
+arrayGetByte: {
+  returnType: "byte",
+  args: ["int"],
+  llvmName: "_zen_json_arrayGetByte",
+},
     arrayGetDouble: {
       returnType: "double",
       args: ["int"],
@@ -986,6 +1062,30 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "_zen_ptr_loadBool",
     },
 
+    loadLong: {
+      returnType: "long",
+      args: [],
+      llvmName: "_zen_ptr_loadLong"
+    },
+
+    loadByte: {
+      returnType: "byte",
+      args: [],
+      llvmName: "_zen_ptr_loadByte"
+    },
+
+    storeLong: {
+      returnType: "void",
+      args: ["long"],
+      llvmName: "_zen_ptr_storeLong"
+    },
+
+    storeByte: {
+      returnType: "void",
+      args: ["byte"],
+      llvmName: "_zen_ptr_storeByte"
+    },
+
     storeString: {
       returnType: "void",
       args: ["string"],
@@ -1053,6 +1153,19 @@ const BUILTIN_STRUCT_METHODS = {
       args: ["string"],
       llvmName: "zen_map_get_int",
     },
+
+   getLong: {
+    returnType: "long",
+    args: ["string"],
+    llvmName: "zen_map_get_long",
+  },
+
+  getByte: {
+    returnType: "byte",
+    args: ["string"],
+    llvmName: "zen_map_get_byte",
+  },
+    
     getBool: {
       returnType: "bool",
       args: ["string"],
@@ -1074,6 +1187,12 @@ const BUILTIN_STRUCT_METHODS = {
       llvmName: "zen_map_get_map",
     },
 
+    json: {
+      returnType: "string",
+      args: [],
+      llvmName: "zen_map_json"
+    },
+
     getList: {
       returnType: "List",
       args: ["string"],
@@ -1091,6 +1210,19 @@ const BUILTIN_STRUCT_METHODS = {
       args: ["string", "bool"],
       llvmName: "zen_map_set_bool",
     },
+
+   setLong: {
+    returnType: "void",
+    args: ["string", "long"],
+    llvmName: "zen_map_set_long",
+  },
+
+  setByte: {
+    returnType: "void",
+    args: ["string", "byte"],
+    llvmName: "zen_map_set_byte",
+  },
+    
     setDouble: {
       returnType: "void",
       args: ["string", "double"],
@@ -1174,6 +1306,11 @@ const BUILTIN_MAP = {
     llvmName: "Int",
   },
 
+  Long: {
+    returnType: "long",
+    llvmName: "Long"
+  },
+
   Double: {
     returnType: "double",
     llvmName: "Double",
@@ -1209,9 +1346,9 @@ const BUILTIN_MAP = {
     llvmName: "sizeOf",
   },
   
-  toByte: {
-    returnType: "Byte",
-    llvmName: "toByte"
+  Byte: {
+    returnType: "byte",
+    llvmName: "Byte"
   },
 
   panic: {
@@ -1300,7 +1437,7 @@ const BUILTIN_MAP = {
   },
 
   readFileBytes: {
-    returnType: "Byte",
+    returnType: "byte",
     llvmName: "_fs_readFileBytes",
   },
 
@@ -1354,6 +1491,58 @@ const BUILTIN_MAP = {
     llvmName: "debug_pretty",
   },
 
+  // crypto
+
+  sha256: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_sha256",
+},
+
+sha512: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_sha512",
+},
+
+hmacSha256: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_hmacSha256",
+},
+
+hmacSha512: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_hmacSha512",
+},
+
+randomBytes: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_randomBytes",
+},
+
+randomInt: {
+  returnType: "int",
+  llvmName: "_crypto_randomInt",
+},
+
+base64Encode: {
+  returnType: "string",
+  llvmName: "_crypto_base64Encode",
+},
+
+base64Decode: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_base64Decode",
+},
+
+base64UrlEncode: {
+  returnType: "string",
+  llvmName: "_crypto_base64UrlEncode",
+},
+  
+base64UrlDecode: {
+  returnType: "List<byte>",
+  llvmName: "_crypto_base64UrlDecode",
+},
+
   cpuCount: {
     returnType: "int",
     llvmName: "_os_cpuCount",
@@ -1375,22 +1564,22 @@ const BUILTIN_MAP = {
   },
 
   totalMemory: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_totalMemory",
   },
 
   freeMemory: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_freeMemory",
   },
 
   usedMemory: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_usedMemory",
   },
 
   processMemory: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_processMemory",
   },
 
@@ -1430,12 +1619,12 @@ const BUILTIN_MAP = {
   },
 
   pid: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_pid",
   },
 
   parentPid: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_os_parentPid",
   },
 
@@ -1485,7 +1674,7 @@ const BUILTIN_MAP = {
   },
 
   millis: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_time_millis",
   },
 
@@ -1510,7 +1699,7 @@ const BUILTIN_MAP = {
   },
 
   now: {
-    returnType: "int",
+    returnType: "long",
     llvmName: "_time_now",
   },
 
@@ -1836,6 +2025,15 @@ const BUILTIN_MAP = {
 };
 
 const OP_CODES = {
+  byte: {
+    "+": "add",
+    "-": "sub",
+    "*": "mul",
+    "/": "sdiv",
+    "%": "srem",
+    "^": "xor",
+  },
+
   int: {
     "+": "add",
     "-": "sub",
@@ -1844,6 +2042,16 @@ const OP_CODES = {
     "%": "srem",
     "^": "xor",
   },
+
+  long: {
+    "+": "add",
+    "-": "sub",
+    "*": "mul",
+    "/": "sdiv",
+    "%": "srem",
+    "^": "xor",
+  },
+
   double: {
     "+": "fadd",
     "-": "fsub",
@@ -1884,8 +2092,10 @@ const FORMAT_MAP = {
 
 const LOOKUP = {
   bool: 0,
-  int: 1,
-  double: 2,
+  byte: 1,
+  int: 2,
+  long: 3,
+  double: 4,
 };
 
 const OPERATORS = [
@@ -1934,6 +2144,8 @@ const ParserTypes = {
   DOUBLE: "double",
   STRING: "string",
   BOOLEAN: "bool",
+  BYTE: "byte",
+  LONG: "long",
   VOID: "void",
   VARIABLE: "variable",
   CALL: "CALL",
@@ -2054,13 +2266,13 @@ const OS_MAP = {
 
   _os_cpuSpeed: ["_os_cpuSpeed", "double", 0, []],
 
-  _os_totalMemory: ["_os_totalMemory", "int", 0, []],
+  _os_totalMemory: ["_os_totalMemory", "long", 0, []],
 
-  _os_freeMemory: ["_os_freeMemory", "int", 0, []],
+  _os_freeMemory: ["_os_freeMemory", "long", 0, []],
 
-  _os_usedMemory: ["_os_usedMemory", "int", 0, []],
+  _os_usedMemory: ["_os_usedMemory", "long", 0, []],
 
-  _os_processMemory: ["_os_processMemory", "int", 0, []],
+  _os_processMemory: ["_os_processMemory", "long", 0, []],
 
   _os_osName: ["_os_osName", "string", 0, []],
 
@@ -2076,9 +2288,9 @@ const OS_MAP = {
 
   _os_exit: ["_os_exit", "void", 1, ["int"]],
 
-  _os_pid: ["_os_pid", "int", 0, []],
+  _os_pid: ["_os_pid", "long", 0, []],
 
-  _os_parentPid: ["_os_parentPid", "int", 0, []],
+  _os_parentPid: ["_os_parentPid", "long", 0, []],
 
   _os_platform: ["_os_platform", "string", 0, []],
 
@@ -2105,6 +2317,67 @@ const DEBUG_MAP = {
   _debug_pretty: ["debug_pretty", "string", 1, ["List, Map, struct"]], // any
 };
 
+const CRYPTO_MAP = {
+  _crypto_sha256: ["_crypto_sha256", "List<byte>", 1, ["string"]],
+  _crypto_sha512: ["_crypto_sha512", "List<byte>", 1, ["string"]],
+
+  _crypto_hmacSha256: [
+    "_crypto_hmacSha256",
+    "List<byte>",
+    2,
+    ["string", "string"],
+  ],
+
+  _crypto_hmacSha512: [
+    "_crypto_hmacSha512",
+    "List<byte>",
+    2,
+    ["string", "string"],
+  ],
+
+  _crypto_randomBytes: [
+    "_crypto_randomBytes",
+    "List<byte>",
+    1,
+    ["int"],
+  ],
+
+  _crypto_randomInt: [
+    "_crypto_randomInt",
+    "int",
+    2,
+    ["int", "int"],
+  ],
+
+  _crypto_base64Encode: [
+    "_crypto_base64Encode",
+    "string",
+    1,
+    ["List<byte>"],
+  ],
+
+  _crypto_base64Decode: [
+    "_crypto_base64Decode",
+    "List<byte>",
+    1,
+    ["string"],
+  ],
+
+  _crypto_base64UrlEncode: [
+    "_crypto_base64UrlEncode",
+    "string",
+    1,
+    ["List<byte>"],
+  ],
+
+  _crypto_base64UrlDecode: [
+    "_crypto_base64UrlDecode",
+    "List<byte>",
+    1,
+    ["string"],
+  ],
+};
+
 const FILE_MAP = {
   _fs_cwd: ["_fs_cwd", "string", 0, []],
 
@@ -2112,9 +2385,9 @@ const FILE_MAP = {
 
   _fs_writeFile: ["_fs_writeFile", "int", 2, ["string", "string"]],
 
-  _fs_readFileBytes: ["_fs_readFileBytes", "Byte", 1, ["string"]],
+  _fs_readFileBytes: ["_fs_readFileBytes", "byte", 1, ["string"]],
 
-  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "Byte"]],
+  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "byte"]],
 
   _fs_exists: ["_fs_exists", "bool", 1, ["string"]],
 
@@ -2160,11 +2433,11 @@ const SYS_MAP = {
 };
 
 const TIME_MAP = {
-  _time_sleep: ["_time_sleep", "void", 1, ["int"]],
+  _time_sleep: ["_time_sleep", "void", 1, ["long"]],
 
   _time_time: ["_time_time", "string", 0, []],
 
-  _time_millis: ["_time_millis", "int", 0, []],
+  _time_millis: ["_time_millis", "long", 0, []],
 
   _time_date: ["_time_date", "int", 0, []],
 
@@ -2174,9 +2447,9 @@ const TIME_MAP = {
 
   _time_year: ["_time_year", "int", 0, []],
 
-  _time_now: ["_time_now", "int", 0, []],
+  _time_now: ["_time_now", "long", 0, []],
 
-  _time_format: ["_time_format", "string", 1, ["int"]],
+  _time_format: ["_time_format", "string", 1, ["long"]],
 };
 
 const NETWORK_MAP = {
@@ -2335,6 +2608,7 @@ export {
   HTTPSERVER_MAP,
   THREAD_MAP,
   DEBUG_MAP,
+  CRYPTO_MAP,
   BUILTIN_STRUCT_METHODS,
   BUILTIN_STRUCTS,
   BUILTIN_STRUCT_PROPS,

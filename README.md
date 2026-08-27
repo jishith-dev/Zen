@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 2.0.0** · Stable · July 2026
+**Version 2.1.0** · Stable · July 2026
 
 **GitHub**: https://github.com/Jishith-dev/Zen
 
@@ -61,9 +61,9 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v2.0.0
+Current Version: v2.1.0
 
-### v2.0.0
+### v2.1.0
 
 - Dynamic GitHub default branch detection for `zen install`
 - Increased package description limit from 50 to 400 characters
@@ -663,7 +663,7 @@ This provides a consistent and explicit ownership model across Zen's type system
 
 ## Scope of This Specification
 
-Version 2.0.0 defines the **stable core** of the language:
+Version 2.1.0 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
@@ -791,103 +791,147 @@ my-var       # hyphens are not allowed
 
 ### 2.6 Literals
 
-A literal is a fixed value written directly in source. ZEN defines four literal types.
+A literal is a fixed value written directly in source. ZEN defines five literal types: integer, long, byte, double, string, and boolean.
 
 #### 2.6.1 Integer Literals
 
 A sequence of decimal digits with no prefix, suffix, or separator.
 
-```zen
-0
-42
-1000
-```
+    0
+    42
+    1000
+
+Integer literals are represented by the `int` type.
 
 Hexadecimal literals are supported using the `0x` prefix.
 
-```zen
-0xFF
-0x1A3F
-0x00
-```
+    0xFF
+    0x1A3F
+    0x00
 
-Binary and octal representations are not supported in v2
+Binary and octal representations are not supported in v2.
 
+---
 
-#### 2.6.2 Double Literals
+#### 2.6.2 Long Literals
+
+A decimal integer followed by the `L` suffix.
+
+    0L
+    42L
+    100000L
+
+The `L` suffix explicitly marks the literal as a `long`.
+
+    long timestamp = 1787763985L
+    long duration = 3600L
+
+Hexadecimal long literals are also supported.
+
+    0xFFFFFFFFL
+    0x100000000L
+
+---
+
+#### 2.6.3 Byte Literals
+
+A decimal integer followed by the `B` suffix.
+
+    0B
+    1B
+    42B
+    255B
+
+The `B` suffix explicitly marks the literal as a `byte`.
+
+    byte value = 255B
+
+For hexadecimal literals, an additional `B` is required to distinguish the byte suffix from the hexadecimal notation.
+
+    0xFFB
+    0x00B
+    0x7FB
+
+Here, the final `B` is the byte suffix.
+
+For example:
+
+    byte value = 0xFFB
+
+---
+
+#### 2.6.4 Double Literals
 
 A decimal integer part, a dot, and a decimal fractional part. Both parts are required.
 
-```zen
-3.14
-0.5
-100.0
-```
+    3.14
+    0.5
+    100.0
 
-Scientific notation is not supported in v2. A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
+Scientific notation is not supported in v2.
 
-#### 2.6.3 String Literals
+A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
+
+    double value = 42.0
+
+---
+
+#### 2.6.5 String Literals
 
 A sequence of characters enclosed in matching double or single quotes. Both forms are equivalent.
 
-```zen
-"hello, world"
-'hello, world'
-```
+    "hello, world"
+    'hello, world'
 
 ---
 
 **Backtick Strings**
 
-Zen also supports backtick-delimited strings — `` ` `` — which offer two additional capabilities over quoted strings.
+ZEN also supports backtick-delimited strings — `` ` `` — which offer two additional capabilities over quoted strings.
 
 **Multiline strings**
 
 Backtick strings preserve newlines and indentation exactly as written in source. No escape sequences are needed.
 
-```zen
-string msg = `hello
-hi
-how are you`
-```
+    string msg = `hello
+    hi
+    how are you`
 
 **Template literals**
 
 Backtick strings support inline expression interpolation using `${}`. Any valid Zen expression can appear inside the braces.
 
-```zen
-string name = "Zen"
-string msg  = `Hello, ${name}!`           # "Hello, Zen!"
+    string name = "Zen"
+    string msg = `Hello, ${name}!`
 
-int a = 10
-int b = 20
-string result = `Sum of ${a} and ${b} is ${a + b}`   # "Sum of 10 and 20 is 30"
-```
+    int a = 10
+    int b = 20
+    string result = `Sum of ${a} and ${b} is ${a + b}`
 
 Multiline and interpolation can be combined freely.
 
-```zen
-string user = "Achu"
-string out  = `Welcome, ${user}.
-Your session has started.`
-```
+    string user = "Achu"
+    string out = `Welcome, ${user}.
+    Your session has started.`
 
 ---
 
-| Form | Multiline | Interpolation |
-|---|---|---|
-| `"..."` | No | No |
-| `'...'` | No | No |
-| `` `...` `` | Yes | Yes |
+| Form | Type | Multiline | Interpolation |
+|---|---|---|---|
+| `42` | `int` | — | — |
+| `42L` | `long` | — | — |
+| `42B` | `byte` | — | — |
+| `3.14` | `double` | — | — |
+| `"..."` | `string` | No | No |
+| `'...'` | `string` | No | No |
+| `` `...` `` | `string` | Yes | Yes |
 
-#### 2.6.4 Boolean Literals
+#### 2.6.6 Boolean Literals
 
 Exactly two values, lowercase:
 
-```zen
-true
-false
-```
+    true
+    false
 
 Any other casing (`True`, `TRUE`) is not a boolean literal and will be interpreted as an identifier.
 
@@ -978,11 +1022,13 @@ Data structure types — `List`, `struct`, and fixed-size arrays — are defined
 
 ### 3.1 Primitive Types
 
-ZEN defines exactly four primitive types:
+ZEN defines six primitive types:
 
 | Type | Description | Example Literals |
 |---|---|---|
 | `int` | Integer number | `0`, `42`, `1000` |
+| `long` | 64-bit integer number | `0L`, `42L`, `100000L` |
+| `byte` | 8-bit unsigned integer | `0B`, `42B`, `255B` |
 | `double` | Floating-point number | `3.14`, `0.5`, `100.0` |
 | `bool` | Boolean value | `true`, `false` |
 | `string` | Text value | `"hello"`, `'world'` |
@@ -993,50 +1039,81 @@ These are reserved keywords and cannot be used as identifiers.
 
 #### 3.1.1 `int`
 
-Represents a whole number. Only decimal notation is supported; negative values are expressed using the unary `-` operator. `+` unary is invalid in Zen.
+Represents a whole number. Decimal and hexadecimal notation are supported. Negative values are expressed using the unary `-` operator. `+` unary is invalid in ZEN.
 
-```zen
-int x = 42
-int y = 0
-int z = -10
+    int x = 42
+    int y = 0
+    int z = -10
 
-int p = +10 # invalid
-int q = 10 # valid
-```
+    int hex = 0xFF
+
+    int p = +10 # invalid
+    int q = 10 # valid
 
 ---
 
-#### 3.1.2 `double`
+#### 3.1.2 `long`
+
+Represents a 64-bit integer. Long literals use the `L` suffix.
+
+    long x = 42L
+    long timestamp = 1787763985L
+    long duration = 3600L
+
+Hexadecimal long literals are also supported.
+
+    long value = 0xFFFFFFFFL
+
+---
+
+#### 3.1.3 `byte`
+
+Represents an 8-bit unsigned integer. Byte literals use the `B` suffix.
+
+    byte x = 0B
+    byte y = 42B
+    byte max = 255B
+
+Hexadecimal byte literals require an additional `B` after the hexadecimal value to distinguish the byte suffix.
+
+    byte value = 0xFFB
+    byte zero = 0x00B
+    byte max = 0xFFB
+
+The final `B` is the byte suffix.
+
+---
+
+#### 3.1.4 `double`
 
 Represents a floating-point number. Both the integer part and the fractional part must be written explicitly — a bare integer is not a valid `double` literal.
 
-```zen
-double pi = 3.14
-double zero = 0.0
-double rate = 100.0
-```
+    double pi = 3.14
+    double zero = 0.0
+    double rate = 100.0
 
 ---
 
-#### 3.1.3 `bool`
+#### 3.1.5 `bool`
 
 Represents a boolean value. Only two values exist: `true` and `false`. Both are lowercase; any other casing is treated as an identifier, not a boolean.
 
-```zen
-bool active = true
-bool done = false
-```
+    bool active = true
+    bool done = false
 
 ---
 
-#### 3.1.4 `string`
+#### 3.1.6 `string`
 
 Represents a sequence of characters. String literals may be enclosed in either double or single quotes; both forms produce identical values.
 
-```zen
-string name = "ZEN"
-string greeting = 'hello'
-```
+    string name = "ZEN"
+    string greeting = 'hello'
+
+Backtick strings are also supported for multiline strings and template interpolation.
+
+    string name = "ZEN"
+    string message = `Hello, ${name}!`
 
 ---
 
@@ -1048,21 +1125,35 @@ ZEN does not perform implicit type casting in general. Types must match at assig
 
 #### 3.2.1 Numeric Promotion
 
-When one operand in an arithmetic expression is `double` and the other is `int`, the `int` value is automatically promoted to `double` for the duration of that expression. The result is `double`.
+When operands of different numeric types are used in an arithmetic expression, ZEN automatically promotes the lower-ranked numeric type to the higher-ranked type for the duration of that expression.
 
-```zen
-double result = 3.14 + 2     # 2 is promoted to 2.0 → result is 5.14
-double x = 10 * 0.5          # 10 is promoted to 10.0 → result is 5.0
-```
+The promotion hierarchy is:
 
-Promotion is expression-scoped. The original `int` variable or literal is not affected.
+`byte` → `int` → `long` → `double`
 
-```zen
-int a = 5
-double b = 2.0
-double c = a + b             # a is promoted within this expression only
-                             # a remains int outside of it
-```
+The result uses the highest-ranked numeric type present in the expression.
+
+    double result = 3.14 + 2
+    # 2 is promoted to double → result is 5.14
+
+    long x = 10L + 20
+    # 20 is promoted to long → result is 30L
+
+    int y = 10 + 2B
+    # 2B is promoted to int → result is 12
+
+    double z = 10B + 0.5
+    # 10B is promoted through int/long to double → result is 10.5
+
+Promotion is expression-scoped. The original variable is not modified.
+
+    int a = 5
+    double b = 2.0
+
+    double c = a + b
+    # a is promoted to double within this expression only
+
+    # a remains int outside of the expression
 
 ---
 
@@ -1074,6 +1165,8 @@ When one operand of `+` is a `string`, the other operand is implicitly coerced t
 string s = "count: " + 10        # → "count: 10"
 string t = "value: " + 3.14      # → "value: 3.14"
 string u = "active: " + true     # → "active: true"
+string i = "active: " + 10L     # → "active: 10"
+string k = "active: " + 10B     # -> "active: 10"
 ```
 
 Coercion is one-directional: a non-string operand is converted to `string`, never the reverse.
@@ -1161,6 +1254,8 @@ int a = 10
 double pi = 3.14
 string name = "ZEN"
 bool active = true
+long time = 1000000000000000L
+byte b = 36B
 auto x = 42
 ```
 
@@ -1177,16 +1272,20 @@ var_decl_default
 |---|---|
 | `int` | `0` |
 | `double` | `0.0` |
+| `long` | `0` |
+| `byte` | `0` | 
 | `string` | `""` |
 | `bool` | `false` |
 | `List<T>` | `[]` |
 
 ```zen
 int a          # lowered to: int a = 0
+long count     # lowered to: long count = 0L
+byte value     # lowered to: byte value = 0B
 double rate    # lowered to: double rate = 0.0
 string label   # lowered to: string label = ""
 bool flag      # lowered to: bool flag = false
-```
+``` 
 
 #### Constant Declaration
 
@@ -1953,6 +2052,12 @@ Map user = {
 map.setInt(string key, int value)
 map.getInt(string key) int
 
+map.setLong(string key, long value)
+map.getLong(string key) long
+
+map.setByte(string key, byte value)
+map.getLong(string key) byte
+
 map.setDouble(string key, double value)
 map.getDouble(string key) double
 
@@ -1971,6 +2076,8 @@ map.getMap(string key) Map
 map.remove(string key) void
 
 map.has(string key) bool
+
+map.json() string
 
 map.free()
 ```
@@ -2042,6 +2149,8 @@ json.free()
 ```zen
 json.parse(...)
 json.getInt(...)
+json.getLong(...)
+json.getByte(...)
 json.getDouble(...)
 json.getString(...)
 json.getBool(...)
@@ -2056,6 +2165,7 @@ json.arrayGetString(...)
 json.arrayGetBool(...)
 json.arrayGetObject(...)
 json.arrayGetArray(...)
+json.map() Map
 json.free()
 ```
 
@@ -2074,6 +2184,8 @@ Supports array access methods such as:
 ```zen
 array.arrayLength()
 array.arrayGetInt(...)
+array.arrayGetLong(...)
+array.arrayGetByte(...)
 array.arrayGetDouble(...)
 array.arrayGetString(...)
 array.arrayGetBool(...)
@@ -2103,7 +2215,7 @@ ZEN provides four built-in data structure types: `List`, fixed-size arrays, and 
 
 A `List` is a dynamically sized, heap-allocated array. `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
 
-> **Note:** `Byte` is intended primarily for use with `List<Byte>` and binary-related APIs. Standalone `Byte` values can be created only through the `toByte()` conversion function.
+> **Note:** `Byte` is intended primarily for use with `List<Byte>` and binary-related APIs. Standalone `Byte` values can be created only through the `Byte()` conversion function.
 
 #### Declaration
 
@@ -3439,6 +3551,8 @@ To work with the input as a specific type, use Zen's built-in casting functions:
 int age      = Int(input("Enter age: "))
 float price  = Double(input("Enter price: "))
 bool confirm = Bool(input("Enter true/false: "))
+long maxAge = Long("10292929292982828")
+byte hex = Byte(12)
 ```
 
 ---
@@ -3590,22 +3704,38 @@ string c = String(true)      # "true"
 
 ---
 
-#### `toByte`
+#### `Byte`
 
-Converts an `int` to `Byte`.
+Converts an `int` to `byte`.
 
 ```
-toByte(value)
+Byte(value)
 ```
 
-Returns `Byte`.
+Returns `byte`.
 
 ```zen
-List<Byte> bytes
+List<byte> bytes
 
-bytes.push(toByte(65))
-bytes.push(toByte(255))
+bytes.push(Byte(65))
+bytes.push(Byte(255))
 ```
+
+---
+
+#### `Long`
+
+Converts a value to `long`.
+
+    Long(value)
+
+Returns `long`.
+
+    long a = Long(42)
+    long b = Long(3.99)
+    long c = Long("42")
+    long d = Long(true)
+    long e = Long(false)
 
 ---
 
@@ -3652,6 +3782,184 @@ bool connected = net.online()
 #### 11.3.1 `sys`
 
 System-level process control.
+
+---
+
+#### 11.3.2 `crypto`
+
+Cryptographic utilities for hashing, HMAC, secure random generation, and Base64 encoding/decoding.
+
+---
+
+##### `crypto.sha256`
+
+Computes the SHA-256 cryptographic hash of the input data.
+
+    crypto.sha256(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Data to hash |
+
+Returns `List<byte>`.
+
+    List<byte> hash = crypto.sha256("Hello Zen")
+
+---
+
+##### `crypto.sha512`
+
+Computes the SHA-512 cryptographic hash of the input data.
+
+    crypto.sha512(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Data to hash |
+
+Returns `List<byte>`.
+
+    List<byte> hash = crypto.sha512("Hello Zen")
+
+---
+
+##### `crypto.hmacSha256`
+
+Computes an HMAC using SHA-256 with the specified key.
+
+    crypto.hmacSha256(key, data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Secret key used for HMAC |
+| `data` | `string` | Data to authenticate |
+
+Returns `List<byte>`.
+
+    List<byte> mac = crypto.hmacSha256("secret", "Hello Zen")
+
+---
+
+##### `crypto.hmacSha512`
+
+Computes an HMAC using SHA-512 with the specified key.
+
+    crypto.hmacSha512(key, data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Secret key used for HMAC |
+| `data` | `string` | Data to authenticate |
+
+Returns `List<byte>`.
+
+    List<byte> mac = crypto.hmacSha512("secret", "Hello Zen")
+
+---
+
+##### `crypto.randomBytes`
+
+Generates cryptographically secure random bytes.
+
+    crypto.randomBytes(length)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `length` | `int` | Number of random bytes to generate |
+
+Returns `List<byte>`.
+
+    List<byte> bytes = crypto.randomBytes(32)
+
+---
+
+##### `crypto.randomInt`
+
+Generates a cryptographically secure random integer within the specified range.
+
+    crypto.randomInt(min, max)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `min` | `int` | Minimum value |
+| `max` | `int` | Maximum value |
+
+Returns `int`.
+
+    int value = crypto.randomInt(1, 100)
+    screen(value)
+
+---
+
+##### `crypto.base64Encode`
+
+Encodes byte data using standard Base64 encoding.
+
+    crypto.base64Encode(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `List<byte>` | Data to encode |
+
+Returns `string`.
+
+    List<byte> data = crypto.randomBytes(16)
+    string encoded = crypto.base64Encode(data)
+
+    screen(encoded)
+
+---
+
+##### `crypto.base64Decode`
+
+Decodes a standard Base64 string into bytes.
+
+    crypto.base64Decode(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Base64-encoded data |
+
+Returns `List<byte>`.
+
+    List<byte> decoded = crypto.base64Decode(encoded)
+
+---
+
+##### `crypto.base64UrlEncode`
+
+Encodes byte data using Base64URL encoding.
+
+Base64URL is URL-safe and is commonly used by protocols such as JSON Web Tokens (JWT).
+
+    crypto.base64UrlEncode(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `List<byte>` | Data to encode |
+
+Returns `string`.
+
+    List<byte> data = crypto.randomBytes(16)
+    string encoded = crypto.base64UrlEncode(data)
+
+    screen(encoded)
+
+---
+
+##### `crypto.base64UrlDecode`
+
+Decodes a Base64URL-encoded string into bytes.
+
+    crypto.base64UrlDecode(data)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Base64URL-encoded data |
+
+Returns `List<byte>`.
+
+    List<byte> decoded = crypto.base64UrlDecode(encoded)
 
 ---
 
@@ -4128,10 +4436,10 @@ Operating system and hardware information.
 | `os.cpuArch()` | `string` | CPU architecture e.g. `"x86_64"` |
 | `os.cpuModel()` | `string` | CPU model name |
 | `os.cpuSpeed()` | `double` | CPU clock speed in GHz |
-| `os.totalMemory()` | `int` | Total system RAM in bytes |
-| `os.freeMemory()` | `int` | Available RAM in bytes |
-| `os.usedMemory()` | `int` | Used RAM in bytes |
-| `os.processMemory()` | `int` | RAM used by the current Zen process in bytes |
+| `os.totalMemory()` | `long` | Total system RAM in bytes |
+| `os.freeMemory()` | `long` | Available RAM in bytes |
+| `os.usedMemory()` | `long` | Used RAM in bytes |
+| `os.processMemory()` | `long` | RAM used by the current Zen process in bytes |
 | `os.osName()` | `string` | Operating system name e.g. `"Linux"` |
 | `os.osVersion()` | `string` | OS version string |
 | `os.hostname()` | `string` | Machine hostname |
@@ -4139,8 +4447,8 @@ Operating system and hardware information.
 | `os.uptime()` | `int` | System uptime in seconds |
 | `os.battery()` | `string` | Battery status string |
 | `os.exit(code)` | `void` | Terminates the current process with the specified exit code |
-| `os.pid()` | `int` | Returns the current process ID |
-| `os.parentPid()` | `int` | Returns the parent process ID |
+| `os.pid()` | `long` | Returns the current process ID |
+| `os.parentPid()` | `long` | Returns the parent process ID |
 | `os.platform()` | `string` | Returns the current operating system platform |
 | `os.isWindows()` | `bool` | Returns `true` if running on Windows |
 | `os.isLinux()` | `bool` | Returns `true` if running on Linux |
@@ -4205,12 +4513,12 @@ time.sleep(ms)
 
 | Parameter | Type | Description |
 |---|---|---|
-| `ms` | `int` | Duration to sleep in milliseconds |
+| `ms` | `long` | Duration to sleep in milliseconds |
 
 Returns `void`.
 
 ```zen
-time.sleep(1000)       # pause for 1 second
+time.sleep(1000L)       # pause for 1 second
 ```
 
 ---
@@ -4223,10 +4531,10 @@ Returns the current Unix timestamp in milliseconds.
 time.now()
 ```
 
-Returns `int`.
+Returns `long`.
 
 ```zen
-int ts = time.now()
+long ts = time.now()
 
 screen(ts)
 ```
@@ -4243,12 +4551,12 @@ time.format(timestamp)
 
 | Parameter | Type | Description |
 |---|---|---|
-| `timestamp` | `int` | Unix timestamp in milliseconds |
+| `timestamp` | `long` | Unix timestamp in milliseconds |
 
 Returns `string`.
 
 ```zen
-int ts = time.now()
+long ts = time.now()
 
 screen(time.format(ts))
 ```
@@ -4280,12 +4588,12 @@ Returns the current Unix timestamp in milliseconds.
 time.millis()
 ```
 
-Returns `int`.
+Returns `long`.
 
 ```zen
-int start = time.millis()
+long start = time.millis()
 # ... work ...
-int elapsed = time.millis() - start
+long elapsed = time.millis() - start
 ```
 
 ---
@@ -5548,7 +5856,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v2.0.0. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v2.1.0. All compilation uses `-O2` by default.
 
 ---
 
@@ -6098,7 +6406,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v2.0.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
+ZEN v2.1.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -6154,7 +6462,7 @@ The following names are reserved as built-in functions, standard library functio
 
 #### Core Functions
 
-`screen` `input` `type` `Int` `Double` `Bool` `String` `toString` `toInt` `length` `sizeOf` `toByte`
+`screen` `input` `type` `Int` `Double` `Bool` `String` `toString` `toInt` `length` `sizeOf` `Byte`
 
 #### Standard Functions
 

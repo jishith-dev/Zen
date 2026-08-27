@@ -706,140 +706,318 @@ const isCall = isLastField && Array.isArray(node?.args);
           const isMethod = this.IRB.functions.has(possibleMethod);
 
           if (isMethod) {
-            if (!Array.isArray(node?.args)) {
-              this.IRB.emitError(
-                "TypeError",
-                `method '${currentField}' must be called with '()'`,
-                node,
-              );
-            }
-
-            const fn = this.IRB.getFunction(possibleMethod);
-
-            const args = [];
-
-            // implicit this
-            args.push(`ptr ${basePtr}`);
-
-            // method args
-            for (const argNode of node.args || []) {
-              const arg = this.handleExpression(argNode);
-              this.IRB.emitExpr(arg);
-
-             if (arg?.isStruct && BUILTIN_STRUCT_ABI.includes(arg.type)) {
-  let value = arg.ptr;
-
-  if (arg.needsLoad) {
-    const tmp = this.IRB.newTemp();
-    this.IRB.emit(`${tmp} = load ptr, ptr ${arg.ptr}`);
-    value = tmp;
+  if (!Array.isArray(node?.args)) {
+    this.IRB.emitError(
+      "TypeError",
+      `method '${currentField}' must be called with '()'`,
+      node,
+    );
   }
 
-  args.push(`ptr ${value}`);
-}
-else if (arg?.isStruct && BUILTIN_STRUCTS.includes(arg?.type)) {
-        let value = arg.ptr;
+  const fn = this.IRB.getFunction(possibleMethod);
 
-        if (arg.needsLoad) {
-          const tmp = this.IRB.newTemp();
-          local.push(`${tmp} = load ptr, ptr ${arg.ptr}`);
-          value = tmp;
-        }
-        argStr.push(`ptr ${value}`);
+  const args = [];
+
+  // implicit this
+  args.push(`ptr ${basePtr}`);
+
+  // method args
+  for (let i = 0; i < (node.args || []).length; i++) {
+    const argNode = node.args[i];
+    const arg = this.handleExpression(argNode);
+
+    const expectedType =
+      fn.params[i]?.type?.type || fn.params?.type;
+
+    this.IRB.emitExpr(arg);
+
+    if (arg?.isStruct && BUILTIN_STRUCT_ABI.includes(arg.type)) {
+      let value = arg.ptr;
+
+      if (arg.needsLoad) {
+        const tmp = this.IRB.newTemp();
+        local.push(`${tmp} = load ptr, ptr ${arg.ptr}`);
+        value = tmp;
       }
-else if (arg?.isStruct) {
 
-  args.push(`ptr ${arg.ptr}`);
-} else if (arg.needsLoad) {
+      args.push(`ptr ${value}`);
+    }
+
+    else if (arg?.isStruct && BUILTIN_STRUCTS.includes(arg.type)) {
+      let value = arg.ptr;
+
+      if (arg.needsLoad) {
+        const tmp = this.IRB.newTemp();
+        local.push(`${tmp} = load ptr, ptr ${arg.ptr}`);
+        value = tmp;
+      }
+
+      args.push(`ptr ${value}`);
+    }
+
+    else if (arg?.isStruct) {
+      args.push(`ptr ${arg.ptr}`);
+    }
+
+    else if (arg?.needsLoad) {
+      const tmp = this.IRB.newTemp();
+
+      local.push(
+        `${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`
+      );
+
+      args.push(`${arg.llvmType} ${tmp}`);
+    }
+
+    else {
+      let llvmType = arg.llvmType;
+
+      if (expectedType === "long" && arg.type === "int") {
+        llvmType = "i64";
+      }
+
+      args.push(`${llvmType} ${arg.ptr}`);
+    }
+  }
+
+  const hasRest = fn.params.some((p) => p.isRest);
+
+  let restIndex = -1;
+
+  if (hasRest) {
+    restIndex = fn.params.findIndex((p) => p.isRest);
+
+    this.IRB.declareOneTime(
+      "zen_list_new",
+      "declare ptr @_zen_list_new(i64)",
+    );
+
+    this.IRB.declareOneTime(
+      "zen_list_push",
+      "declare void @_zen_list_push(ptr, ptr)",
+    );
+
+    this.IRB.declareOneTime(
+      "ZenList",
+      `%ZenList = type { ptr, i32, i32, i64 }`,
+    );
+
+    // args contains implicit `this` at index 0,
+    // so restIndex refers to node.args
+    const restArgs = node.args.slice(restIndex);
+
+    const restParam = fn.params[restIndex];
+
+    const expectedType =
+      restParam?.type?.type || restParam?.type;
+
+    const first = restArgs[0];
+
+    if (!first) {
+      this.IRB.emitError(
+        "TypeError",
+        `Rest parameter expects at least 1 argument`,
+        node,
+      );
+    }
+
+    // Validate rest argument types
+    const firstArg = this.handleExpression(first);
+    this.IRB.emitExpr(firstArg);
+
+    const inferredType = firstArg?.type;
+
+    if (
+      expectedType &&
+      inferredType &&
+      expectedType !== inferredType
+    ) {
+      this.IRB.emitError(
+        "TypeError",
+        `Rest parameter expects ${expectedType} but got ${inferredType}`,
+        node,
+      );
+    }
+
+    for (let i = 0; i < restArgs.length; i++) {
+      const arg = i === 0
+        ? firstArg
+        : this.handleExpression(restArgs[i]);
+
+      this.IRB.emitExpr(arg);
+
+      if (
+        expectedType &&
+        arg.type !== expectedType
+      ) {
+        this.IRB.emitError(
+          "TypeError",
+          `Rest parameter expects ${expectedType} but got ${arg.type}`,
+          node,
+        );
+      }
+    }
+
+    const elementSize =
+      this.IRB.sizeOf(inferredType);
+
+    const llvmType =
+      this.IRB.getLLVMType(inferredType);
+
+    const listPtr =
+      this.IRB.newTemp();
+
+    local.push(
+      `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`
+    );
+
+    for (const restNode of restArgs) {
+      const arg = this.handleExpression(restNode);
+
+      this.IRB.emitExpr(arg);
+
+      if (arg.isList) {
+        args.push(`ptr ${arg.ptr}`);
+        continue;
+      }
+
+      let value = arg.ptr;
+
+      if (arg.needsLoad) {
+        const tmp = this.IRB.newTemp();
+
+        local.push(
+          `${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`
+        );
+
+        value = tmp;
+      }
+
+      const tmp = this.IRB.newTemp();
+
+      this.IRB.emitAlloca(tmp, llvmType);
+
+      local.push(
+        `store ${llvmType} ${value}, ptr ${tmp}`
+      );
+
+      local.push(
+        `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`
+      );
+    }
+
+    args.splice(
+      1 + restIndex,
+      restArgs.length
+    );
+
+    args.push(`ptr ${listPtr}`);
+  }
+
+  // void method
+  if (fn.returnType.type === "void") {
+
+    local.push(
+      `call void @${possibleMethod}(${args.join(", ")})`
+    );
+
+    return {
+      ptr: null,
+      type: "void",
+      llvmType: "void",
+      local,
+      global: [],
+      isVarRef: false,
+    };
+  }
+
+  const retType =
+    this.IRB.getLLVMType(fn.returnType.type);
+
+  const isStruct =
+    this.IRB.hasStruct(fn.returnType.type);
+
+  const structInfo =
+    isStruct
+      ? this.IRB.getStruct(fn.returnType.type)
+      : null;
+
+  const isOpaqueStruct =
+    structInfo?.isBuiltin ||
+    BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
+
+  // opaque builtin struct returned as a plain ptr handle, no sret
+  if (isOpaqueStruct) {
+    const tmp = this.IRB.newTemp();
+
+    local.push(
+      `${tmp} = call ptr @${possibleMethod}(${args.join(", ")})`
+    );
+
+    return {
+      ptr: tmp,
+      type: fn.returnType.type,
+      llvmType: "ptr",
+      isStruct: true,
+      isVarRef: false,
+      local,
+      global: [],
+    };
+  }
+
+  // sret
+  if (isStruct) {
+    const tmp = this.IRB.newTemp();
+
+    this.IRB.emitAlloca(
+      tmp,
+      `${retType}`
+    );
+
+    const sretArgs = [
+      `ptr sret(${retType}) ${tmp}`,
+      ...args
+    ];
+
+    local.push(
+      `call void @${possibleMethod}(${sretArgs.join(", ")})`,
+    );
+
+    return {
+      ptr: tmp,
+      type: fn.returnType.type,
+      llvmType: retType,
+      isStruct: true,
+      isVarRef: false,
+      local,
+      global: [],
+    };
+  }
+
+  // primitive / list-returning method
   const tmp = this.IRB.newTemp();
-  this.IRB.emit(`${tmp} = load ${arg.llvmType}, ptr ${arg.ptr}`);
-  args.push(`${arg.llvmType} ${tmp}`);
-} else {
-  args.push(`${arg.llvmType} ${arg.ptr}`);
-}
-      
-            }
 
-            // void method
-            if (fn.returnType.type === "void") {
-              
-              this.IRB.emit(`call void @${possibleMethod}(${args.join(", ")})`);
-              return {
-                ptr: null,
-                type: "void",
-                llvmType: "void",
-                local,
-                global: [],
-                isVarRef: false,
-              };
-            }
-
-            const retType = this.IRB.getLLVMType(fn.returnType.type);
-            
-const isStruct = this.IRB.hasStruct(fn.returnType.type);
-const structInfo = isStruct ? this.IRB.getStruct(fn.returnType.type) : null;
-const isOpaqueStruct = structInfo?.isBuiltin || BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
-
-// opaque builtin struct — returned as a plain ptr handle, no sret
-if (isOpaqueStruct) {
-  const tmp = this.IRB.newTemp();
-  this.IRB.emit(
-    `${tmp} = call ptr @${possibleMethod}(${args.join(", ")})`,
+  local.push(
+    `${tmp} = call ${retType} @${possibleMethod}(${args.join(", ")})`,
   );
+
+  const isList =
+    fn.returnType.type === "List";
 
   return {
     ptr: tmp,
-    type: fn.returnType.type,
-    llvmType: "ptr",
-    isStruct: true,
-    isVarRef: false,
-    local,
-    global: [],
-  };
-}
-
-// non-opaque struct-returning method — sret convention
-if (isStruct) {
-  const tmp = this.IRB.newTemp();
-  this.IRB.emitAlloca(tmp, `${retType}`);
-
-  const sretArgs = [`ptr sret(${retType}) ${tmp}`, ...args];
-
-  this.IRB.emit(
-    `call void @${possibleMethod}(${sretArgs.join(", ")})`,
-  );
-
-  return {
-    ptr: tmp,
-    type: fn.returnType.type,
+    type: isList
+      ? fn.retGeneric
+      : fn.returnType.type,
     llvmType: retType,
-    isStruct: true,
-    isVarRef: false,
     local,
+    retGeneric: fn.retGeneric,
+    generic: fn.generic,
+    isList,
+    isStruct: false,
     global: [],
+    isVarRef: false,
   };
-}
-
-            // primitive / list-returning method
-            const tmp = this.IRB.newTemp();
-            this.IRB.emit(
-              `${tmp} = call ${retType} @${possibleMethod}(${args.join(", ")})`,
-            );
-
-            const isList = fn.returnType.type === "List";
-
-            return {
-              ptr: tmp,
-              type: isList ? fn.retGeneric : fn.returnType.type,
-              llvmType: retType,
-              local,
-              retGeneric: fn.retGeneric,
-              generic: fn.generic,
-              isList,
-              isStruct: false,
-              global: [],
-              isVarRef: false,
-            };
           }
 
           // FIELD USED AS METHOD CHECK
@@ -1235,7 +1413,12 @@ return {
           const t = this.IRB.newTemp();
           local.push(`${t} = icmp ne i32 ${v}, 0`);
           boolVal = t;
-        } else if (val.type === "double") {
+        } else if (val.type === "long") {
+  const t = this.IRB.newTemp();
+  local.push(`${t} = icmp ne i64 ${v}, 0`);
+  boolVal = t;
+      }
+        else if (val.type === "double") {
           const t = this.IRB.newTemp();
           local.push(`${t} = fcmp one double ${v}, 0.0`);
           boolVal = t;
@@ -1281,6 +1464,19 @@ return {
             };
           }
 
+          if (val.type === "long") {
+  return {
+    ptr: `-${v}`,
+    type: "long",
+    llvmType: "i64",
+    local,
+    global,
+    postOrPrefix: false,
+    endLabel: null,
+    isVarRef: false,
+  };
+          }
+
           if (val.type === "double") {
             return {
               ptr: `-${v}`,
@@ -1308,6 +1504,21 @@ return {
             postOrPrefix: false,
             endLabel: null,
           };
+        }
+
+        if (val.type === "long") {
+  const tm = this.IRB.newTemp();
+  this.IRB.emit(`${tm} = sub i64 0, ${v}`);
+
+  return {
+    ptr: tm,
+    type: "long",
+    llvmType: "i64",
+    local,
+    global,
+    postOrPrefix: false,
+    endLabel: null,
+  };
         }
 
         if (val.type === "double") {
@@ -1348,9 +1559,10 @@ return {
 
       if (node.operator === "++" || node.operator === "--") {
         const isInt = val.type === "int";
-        const isDouble = val.type === "double";
+const isLong = val.type === "long";
+const isDouble = val.type === "double";
 
-        if (!isInt && !isDouble) {
+        if (!isInt && !isLong && !isDouble) {
           this.IRB.emitError(
             "TypeError",
             `Expected numeric type 'int' or 'float', got '${val.type}'`,
@@ -1366,7 +1578,7 @@ return {
           );
         }
 
-        const llvmType = isDouble ? "double" : "i32";
+        const llvmType = isDouble ? "double" : isLong ? "i64" : "i32";
         const op = node.operator === "++" ? "add" : "sub";
         const one = isDouble ? "1.0" : "1";
 
@@ -1522,6 +1734,8 @@ return {
           case "int":
           case "bool":
           case "double":
+          case "long":
+          case "byte":
             const cExpr = this.IRB.castExpression(LNode, "string", null, null, true);
             local.push(cExpr?.local.join("\n"));
             leftPtr = cExpr.ptr;
@@ -1546,6 +1760,8 @@ LNode.isTemp = true;
           case "int":
           case "bool":
           case "double":
+          case "long":
+          case "byte":
             const cExpr = this.IRB.castExpression(RNode, "string", null, null, true);
             local.push(cExpr?.local.join("\n"));
             rightPtr = cExpr.ptr;
@@ -1670,6 +1886,14 @@ RNode.isTemp = true;
         return { type, llvmType: "i32", value: val, kind: k };
       }
 
+      if (type === "long") {
+  return { type, llvmType: "i64", value: val, kind: k };
+      }
+
+      if (type === "byte") {
+  return { type, llvmType: "i8", value: val, kind: k };
+      }
+
       if (type === "double") {
         return { type, llvmType: "double", value: val, kind: k };
       }
@@ -1713,9 +1937,14 @@ RNode.isTemp = true;
 
         if (type === "int") {
           local.push(`${t} = icmp ne i32 ${val}, 0`);
-        } else if (type === "double") {
+        } else if (type === "long") {
+  local.push(`${t} = icmp ne i64 ${val}, 0`);
+        }   else if (type === "double") {
           local.push(`${t} = fcmp one double ${val}, 0.0`);
-        } else if (type === "string") {
+        } else if (type === "byte") {
+  local.push(`${t} = icmp ne i8 ${val}, 0`);
+        }
+        else if (type === "string") {
           const t0 = this.IRB.newTemp();
           local.push(`${t0} = load i8, ptr ${val}`);
           local.push(`${t} = icmp ne i8 ${t0}, 0`);
@@ -1793,23 +2022,74 @@ RNode.isTemp = true;
       const result = this.IRB.newTemp();
 
       const isDouble = L.type === "double" || R.type === "double";
+const isLong = L.type === "long" || R.type === "long";
 
-      const llvmOp = isDouble ? `fcmp ${fcmpMap[op]}` : `icmp ${cmpMap[op]}`;
+const llvmOp = isDouble
+  ? `fcmp ${fcmpMap[op]}`
+  : `icmp ${cmpMap[op]}`;
 
-      const type = isDouble ? "double" : "int";
+const type = isDouble ? "double" : isLong ? "long" : "int";
 
-      if (type === "double") {
-        if (L.type === "int") {
-          const t = this.IRB.newTemp();
-          local.push(`${t} = sitofp i32 ${L.value} to double`);
-          L.value = t;
-        }
+if (type === "double") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i8 ${L.value} to double`);
+    L.value = t;
+  } else if (L.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i32 ${L.value} to double`);
+    L.value = t;
+  } else if (L.type === "long") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i64 ${L.value} to double`);
+    L.value = t;
+  }
 
-        if (R.type === "int") {
-          const t = this.IRB.newTemp();
-          local.push(`${t} = sitofp i32 ${R.value} to double`);
-          R.value = t;
-        }
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i8 ${R.value} to double`);
+    R.value = t;
+  } else if (R.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i32 ${R.value} to double`);
+    R.value = t;
+  } else if (R.type === "long") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i64 ${R.value} to double`);
+    R.value = t;
+  }
+} else if (type === "long") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${L.value} to i64`);
+    L.value = t;
+  } else if (L.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i32 ${L.value} to i64`);
+    L.value = t;
+  }
+
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${R.value} to i64`);
+    R.value = t;
+  } else if (R.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i32 ${R.value} to i64`);
+    R.value = t;
+  }
+} else if (type === "int") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${L.value} to i32`);
+    L.value = t;
+  }
+
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${R.value} to i32`);
+    R.value = t;
+  }
       }
 
       local.push(
@@ -1827,34 +2107,82 @@ RNode.isTemp = true;
       };
     }
 
-    const resultType = LOOKUP[L.type] > LOOKUP[R.type] ? L.type : R.type;
-    const leftType = L.type;
-    const rightType = R.type;
+    const resultType =
+  LOOKUP[L.type] > LOOKUP[R.type] ? L.type : R.type;
 
-    if (resultType === "double") {
-      if (L.type === "int") {
-        const t = this.IRB.newTemp();
-        local.push(`${t} = sitofp i32 ${L.value} to double`);
-        L.value = t;
-      }
+const leftType = L.type;
+const rightType = R.type;
 
-      if (R.type === "int") {
-        const t = this.IRB.newTemp();
-        local.push(`${t} = sitofp i32 ${R.value} to double`);
-        R.value = t;
-      }
-    }
+if (resultType === "double") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i8 ${L.value} to double`);
+    L.value = t;
+  } else if (L.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i32 ${L.value} to double`);
+    L.value = t;
+  }
+
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i8 ${R.value} to double`);
+    R.value = t;
+  } else if (R.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sitofp i32 ${R.value} to double`);
+    R.value = t;
+  }
+}
+
+if (resultType === "long") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${L.value} to i64`);
+    L.value = t;
+  } else if (L.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i32 ${L.value} to i64`);
+    L.value = t;
+  }
+
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${R.value} to i64`);
+    R.value = t;
+  } else if (R.type === "int") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i32 ${R.value} to i64`);
+    R.value = t;
+  }
+}
+
+if (resultType === "int") {
+  if (L.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${L.value} to i32`);
+    L.value = t;
+  }
+
+  if (R.type === "byte") {
+    const t = this.IRB.newTemp();
+    local.push(`${t} = sext i8 ${R.value} to i32`);
+    R.value = t;
+  }
+}
 
     if (
-      op === "^" &&
-      ((leftType !== "int" && leftType !== "bool") ||
-        (rightType !== "int" && rightType !== "bool"))
-    ) {
-      this.IRB.emitError(
-        "TypeError",
-        `cannot apply '${op}' to ${leftType} and ${rightType}`,
-        node,
-      );
+  op === "^" &&
+  (
+    !["byte", "int", "long", "bool"].includes(leftType) ||
+    !["byte", "int", "long", "bool"].includes(rightType)
+  )
+) {
+  this.IRB.emitError(
+    "TypeError",
+    `cannot apply '${op}' to ${leftType} and ${rightType}`,
+    node,
+  );
     }
 
     const opcode = OP_CODES[resultType][op];

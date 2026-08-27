@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 typedef enum {
   ZEN_JSON_NULL,
@@ -420,6 +421,20 @@ int _zen_json_getInt(ZenJson *obj, const char *key) {
   return v->as.i;
 }
 
+long _zen_json_getLong(ZenJson *obj, const char *key) {
+  json_check_alive(obj);
+  ZenJson *v = json_lookup(obj, key);
+  expect_type(v, ZEN_JSON_INT, key, "long");
+  return (long)v->as.i;
+}
+
+unsigned char _zen_json_getByte(ZenJson *obj, const char *key) {
+  json_check_alive(obj);
+  ZenJson *v = json_lookup(obj, key);
+  expect_type(v, ZEN_JSON_INT, key, "byte");
+  return (unsigned char)v->as.i;
+}
+
 double _zen_json_getDouble(ZenJson *obj, const char *key) {
   json_check_alive(obj);
   ZenJson *v = json_lookup(obj, key);
@@ -499,6 +514,22 @@ int _zen_json_arrayGetInt(ZenJson *arr, int index) {
   if (v->type != ZEN_JSON_INT)
     zen_error("JsonError", "Expected int in Json array");
   return v->as.i;
+}
+
+long _zen_json_arrayGetLong(ZenJson *arr, int index) {
+  json_check_alive(arr);
+  ZenJson *v = array_at(arr, index);
+  if (v->type != ZEN_JSON_INT)
+    zen_error("JsonError", "Expected long in Json array");
+  return (long)v->as.i;
+}
+
+unsigned char _zen_json_arrayGetByte(ZenJson *arr, int index) {
+  json_check_alive(arr);
+  ZenJson *v = array_at(arr, index);
+  if (v->type != ZEN_JSON_INT)
+    zen_error("JsonError", "Expected byte in Json array");
+  return (unsigned char)v->as.i;
 }
 
 double _zen_json_arrayGetDouble(ZenJson *arr, int index) {
@@ -589,4 +620,69 @@ ZenJson *_zen_json_getRootObject(ZenJson *json) {
   }
 
   return json;
+}
+
+/* Map runtime functions */
+typedef struct ZenMap ZenMap;
+
+ZenMap *_zen_map_new(void);
+void zen_map_set_int(ZenMap *map, char *key, int value);
+void zen_map_set_long(ZenMap *map, char *key, long value);
+void zen_map_set_bool(ZenMap *map, char *key, bool value);
+void zen_map_set_double(ZenMap *map, char *key, double value);
+void zen_map_set_string(ZenMap *map, char *key, char *value);
+void zen_map_set_map(ZenMap *map, char *key, ZenMap *value);
+
+static ZenMap *_zen_json_object_to_map(ZenJson *json) {
+  json_check_alive(json);
+
+  if (json->type != ZEN_JSON_OBJECT) {
+    zen_error("JsonError", "Cannot convert non-object Json to Map");
+  }
+
+  ZenMap *map = _zen_map_new();
+
+  for (size_t i = 0; i < json->as.obj.count; i++) {
+    char *key = json->as.obj.keys[i];
+    ZenJson *value = json->as.obj.values[i];
+
+    switch (value->type) {
+      case ZEN_JSON_INT:
+        zen_map_set_int(map, key, value->as.i);
+        break;
+
+      case ZEN_JSON_DOUBLE:
+        zen_map_set_double(map, key, value->as.d);
+        break;
+
+      case ZEN_JSON_BOOL:
+        zen_map_set_bool(map, key, value->as.b);
+        break;
+
+      case ZEN_JSON_STRING:
+        zen_map_set_string(map, key, value->as.s);
+        break;
+
+      case ZEN_JSON_OBJECT: {
+        ZenMap *child = _zen_json_object_to_map(value);
+        zen_map_set_map(map, key, child);
+        break;
+      }
+
+      case ZEN_JSON_NULL:
+        zen_error("JsonError", "Cannot convert Json null to Map value");
+
+      case ZEN_JSON_ARRAY:
+        zen_error("JsonError", "Cannot convert Json array to Map value yet");
+
+      default:
+        zen_error("JsonError", "Unsupported Json value");
+    }
+  }
+
+  return map;
+}
+
+ZenMap *_zen_json_map(ZenJson *json) {
+  return _zen_json_object_to_map(json);
 }

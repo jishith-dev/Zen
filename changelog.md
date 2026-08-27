@@ -408,3 +408,62 @@ Generated `zen.json`:
 ## Notes
 
 This release marks the beginning of the **ZEN v2** series. The language syntax is now considered stable, with future releases focusing on new capabilities, performance improvements, tooling, and standard library expansion while maintaining backward compatibility.
+
+
+## v2.1.0
+
+### Language
+
+- Added new primitive type `byte` (`i8`)
+- Added new primitive type `long` (`i64`)
+- Added `L` suffix for `long` literals
+- Added `B` suffix for `byte` literals
+- Added hexadecimal `byte` literals using an explicit trailing `B` suffix
+- Changed `toByte()` to `Byte()`
+- Added `Long()` global cast
+- Added concatenation coercion support for `byte`
+- Added `setT()` / `getT()` support for `long` and `byte`
+
+### Standard Library
+
+#### Crypto
+
+Added the new `crypto` namespace:
+
+- `crypto.sha256(data)`
+- `crypto.sha512(data)`
+- `crypto.hmacSha256(key, data)`
+- `crypto.hmacSha512(key, data)`
+- `crypto.randomBytes(length)`
+- `crypto.randomInt(min, max)`
+- `crypto.base64Encode(data)`
+- `crypto.base64Decode(data)`
+- `crypto.base64UrlEncode(data)`
+- `crypto.base64UrlDecode(data)`
+
+#### Map & JSON
+
+- Added `Map.json()`
+- Added `Json.map()`
+
+### Compiler & Runtime
+
+- Changed several built-in APIs from `int` to `long` for 64-bit values.
+
+#### OS
+
+- `os.totalMemory`: `int` → `long`
+- `os.freeMemory`: `int` → `long`
+- `os.usedMemory`: `int` → `long`
+- `os.processMemory`: `int` → `long`
+- `os.pid`: `int` → `long`
+- `os.parentPid`: `int` → `long`
+
+#### Time
+
+- `time.millis`: `int` → `long`
+- `time.now`: `int` → `long`
+- `time.format` argument: `int` → `long`
+- `time.sleep` argument: `int` → `long`
+
+---

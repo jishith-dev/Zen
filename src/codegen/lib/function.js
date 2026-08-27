@@ -178,7 +178,7 @@ export class HandleFunction {
         }
 
         const isStruct = this.IRB.hasStruct(funcType);
-        this.IRB.validateStandaloneType(funcType, node);
+        
         const isNativeABI = this.isPtrReturn(funcType);
 
         if (isStruct && !isNativeABI) {
@@ -269,6 +269,7 @@ export class HandleFunction {
         let listGeneric = this.IRB.currentFunction.listGeneric; // list return have type context. so pass it to handleExpression
 
         const expr = this.expr.handleExpression(node.value, false, listGeneric);
+
 
         this.IRB.emitExpr(expr);
 
@@ -688,7 +689,9 @@ export class HandleFunction {
                 this.IRB.emit("ret double 0.0");
             } else if (returnType === "string") {
                 this.IRB.emit("ret ptr null");
-            } else if (this.isPtrReturn(returnType)) {
+            }  else if (returnType === "long") {
+    this.IRB.emit("ret i64 0");
+            }  else if (this.isPtrReturn(returnType)) {
                 this.IRB.emit("ret ptr null");
             } else {
                 this.IRB.emit("ret void");

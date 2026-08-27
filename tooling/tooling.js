@@ -13,6 +13,7 @@ export class Compiler {
     this.moduleName = null;
     this.PROJECT_ROOT = null;
     this.COMPILER_ROOT = null;
+    this.IRB = null;
     this.moduleFiles = new ModuleFiles();
     this.isWindows = process.platform === "win32";
   }
@@ -243,6 +244,7 @@ export class Compiler {
     }
 
     const IRB = new IRBuilder(this.moduleName);
+    this.IRB = IRB;
 
     let Lexer;
     try {
@@ -519,6 +521,7 @@ export class Compiler {
     }
 
     linkArgs.push("-lcurl");
+    linkArgs.push("-lcrypto");
     linkArgs.push("-o");
     linkArgs.push(outputExe);
 

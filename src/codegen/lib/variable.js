@@ -65,11 +65,11 @@ export class Variable {
     const expected = declaredType;
 
     if (expr?.isList || declaredType !== expr.type) {
-      this.IRB.emitError(
-        "TypeError",
-        `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
-        node,
-      );
+  this.IRB.emitError(
+    "TypeError",
+    `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
+    node,
+  );
     }
 
     if (globalScope) {

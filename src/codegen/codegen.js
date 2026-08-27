@@ -14,6 +14,7 @@ import { ZenList } from "./lib/list.js";
 import { Struct } from "./lib/struct.js";
 import { Type } from "./lib/builtins/type/type.js";
 import { ZenHttp } from "./lib/builtins/http/http.js";
+import { ZenCrypto } from "./lib/builtins/crypto/crypto.js";
 import { ZenSys } from "./lib/builtins/sys/sys.js";
 import { OS } from "./lib/builtins/os/os.js";
 import { Time } from "./lib/builtins/time/time.js";
@@ -61,6 +62,7 @@ export class CodeGen {
     this.path = new PATH(this.IRB, this.expr);
     this.module = new Module(this.IRB, moduleFiles);
     this.ternary = new Ternary(this.IRB, this.expr);
+    this.crypto = new ZenCrypto(this.IRB, this.expr);
     this.expr.setTernary(this.ternary);
     this.os = new OS(this.IRB, this.expr);
     this.http = new ZenHttp(this.IRB, this.expr);
@@ -90,6 +92,7 @@ export class CodeGen {
       this.httpServer,
       this.thread,
       this.debug,
+      this.crypto
     );
 
     this.expr.setCall(this.call);
@@ -604,10 +607,10 @@ define void @_assignSeed () {
     if (isUnary) {
       return this.variable.handleUnary(node.expression);
     }
-
+    
     if (node.expression.type === "BINARY_EXPRESSION") {
-      return; // dead code
-    }
+        return; // dead code
+      }
 
     return this.variable.variableReference(node);
   }

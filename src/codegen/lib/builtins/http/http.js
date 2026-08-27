@@ -12,6 +12,9 @@ export class ZenHttp {
     params,
     name,
   ) {
+    
+    this.IRB.usedNameSpace.add("http");
+      
     const isAwait = node.isAwait;
 
     const args = node.args;

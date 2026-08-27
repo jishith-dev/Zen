@@ -68,7 +68,6 @@ export class Struct {
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
 
-      this.IRB.validateStandaloneType(f.type, node);
 
       let llvmType;
 
@@ -152,8 +151,7 @@ export class Struct {
     const varName = node.name;
     const value = node.value;
 
-    this.IRB.validateStandaloneType(structName, node);
-
+    
     const structInfo = this.IRB.getStruct(structName);
     const llvmType = `%${structName}`;
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
@@ -252,37 +250,37 @@ export class Struct {
     // WALK THROUGH CHAIN
 
     for (let i = 0; i < fields.length; i++) {
-      const structInfo = this.IRB.getStruct(structName);
-      const fieldIndex = structInfo.fieldMap[fields[i]];
+  const structInfo = this.IRB.getStruct(structName);
+  const fieldIndex = structInfo.fieldMap[fields[i]];
 
-      if (fieldIndex === undefined) {
-        this.IRB.emitError(
-          "ReferenceError",
-          `Unknown field '${fields[i]}' in struct '${structName}'`,
-          node,
-        );
-      }
+  if (fieldIndex === undefined) {
+    this.IRB.emitError(
+      "ReferenceError",
+      `Unknown field '${fields[i]}' in struct '${structName}'`,
+      node,
+    );
+  }
 
-      const ptr = this.IRB.newTemp();
+  const ptr = this.IRB.newTemp();
 
-      this.IRB.emit(
-        `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
-      );
+  this.IRB.emit(
+    `${ptr} = getelementptr %${structName}, %${structName}* ${basePtr}, i32 0, i32 ${fieldIndex}`,
+  );
 
-      const fieldMeta = structInfo.layout[fieldIndex];
+  const fieldMeta = structInfo.layout[fieldIndex];
 
-      basePtr = ptr;
-      structName = fieldMeta.type;
+  basePtr = ptr;
+  structName = fieldMeta.type;
 
-      if (!fieldMeta.isList && this.IRB.hasStruct(structName)) {
-        const nextStructInfo = this.IRB.getStruct(structName);
-        if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque) {
-          const loaded = this.IRB.newTemp();
-          this.IRB.emit(`${loaded} = load ptr, ptr ${basePtr}`);
-          basePtr = loaded;
-        }
-      }
+  if (!fieldMeta.isList && this.IRB.hasStruct(structName)) {
+    const nextStructInfo = this.IRB.getStruct(structName);
+    if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque) {
+      const loaded = this.IRB.newTemp();
+      this.IRB.emit(`${loaded} = load ptr, ptr ${basePtr}`);
+      basePtr = loaded;
     }
+  }
+}
 
     // FINAL FIELD
 

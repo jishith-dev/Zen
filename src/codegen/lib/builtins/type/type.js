@@ -89,6 +89,45 @@ export class Type {
     };
   }
 
+
+  Long(node) {
+    const args = node.args;
+
+    if (args[0].length > 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function Long() accept exactly 1 argument",
+        node,
+      );
+    }
+
+    const expr = this.expr.handleExpression(args[0]);
+
+    this.IRB.emitExpr(expr);
+
+    if (expr?.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
+      this.IRB.emitError(
+        "TypeError",
+        `Long() cannot cast array or Map or List to long`,
+        node,
+      );
+    }
+    const cast = this.IRB.castExpression(expr, "long");
+    this.IRB.emit(cast?.local.join("\n"));
+
+    this.IRB.cleanupBuiltinStringTemps([expr])
+    
+    return {
+      ptr: cast.ptr,
+      type: "long",
+      llvmType: "i64",
+      local: [],
+      global: [],
+      isConstant: true,
+      postOrPrefix: false,
+    };
+  }
+
   toInt(node) {
     const args = node.args;
 
@@ -321,14 +360,14 @@ this.IRB.cleanupBuiltinStringTemps([expr])
 
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "Byte");
+    const cast = this.IRB.castExpression(expr, "byte");
 
     this.IRB.emit(cast?.local.join("\n"));
 
     return {
       ptr: cast.ptr,
-      type: "Byte",
-      llvmType: "ptr",
+      type: "byte",
+      llvmType: "i8",
       local: [],
       global: [],
       isConstant: true,

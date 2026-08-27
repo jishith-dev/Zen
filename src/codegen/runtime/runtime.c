@@ -13,7 +13,6 @@
 #include <termios.h>
 #include <fcntl.h>
 
-// expirimental
 #include <pthread.h>
 
 #define ZEN_MAX_THREADS 1024
@@ -339,16 +338,6 @@ const char* _time_time() {
     return buffer;
 }
 
-int _time_millis() {
-
-    struct timespec ts;
-
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    return ((long long)ts.tv_sec * 1000LL)
-           + (ts.tv_nsec / 1000000LL);
-}
-
 int _time_date() {
     time_t now = time(NULL);
     return localtime(&now)->tm_mday;
@@ -500,33 +489,20 @@ double _os_cpuSpeed() {
 }
 
 long _os_totalMemory() {
-#ifdef _WIN32
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(status);
-    if (GlobalMemoryStatusEx(&status))
-        return (long)(status.ullTotalPhys);
-    return -1;
-#else
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return -1;
 
     long mem = -1;
+
     if (fscanf(f, "MemTotal: %ld kB", &mem) != 1)
         mem = -1;
 
     fclose(f);
+
     return mem * 1024;
-#endif
 }
 
 long _os_freeMemory() {
-#ifdef _WIN32
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(status);
-    if (GlobalMemoryStatusEx(&status))
-        return (long)(status.ullAvailPhys);
-    return -1;
-#else
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return -1;
 
@@ -542,24 +518,19 @@ long _os_freeMemory() {
 
     fclose(f);
     return -1;
-#endif
 }
 
 long _os_usedMemory() {
-    long t = _os_totalMemory();
-    long f = _os_freeMemory();
+    long total = _os_totalMemory();
+    long free = _os_freeMemory();
 
-    if (t == -1 || f == -1) return -1;
-    return t - f;
+    if (total == -1 || free == -1)
+        return -1;
+
+    return total - free;
 }
 
 long _os_processMemory() {
-#ifdef _WIN32
-    PROCESS_MEMORY_COUNTERS pmc;
-    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
-        return (long)(pmc.WorkingSetSize / 1024);
-    return -1;
-#else
     FILE *f = fopen("/proc/self/status", "r");
     if (!f) return -1;
 
@@ -575,7 +546,6 @@ long _os_processMemory() {
 
     fclose(f);
     return -1;
-#endif
 }
 
 const char* _os_osName() {
@@ -808,6 +778,42 @@ char* _int_to_string(int x) {
     return res;
 }
 
+char* _long_to_string(long long x) {
+    char* res = (char*)malloc(32);
+
+    int i = 0;
+    int isNeg = 0;
+
+    if (x == 0) {
+        res[i++] = '0';
+        res[i] = '\0';
+        return res;
+    }
+
+    if (x < 0) {
+        isNeg = 1;
+        x = -x;
+    }
+
+    char temp[32];
+    int t = 0;
+
+    while (x > 0) {
+        temp[t++] = (x % 10) + '0';
+        x /= 10;
+    }
+
+    if (isNeg) {
+        res[i++] = '-';
+    }
+
+    while (t > 0) {
+        res[i++] = temp[--t];
+    }
+
+    res[i] = '\0';
+    return res;
+}
 
 char* _double_to_string(double x) {
     int len = snprintf(NULL, 0, "%f", x);
@@ -888,6 +894,25 @@ double _string_to_double(char* str) {
 
 bool _string_to_bool(char* str) {
     return (str != NULL && strlen(str) > 0);
+}
+
+uint8_t _string_to_byte(const char *str) {
+    if (!str || str[0] == '\0')
+        return 0;
+
+    return (uint8_t)(unsigned char)str[0];
+}
+
+char *_byte_to_string(uint8_t value) {
+    char *str = malloc(2);
+
+    if (!str)
+        return NULL;
+
+    str[0] = (char)value;
+    str[1] = '\0';
+
+    return str;
 }
 
 
@@ -1005,12 +1030,12 @@ void _os_exit(int code) {
     exit(code);
 }
 
-int _os_pid(void) {
-    return (int)getpid();
+long _os_pid(void) {
+    return (long)getpid();
 }
 
-int _os_parentPid(void) {
-    return (int)getppid();
+long _os_parentPid(void) {
+    return (long)getppid();
 }
 
 char* _os_platform(void) {
@@ -1132,11 +1157,20 @@ char* _sys_execOutput(char* cmd) {
     return result;
 }
 
-int _time_now(void) {
-    return (int)time(NULL);
+long _time_millis(void) {
+    struct timespec ts;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    return ((long long)ts.tv_sec * 1000LL)
+           + (ts.tv_nsec / 1000000LL);
 }
 
-char* _time_format(int t) {
+long _time_now(void) {
+    return (long)time(NULL);
+}
+
+char* _time_format(long t) {
     time_t timestamp = (time_t)t;
 
     struct tm *tm_info = localtime(&timestamp);
@@ -1217,6 +1251,22 @@ int _zen_ptr_loadInt(void *p) {
     return *(int *)p;
 }
 
+void _zen_ptr_storeLong(void *p, long value) {
+    *(long *)p = value;
+}
+
+long _zen_ptr_loadLong(void *p) {
+    return *(long *)p;
+}
+
+void _zen_ptr_storeByte(void *p, int8_t value) {
+    *(int8_t *)p = value;
+}
+
+int8_t _zen_ptr_loadByte(void *p) {
+    return *(int8_t *)p;
+}
+
 void _zen_ptr_storeDouble(void *p, double value) {
     *(double *)p = value;
 }
@@ -1287,3 +1337,4 @@ char *_str_dup(const char *s) {
 void _zen_string_free(char* s) {
     free(s);
 }
+

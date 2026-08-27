@@ -159,12 +159,18 @@ export class Lexer {
 
         const num = this.number();
 
-        this.addTokenAt(
-          num.isFloat ? TokenTypes.DOUBLE : TokenTypes.INT,
-          num.value,
-          line,
-          column,
-        );
+this.addTokenAt(
+  num.type === "double"
+    ? TokenTypes.DOUBLE
+    : num.type === "long"
+      ? TokenTypes.LONG
+      : num.type === "byte"
+        ? TokenTypes.BYTE
+        : TokenTypes.INT,
+  num.value,
+  line,
+  column,
+);
 
         continue;
       }
@@ -371,21 +377,44 @@ export class Lexer {
   }
 
   number() {
-    let result = "";
-    let hasDot = false;
+  let result = "";
+  let hasDot = false;
 
-    // HEX
-    if (this.currentChar === "0" && this.peek() === "x") {
-      this.advance(); // skip 0
-      this.advance(); // skip x
-      let hex = "";
-      while (
-        this.currentChar !== null &&
-        /[0-9a-fA-F]/.test(this.currentChar)
-      ) {
-        hex += this.currentChar;
-        this.advance();
-      }
+  // HEX
+  if (this.currentChar === "0" && this.peek() === "x") {
+    this.advance(); // 0
+    this.advance(); // x
+
+    let hex = "";
+
+    while (
+      this.currentChar !== null &&
+      /[0-9a-fA-F]/.test(this.currentChar)
+    ) {
+      hex += this.currentChar;
+      this.advance();
+    }
+
+    if (hex.length === 0) {
+      this.IRB.emitError(
+        "SyntaxError",
+        "Invalid hex literal",
+        this.lineAndColumn(),
+      );
+    }
+
+    let type = "int";
+
+    // L is not a valid hex digit, so it is already outside `hex`
+    if (this.currentChar === "L") {
+      type = "long";
+      this.advance();
+    }
+    // B IS a valid hex digit, so check the final hex character
+    else if (hex.endsWith("B")) {
+      type = "byte";
+      hex = hex.slice(0, -1);
+
       if (hex.length === 0) {
         this.IRB.emitError(
           "SyntaxError",
@@ -393,38 +422,95 @@ export class Lexer {
           this.lineAndColumn(),
         );
       }
-      return {
-        value: parseInt(hex, 16),
-        isFloat: false,
-      };
     }
 
-    while (
+    // Anything alphabetic after the suffix is invalid
+    if (
       this.currentChar !== null &&
-      (/\d/.test(this.currentChar) || this.currentChar === ".")
+      /[a-zA-Z_]/.test(this.currentChar)
     ) {
-      if (this.currentChar === ".") {
-        if (hasDot) break;
-        hasDot = true;
-        result += ".";
-        this.advance();
-        continue;
+      this.IRB.emitError(
+        "SyntaxError",
+        `Invalid numeric literal`,
+        this.lineAndColumn(),
+      );
+    }
+
+    return {
+      value: parseInt(hex, 16),
+      type,
+    };
+  }
+
+  // DECIMAL / DOUBLE
+  while (
+    this.currentChar !== null &&
+    (/\d/.test(this.currentChar) || this.currentChar === ".")
+  ) {
+    if (this.currentChar === ".") {
+      if (hasDot) {
+        break;
       }
 
-      result += this.currentChar;
-      this.advance();
+      hasDot = true;
     }
 
-    if (result.startsWith(".")) {
-      result = "0" + result;
-      hasDot = true;
+    result += this.currentChar;
+    this.advance();
+  }
+
+  if (result.startsWith(".")) {
+    result = "0" + result;
+  }
+
+  // DOUBLE
+  if (hasDot) {
+    if (
+      this.currentChar === "L" ||
+      this.currentChar === "B" ||
+      /[a-zA-Z_]/.test(this.currentChar || "")
+    ) {
+      this.IRB.emitError(
+        "SyntaxError",
+        `Invalid floating-point literal: '${result}${this.currentChar}'`,
+        this.lineAndColumn(),
+      );
     }
 
     return {
       value: result,
-      isFloat: hasDot,
+      type: "double",
     };
   }
+
+  // INTEGER SUFFIX
+  let type = "int";
+
+  if (this.currentChar === "L") {
+    type = "long";
+    this.advance();
+  } else if (this.currentChar === "B") {
+    type = "byte";
+    this.advance();
+  }
+
+  // Reject anything else attached to the number
+  if (
+    this.currentChar !== null &&
+    /[a-zA-Z_]/.test(this.currentChar)
+  ) {
+    this.IRB.emitError(
+      "SyntaxError",
+      `Invalid numeric literal: '${result}${this.currentChar}'`,
+      this.lineAndColumn(),
+    );
+  }
+
+  return {
+    value: result,
+    type,
+  };
+}
 
   string() {
     let result = "";

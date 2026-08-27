@@ -1,4 +1,54 @@
 v2:
 
+v2.1.0
+
 added version control for package system
 added dependency system
+
+added new namespace crypto.
+
+crypto.sha256(data)
+crypto.sha512(data)
+
+crypto.hmacSha256(key, data)
+crypto.hmacSha512(key, data)
+
+crypto.randomBytes(length)
+crypto.randomInt(min, max)
+
+crypto.base64Encode(data)
+crypto.base64Decode(data)
+
+crypto.base64UrlEncode(data)
+crypto.base64UrlDecode(data)
+
+added new primitives: byte (i8), long(i64)
+last L is long type and last B is byte.
+using hexadecimal literal ...saying byte or list type using last B or L. if hex itself need last alphabet such as B put actual suffix B always.
+
+changed toByte() to Byte()
+
+added setT or getT new peimitives support for long and byte
+
+concantination coirce byte
+
+added Map.json()
+added Json.map()
+
+added Long() cast global
+
+changed certain int to long for buitin
+
+OS
+_os_totalMemory: int → long
+_os_freeMemory: int → long
+_os_usedMemory: int → long
+_os_processMemory: int → long
+_os_pid: int → long
+_os_parentPid: int → long
+
+TIME
+_time_millis: int → long
+_time_now: int → long
+_time_format argument: int → long
+_time_sleep argument: int → long

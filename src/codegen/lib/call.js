@@ -11,6 +11,7 @@ import {
   HTTPSERVER_MAP,
   THREAD_MAP,
   DEBUG_MAP,
+  CRYPTO_MAP,
   BUILTIN_STRUCT_ABI,
   BUILTIN_STRUCTS
 } from "../../config/config.js";
@@ -34,6 +35,7 @@ export class Call {
     httpServer,
     thread,
     debug,
+    crypto
   ) {
     this.IRB = IRB;
     this.moduleName = moduleName;
@@ -51,6 +53,7 @@ export class Call {
     this.HTTPSERVER = httpServer;
     this.THREAD = thread;
     this.DEBUG = debug;
+    this.crypto = crypto;
   }
 
   setExpression(expr) {
@@ -79,8 +82,6 @@ export class Call {
       };
 
       const valExpr = this.expr.handleExpression(fakeNode);
-
-      this.IRB.emitExpr(valExpr);
 
       return {
         ptr: valExpr.ptr,
@@ -316,7 +317,10 @@ export class Call {
       let global = [];
       let local = [];
 
-      for (const a of fixedArgs) {
+      for (let i = 0; i < fixedArgs.length; i++) {
+  const a = fixedArgs[i];
+  const expectedType = fn.params[i]?.type?.type || fn.params?.type;
+      
         if (a.global?.length) global.push(...a.global);
         if (a.local?.length) local.push(...a.local);
 
@@ -348,7 +352,9 @@ export class Call {
           local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
           argStr.push(`ptr ${tmp}`);
         } else {
-          argStr.push(`${a.llvmType} ${a.ptr}`);
+  let llvmType = a.llvmType;
+
+  argStr.push(`${llvmType} ${a.ptr}`);
         }
       }
 
@@ -361,7 +367,8 @@ export class Call {
       // expected type from function signature
       const expectedType = restParam?.type?.type || restParam?.type;
 
-      const inferredType = first?.type;
+      let inferredType = first?.type;
+
 
       if (!first) {
         this.IRB.emitError(
@@ -393,6 +400,7 @@ export class Call {
       }
 
       const elementSize = this.IRB.sizeOf(inferredType);
+      
       const llvmType = this.IRB.getLLVMType(inferredType);
       const listPtr = this.IRB.newTemp();
 
@@ -533,7 +541,10 @@ export class Call {
 
     // NORMAL CALL
 
-    for (const a of args) {
+    for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  const expectedType = fn.params[i]?.type?.type || fn.params?.type;
+      
       if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
         let value = a.ptr;
 
@@ -561,8 +572,10 @@ export class Call {
         local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
         argStr.push(`ptr ${tmp}`);
       } else {
-        argStr.push(`${a.llvmType} ${a.ptr}`);
-      }
+  let llvmType = a.llvmType;
+
+  argStr.push(`${llvmType} ${a.ptr}`);
+    }
     }
 
     if (fn.returnType === "void" || isStruct) {
@@ -723,6 +736,9 @@ export class Call {
       case "Int":
         return this.type.Int(node, globalScope);
 
+      case "Long":
+        return this.type.Long(node, globalScope);
+
       case "Double":
         return this.type.Double(node, globalScope);
 
@@ -744,7 +760,7 @@ export class Call {
       case "sizeOf":
         return this.type.sizeOf(node, globalScope);
 
-      case "toByte":
+      case "Byte":
         return this.type.Byte(node, globalScope);
 
       case "matchRegex":
@@ -765,6 +781,7 @@ export class Call {
         const HTTPSERVER = HTTPSERVER_MAP[name];
         const THREAD = THREAD_MAP[name];
         const DEBUG = DEBUG_MAP[name];
+        const CRYPTO = CRYPTO_MAP[name];
 
         if (os) {
           return this.os.zenNativeOSCall(
@@ -874,6 +891,16 @@ export class Call {
             DEBUG[1],
             DEBUG[2],
             DEBUG[3],
+            name,
+          );
+        } else if (CRYPTO) {
+          return this.crypto.ZENCRYPTO(
+            node,
+            globalScope,
+            CRYPTO[0],
+            CRYPTO[1],
+            CRYPTO[2],
+            CRYPTO[3],
             name,
           );
         }

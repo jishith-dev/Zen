@@ -76,8 +76,7 @@ export class IO {
       }
 
       if (expr.isList && typeof expr.generic === "object") {
-        valuePtr = this.IRB.newGlobalString(
-          this.IRB.generateScreenString(expr.generic),
+        valuePtr = this.IRB.newGlobalString(`List<${expr.type}>`
         ).name;
         type = "string";
       }
@@ -94,6 +93,11 @@ export class IO {
         break;
       }
 
+     case "byte": {
+  this.IRB.emitScreenByte(valuePtr, format || "%d\n");
+  break;
+     }
+
       case "bool": {
         if (format !== null) {
           this.IRB.emitError(
@@ -104,6 +108,11 @@ export class IO {
         }
         this.IRB.emitScreenBool(valuePtr);
         break;
+      }
+
+      case "long": {
+  this.IRB.emitScreenLong(valuePtr, format || "%lld\n");
+  break;
       }
 
       case "string": {

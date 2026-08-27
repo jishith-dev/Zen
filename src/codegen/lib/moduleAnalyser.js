@@ -19,6 +19,9 @@ export class Module {
     const source = node.source;
     const imports = node.names || [];
 
+    // reset used namespace set
+    this.IRB.usedNameSpaces = new Set();
+
     if (!source) {
       this.IRB.emitError("ImportError", "import requires source", node);
     }

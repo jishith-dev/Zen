@@ -1430,6 +1430,20 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
             value: 0,
           });
         }
+
+        else if (dataType === "byte") {
+          value = this.node({
+            type: ParserTypes.BYTE,
+            value: 0,
+          });
+        }
+
+        else if (dataType === "long") {
+          value = this.node({
+            type: ParserTypes.LONG,
+            value: 0,
+          });
+        }
       }
     }
 
@@ -1835,6 +1849,24 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
       return this.node({
         type: ParserTypes.BOOLEAN,
         value: token.value === true ? 1 : 0,
+      });
+    }
+
+    // BYTE
+    if (token.type === "byte") {
+      this.advance();
+      return this.node({
+        type: ParserTypes.BYTE,
+        value: token.value,
+      });
+    }
+
+    // LONG
+    if (token.type === "long") {
+      this.advance();
+      return this.node({
+        type: ParserTypes.LONG,
+        value: token.value,
       });
     }
 

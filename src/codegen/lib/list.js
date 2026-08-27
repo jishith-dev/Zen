@@ -310,7 +310,11 @@ export class ZenList {
         }
 
         // Leaf check using the resolved actual type
-        if (actualType !== expectedType) {
+        if (
+  actualType !== expectedType &&
+  !(actualType === "int" && expectedType === "long") &&
+  !(actualType === "long" && expectedType === "int")
+) {
           this.IRB.emitError(
             "TypeError",
             `List ${name} expected ${expectedType} but got ${actualType}`,

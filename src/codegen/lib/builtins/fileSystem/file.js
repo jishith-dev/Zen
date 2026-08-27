@@ -62,8 +62,8 @@ export class ZenFileSystem {
           return "i1";
         case "string":
           return "ptr";
-        case "Byte": // special case
-          return "ptr";
+        case "byte": // special case
+          return "i8";
         default:
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }
@@ -108,7 +108,7 @@ export class ZenFileSystem {
     }
 
     const listRetFn = ["_fs_readFileBytes"]; // only list return fn in fs namespace
-    const generic = { generic: "Byte" };
+    const generic = { generic: "byte" };
 
 this.IRB.cleanupBuiltinStringTemps(exprs)
     

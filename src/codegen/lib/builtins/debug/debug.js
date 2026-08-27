@@ -228,6 +228,10 @@ export class DEBUG {
         bool: 2,
         double: 3,
         string: 4,
+        list: 5,
+        map: 6,
+        long: 7,
+        byte: 8
       };
 
       const tv = type_map[deepestType];
