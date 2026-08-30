@@ -52,3 +52,15 @@ _time_millis: int → long
 _time_now: int → long
 _time_format argument: int → long
 _time_sleep argument: int → long
+
+v2.1.1
+
+added HttpRequest.getHeader 
+
+Json integer numbers become Long when converted via .map().
+After .map(), use getLong() for all JSON integer values.
+Normal Map int/long behavior remains unchanged.
+
+List fields are automatically initialized when a new struct instance is declared without an initializer. Struct literals only initialize/assign the fields explicitly specified in the literal.
+
+"extName()" returns the extension without ".", while "path.extname()" returns it with ".".

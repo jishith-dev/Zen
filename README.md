@@ -1,6 +1,6 @@
 # ZEN Programming Language
 
-**Version 2.1.0** · Stable · July 2026
+**Version 2.1.1** · Stable · July 2026
 
 **GitHub**: https://github.com/Jishith-dev/Zen
 
@@ -61,9 +61,9 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v2.1.0
+Current Version: v2.1.1
 
-### v2.1.0
+### v2.1.1
 
 - Dynamic GitHub default branch detection for `zen install`
 - Increased package description limit from 50 to 400 characters
@@ -663,7 +663,7 @@ This provides a consistent and explicit ownership model across Zen's type system
 
 ## Scope of This Specification
 
-Version 2.1.0 defines the **stable core** of the language:
+Version 2.1.1 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
@@ -675,6 +675,8 @@ Version 2.1.0 defines the **stable core** of the language:
 - Built-in HTTP server API
 - Built-in JSON API
 - Built-in time, system, and operating system APIs
+- Built-in cryptographic API
+- Built-in filesystem and path APIs
 - Compilation and evaluation model
 
 Future versions will continue expanding the standard library, language features, and compiler optimizations.
@@ -2122,6 +2124,7 @@ req.css(...)
 req.sendFile(...)
 req.status(...)
 req.setHeader(...)
+req.getHeader(...)
 req.redirect(...)
 ```
 
@@ -2168,6 +2171,17 @@ json.arrayGetArray(...)
 json.map() Map
 json.free()
 ```
+
+> [!CAUTION]
+> ### JSON Integer Values After `.map()`
+>
+> JSON integer numbers become `long` values when converted via `.map()`.
+>
+> After `.map()`, use `getLong()` for all JSON integer values.
+>
+> **Note:** Normal `Map` integer/long behavior remains unchanged.
+
+----
 
 ##### JsonObject
 
@@ -2238,7 +2252,7 @@ List<List<int>> matrix = [[1, 2], [3, 4]]
 
 List elements may be of the following types:
 
-- `int`, `double`, `string`, `bool`
+- `int`, `double`, `string`, `bool`, `long`, `byte`
 - Struct types
 - Nested `List<T>`
 
@@ -2409,11 +2423,39 @@ struct Person {
 }
 ```
 
+----
+
+#### List Field Initialization
+
+`List` fields inside structs are automatically initialized when a struct instance is created.
+
+~~~zen
+struct User {
+  List<string> names
+  List<int> scores
+}
+~~~
+
+Creating the struct initializes both lists:
+
+~~~zen
+User user
+
+user.names.push("Alice")
+user.scores.push(100)
+~~~
+
+No manual list initialization is required.
+
+This also applies to structs imported from packages.
+
+----
+
 #### Allowed Field Types
 
 Struct fields may be of the following types:
 
-- `int`, `double`, `string`, `bool`
+- `int`, `double`, `string`, `bool`, `long`, `byte`
 - `List<T>`
 - Another `struct` type
 
@@ -4903,9 +4945,7 @@ int value = ffi.atoi("123")
 
 > FFI functions are thin wrappers around native C library functions. Their behavior follows the underlying platform implementation.
 
----
-
-### 11.3.8 `httpServer`
+#### 11.3.8 `httpServer`
 
 The `httpServer` namespace provides a built-in HTTP server for handling incoming HTTP requests.
 
@@ -5016,6 +5056,116 @@ Map user = {
 }
 
 debug.pretty(user)
+```
+
+### 11.3.11 `path`
+
+The `path` namespace provides utilities for manipulating file system paths.
+
+---
+
+##### `path.basename`
+
+Returns the final portion of a path.
+
+```zen
+path.basename(path)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `path` | `string` | File or directory path |
+
+Returns `string`.
+
+```zen
+string name = path.basename("/home/user/test.txt")
+screen(name)
+```
+
+---
+
+##### `path.dirname`
+
+Returns the directory portion of a path.
+
+```zen
+path.dirname(path)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `path` | `string` | File or directory path |
+
+Returns `string`.
+
+```zen
+string dir = path.dirname("/home/user/test.txt")
+screen(dir)
+```
+
+---
+
+##### `path.extname`
+
+Returns the file extension of a path.
+
+```zen
+path.extname(path)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `path` | `string` | File path |
+
+Returns `string`.
+
+```zen
+string ext = path.extname("image.png")
+screen(ext)
+```
+
+---
+
+##### `path.join`
+
+Joins path components into a single path.
+
+```zen
+path.join(first, second)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `first` | `string` | First path component |
+| `second` | `string` | Second path component |
+
+Returns `string`.
+
+```zen
+string file = path.join("build", "test.ll")
+screen(file)
+```
+
+---
+
+##### `path.normalize`
+
+Normalizes a path by resolving redundant path components.
+
+```zen
+path.normalize(path)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `path` | `string` | Path to normalize |
+
+Returns `string`.
+
+```zen
+string normalized = path.normalize("build/../src/main.zen")
+screen(normalized)
 ```
 
 ---
@@ -5616,10 +5766,10 @@ string r = capitalize("zen")   # "Zen"
 ```
 extName(path) → string
 ```
-Returns the file extension from a path string, including the leading dot.
+Returns the file extension from a path string, not including the leading dot.
 ```zen
-string r = extName("main.zen")   # ".zen"
-string r = extName("data.txt")   # ".txt"
+string r = extName("main.zen")   # "zen"
+string r = extName("data.txt")   # "txt"
 ```
 
 ---
@@ -5856,7 +6006,7 @@ ZEN uses Clang's `-O2` optimization level, which enables aggressive optimization
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v2.1.0. All compilation uses `-O2` by default.
+No user-facing optimization flags are exposed in v2.1.1. All compilation uses `-O2` by default.
 
 ---
 
@@ -6406,7 +6556,7 @@ Common triggers:
 
 ### 13.4 Error Improvement Roadmap
 
-ZEN v2.1.0 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
+ZEN v2.1.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
 
 - Full call stack traces across all active frames
 - Better source location tracking through nested expressions
@@ -6470,7 +6620,7 @@ The following names are reserved as built-in functions, standard library functio
 
 #### Namespace Identifiers
 
-`os` `fs` `sys` `time` `http` `net` `httpServer`
+`os` `fs` `sys` `time` `http` `net` `httpServer`, `ffi`, `path`, `threads`, `debug`, `crypto`
 
 ---
 
@@ -6504,6 +6654,8 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `double` | `0.0` |
 | `string` | `""` |
 | `bool` | `false` |
+| `long` | `0L` |
+| `byte` | `0B` |
 | `List<T>` | `[]` |
 
 ---
@@ -6515,26 +6667,44 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `double` | `int` | `Int(x)` — truncates |
 | `string` | `int` | `Int(x)` |
 | `bool` | `int` | `Int(x)` — `true` → `1`, `false` → `0` |
+| `long` | `int` | `Int(x)` |
+| `byte` | `int` | `Int(x)` |
 | `int` | `double` | `Double(x)` |
 | `string` | `double` | `Double(x)` |
 | `bool` | `double` | `Double(x)` — `true` → `1.0` |
+| `long` | `double` | `Double(x)` |
+| `byte` | `double` | `Double(x)` |
+| `int` | `long` | `Long(x)` |
+| `double` | `long` | `Long(x)` — truncates |
+| `string` | `long` | `Long(x)` |
+| `bool` | `long` | `Long(x)` — `true` → `1`, `false` → `0` |
+| `byte` | `long` | `Long(x)` |
+| `int` | `byte` | `Byte(x)` |
+| `long` | `byte` | `Byte(x)` |
+| `double` | `byte` | `Byte(x)` — truncates |
+| `string` | `byte` | `Byte(x)` |
+| `bool` | `byte` | `Byte(x)` — `true` → `1`, `false` → `0` |
 | `int` | `string` | `String(x)` |
 | `double` | `string` | `String(x)` |
+| `long` | `string` | `String(x)` |
+| `byte` | `string` | `String(x)` |
 | `bool` | `string` | `String(x)` |
 | `int` | `bool` | `Bool(x)` — `0` → `false`, non-zero → `true` |
+| `long` | `bool` | `Bool(x)` — `0` → `false`, non-zero → `true` |
+| `byte` | `bool` | `Bool(x)` — `0` → `false`, non-zero → `true` |
 | `string` | `bool` | `Bool(x)` — `"true"` → `true`, `"false"` → `false` |
-
----
 
 ### F. Implicit Type Behavior
 
 | Context | Behavior |
 |---|---|
 | `int` operand with `double` in expression | `int` promoted to `double`; result is `double` |
+| `long` operand with `double` in expression | `long` promoted to `double`; result is `double` |
+| `byte` operand with `int` in expression | `byte` promoted to `int`; result is `int` |
+| `byte` operand with `long` in expression | `byte` promoted to `long`; result is `long` |
+| `int` operand with `long` in expression | `int` promoted to `long`; result is `long` |
 | `string` + any type via `+` | Other operand coerced to `string`; result is `string` |
 | Any other cross-type expression | Compile-time `TypeError` |
-
----
 
 ### G. Data Structure Constraints Summary
 
@@ -6578,14 +6748,15 @@ When a variable is declared without an initializer, it is lowered to its type's 
 |---|---|---|
 | `TypeError` | Compile-time | Type mismatch in assignment or expression |
 | `ArgumentError` | Compile-time | Wrong number of arguments to a function |
-| `ReferenceError` | Compile-time | Variable, function, struct, field etc referenced before definition |
+| `ReferenceError` | Compile-time | Variable, function, struct, field, module, etc. referenced before definition |
 | `DeclarationError` | Compile-time | Invalid identifier or declaration |
 | `ConstError` | Compile-time | Reassignment of a constant |
-| `ExportError` | Compile-time | Invalid export — expression value or duplicate export |
-| `ImportError` | Compile-time | Unresolved import name or missing file |
-| `SyntaxError` | Compile-time | Source does not conform to grammar |
+| `ExportError` | Compile-time | Invalid export — undefined, duplicate, or non-exportable item |
+| `ImportError` | Compile-time | Unresolved import name, missing file, invalid import, or circular import |
+| `ModuleError` | Compile-time | Invalid module state or module loading/generation failure |
+| `SyntaxError` | Compile-time | Source does not conform to the grammar |
 | `ArrayError` | Compile-time | Invalid array size or partial initializer |
-| `MemoryError` | Runtime | Use after free |
+| `MemoryError` | Runtime | Use after free or invalid memory access |
 | `IndexError` | Runtime | Out-of-bounds array or list access |
 | `PanicError` | Runtime | Explicit `sys.panic()` call |
 

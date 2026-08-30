@@ -112,6 +112,14 @@ export class Struct {
       llvmFields.push(llvmType);
     }
 
+    const needsInit = layout.some((field) => field?.isList);
+
+if (needsInit) {
+  this.IRB.structInitializers.set(name, layout);
+}
+
+    this.IRB.generateStructInitializer(name, layout);
+
     this.IRB.globals.push(`%${name} = type { ${llvmFields.join(", ")} }`);
 
     this.IRB.setStruct(name, {
@@ -168,6 +176,12 @@ export class Struct {
       ptr = t.ptr;
     } else if (value === null) {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+
+      if (this.IRB.structInitializers.has(structName)) {
+    this.IRB.emit(
+      `call void @_zen_init_${structName}(ptr ${ptr})`,
+    );
+      }
     } else {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       const expr = this.expr.handleExpression(value);
@@ -298,7 +312,15 @@ export class Struct {
       );
     }
 
-    const value = this.expr.handleExpression(node.value, false, fieldMeta.type);
+    const ctx = {};
+
+    ctx.type = fieldMeta.type;
+    ctx.generic = fieldMeta?.generic;
+    if (fieldMeta?.isList) {
+    ctx.depth = this.IRB.getListDepth(fieldMeta?.generic);
+    }
+    
+    const value = this.expr.handleExpression(node.value, false, ctx);
 
     const expected = fieldMeta?.type;
     const expectedIsList = fieldMeta?.isList;

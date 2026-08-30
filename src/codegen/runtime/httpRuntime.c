@@ -53,6 +53,9 @@ typedef struct {
     char *body;
     size_t bodyLen;
 
+    char *requestHeaders;
+    size_t requestHeadersLen;
+
     int status;
     int responded;   /* guards against double-send / double-free */
 
@@ -257,12 +260,16 @@ static void appendResponseHeader(HttpRequest *req, const char *name, const char 
 
 static void freeRequestFields(HttpRequest *req) {
     if (!req) return;
+
     free(req->method);
     free(req->path);
     free(req->body);
+    free(req->requestHeaders);
+
     req->method = NULL;
     req->path = NULL;
     req->body = NULL;
+    req->requestHeaders = NULL;
 }
 
 static void sendResponse(HttpRequest *req, int statusOverrideOrNeg,
@@ -352,6 +359,19 @@ HttpRequest* _httpServer_next(HttpServer *server) {
         free(req);
         return NULL;
     }
+
+  req->requestHeaders = (char*)malloc(headerEnd + 1);
+
+if (!req->requestHeaders) {
+    free(raw);
+    CLOSESOCK(req->clientFd);
+    free(req);
+    return NULL;
+}
+
+memcpy(req->requestHeaders, raw, headerEnd);
+req->requestHeaders[headerEnd] = '\0';
+req->requestHeadersLen = headerEnd;
 
     /* Parse request line: "METHOD /path HTTP/1.1\r\n" */
     char lineBuf[MAX_REQUEST_LINE];
@@ -502,6 +522,29 @@ void _httpRequest_sendFile(HttpRequest *req, const char *path, const char *conte
 const char* _httpRequest_method(HttpRequest *req) { return (req && req->method) ? req->method : ""; }
 const char* _httpRequest_path(HttpRequest *req)   { return (req && req->path)   ? req->path   : ""; }
 const char* _httpRequest_body(HttpRequest *req)   { return (req && req->body)   ? req->body   : ""; }
+
+const char* _httpRequest_getHeader(
+    HttpRequest *req,
+    const char *name
+) {
+    static char value[4096];
+
+    value[0] = '\0';
+
+    if (!req || !name || !req->requestHeaders) {
+        return value;
+    }
+
+    findHeaderValue(
+        req->requestHeaders,
+        req->requestHeadersLen,
+        name,
+        value,
+        sizeof(value)
+    );
+
+    return value;
+}
 
 void _httpRequest_discard(HttpRequest *req) {
     if (!req) return;

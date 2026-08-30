@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum {
   ZEN_JSON_NULL,
@@ -33,7 +34,7 @@ struct ZenJson {
   ZenJsonType type;
   union {
     int b;
-    int i;
+    int64_t i;
     double d;
     char *s;
     ZenJsonArray arr;
@@ -626,7 +627,6 @@ ZenJson *_zen_json_getRootObject(ZenJson *json) {
 typedef struct ZenMap ZenMap;
 
 ZenMap *_zen_map_new(void);
-void zen_map_set_int(ZenMap *map, char *key, int value);
 void zen_map_set_long(ZenMap *map, char *key, long value);
 void zen_map_set_bool(ZenMap *map, char *key, bool value);
 void zen_map_set_double(ZenMap *map, char *key, double value);
@@ -648,7 +648,8 @@ static ZenMap *_zen_json_object_to_map(ZenJson *json) {
 
     switch (value->type) {
       case ZEN_JSON_INT:
-        zen_map_set_int(map, key, value->as.i);
+        
+        zen_map_set_long(map, key, value->as.i);
         break;
 
       case ZEN_JSON_DOUBLE:

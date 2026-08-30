@@ -13,7 +13,7 @@ export class ZenHttp {
     name,
   ) {
     
-    this.IRB.usedNameSpace.add("http");
+    this.IRB.usedNameSpaces.add("http");
       
     const isAwait = node.isAwait;
 

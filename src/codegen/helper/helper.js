@@ -56,6 +56,8 @@ export class IRBuilder {
     this.currentStruct = null;
     this.usedStdFunctions = new Set();
     this.usedNameSpaces = new Set();
+    this.structInitializers = new Map();
+    this.exportNames = new Set();
 
     this.is64 = [
       "x64",
@@ -79,7 +81,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = true;
+    this.diagnosticMode = false;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -3764,6 +3766,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     }
 
     const entryFile = path.join(packageDir, manifest.bin);
+    
 
     if (!fs.existsSync(entryFile)) {
       this.emitError(
@@ -4605,5 +4608,50 @@ if (sym.fromParam && sym.pIndex !== undefined) {
       this.emit(`call void @_zen_string_free(ptr ${a.ptr})`);
     }
   }
+  }
+
+  generateStructInitializer(name, layout) {
+    const lines = [];
+
+    lines.push(`define void @_zen_init_${name}(ptr %this) {`);
+
+    for (const field of layout) {
+        if (!field.isList) continue;
+
+        const deepest = this.getDeepestGeneric(field.generic);
+        const depth = this.getListDepth(field.generic);
+
+        const elementSize =
+            depth > 1
+                ? 8
+                : this.sizeOf(deepest);
+
+        const list = this.newTemp();
+
+        lines.push(
+            `${list} = call ptr @_zen_list_new(i64 ${elementSize})`
+        );
+
+        lines.push(
+            `call void @_zen_list_set_meta(ptr ${list}, i32 ${depth}, i32 ${this.getListTypeCode(deepest)})`
+        );
+
+        const fieldPtr = this.newTemp();
+
+        lines.push(
+            `${fieldPtr} = getelementptr %${name}, ptr %this, i32 0, i32 ${field.index}`
+        );
+
+        lines.push(
+            `store ptr ${list}, ptr ${fieldPtr}`
+        );
+    }
+
+    lines.push("ret void");
+    lines.push("}");
+
+    this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
+this.declareOneTime("zen_list_set_meta","declare void @_zen_list_set_meta(ptr, i32, i32)");
+    this.functionBuff.push(lines.join("\n"));
   }
 }

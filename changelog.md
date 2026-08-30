@@ -467,3 +467,35 @@ Added the new `crypto` namespace:
 - `time.sleep` argument: `int` → `long`
 
 ---
+
+## v2.1.1
+
+### Standard Library
+
+#### HTTP
+
+- Added `HttpRequest.getHeader()` for retrieving a request header by name.
+
+#### JSON & Map
+
+> ⚠️ **Important**
+
+- JSON integer numbers become `Long` values when converted using `.map()`.
+- After `.map()`, use `getLong()` to retrieve JSON integer values.
+- Normal `Map` integer/long behavior remains unchanged.
+
+#### Language
+
+##### Automatic List Field Initialization
+
+- List fields are automatically initialized when a new struct instance is declared without an initializer.
+- Struct literals only initialize or assign the fields explicitly specified in the literal.
+
+#### Path
+
+- `extName()` returns the file extension without the leading `.`.
+- `path.extname()` returns the file extension with the leading `.`.
+
+### Fixes
+
+- Various compiler, runtime, standard library, and type-resolution bug fixes.

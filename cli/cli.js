@@ -69,7 +69,7 @@ const COMPILE_COMMANDS = new Set([
 
 function help() {
   console.log(`
-Zen Programming Language v2.1.0
+Zen Programming Language v2.1.1
 
 hint: ? (optional)
 
@@ -142,7 +142,7 @@ export class CLI {
     }
 
     if (command === "--version" || command === "-v" || command === "version") {
-      console.log("Zen v2.1.0 (latest)");
+      console.log("Zen v2.1.1 (latest)");
       process.exit(0);
     }
 

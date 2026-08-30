@@ -494,6 +494,7 @@ export class Package {
     );
 
     if (!configRes.ok) {
+      
       console.error(
         `error: Failed to fetch zen.json for v${installVersion}`
       );

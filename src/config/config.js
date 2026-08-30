@@ -1023,6 +1023,12 @@ arrayGetByte: {
       args: ["string", "string"],
       llvmName: "_httpRequest_setHeader",
     },
+
+    getHeader: {
+  returnType: "string",
+  args: ["string"],
+  llvmName: "_httpRequest_getHeader",
+}
   },
 
   Ptr: {

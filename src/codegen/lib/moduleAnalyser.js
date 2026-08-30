@@ -60,7 +60,7 @@ export class Module {
 
     const codegen = new CodeGen(ast, moduleName, this.moduleFiles);
 
-    const { ir, symbolTable, functionTable, structTable } =
+    const { ir, symbolTable, functionTable, structTable, structInitializers, exportNames } =
       codegen.generateLLVM();
 
     this.IRB.moduleName = prevModule;
@@ -69,6 +69,8 @@ export class Module {
       symbolTable: symbolTable[0],
       functionTable,
       structTable,
+      structInitializers,
+      exportNames
     };
 
     const exportNode = ast.find((n) => n.type === "EXPORT");
@@ -100,6 +102,7 @@ export class Module {
     const seen = new Set();
 
     for (const name of exports) {
+      
       if (seen.has(name)) {
         this.IRB.emitError("ExportError", `Duplicate export '${name}'`, node);
       }
@@ -121,12 +124,24 @@ export class Module {
   }
 
   resolveImports(imports, source, tables, node) {
+    for (const [structName, layout] of tables.structInitializers) {
+  this.IRB.structInitializers.set(structName, layout);
+    }
     const imported = this.moduleImports.get(source) || new Set();
     this.moduleImports.set(source, imported);
 
     const seen = new Set();
 
     for (const name of imports) {
+
+      if (!tables.exportNames.has(name)) {
+  this.IRB.emitError(
+    "ImportError",
+    `'${name}' not exported from ${source}`,
+    node,
+  );
+      }
+      
       if (seen.has(name)) {
         this.IRB.emitError("ImportError", `Duplicate import '${name}'`, node);
       }
@@ -170,7 +185,8 @@ export class Module {
 
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
-
+        this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
+        
         // methods
         for (const [fnName, fn] of tables.functionTable) {
           if (fnName === name) continue;

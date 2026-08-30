@@ -133,6 +133,10 @@ export class CodeGen {
 
     const haveExport = this.ast.find((f) => f.type === "EXPORT");
 
+this.IRB.exportNames = haveExport
+  ? new Set(haveExport.names)
+  : new Set();
+
     if (haveExport) {
       this.IRB.haveExport = true;
     }
@@ -292,6 +296,8 @@ define void @_assignSeed () {
       symbolTable: this.IRB.symbolTable || [],
       functionTable: this.IRB.functions || [],
       structTable: this.IRB.structTable || [],
+      structInitializers: this.IRB.structInitializers || new Map(),
+      exportNames: this.IRB.exportNames
     };
   }
 
