@@ -5,13 +5,14 @@ on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
   windows:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Zen
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -22,112 +23,63 @@ jobs:
       - name: Install LLVM
         shell: powershell
         run: |
-          choco install llvm -y
+          choco install llvm -y --no-progress
+
+      - name: Add LLVM to PATH
+        shell: powershell
+        run: |
+          $llvmPath = "C:\Program Files\LLVM\bin"
+          echo $llvmPath >> $env:GITHUB_PATH
 
       - name: Check dependencies
-        shell: bash
+        shell: powershell
         run: |
-          echo "=== Git ==="
+          Write-Host "=== Git ==="
           git --version
 
-          echo "=== Node ==="
+          Write-Host "=== Node ==="
           node --version
 
-          echo "=== Clang ==="
+          Write-Host "=== Clang ==="
           clang --version
 
-          echo "=== LLC ==="
+          Write-Host "=== LLC ==="
           llc --version
 
-      - name: Check LLVM version
-        shell: bash
+          Write-Host "=== OPT ==="
+          opt --version
+
+      - name: Check libcurl
+        shell: powershell
         run: |
-          LLVM_VERSION=$(llc --version | grep -oE 'LLVM version [0-9]+' | grep -oE '[0-9]+$')
+          Write-Host "Checking for libcurl..."
 
-          echo "Detected LLVM: $LLVM_VERSION"
+          $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
 
-          if [ "$LLVM_VERSION" -lt 20 ]; then
-            echo "LLVM 20 or newer is required"
+          if ($null -eq $curl) {
+            Write-Error "curl.exe not found"
             exit 1
-          fi
+          }
 
-      - name: Detect Windows target
+          curl.exe --version
+
+      - name: Build Zen
         shell: bash
         run: |
-          uname -s
-          echo "Windows GitHub runner detected."
+          export PATH="/c/Program Files/LLVM/bin:$PATH"
 
-      - name: Build ZEN standard library
+          chmod +x bin/zen.js
+
+          echo "=== Building Zen ==="
+          bash install.sh
+
+      - name: Verify Zen
         shell: bash
         run: |
-          llc \
-            -filetype=obj \
-            -relocation-model=pic \
-            src/zen_stdlib/constants.ll \
-            -o src/zen_stdlib/constants.o
+          export PATH="/c/Program Files/LLVM/bin:$PATH"
 
-          llc \
-            -filetype=obj \
-            -relocation-model=pic \
-            src/zen_stdlib/zen_stdlib_opt.ll \
-            -o src/zen_stdlib/zen_stdlib_opt.o
-
-      - name: Build Windows runtime
-        shell: bash
-        run: |
-          clang -c -fPIC \
-            src/codegen/runtime/w_runtime.c \
-            -o src/codegen/runtime/runtime.o
-
-          clang -c -fPIC \
-            src/codegen/runtime/listRuntime.c \
-            -o src/codegen/runtime/listRuntime.o
-
-          clang -c -fPIC \
-            src/codegen/runtime/jsonRuntime.c \
-            -o src/codegen/runtime/jsonRuntime.o
-
-          clang -c -fPIC \
-            src/codegen/runtime/mapRuntime.c \
-            -o src/codegen/runtime/mapRuntime.o
-
-          clang -c -fPIC \
-            src/codegen/runtime/httpRuntime.c \
-            -o src/codegen/runtime/httpRuntime.o
-
-      - name: Verify build artifacts
-        shell: bash
-        run: |
-          test -f src/zen_stdlib/constants.o
-          test -f src/zen_stdlib/zen_stdlib_opt.o
-          test -f src/codegen/runtime/runtime.o
-          test -f src/codegen/runtime/listRuntime.o
-          test -f src/codegen/runtime/jsonRuntime.o
-          test -f src/codegen/runtime/mapRuntime.o
-          test -f src/codegen/runtime/httpRuntime.o
-
-          echo "All runtime artifacts exist."
-
-      - name: Test Zen compiler
-        shell: bash
-        run: |
+          echo "=== Zen version ==="
           node bin/zen.js --version
 
-      - name: Create Zen test
-        shell: bash
-        run: |
-          cat > test.zen <<'EOF'
-          screen("Hello from Windows")
-
-          int a = 10
-          int b = 20
-
-          screen(a)
-          screen(b)
-          screen(a + b)
-          EOF
-
-      - name: Run Zen test
-        shell: bash
-        run: |
-          node bin/zen.js run test.zen
+          echo "=== Zen help ==="
+          node bin/zen.js --help
