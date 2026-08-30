@@ -1,0 +1,133 @@
+name: Windows Build Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Zen
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install LLVM
+        shell: powershell
+        run: |
+          choco install llvm -y
+
+      - name: Check dependencies
+        shell: bash
+        run: |
+          echo "=== Git ==="
+          git --version
+
+          echo "=== Node ==="
+          node --version
+
+          echo "=== Clang ==="
+          clang --version
+
+          echo "=== LLC ==="
+          llc --version
+
+      - name: Check LLVM version
+        shell: bash
+        run: |
+          LLVM_VERSION=$(llc --version | grep -oE 'LLVM version [0-9]+' | grep -oE '[0-9]+$')
+
+          echo "Detected LLVM: $LLVM_VERSION"
+
+          if [ "$LLVM_VERSION" -lt 20 ]; then
+            echo "LLVM 20 or newer is required"
+            exit 1
+          fi
+
+      - name: Detect Windows target
+        shell: bash
+        run: |
+          uname -s
+          echo "Windows GitHub runner detected."
+
+      - name: Build ZEN standard library
+        shell: bash
+        run: |
+          llc \
+            -filetype=obj \
+            -relocation-model=pic \
+            src/zen_stdlib/constants.ll \
+            -o src/zen_stdlib/constants.o
+
+          llc \
+            -filetype=obj \
+            -relocation-model=pic \
+            src/zen_stdlib/zen_stdlib_opt.ll \
+            -o src/zen_stdlib/zen_stdlib_opt.o
+
+      - name: Build Windows runtime
+        shell: bash
+        run: |
+          clang -c -fPIC \
+            src/codegen/runtime/w_runtime.c \
+            -o src/codegen/runtime/runtime.o
+
+          clang -c -fPIC \
+            src/codegen/runtime/listRuntime.c \
+            -o src/codegen/runtime/listRuntime.o
+
+          clang -c -fPIC \
+            src/codegen/runtime/jsonRuntime.c \
+            -o src/codegen/runtime/jsonRuntime.o
+
+          clang -c -fPIC \
+            src/codegen/runtime/mapRuntime.c \
+            -o src/codegen/runtime/mapRuntime.o
+
+          clang -c -fPIC \
+            src/codegen/runtime/httpRuntime.c \
+            -o src/codegen/runtime/httpRuntime.o
+
+      - name: Verify build artifacts
+        shell: bash
+        run: |
+          test -f src/zen_stdlib/constants.o
+          test -f src/zen_stdlib/zen_stdlib_opt.o
+          test -f src/codegen/runtime/runtime.o
+          test -f src/codegen/runtime/listRuntime.o
+          test -f src/codegen/runtime/jsonRuntime.o
+          test -f src/codegen/runtime/mapRuntime.o
+          test -f src/codegen/runtime/httpRuntime.o
+
+          echo "All runtime artifacts exist."
+
+      - name: Test Zen compiler
+        shell: bash
+        run: |
+          node bin/zen.js --version
+
+      - name: Create Zen test
+        shell: bash
+        run: |
+          cat > test.zen <<'EOF'
+          screen("Hello from Windows")
+
+          int a = 10
+          int b = 20
+
+          screen(a)
+          screen(b)
+          screen(a + b)
+          EOF
+
+      - name: Run Zen test
+        shell: bash
+        run: |
+          node bin/zen.js run test.zen
