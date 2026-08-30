@@ -20,20 +20,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install LLVM
-        shell: powershell
-        run: |
-          choco install llvm -y --no-progress
-
-      - name: Add LLVM to PATH
-        shell: powershell
-        run: |
-          $llvmPath = "C:\Program Files\LLVM\bin"
-          echo $llvmPath >> $env:GITHUB_PATH
-
       - name: Check dependencies
         shell: powershell
         run: |
+          $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
+
           Write-Host "=== Git ==="
           git --version
 
@@ -49,37 +40,91 @@ jobs:
           Write-Host "=== OPT ==="
           opt --version
 
-      - name: Check libcurl
+      - name: Check LLVM version
         shell: powershell
         run: |
-          Write-Host "Checking for libcurl..."
+          $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
 
-          $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+          $llvm = & llc --version
+          Write-Host $llvm
 
-          if ($null -eq $curl) {
-            Write-Error "curl.exe not found"
+          if ($llvm -notmatch "LLVM version 2[0-9]") {
+            Write-Error "LLVM 20 or newer is required."
             exit 1
           }
 
-          curl.exe --version
-
-      - name: Build Zen
-        shell: bash
+      - name: Detect Windows target
+        shell: powershell
         run: |
-          export PATH="/c/Program Files/LLVM/bin:$PATH"
+          Write-Host "=== OS ==="
+          [System.Environment]::OSVersion
 
-          chmod +x bin/zen.js
+          Write-Host "=== Architecture ==="
+          $env:PROCESSOR_ARCHITECTURE
 
-          echo "=== Building Zen ==="
-          bash install.sh
-
-      - name: Verify Zen
-        shell: bash
+      - name: Build ZEN standard library
+        shell: powershell
         run: |
-          export PATH="/c/Program Files/LLVM/bin:$PATH"
+          $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
 
-          echo "=== Zen version ==="
+          New-Item -ItemType Directory -Force -Path "src/zen_stdlib" | Out-Null
+
+          llc -filetype=obj -relocation-model=pic `
+            src/zen_stdlib/constants.ll `
+            -o src/zen_stdlib/constants.o
+
+          llc -filetype=obj -relocation-model=pic `
+            src/zen_stdlib/zen_stdlib_opt.ll `
+            -o src/zen_stdlib/zen_stdlib_opt.o
+
+      - name: Build Windows runtime
+        shell: powershell
+        run: |
+          $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
+
+          clang -c -fPIC `
+            src/codegen/runtime/w_runtime.c `
+            -o src/codegen/runtime/runtime.o
+
+          clang -c -fPIC `
+            src/codegen/runtime/listRuntime.c `
+            -o src/codegen/runtime/listRuntime.o
+
+          clang -c -fPIC `
+            src/codegen/runtime/jsonRuntime.c `
+            -o src/codegen/runtime/jsonRuntime.o
+
+          clang -c -fPIC `
+            src/codegen/runtime/mapRuntime.c `
+            -o src/codegen/runtime/mapRuntime.o
+
+          clang -c -fPIC `
+            src/codegen/runtime/httpRuntime.c `
+            -o src/codegen/runtime/httpRuntime.o
+
+      - name: Verify build artifacts
+        shell: powershell
+        run: |
+          $artifacts = @(
+            "src/zen_stdlib/constants.o",
+            "src/zen_stdlib/zen_stdlib_opt.o",
+            "src/codegen/runtime/runtime.o",
+            "src/codegen/runtime/listRuntime.o",
+            "src/codegen/runtime/jsonRuntime.o",
+            "src/codegen/runtime/mapRuntime.o",
+            "src/codegen/runtime/httpRuntime.o"
+          )
+
+          foreach ($file in $artifacts) {
+            if (!(Test-Path $file)) {
+              Write-Error "Missing artifact: $file"
+              exit 1
+            }
+
+            Write-Host "OK: $file"
+          }
+
+      - name: Verify Zen CLI
+        shell: powershell
+        run: |
           node bin/zen.js --version
-
-          echo "=== Zen help ==="
-          node bin/zen.js --help
