@@ -29,6 +29,39 @@ const TYPE_MAP = {
   byte: 8
 };
 
+// hints map
+
+const hints = {
+    ImportError: [
+      {
+        match: /not exported by/,
+        hint: "Check the exported names in the imported module.",
+      },
+      {
+        match: /file not found/,
+        hint: "Check that the module path is correct and the file exists.",
+      },
+      {
+        match: /must appear before all other declarations/,
+        hint: "Move the import statement to the beginning of the file.",
+      },
+      {
+        match: /cannot resolve module/,
+        hint: "Check the module path and make sure the module is available.",
+      },
+      {
+        match: /invalid import/,
+        hint: "Check the import syntax and verify that the imported names exist.",
+      },
+    ],
+    SemanticError: [
+  {
+    match: /can only be used after 'Json\.parse\(\)'/,
+    hint: "Call 'Json.parse()' before accessing Json properties.",
+  },
+],
+  };
+
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
 // operators
@@ -41,7 +74,7 @@ const UNARY_OPS = ["++", "--", "!"];
 
 const COMPARISON_OPS = ["==", "!=", ">=", "<=", ">", "<"];
 
-const BITWISE_OPS = ["^"];
+const BITWISE_OPS = ["^", "|", "&", "~", ">>", "<<"];
 
 const LOGICAL_OPS = ["&&", "||"];
 
@@ -1154,6 +1187,18 @@ arrayGetByte: {
   },
 
   Map: {
+    keys: {
+      returnType: "List<string>",
+      args: [],
+      llvmName: "zen_map_keys"
+    },
+
+    entries: {
+      returnType: "List<List<string>>",
+      args: [],
+      llvmName: "zen_map_entries"
+    },
+    
     getInt: {
       returnType: "int",
       args: ["string"],
@@ -2047,16 +2092,24 @@ const OP_CODES = {
     "/": "sdiv",
     "%": "srem",
     "^": "xor",
+    "&": "and",
+  "|": "or",
+  "<<": "shl",
+  ">>": "ashr"
   },
 
   long: {
-    "+": "add",
-    "-": "sub",
-    "*": "mul",
-    "/": "sdiv",
-    "%": "srem",
-    "^": "xor",
-  },
+  "+": "add",
+  "-": "sub",
+  "*": "mul",
+  "/": "sdiv",
+  "%": "srem",
+  "^": "xor",
+  "&": "and",
+  "|": "or",
+  "<<": "shl",
+  ">>": "ashr"
+},
 
   double: {
     "+": "fadd",
@@ -2097,7 +2150,6 @@ const FORMAT_MAP = {
 };
 
 const LOOKUP = {
-  bool: 0,
   byte: 1,
   int: 2,
   long: 3,
@@ -2572,6 +2624,21 @@ const PATH_MAP = {
   _path_normalize: ["_path_normalize", "string", 1, ["string"]],
 };
 
+const NAMESPACE_REG = {
+  os: OS_MAP,
+  httpServer: HTTPSERVER_MAP,
+  threads: THREAD_MAP,
+  debug: DEBUG_MAP,
+  crypto: CRYPTO_MAP,
+  fs: FILE_MAP,
+  sys: SYS_MAP,
+  time: TIME_MAP,
+  net: NETWORK_MAP,
+  http: HTTP_MAP,
+  ffi: FFI_MAP,
+  path: PATH_MAP,
+};
+
 export {
   LLVM_TYPES_MAP,
   TYPES,
@@ -2621,4 +2688,6 @@ export {
   TYPE_MAP,
   BUILTIN_STRUCT_ABI,
   PRIMITIVE_TYPES,
+  hints,
+  NAMESPACE_REG
 };

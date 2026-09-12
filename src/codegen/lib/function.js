@@ -27,11 +27,11 @@ export class HandleFunction {
         switch (node.type) {
             case "RETURN": {
                 if (!node.value) {
-                    this.IRB.currentFunction.returnTypes.push("void");
+                    this.IRB.getActiveFunction()?.returnTypes.push("void");
                 } else {
                     const type = this.infer.infer(node.value, "fnret");
 
-                    this.IRB.currentFunction.returnTypes.push(type);
+                    this.IRB.getActiveFunction()?.returnTypes.push(type);
                 }
                 return;
             }
@@ -100,7 +100,7 @@ export class HandleFunction {
     }
 
     handleReturn(node) {
-        if (this.IRB.currentFunction === null) {
+        if (this.IRB.getActiveFunction() === null) {
             this.IRB.emitError(
                 "SemanticError",
                 "return outside function",
@@ -118,14 +118,14 @@ export class HandleFunction {
             this.hasRet = true;
         }
 
-        const currentFunction = this.IRB.currentFunction;
+        const currentFunction = this.IRB.getActiveFunction();
         const name = currentFunction.name;
 
         // infer block
-        if (this.IRB.currentFunction.returnType === "auto") {
-            this.collectReturns(this.IRB.currentFunction.bodyAst);
+        if (this.IRB.getActiveFunction()?.returnType === "auto") {
+            this.collectReturns(this.IRB.getActiveFunction()?.bodyAst);
 
-            const first = this.IRB.currentFunction.returnTypes[0];
+            const first = this.IRB.getActiveFunction()?.returnTypes[0];
 
             const isSameType = currentFunction.returnTypes.every(
                 type => type === first
@@ -149,28 +149,29 @@ export class HandleFunction {
 
             fn.returnType = retType;
 
-            this.IRB.currentFunction.returnType = retType;
+            this.IRB.getActiveFunction().returnType = retType;
 
-            if (node.value.type === "CALL") {
-                const fn = this.IRB.resolveFunction(node.value.name);
+      /*      if (node.value.type === "CALL") {
+       
+              const fn = this.IRB.resolveFunction(node.value.name);
 
                 if (fn) {
                     fn.returnType = retType;
                 }
-            }
+            }*/
             const llvmReturnType = this.IRB.getLLVMType(retType);
 
-            this.IRB.currentFunction.body.unshift(
-                this.IRB.currentFunction.local.join("\n")
+            this.IRB.getActiveFunction().body.unshift(
+                this.IRB.getActiveFunction().local.join("\n")
             );
-            this.IRB.currentFunction.body.unshift(
-                `define ${llvmReturnType} @${this.IRB.currentFunction.mangledName} ${this.IRB.currentFunction.paramsIr} { \n entry:`
+            this.IRB.getActiveFunction().body.unshift(
+                `define ${llvmReturnType} @${this.IRB.getActiveFunction().mangledName} ${this.IRB.getActiveFunction().paramsIr} { \n entry:`
             );
         }
 
-        const funcType = this.IRB.currentFunction.returnType;
+        const funcType = this.IRB.getActiveFunction().returnType;
 
-        this.IRB.currentFunction.hasReturn = true;
+        this.IRB.getActiveFunction().hasReturn = true;
 
         if (funcType === "void") {
             this.IRB.emit("ret void");
@@ -183,7 +184,7 @@ export class HandleFunction {
 
         if (isStruct && !isNativeABI) {
             // STRUCT RETURN (sret, value semantics)
-            const params = this.IRB.currentFunction.params;
+            const params = this.IRB.getActiveFunction().params;
             const struct = this.IRB.getStruct(funcType);
 
             let expr = null;
@@ -266,7 +267,7 @@ export class HandleFunction {
             return;
         }
 
-        let listGeneric = this.IRB.currentFunction.listGeneric; // list return have type context. so pass it to handleExpression
+        let listGeneric = this.IRB.getActiveFunction().listGeneric; // list return have type context. so pass it to handleExpression
 
         const expr = this.expr.handleExpression(node.value, false, listGeneric);
 
@@ -282,7 +283,7 @@ export class HandleFunction {
         }
 
         if (expr?.isList) {
-            if (!this.IRB.currentFunction.isList) {
+            if (!this.IRB.getActiveFunction().isList) {
                 this.IRB.emitError(
                     "TypeError",
                     `function ${name} expected ${funcType} but got ${expr.type}`,
@@ -290,7 +291,7 @@ export class HandleFunction {
                 );
             }
 
-            if (expr?.fromParam || expr?.isListLiteral) {
+            if (expr?.fromParam || expr?.isListLiteral || expr?.needsLoad === false) {
                 // param already holds list pointer
                 this.IRB.emit(`ret ptr ${expr.ptr}`);
             } else {
@@ -328,7 +329,7 @@ export class HandleFunction {
         this.IRB.emit(`ret ${expr.llvmType} ${expr.ptr}`);
     }
 
-    handleFunction(node) {
+    handleFunction(node, isInline = false) {
         if (node.name === "main") {
             this.IRB.emitError(
                 "ReservedFunctionError",
@@ -339,7 +340,8 @@ export class HandleFunction {
 
         this.haveBareRet = false;
 
-        this.IRB.funcTempCounter = 0; // reset counter per function
+        const savedFuncTempCounter = this.IRB.funcTempCounter;
+this.IRB.funcTempCounter = 0;// reset counter per function
         const savedAllocaBuff = this.IRB.allocaBuff;
         this.IRB.allocaBuff = [];
 
@@ -351,7 +353,7 @@ export class HandleFunction {
         if (isDecl && !isExtern)
             this.globalState.declFunctions.set(node.name, true);
 
-        if (this.IRB.currentFunction !== null) {
+        if (this.IRB.getActiveFunction() !== null && !isInline) {
             this.IRB.emitError(
                 "SemanticError",
                 "Nested functions are not supported",
@@ -362,17 +364,27 @@ export class HandleFunction {
         const isMethod = node?.isMethod;
 
         const prevFunction = this.IRB.currentFunction;
+const prevAnonymFunction = this.IRB.anonymCurrentFunction;
 
         let local = [];
 
         let name;
         let mangledName;
-        if (isMethod) {
+      
+      if (isMethod) {
             name = `${node.structName}_${node.name}`;
             mangledName = name;
         } else {
             name = node.name;
-            if (isExtern) {
+        if (isInline) {
+    
+    const anonymId = this.IRB.anonymFunctionCounter++;
+
+    mangledName =
+        `_zen_${this.moduleName}_anonym_${name}_${anonymId}`;
+        
+        
+    } else if (isExtern) {
                 mangledName = name;
             } else if (this.IRB.stdlibMode) {
                 mangledName = name;
@@ -416,7 +428,12 @@ export class HandleFunction {
 
         const params = node.params;
 
-        this.IRB.currentFunction = true; // make currentFunction true for getting sequential temp count for params
+      if (isInline) {
+    this.IRB.anonymCurrentFunction = true;
+} else {
+    this.IRB.currentFunction = true;
+      }
+         // make currentFunction true for getting sequential temp count for params
 
         const {
             ir,
@@ -450,21 +467,29 @@ export class HandleFunction {
             return;
         }
 
-        this.IRB.currentFunction = {
-            name,
-            mangledName,
-            body: [],
-            bodyAst: node.body,
-            isList: returnType === "List",
-            listGeneric,
-            returnType, // temporarily store return type even its auto
-            params: paramData,
-            hasReturn: false,
-            isAsync: node.isAsync,
-            returnTypes: [],
-            paramsIr: ir,
-            local
-        };
+      
+        const functionState = {
+    name,
+    mangledName,
+    body: [],
+    bodyAst: node.body,
+    isList: returnType === "List",
+    listGeneric,
+    returnType,
+    params: paramData,
+    hasReturn: false,
+    isAsync: node.isAsync,
+    returnTypes: [],
+    paramsIr: ir,
+    local
+};
+
+if (isInline) {
+    this.IRB.anonymCurrentFunction = functionState;
+} else {
+    this.IRB.currentFunction = functionState;
+}
+      
 
         this.IRB.enterScope();
 
@@ -633,7 +658,8 @@ export class HandleFunction {
                     ptr: p.temp,
                     llvmType: "ptr",
                     isFunctionParam: true,
-                    isThread: false
+                    isThread: false,
+                    ownerFunction: this.IRB.anonymCurrentFunction ? this.IRB.anonymCurrentFunction.name : this.IRB.currentFunction?.name
                 });
             } else {
                 let ptr = `%${p.name}.addr`;
@@ -666,7 +692,7 @@ export class HandleFunction {
 
         this.block.block(node.body);
 
-        this.IRB.currentFunction.body.splice(
+        functionState.body.splice(
             2,
             0,
             this.IRB.allocaBuff.join("\n")
@@ -702,10 +728,29 @@ export class HandleFunction {
 
         this.IRB.exitScope();
 
-        this.IRB.functionBuff.push(this.IRB.currentFunction.body.join("\n"));
+        this.IRB.functionBuff.push(functionState.body.join("\n"));
 
-        this.IRB.currentFunction = prevFunction;
+        if (isInline) {
+    this.IRB.anonymCurrentFunction = prevAnonymFunction;
+} else {
+    this.IRB.currentFunction = prevFunction;
+        }
+      
         this.hasRet = false; // reset state
         this.IRB.allocaBuff = savedAllocaBuff;
+      this.IRB.funcTempCounter = savedFuncTempCounter;
+
+      if (isInline) {
+        return {
+    type: "function",
+    functionName: name,
+    mangledName,
+    ptr: `@${mangledName}`,
+    llvmType: "ptr",
+    returnType,
+    params: paramData,
+    isFunction: true,
+};
+      }
     }
 }

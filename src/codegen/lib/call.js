@@ -13,7 +13,8 @@ import {
   DEBUG_MAP,
   CRYPTO_MAP,
   BUILTIN_STRUCT_ABI,
-  BUILTIN_STRUCTS
+  BUILTIN_STRUCTS,
+  RESERVED_FUNCTIONS
 } from "../../config/config.js";
 
 export class Call {
@@ -58,6 +59,10 @@ export class Call {
 
   setExpression(expr) {
     this.expr = expr;
+  }
+
+  applyFn(fn) {
+    this.func = fn;
   }
 
   isPtrReturn(typeName) {
@@ -133,6 +138,8 @@ export class Call {
 
     const isExternVariadic = fn.isExtern && fn.hasVarArgs;
 
+    const isInline = fn?.isInline;
+
     const isExternDecl = fn.isExtern;
 
     let mangledName;
@@ -140,6 +147,9 @@ export class Call {
     switch (true) {
       case isFunctionParam:
         mangledName = null;
+        break;
+      case isInline:
+        mangledName = `_zen_${this.moduleName}_anonym_${name}`;
         break;
       case isExternDecl:
         mangledName = name;
@@ -156,6 +166,8 @@ export class Call {
       default:
         mangledName = `zen_${this.moduleName}_${name}`;
     }
+
+    
 
     const isStruct = fn.isStructReturn || this.IRB.hasStruct(fn.returnType);
 
@@ -210,7 +222,63 @@ export class Call {
           global: [],
           isVarRef: false,
         };
-      } else if (arg.type === "ARRAY") {
+      } else if (arg.type === "FUNCTION_DECLARATION") {
+        
+        
+        
+        if (!this.IRB.stdlibMode) {
+          const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
+
+          if (stdlibSet.has(arg.name)) {
+            this.IRB.emitError(
+              "ReservedFunctionError",
+              `${arg.name} is a reserved function name`,
+              arg,
+            );
+          }
+        }
+
+        const returnType =
+          arg.returnType === "void" ? "void" : arg.returnType.type;
+
+        const isArrayRet =
+          returnType === "void"
+            ? false
+            : returnType === "List"
+              ? false
+              : arg.returnType?.dimensions.length > 0;
+        const retGeneric =
+          returnType === "List"
+            ? this.IRB.getDeepestGeneric(arg.returnType.generic)
+            : returnType;
+        const generic = returnType === "List" ? arg.returnType : null;
+
+        if (isArrayRet) {
+          this.IRB.emitError(
+            "SemanticError",
+            `function ${arg.name} cannot return array`,
+            arg,
+          );
+        }
+
+        const data = {
+          name: arg.name,
+          returnType,
+          params: arg.params,
+          retGeneric,
+          generic,
+          isInline: true,
+          hasVarArgs: arg.params.some((r) => r.isRest),
+          nativeReturnABI: BUILTIN_STRUCT_ABI.includes(returnType),
+          isThread: false,
+          isDeclaration: false,
+          isExtern: false,
+          freedPindex: new Set(),
+        };        
+        this.IRB.anonymFunctions.set(arg.name, data)
+        val = this.func.handleFunction(arg, true);
+      }
+      else if (arg.type === "ARRAY") {
         const wrapped = param.type;
 
         const listGeneric = {
@@ -459,9 +527,13 @@ export class Call {
 
           this.IRB.emitAlloca(tmp, `%${fn.returnType}`);
 
+          const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
           local.push(
-            `call void @${mangledName}(ptr sret(%${fn.returnType}) ${tmp}, ${argStr.join(", ")})`,
+            `call void ${target}(ptr sret(%${fn.returnType}) ${tmp}, ${argStr.join(", ")})`,
           );
+
+          callTmp = tmp;
           
           for (const a of args) {
   if (a.type === "string" && (a.isTemp || a.isLiteral)) {

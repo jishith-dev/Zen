@@ -6,6 +6,7 @@ export class ModuleFiles {
     this.inProgress = new Set();
     this.defFunctions = new Map();
     this.declFunctions = new Map();
+    this.nativeFiles = new Set();
   }
 
   add(file) {
@@ -14,6 +15,10 @@ export class ModuleFiles {
 
   values() {
     return this.moduleFiles;
+  }
+
+  addNative(file) {
+  this.nativeFiles.add(file);
   }
 
   startCompiling(source) {

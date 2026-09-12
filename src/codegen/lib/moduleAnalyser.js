@@ -44,6 +44,21 @@ export class Module {
 
     const file = this.IRB.loadFile(source, node);
 
+const moduleDir = this.IRB.getModuleNativeDir(source);
+const nativeDir = path.join(moduleDir, "native");
+
+if (fs.existsSync(nativeDir)) {
+  for (const entry of fs.readdirSync(nativeDir, {
+    withFileTypes: true,
+  })) {
+    if (entry.isFile() && entry.name.endsWith(".o")) {
+      this.moduleFiles.addNative(
+        path.resolve(nativeDir, entry.name)
+      );
+    }
+  }
+}
+
     const moduleName = path.basename(source, ".zen");
     this.curruntModuleName = moduleName;
 
@@ -55,10 +70,10 @@ export class Module {
     const lexer = new Lexer(file, this.IRB);
     const tokens = lexer.tokenize();
 
-    const parser = new Parser(tokens, this.IRB);
+    const parser = new Parser(tokens, this.IRB, {}, file);
     const ast = parser.parse();
 
-    const codegen = new CodeGen(ast, moduleName, this.moduleFiles);
+    const codegen = new CodeGen(ast, moduleName, this.moduleFiles, file);
 
     const { ir, symbolTable, functionTable, structTable, structInitializers, exportNames } =
       codegen.generateLLVM();
@@ -159,6 +174,7 @@ export class Module {
 
       if (tables.functionTable.has(name)) {
         const fn = tables.functionTable.get(name);
+      
 
         // add imported fn flag
         fn.isImported = true;
@@ -175,9 +191,13 @@ export class Module {
           fn.isStructReturn = true;
         }
 
+        if (fn?.isExtern) {
+          this.IRB.globals.push(
+          `declare ${retType} @${fn.name}${types}`);
+        } else {
         this.IRB.globals.push(
-          `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`,
-        );
+          `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`);
+        }
 
         this.IRB.setFunction(name, fn);
         continue;
@@ -201,14 +221,16 @@ export class Module {
             fn.returnType,
           );
 
-          const retType = tables.structTable.has(fn.returnType)
+          const retType = tables.structTable.has(fn.returnType.type)
             ? "void"
             : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
+          
 
           if (tables.structTable.has(fn.returnType)) {
             fn.isStructReturn = true;
           }
 
+          
           this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
 
           this.IRB.setFunction(fnName, fn);

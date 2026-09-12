@@ -1055,3 +1055,11 @@ void _zen_list_append_json(JsonBuf *jb, ZenList *list, int depth, int deepestTyp
 
     jbuf_append_char(jb, ']');
 }
+
+int _zen_list_get_depth(ZenList *list) {
+    return list->depth;
+}
+
+int _zen_list_get_deepest_type(ZenList *list) {
+    return list->deepestType;
+}

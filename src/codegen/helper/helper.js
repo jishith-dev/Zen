@@ -8,6 +8,8 @@ import {
   BUILTIN_STRUCT_PROPS,
   TYPE_MAP,
   BUILTIN_STRUCT_ABI,
+  hints,
+  NAMESPACE_REG
 } from "../../config/config.js";
 
 import { InferType } from "../infer/infer.js";
@@ -26,6 +28,8 @@ export class IRBuilder {
 
     this.currentFunction = null;
     this.functions = new Map();
+    this.anonymFunctions = new Map();
+    this.anonymCurrentFunction = null;
 
     this.moduleName = moduleName;
 
@@ -58,6 +62,7 @@ export class IRBuilder {
     this.usedNameSpaces = new Set();
     this.structInitializers = new Map();
     this.exportNames = new Set();
+    this.source = "";
 
     this.is64 = [
       "x64",
@@ -81,7 +86,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -94,6 +99,7 @@ export class IRBuilder {
     this.globalTempCount = 0; // global counter
     this.labelCount = 0;
     this.strCount = 0;
+    this.anonymFunctionCounter = 0;
 
     this.builtins = new Map();
     this.symbolTable = [new Map()];
@@ -189,8 +195,19 @@ export class IRBuilder {
   }
 
   emitExpr(expr) {
-    if (expr?.local?.length) this.emit(expr.local.join("\n").trim());
-    if (expr?.global?.length) this.globals.push(expr.global.join("\n").trim());
+  if (!expr || expr.__flushed) return;
+
+  if (expr.local?.length) {
+    this.emit(expr.local.join("\n").trim());
+    expr.local = [];
+  }
+
+  if (expr.global?.length) {
+    this.globals.push(expr.global.join("\n").trim());
+    expr.global = [];
+  }
+
+  expr.__flushed = true;
   }
 
   enterFunction(name) {
@@ -556,11 +573,12 @@ if (structInfo) {
   }
 
   emit(line) {
-    const target = this.currentFunction
-      ? this.currentFunction.body
-      : this.exported
-        ? null
-        : this.locals;
+    
+    const target = this.getActiveFunction()
+  ? this.getActiveFunction().body
+  : this.exported
+    ? null
+    : this.locals;
 
     // if its exported module should not emit
     if (!target) return;
@@ -588,9 +606,11 @@ if (this.structTable.has(type)) {
   return `%${type}`;
 }
 
+    
+
     if (type === "struct") return "ptr";
 
-    if (type === "Map" || type === "List" || type === "ptr") {
+    if (type === "Map" || type === "List" || type === "ptr" || type.startsWith("List<")) {
       return "ptr";
     }
 
@@ -611,7 +631,9 @@ if (this.structTable.has(type)) {
   }
 
   newTemp() {
-    return `%t${this.currentFunction ? this.funcTempCounter++ : this.tempCount++}`;
+    return `%t${this.getActiveFunction()
+        ? this.funcTempCounter++
+        : this.tempCount++}`;
   }
 
   newGlobalTemp() {
@@ -660,7 +682,9 @@ if (this.structTable.has(type)) {
     isListAccess,
     isRet,
     ownerId,
-    pIndex
+    pIndex,
+    isCompileConstant,
+    value
   }) {
     return {
       ptr,
@@ -689,7 +713,9 @@ if (this.structTable.has(type)) {
       isListAccess,
       isRet,
       ownerId,
-      pIndex
+      pIndex,
+      isCompileConstant,
+      value
     };
   }
 
@@ -704,20 +730,43 @@ if (this.structTable.has(type)) {
   }
 
   setVar(name, data) {
-    const current = this.symbolTable[this.symbolTable.length - 1];
-    if (current.has(name)) {
-      this.emitError(
-        "DeclarationError",
-        `Variable '${name}' is already defined`,
-      );
-    }
-    current.set(name, data);
+  const current = this.symbolTable[this.symbolTable.length - 1];
+
+  if (current.has(name)) {
+    this.emitError(
+      "DeclarationError",
+      `Variable '${name}' is already defined`,
+    );
+  }
+
+  const activeFunction = this.getActiveFunction();
+
+  data.ownerFunction = activeFunction?.name
+    ?? "main";
+
+  current.set(name, data);
   }
 
   getVar(name, node) {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
       if (this.symbolTable[i].has(name)) {
-        return this.symbolTable[i].get(name);
+        const sym = this.symbolTable[i].get(name);
+
+        // Inline functions cannot capture variables
+// from an enclosing function.
+        
+if (
+    this.anonymCurrentFunction?.name &&
+    sym?.ownerFunction &&
+    sym.ownerFunction !== this.anonymCurrentFunction.name
+) {
+    this.emitError(
+        "SemanticError",
+        `inline function '${this.anonymCurrentFunction.name}' cannot capture outer variable '${name}'`,
+        node
+    );
+}
+        return sym;
       }
     }
 
@@ -730,6 +779,26 @@ if (this.structTable.has(type)) {
         needsLoad: false,
       };
     }
+
+    // Anonymous Function?
+    const afn = this.anonymFunctions.get(name);
+
+if (afn) {
+  const ptr = afn.isInline
+    ? `@_zen_${this.moduleName}_anonym_${name}`
+    : this.stdlibMode
+      ? `@${name}`
+      : `@zen_${this.moduleName}_${name}`;
+
+  return {
+    ...afn,
+    ptr,
+    llvmType: "ptr",
+    type: "Function",
+    isFunction: true,
+    needsLoad: false,
+  };
+}
 
     // Global function?
     const fn = this.functions.get(name);
@@ -900,43 +969,89 @@ case "long":
     const finalMessage = isInternal
       ? `${message}\n\n[Compiler Bug] This should not happen. Please report this issue.`
       : message;
+  const loc = this.getNodeLocation(node);
+  const hint = this.genHint(type, message);
+  const lineConstruct = this.genLine(loc);
 
     if (!this.diagnosticMode) {
-      this.errors.push({ type, message: finalMessage, node });
+      this.errors.push({ type, message: finalMessage, node, hint, line: lineConstruct });
       this.hadError = true;
       this.printError(this.errors);
     } else {
-      const loc = this.getNodeLocation(node);
 
       throw new Error(
-        `[Zen Error] ${type}: ${finalMessage} at ${this.moduleName}.zen:line ${loc.line}:${loc.column}`,
+        `[Zen Error] ${type}: ${finalMessage} at ${this.moduleName}.zen:line ${loc.line}:${loc.column}\n \n Hint: ${hint}\n \n ${lineConstruct?.text}\n`,
       );
     }
   }
 
+  genLine(loc) {
+  const lines = this.source.split(/\r?\n/);
+  const text = lines[loc.line - 1];
+
+  if (!text) return null;
+
+  return {
+    text,
+    column: loc.column,
+    length: text.length - (loc.column - 1),
+  };
+  }
+
+  genHint(type, message) {
+
+  const rules = hints[type];
+
+  if (!rules) return null;
+
+  const rule = rules.find(({ match }) => match.test(message));
+
+  return rule?.hint ?? null;
+  }
+
   printError() {
-    const err = this.errors?.[0];
-    if (!err) return;
+  const err = this.errors?.[0];
+  if (!err) return;
 
-    const RESET = "\x1b[0m";
-    const RED = "\x1b[31m";
-    const YELLOW = "\x1b[33m";
-    const CYAN = "\x1b[36m";
-    const BOLD = "\x1b[1m";
+  const RESET = "\x1b[0m";
 
-    const loc = this.getNodeLocation(err.node);
+  const WHITE = "\x1b[97m";
+  const ORANGE = "\x1b[38;5;208m";
+  const RED = "\x1b[91m";
+  const YELLOW = "\x1b[93m";
+  const MAGENTA = "\x1b[95m";
+  const CYAN = "\x1b[96m";
+  const BOLD = "\x1b[1m";
 
-    const location =
-      loc.line !== "?"
-        ? `${this.moduleName}.zen:${loc.line}:${loc.column}`
-        : `${this.moduleName}.zen`;
+  const loc = this.getNodeLocation(err.node);
 
-    console.error(
-      `${BOLD}${RED}[Zen ${err.type}]${RESET}
-  ├── ${YELLOW}${err.message}${RESET}
-  └── at: ${CYAN}${location}${RESET}`,
-    );
-    process.exit(1);
+  const location =
+    loc.line !== "?"
+      ? `${this.moduleName}.zen:${loc.line}:${loc.column}`
+      : `${this.moduleName}.zen`;
+
+  const hint = err.hint
+    ? `
+
+  ├── ${MAGENTA}Hint: ${err.hint}${RESET}`
+    : "";
+
+  const line = err.line
+    ? `
+
+  ├── ${WHITE}${err.line.text}${RESET}
+  │   ${CYAN}${" ".repeat(err.line.column - 1)}${"^".repeat(err.line.length)}${RESET}`
+    : "";
+
+  console.error(
+    `${WHITE}[ ${RESET}${RED}Zen ${err.type}${RESET}${WHITE} ]${RESET}
+
+  ├── ${err.message}${hint}${line}
+
+  └── ${CYAN}At: ${location}${RESET}`,
+  );
+
+  process.exit(1);
   }
 
   safeReadFile(filePath) {
@@ -1225,7 +1340,10 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
 
           for (let j = 0; j < expected.params.length; j++) {
             const expectedType = expected.params[j].type.type;
-            const actualType = actual.params[j].type.type;
+            const actualType =
+  typeof actual.params[j].type === "string"
+    ? actual.params[j].type
+    : actual.params[j].type.type;
 
             if (expectedType !== actualType) {
               this.emitError(
@@ -1785,6 +1903,20 @@ end:
       }
 
       if (d.type === "BINARY_EXPRESSION") {
+        const val = this.constEval(d, "Array dimension");
+
+        if (typeof val !== "number") {
+          this.emitError(
+            "ArrayError",
+            `Array dimension must be a compile-time constant integer`,
+            node,
+          );
+        }
+
+        return val;
+      }
+
+      if (d.type === "variable") {
         const val = this.constEval(d, "Array dimension");
 
         if (typeof val !== "number") {
@@ -3473,7 +3605,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   
     if (node.type === "int") return Number(node.value);
     
-    if (this.enums.has(node.object.name)) {
+    if (this.enums.has(node?.object?.name)) {
       const field = node.field;
       const e = this.enums.get(node.object.name).members.has(field);
       if (e) {
@@ -3501,6 +3633,20 @@ if (sym.fromParam && sym.pIndex !== undefined) {
       }
     }
 
+    if (node.type === "variable") {
+      const ref = this.getVar(node.name);
+
+      if (!ref?.isCompileConstant) {
+  this.emitError(
+    "ArrayError",
+    "array size must be a compile-time constant",
+    node,
+  );
+      }
+
+      return Number(ref.value);
+    }
+
     this.emitError(
       "ConstError",
       `Cannot use a non-constant expression in '${context}'`,
@@ -3523,7 +3669,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   }
 
   lastEmit() {
-    const body = this.currentFunction?.body;
+    const body = this.getActiveFunction()?.body;
     if (!body) return "";
     const last = body[body.length - 1];
     return last?.trim() ?? "";
@@ -3777,6 +3923,19 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     }
 
     return this.safeReadFile(entryFile);
+  }
+
+  getModuleNativeDir(source) {
+  if (source.endsWith(".zen")) {
+    return path.dirname(path.resolve(source));
+  }
+
+  return path.join(
+    os.homedir(),
+    ".zen",
+    "packages",
+    source
+  );
   }
 
   registerBuiltInStructs(name, fields = [], methods = {}, needSize = false,  builtinSize = null, builtinAlign = null) {
@@ -4175,6 +4334,25 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     };
   }
 
+    if (method.returnType.startsWith("List")) {
+  const generic = this.parseGenericFromString(method.returnType);
+  const deepestType = this.getDeepestGeneric(generic);
+
+  return {
+    ptr: temp,
+    type: deepestType,
+    llvmType: "ptr",
+    generic,
+    local,
+    global,
+    isVarRef: false,
+    needsLoad: false,
+    isDirectCall: true,
+    isList: true,
+    ownerId,
+  };
+    }
+
   // Generic return
   return {
     ptr: temp,
@@ -4264,8 +4442,29 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   }
 
   resolveFunction(name, node) {
+    
     if (this.functionParamTable.has(name)) {
-      return this.functionParamTable.get(name);
+        const fn = this.functionParamTable.get(name);
+
+        if (
+            this.anonymCurrentFunction &&
+            fn.ownerFunction &&
+            fn.ownerFunction !== this.anonymCurrentFunction.name
+        ) {
+            this.emitError(
+                "SemanticError",
+                `inline function '${this.anonymCurrentFunction.name}' cannot capture outer function '${name}'`,
+                node
+            );
+        }
+
+        return fn;
+    }
+
+    if (this.anonymCurrentFunction !== null) {
+        if (this.anonymFunctions.has(name)) {
+            return this.anonymFunctions.get(name);
+        }
     }
 
     return this.getFunction(name, node);
@@ -4653,5 +4852,34 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
 this.declareOneTime("zen_list_set_meta","declare void @_zen_list_set_meta(ptr, i32, i32)");
     this.functionBuff.push(lines.join("\n"));
+  }
+
+  getActiveFunction() {
+  return this.anonymCurrentFunction ?? this.currentFunction;
+  }
+
+  initNamespaces() {
+  for (const [name, map] of Object.entries(NAMESPACE_REG)) {
+    this.setVar(name, {
+      name,
+      returnType: null,
+      type: "namespace",
+      members: map,
+    });
+  }
+  }
+
+  parseGenericFromString(typeStr) {
+  const trimmed = typeStr.trim();
+  const match = trimmed.match(/^List<(.+)>$/);
+
+  if (!match) {
+    return this.normalizeGeneric(trimmed);
+  }
+
+  return {
+    type: "List",
+    generic: this.parseGenericFromString(match[1]),
+  };
   }
 }

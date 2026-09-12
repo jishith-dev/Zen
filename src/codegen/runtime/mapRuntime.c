@@ -515,3 +515,108 @@ char *zen_map_json(ZenMap *map) {
 
     return jb.buf;
 }
+
+
+
+
+ZenList *_zen_list_new(size_t element_size);
+void _zen_list_push(ZenList *list, void *value);
+void _zen_list_set_meta(ZenList *list, int depth, int deepestType);
+int _zen_list_get_depth(ZenList *list);
+int _zen_list_get_deepest_type(ZenList *list);
+
+static char *_zen_map_value_to_string(int type, void *value, int depth, int deepestType) {
+  if (!value) return strdup("null");
+
+  char numBuf[64];
+
+  switch (type) {
+    case ZEN_INT:
+      snprintf(numBuf, sizeof(numBuf), "%d", *(int *)value);
+      return strdup(numBuf);
+
+    case ZEN_LONG:
+      snprintf(numBuf, sizeof(numBuf), "%ld", *(long *)value);
+      return strdup(numBuf);
+
+    case ZEN_BYTE:
+      snprintf(numBuf, sizeof(numBuf), "%u", (unsigned int)*(unsigned char *)value);
+      return strdup(numBuf);
+
+    case ZEN_BOOL:
+      return strdup(*(bool *)value ? "true" : "false");
+
+    case ZEN_DOUBLE:
+      snprintf(numBuf, sizeof(numBuf), "%g", *(double *)value);
+      return strdup(numBuf);
+
+    case ZEN_STRING:
+      return strdup((char *)value);
+
+    case ZEN_MAP:
+      return zen_map_json((ZenMap *)value);
+
+    case ZEN_LIST: {
+    JsonBuf jb;
+    jbuf_init(&jb);
+
+    ZenList *list = (ZenList *)value;
+
+    _zen_list_append_json(
+        &jb,
+        list,
+        _zen_list_get_depth(list),
+        _zen_list_get_deepest_type(list)
+    );
+
+    return jb.buf;
+    }
+
+    default:
+      return strdup("null");
+  }
+}
+
+ZenList *zen_map_keys(ZenMap *map) {
+  _zen_map_check_alive(map);
+
+  ZenList *list = _zen_list_new(sizeof(char *));
+  _zen_list_set_meta(list, 1, ZEN_STRING);
+
+  for (int i = 0; i < map->count; i++) {
+    char *key = strdup(map->entries[i].key);
+    if (!key)
+      zen_error("MemoryError", "Failed to allocate memory for Map key");
+
+    _zen_list_push(list, &key);
+  }
+
+  return list;
+}
+
+ZenList *zen_map_entries(ZenMap *map) {
+  _zen_map_check_alive(map);
+
+  ZenList *outer = _zen_list_new(sizeof(ZenList *));
+  _zen_list_set_meta(outer, 2, ZEN_STRING);
+
+  for (int i = 0; i < map->count; i++) {
+    MapEntry *e = &map->entries[i];
+
+    ZenList *pair = _zen_list_new(sizeof(char *));
+    _zen_list_set_meta(pair, 1, ZEN_STRING);
+
+    char *key = strdup(e->key);
+    if (!key)
+      zen_error("MemoryError", "Failed to allocate memory for Map key");
+
+    char *value = _zen_map_value_to_string(e->type, e->value, e->depth, e->deepestType);
+
+    _zen_list_push(pair, &key);
+    _zen_list_push(pair, &value);
+
+    _zen_list_push(outer, &pair);
+  }
+
+  return outer;
+}

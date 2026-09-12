@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { fileURLToPath, pathToFileURL } from "url";
 import { performance } from "node:perf_hooks";
 import { ModuleFiles } from "../src/codegen/lib/moduleFiles.js";
+import readline from "readline";
 
 export class Compiler {
   constructor(args, optFlag) {
@@ -17,6 +18,73 @@ export class Compiler {
     this.moduleFiles = new ModuleFiles();
     this.isWindows = process.platform === "win32";
   }
+
+  async repl() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: ">>> ",
+  });
+
+  const declarations = []; // persisted forever — decls only, no side effects on replay
+  const replDir = path.join(process.cwd(), ".zen");
+  const replFile = path.join(replDir, "repl.zen");
+
+  fs.mkdirSync(replDir, { recursive: true });
+
+  console.log("Zen REPL");
+  console.log("Type exit() or press Ctrl+D to exit.");
+
+  rl.prompt();
+
+  rl.on("line", (line) => {
+    const input = line.trim();
+
+    if (input === "exit()") { rl.close(); return; }
+    if (!input) { rl.prompt(); return; }
+
+    const isDecl = this.isDeclaration(input);
+    const program = [...declarations, input].join("\n") + "\n";
+
+    fs.writeFileSync(replFile, program);
+
+    const result = spawnSync(
+      process.execPath,
+      [process.argv[1], "run", replFile],
+      { stdio: "inherit" },
+    );
+
+    if (result.error) {
+      console.error(`error: ${result.error.message}`);
+    } else if (isDecl && result.status === 0) {
+      declarations.push(input); // only keep it if it actually compiled clean
+    }
+
+    rl.prompt();
+  });
+
+  rl.on("close", () => {
+    try { fs.rmSync(replDir, { recursive: true, force: true }); } catch {}
+    process.exit(0);
+  });
+}
+
+isDeclaration(line) {
+  const DECL_STARTERS = [
+    "int", "double", "bool", "string", "byte", "long", // PRIMITIVE_TYPES
+    "List",
+    "Map",
+    "struct",
+    "fn",
+    "const",
+    "enum",
+    "extern",
+    "auto",
+  ];
+
+  return new RegExp(`^(${DECL_STARTERS.join("|")})\\b`).test(line)
+      || /^import\b/.test(line);
+}
 
   setCompilerRoot() {
     const __filename = fileURLToPath(import.meta.url);
@@ -226,8 +294,92 @@ export class Compiler {
       process.exit(1);
     }
 
+    const linkIndex = this.args.indexOf("--link");
+
+let extraLinkObjs = [];
+
+if (linkIndex !== -1) {
+  extraLinkObjs = this.args.slice(linkIndex + 1);
+
+  for (const obj of extraLinkObjs) {
+    if (!obj.endsWith(".o")) {
+      console.error(`error: --link expects .o file, got '${obj}'`);
+      process.exit(1);
+    }
+
+    if (!fs.existsSync(obj)) {
+      console.error(`error: Link object not found: ${obj}`);
+      process.exit(1);
+    }
+  }
+}
+
     this.extractModuleName(file);
     this.setProjectRoot(file);
+
+    let packageNativeObjs = [];
+
+if (this.pathType(file) === "project") {
+  const configPath = path.join(this.PROJECT_ROOT, "zen.json");
+
+  if (!fs.existsSync(configPath)) {
+    console.error(`error: Package configuration not found: ${configPath}`);
+    process.exit(1);
+  }
+
+  let config;
+
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch (err) {
+    console.error(`error: Invalid zen.json: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (config.native !== undefined) {
+    if (!Array.isArray(config.native)) {
+      console.error("error: 'native' in zen.json must be an array");
+      process.exit(1);
+    }
+
+    for (const nativeFile of config.native) {
+      if (typeof nativeFile !== "string" || !nativeFile.trim()) {
+        console.error(
+          "error: each native dependency must be a non-empty string",
+        );
+        process.exit(1);
+      }
+
+      const nativePath = path.resolve(
+        this.PROJECT_ROOT,
+        nativeFile,
+      );
+
+      if (!fs.existsSync(nativePath)) {
+        console.error(
+          `error: Native object not found: ${nativeFile}`,
+        );
+        process.exit(1);
+      }
+
+      if (!fs.statSync(nativePath).isFile()) {
+        console.error(
+          `error: Native dependency is not a file: ${nativeFile}`,
+        );
+        process.exit(1);
+      }
+
+      if (!nativePath.endsWith(".o")) {
+        console.error(
+          `error: Native dependency must be a .o file: ${nativeFile}`,
+        );
+        process.exit(1);
+      }
+
+      packageNativeObjs.push(nativePath);
+    }
+  }
+}
 
     let IRBuilder;
     try {
@@ -341,13 +493,13 @@ export class Compiler {
 
     const lexer = new Lexer(this.source, IRB);
     const tokens = lexer.tokenize();
-
+      
     if (command === "tokens") {
       console.log(JSON.stringify(tokens, null, 2));
       process.exit(0);
     }
 
-    const parser = new Parser(tokens, IRB);
+    const parser = new Parser(tokens, IRB, {}, this.source);
     const ast = parser.parse();
 
     if (command === "ast") {
@@ -412,9 +564,17 @@ export class Compiler {
 
     this.moduleFiles.startCompiling(file);
 
-    const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles);
+    const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles, this.source);
     const llvm = codegen.generateLLVM();
 
+    if (codegen.IRB.exported && command === "run") {
+  IRB.emitError(
+    "ModuleError",
+    "exported modules cannot be run directly",
+  );
+    }
+
+    
     for (const [name, node] of this.moduleFiles.declFunctions) {
       if (!this.moduleFiles.defFunctions.has(name)) {
         IRB.emitError(
@@ -506,12 +666,17 @@ export class Compiler {
       this.isWindows ? `${this.moduleName}.exe` : this.moduleName,
     );
 
+    const libNativeObjs = [...this.moduleFiles.nativeFiles];
+
     const linkArgs = [
       "clang",
       outO,
       ...moduleObjs,
       ...stdlibObjs,
       ...runtimeObjs,
+      ...packageNativeObjs,
+      ...libNativeObjs,
+       ...extraLinkObjs,
       this.optFlag,
     ];
 
@@ -532,7 +697,10 @@ export class Compiler {
       process.exit(0);
     }
 
-    const userArgs = this.args.slice(3).join(" ");
+    const userArgs = linkIndex !== -1
+  ? this.args.slice(2, linkIndex).join(" ")
+  : this.args.slice(3).join(" ");
+    
     this.run(`${outputExe} ${userArgs}`);
   }
 }

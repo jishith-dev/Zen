@@ -42,7 +42,7 @@ export class Type {
     this.IRB.cleanupBuiltinStringTemps([expr])
 
     return {
-      ptr: expr.ptr,
+      ptr: str.name,
       llvmType: "ptr",
       type: "string",
       isConstant: true,

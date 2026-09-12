@@ -64,3 +64,52 @@ Normal Map int/long behavior remains unchanged.
 List fields are automatically initialized when a new struct instance is declared without an initializer. Struct literals only initialize/assign the fields explicitly specified in the literal.
 
 "extName()" returns the extension without ".", while "path.extname()" returns it with ".".
+
+v2.2.0
+
+added --link a.o b.o 
+
+supported compile time constant
+  eg: int N = 10
+      int arr[N]
+
+added cli improvement: now zen can install muktiple packages at once: zen install stack heap mime, also zen uninstall stack heap mime
+
+added zen installed (to know how many packages are installed)
+
+added better diagnostics hints and source text (only for compile time now)
+
+added more bitwise operators: & | >> << ~ 
+
+Zen supports anonymous functions inline as callback arguments.
+Inline functions are compiled as separate function definitions, not closures.
+Capturing variables from an enclosing function is prohibited.
+
+Type Promotion & Boolean Operations
+
+1. Zen's numeric widening order is "byte → int → long → double".
+2. Arithmetic between two "byte" values preserves "byte".
+3. Arithmetic involving "byte" and "int" produces "int".
+4. Arithmetic involving "int" and "long" produces "long".
+5. Arithmetic involving "long" and "double" produces "double".
+6. "bool" participates in binary arithmetic and is treated as "1" for "true" and "0" for "false".
+7. "bool" also participates in binary bitwise operators ("&", "|", "^", "<<", ">>") using its "0"/"1" value.
+8. Bitwise operations promote "byte" to "int"; "int" remains "int" and "long" remains "long".
+9. Bitwise NOT ("~") does not accept "bool"; numeric "~" promotes "byte" to "int".
+10. Logical and comparison operators produce "bool"; "!" operates on "bool" and returns "bool".
+
+added + unary
+
+infer only infer int bool double string long byte. should throw error for list and struct and other.
+
+Implemented automatic native dependency handling for packages.
+"zen deps" now detects and records "native/*.o" files.
+Imported packages automatically discover their native objects.
+Native objects are collected and passed to the final linker.
+Native library functions now link and execute automatically.
+
+implimented `zen` command so it can be used REPL like interactive line by line for educational purpose.
+
+sep 12 
+
+added Map new methods such as keys() ans entries()

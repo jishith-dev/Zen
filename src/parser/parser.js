@@ -7,10 +7,11 @@ import {
 import { Lexer } from "../lexer/lexer.js";
 
 export class Parser {
-  constructor(tokens, IRB, options = { preserveComments: false}) {
+  constructor(tokens, IRB, options = { preserveComments: false}, source) {
     this.tokens = tokens;
     this.pos = 0;
     this.IRB = IRB;
+    this.IRB.source = source;
     this.options = options;
   }
 
@@ -281,13 +282,7 @@ if (
     }
 
     if (this.match("IDENTIFIER")) {
-      if (this.tokens[this.pos + 1].type === "NEWLINE") {
-        this.IRB.emitError(
-          "SyntaxError",
-          `Unexpected token '${this.current().value}'`,
-          this.lineAndColumn(),
-        );
-      }
+      
       const expr = this.parseExpression();
 
       return this.node({
@@ -628,7 +623,7 @@ if (
     if (t.type !== "COMPARISON" || t.value !== ">") {
       this.IRB.emitError(
         "SyntaxError",
-        `Expected GREATER_THAN '>', got ${t.value}`,
+        `Expected GREATER_THAN '>', got '${t.value}'`,
         this.lineAndColumn(),
       );
     }
@@ -1305,12 +1300,9 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
   parseVariableDeclaration() {
     let isConst = false;
     
-    if (this.match("KEYWORD")) {
-      const keyVal = this.current().value;
-      this.advance();
-      if (keyVal === "const") {
-        isConst = true;
-      }
+    if (this.matchKeyword("const")) {
+  isConst = true;
+  this.advance();
     }
     
     let haveReactive = false;
@@ -1347,7 +1339,8 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
       if (
         dim.type !== ParserTypes.INT &&
-        dim.type !== ParserTypes.BINARY_EXPRESSION
+        dim.type !== ParserTypes.BINARY_EXPRESSION && 
+        dim.type !== "variable"
       ) {
         this.IRB.emitError(
           "TypeError",
@@ -1534,22 +1527,32 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
   }
 
   parseLogical() {
+  this.skipNewlines();
+
+  let expr = this.parseEquality();
+
+  while (true) {
     this.skipNewlines();
-    let expr = this.parseEquality();
 
-    while (this.match("LOGICAL")) {
-      const op = this.advance().value;
-      const right = this.node(this.parseEquality());
-
-      expr = this.node({
-        type: ParserTypes.BINARY_EXPRESSION,
-        left: expr,
-        operator: op,
-        right,
-      });
+    if (!this.match("LOGICAL")) {
+      break;
     }
 
-    return expr;
+    const op = this.advance().value;
+
+    this.skipNewlines();
+
+    const right = this.node(this.parseEquality());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
   }
 
   // COMPARISON
@@ -1575,7 +1578,7 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
   parseComparison() {
     this.skipNewlines();
-    let expr = this.node(this.parseBitwise());
+    let expr = this.node(this.parseBitwiseOr());
 
     while (this.match("COMPARISON")) {
       const op = this.advance().value;
@@ -1595,73 +1598,165 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
   // + -
 
   parseTerm() {
-    this.skipNewlines();
-    let expr = this.node(this.parseFactor());
+  this.skipNewlines();
 
-    while (this.match("PLUS") || this.match("MINUS")) {
-      const op = this.advance().value;
-      const right = this.node(this.parseFactor());
+  let expr = this.node(this.parseFactor());
 
-      expr = this.node({
-        type: ParserTypes.BINARY_EXPRESSION,
-        left: expr,
-        operator: op,
-        right,
-      });
-    }
-
-    return expr;
-  }
-
-  parseBitwise() {
+  while (true) {
     this.skipNewlines();
 
-    let expr = this.node(this.parseTerm());
-
-    while (this.match("BITWISE")) {
-      const op = this.advance().value;
-      const right = this.node(this.parseTerm());
-
-      expr = this.node({
-        type: ParserTypes.BINARY_EXPRESSION,
-        left: expr,
-        operator: op,
-        right,
-      });
+    if (!this.match("PLUS") && !this.match("MINUS")) {
+      break;
     }
 
-    return expr;
+    const op = this.advance().value;
+
+    this.skipNewlines();
+
+    const right = this.node(this.parseFactor());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
   }
+
+  return expr;
+  }
+
+  parseBitwiseOr() {
+  this.skipNewlines();
+
+  let expr = this.node(this.parseBitwiseXor());
+
+  while (this.match("BITWISE") && this.tokens[this.pos].value === "|") {
+    const op = this.advance().value;
+    const right = this.node(this.parseBitwiseXor());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
+}
+
+parseBitwiseXor() {
+  this.skipNewlines();
+
+  let expr = this.node(this.parseBitwiseAnd());
+
+  while (this.match("BITWISE") && this.tokens[this.pos].value === "^") {
+    const op = this.advance().value;
+    const right = this.node(this.parseBitwiseAnd());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
+}
+
+parseBitwiseAnd() {
+  this.skipNewlines();
+
+  let expr = this.node(this.parseShift());
+
+  while (this.match("BITWISE") && this.tokens[this.pos].value === "&") {
+    const op = this.advance().value;
+    const right = this.node(this.parseShift());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
+}
+
+parseShift() {
+  this.skipNewlines();
+
+  let expr = this.node(this.parseTerm());
+
+  while (
+    this.match("BITWISE") &&
+    (this.tokens[this.pos].value === "<<" || this.tokens[this.pos].value === ">>")
+  ) {
+    const op = this.advance().value;
+    const right = this.node(this.parseTerm());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
+}
 
   // * / %
 
   parseFactor() {
+  this.skipNewlines();
+
+  let expr = this.node(this.parseUnary());
+
+  while (true) {
     this.skipNewlines();
-    let expr = this.node(this.parseUnary());
 
-    while (this.match("STAR") || this.match("SLASH") || this.match("MODULO")) {
-      const op = this.advance().value;
-      const right = this.node(this.parseUnary());
-
-      expr = this.node({
-        type: ParserTypes.BINARY_EXPRESSION,
-        left: expr,
-        operator: op,
-        right,
-      });
+    if (
+      !this.match("STAR") &&
+      !this.match("SLASH") &&
+      !this.match("MODULO")
+    ) {
+      break;
     }
 
-    return expr;
+    const op = this.advance().value;
+
+    this.skipNewlines();
+
+    const right = this.node(this.parseUnary());
+
+    expr = this.node({
+      type: ParserTypes.BINARY_EXPRESSION,
+      left: expr,
+      operator: op,
+      right,
+    });
+  }
+
+  return expr;
   }
 
   parseUnary() {
+    this.skipNewlines();
     if (
       this.match("MINUS") ||
       this.match("BANG") ||
+      this.tokens[this.pos].value === "~" ||
       this.match("PLUS_PLUS") ||
+      this.match("PLUS") ||
       this.match("MINUS_MINUS")
     ) {
+      this.skipNewlines();
       const op = this.advance().value;
+    
       const argument = this.node(this.parseUnary());
 
       return this.node({
@@ -1680,7 +1775,7 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
     let expr = this.node(this.parsePrimary());
 
     while (true) {
-      this.skipNewlines();
+    
       if (this.match("DOT")) {
         this.skipNewlines();
         this.advance();
@@ -1733,7 +1828,11 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
             break;
           }
 
-          args.push(this.node(this.parseExpression()));
+          if (this.matchKeyword("fn")) {
+            args.push(this.node(this.parseInlineCallback()));
+          } else {
+            args.push(this.node(this.parseExpression()));
+          }
 
           this.skipNewlines();
 
@@ -1760,7 +1859,6 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
       }
 
       // existing postfix ++ --
-
       if (this.match("PLUS_PLUS") || this.match("MINUS_MINUS")) {
         const op = this.advance().value;
 
@@ -2017,7 +2115,13 @@ if (this.current().value === "<") {
 
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
-      args.push(this.node(this.parseExpression()));
+
+if (this.matchKeyword("fn")) {
+        args.push(this.node(this.parseInlineCallback()));
+    } else {
+        args.push(this.node(this.parseExpression()));
+}
+      
       this.skipNewlines();
       if (this.match("COMMA")) {
         this.advance();
@@ -2038,5 +2142,9 @@ if (this.current().value === "<") {
       isAwait,
       args,
     });
+  }
+
+  parseInlineCallback() {
+   return this.parseFunction();
   }
 }

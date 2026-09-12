@@ -31,7 +31,8 @@ const VALID_COMMANDS = new Set([
   "update",
   "fmt",
   "lint",
-  "deps"
+  "deps",
+  "installed"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -52,7 +53,8 @@ const PACKAGE_COMMANDS = {
   kind: "kind",
   mine: "mine",
   install: "install",
-  deps: "deps"
+  deps: "deps",
+  installed: "installed"
 };
 
 const COMPILE_COMMANDS = new Set([
@@ -131,8 +133,13 @@ export class CLI {
   async main() {
     const command = this.command;
 
+    if (!command) {
+      const compiler = new Compiler(this.args, this.optFlag);
+      await compiler.repl();
+      return;
+    }
+
     if (
-      !command ||
       command === "--help" ||
       command === "-h" ||
       command === "help"

@@ -144,7 +144,7 @@ this.IRB.emitScreenString(valuePtr, strFormat);
     const args = node?.value?.args || node?.args;
 
     const ptr = this.IRB.newTemp();
-
+    
     let promptPtr = "null";
 
     if (args.length !== 0) {
@@ -159,8 +159,6 @@ this.IRB.emitScreenString(valuePtr, strFormat);
       const expr = this.expr.handleExpression(args[0]);
       const displayType = expr?.isList ? "List" : expr.type;
 
-      this.IRB.cleanupBuiltinStringTemps([expr])
-
 
       if (expr.type !== "string" && expr.isList) {
         this.IRB.emitError(
@@ -172,9 +170,15 @@ this.IRB.emitScreenString(valuePtr, strFormat);
       this.IRB.emitExpr(expr);
 
       promptPtr = expr.ptr;
+
+      this.IRB.emit(`${ptr} = call ptr @_sys_input(ptr ${promptPtr})`);
+      this.IRB.cleanupBuiltinStringTemps([expr])
+    } else {
+      this.IRB.emit(`${ptr} = call ptr @_sys_input(ptr ${promptPtr})`);
+      
     }
 
-    this.IRB.emit(`${ptr} = call ptr @_sys_input(ptr ${promptPtr})`);
+    
 
   
     return {

@@ -39,7 +39,11 @@ export class ZenSys {
       );
       this.IRB.declareOneTime("_sys_argv", "declare ptr @_sys_argv(i32, ptr)");
       const tmp = this.IRB.newTemp();
-      this.IRB.emit(`${tmp} = call ptr @_sys_argv(i32 %argc, ptr %argv)`);
+      const loadedC = this.IRB.newTemp();
+      const loadedPtr = this.IRB.newTemp();
+      this.IRB.emit(`${loadedC} = load i32, ptr @argc`);
+      this.IRB.emit(`${loadedPtr} = load ptr, ptr @argv`);
+      this.IRB.emit(`${tmp} = call ptr @_sys_argv(i32 ${loadedC}, ptr ${loadedPtr})`);
 
       return {
         ptr: tmp,
@@ -90,6 +94,10 @@ export class ZenSys {
           return "ptr";
         case "Map":
           return "ptr";
+        case "long":
+          return "i64";
+        case "byte":
+          return "i8";
         default:
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }

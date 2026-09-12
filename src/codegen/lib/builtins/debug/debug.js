@@ -65,6 +65,10 @@ export class DEBUG {
           return "i1";
         case "string":
           return "ptr";
+        case "long":
+          return "i64";
+        case "byte":
+          return "i8";
         default:
           this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
       }

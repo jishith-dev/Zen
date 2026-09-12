@@ -315,7 +315,7 @@ if (needsInit) {
     const ctx = {};
 
     ctx.type = fieldMeta.type;
-    ctx.generic = fieldMeta?.generic;
+    ctx.generic = fieldMeta?.generic?.generic;
     if (fieldMeta?.isList) {
     ctx.depth = this.IRB.getListDepth(fieldMeta?.generic);
     }

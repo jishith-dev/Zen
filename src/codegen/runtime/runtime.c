@@ -1208,36 +1208,94 @@ char* _os_homeDir() {
 }
 
 char* _sys_key() {
-    static char key[2] = "";
+    static char key[32];
 
     struct termios oldt, newt;
 
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-
-    newt.c_lflag &= ~(ICANON | ECHO);
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-
-    int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-    int ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-    if (ch == EOF) {
+    if (tcgetattr(STDIN_FILENO, &oldt) != 0) {
         key[0] = '\0';
         return key;
     }
 
-    if (ch == '\n' || ch == '\r') {
-        return "enter";
+    newt = oldt;
+
+    newt.c_lflag &= ~(ICANON | ECHO);
+    newt.c_cc[VMIN] = 1;
+    newt.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) != 0) {
+        key[0] = '\0';
+        return key;
     }
 
-    key[0] = (char)ch;
-    key[1] = '\0';
+    key[0] = '\0';
+
+    int ch = getchar();
+
+    if (ch == EOF) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        return key;
+    }
+
+    /*
+     * Escape sequence / special key.
+     */
+    if (ch == 27) {
+        int next = getchar();
+
+        if (next == '[') {
+            int seq = getchar();
+
+            if (seq == 'A') {
+                strcpy(key, "up");
+            } else if (seq == 'B') {
+                strcpy(key, "down");
+            } else if (seq == 'C') {
+                strcpy(key, "right");
+            } else if (seq == 'D') {
+                strcpy(key, "left");
+            } else if (seq == 'H') {
+                strcpy(key, "home");
+            } else if (seq == 'F') {
+                strcpy(key, "end");
+            } else if (seq == 'Z') {
+                strcpy(key, "shift-tab");
+            } else {
+                key[0] = '\x1b';
+                key[1] = '\0';
+            }
+        } else if (next == 'O') {
+            int seq = getchar();
+
+            if (seq == 'H') {
+                strcpy(key, "home");
+            } else if (seq == 'F') {
+                strcpy(key, "end");
+            } else {
+                key[0] = '\x1b';
+                key[1] = '\0';
+            }
+        } else {
+            strcpy(key, "escape");
+        }
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        return key;
+    }
+
+    if (ch == '\n' || ch == '\r') {
+        strcpy(key, "enter");
+    } else if (ch == 127 || ch == 8) {
+        strcpy(key, "backspace");
+    } else if (ch == '\t') {
+        strcpy(key, "tab");
+    } else {
+        key[0] = (char)ch;
+        key[1] = '\0';
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
     return key;
 }
 

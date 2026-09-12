@@ -98,6 +98,28 @@ export class ZenList {
         return;
       }
 
+      // EXISTING LIST VARIABLE 
+if (element.type === "variable") {
+  const expr = this.expr.handleExpression(element);
+  this.IRB.emitExpr(expr);
+
+  if (expr.isList) {
+    let listVal = expr.ptr;
+
+    if (expr.needsLoad) {
+      const t = this.IRB.newTemp();
+      this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+      listVal = t;
+    }
+
+    const tmp = this.IRB.newTemp();
+    this.IRB.emitAlloca(tmp, `ptr`);
+    this.IRB.emit(`store ptr ${listVal}, ptr ${tmp}`);
+    this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+    return;
+  }
+}
+
       // NESTED LIST
 
       if (element.type === "ARRAY" || element.type === "LIST_LITERAL") {

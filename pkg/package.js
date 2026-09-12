@@ -71,6 +71,75 @@ export class Package {
     }
   }
 
+  async installed() {
+  try {
+    const packagesDir = path.join(
+      process.env.HOME || process.env.USERPROFILE,
+      ".zen",
+      "packages"
+    );
+
+    if (!fs.existsSync(packagesDir)) {
+      console.log("No packages installed.");
+      return;
+    }
+
+    const entries = fs.readdirSync(packagesDir, {
+      withFileTypes: true
+    });
+
+    const packages = [];
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const packageDir = path.join(packagesDir, entry.name);
+      const configPath = path.join(packageDir, "zen.json");
+
+      if (!fs.existsSync(configPath)) {
+        continue;
+      }
+
+      try {
+        const config = JSON.parse(
+          fs.readFileSync(configPath, "utf8")
+        );
+
+        if (!config.name || !config.version) {
+          continue;
+        }
+
+        packages.push({
+          name: config.name,
+          version: config.version
+        });
+      } catch {
+        // Ignore invalid package metadata
+      }
+    }
+
+    packages.sort((a, b) => a.name.localeCompare(b.name));
+
+    if (packages.length === 0) {
+      console.log("No packages installed.");
+      return;
+    }
+
+    console.log("Installed packages:\n");
+
+    for (const pkg of packages) {
+      console.log(`  ${pkg.name}@${pkg.version}`);
+    }
+
+    console.log(`\n${packages.length} package${packages.length === 1 ? "" : "s"} installed.`);
+  } catch (err) {
+    console.error(`error: Failed to read installed packages: ${err.message}`);
+    process.exit(1);
+  }
+  }
+
   async login() {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -417,13 +486,19 @@ export class Package {
   }
 
   async install() {
-  const input = this.args[1];
+  const inputs = this.args.slice(1);
 
-  if (!input) {
-    console.error("error: Usage zen install <package>[@version]");
-    process.exit(1);
+if (inputs.length === 0) {
+  console.error("error: Usage zen install <package>[@version] ...");
+  process.exit(1);
+}
+
+for (const input of inputs) {
+  await this.installPackage(input);
+}
   }
 
+  async installPackage(input) {
   // Parse package@version
   const atIndex = input.lastIndexOf("@");
 
@@ -618,12 +693,19 @@ export class Package {
   }
 
   async uninstall() {
-    const packageName = this.args[1];
+    const inputs = this.args.slice(1);
 
-    if (!packageName) {
-      console.error("error: Usage zen uninstall <package-name>");
-      process.exit(1);
-    }
+if (inputs.length === 0) {
+  console.error("error: Usage zen uninstall <package>...");
+  process.exit(1);
+}
+
+for (const input of inputs) {
+  await this.unInstallPackage(input);
+}
+  }
+
+  async unInstallPackage(packageName) {
 
     try {
       let installDir = path.join(process.cwd(), packageName);
@@ -732,6 +814,28 @@ export class Package {
 
     const dependencies = {};
     const visited = new Set();
+
+    function scanNative() {
+  const native = [];
+  const nativeDir = path.join(projectDir, "native");
+
+  if (!fs.existsSync(nativeDir)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(nativeDir, {
+    withFileTypes: true
+  })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    if (entry.name.endsWith(".o")) {
+      native.push(path.join("native", entry.name));
+    }
+  }
+  return native;
+    }
 
     function scanFile(filePath) {
       filePath = path.resolve(filePath);
@@ -846,7 +950,8 @@ export class Package {
 
     // Update zen.json
     config.dependencies = dependencies;
-
+    config.native = scanNative();
+    
     fs.writeFileSync(
       configPath,
       JSON.stringify(config, null, 2) + "\n"
@@ -854,14 +959,21 @@ export class Package {
 
     console.log("Dependencies updated.");
 
-    if (Object.keys(dependencies).length === 0) {
-      console.log("No dependencies found.");
-      return;
-    }
+if (Object.keys(dependencies).length === 0) {
+  console.log("No Zen package dependencies found.");
+} else {
+  for (const [name, version] of Object.entries(dependencies)) {
+    console.log(`  ${name}@${version}`);
+  }
+}
 
-    for (const [name, version] of Object.entries(dependencies)) {
-      console.log(`  ${name}@${version}`);
-    }
+if (config.native && config.native.length > 0) {
+  console.log("Native dependencies:");
+
+  for (const file of config.native) {
+    console.log(`  ${file}`);
+  }
+}
 
   } catch (err) {
     console.error(

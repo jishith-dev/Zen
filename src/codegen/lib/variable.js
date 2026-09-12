@@ -17,7 +17,7 @@ export class Variable {
     let declaredType = node.dataType;
     const isReactive = node?.isReactive;
     if (declaredType === "auto") declaredType = this.infer.infer(node);
-
+    let isLiteral;
     const llvmType = this.IRB.getLLVMType(declaredType);
 
     const isConstant = node.isConstant;
@@ -87,7 +87,9 @@ export class Variable {
 
       this.IRB.emitExpr(expr);
 
-      if (expr?.kind !== "literal") {
+     isLiteral = expr?.kind === "literal";
+
+      if (!isLiteral) {
         this.IRB.emit(`store ${llvmType} ${expr.ptr}, ptr ${gName}`);
       }
     } else {
@@ -108,10 +110,12 @@ export class Variable {
       name,
       this.IRB.createData({
         ptr,
+        value: isLiteral ? expr.ptr : null,
         llvmType,
         type: declaredType,
         isConstant,
         isReactive,
+        isCompileConstant: isLiteral,
         isGlobal: globalScope,
         needsLoad: true,
       }),
@@ -497,7 +501,17 @@ if (!expression.value) {
   } else {
     v = expr.ptr;
   }
-  
+
+// Remove the old ownership from freed tracking
+if (orgData.ownerId !== undefined) {
+  this.IRB.freedOwners.delete(orgData.ownerId);
+}
+
+// New ownership
+orgData.ownerId = this.IRB.genOwnerId();
+orgData.isFreed = false;
+
+    /*
   // new ownership
   orgData.ownerId = this.IRB.genOwnerId();
   orgData.isFreed = false;
@@ -507,12 +521,13 @@ if (!expression.value) {
     "_zen_string_free",
     "declare void @_zen_string_free(ptr)"
   );
+  
 
   const value = this.IRB.newTemp();
 
   this.IRB.emit(`${value} = load ptr, ptr ${orgPtr}`);
   this.IRB.emit(`call void @_zen_string_free(ptr ${value})`);
-  }
+  }*/
   
     this.IRB.emit(`store ${llvmType} ${v}, ptr ${orgPtr}`);
 

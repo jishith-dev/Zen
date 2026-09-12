@@ -42,11 +42,13 @@ import {
 } from "../config/config.js";
 
 export class CodeGen {
-  constructor(ast, moduleName, moduleFiles) {
+  constructor(ast, moduleName, moduleFiles, source) {
     this.ast = ast;
     this.moduleName = moduleName;
 
     this.IRB = new IRBuilder(this.moduleName);
+    this.IRB.source = source;
+    
     this.expr = new Expression(this.IRB, this.infer);
     this.time = new Time(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
@@ -111,6 +113,8 @@ export class CodeGen {
       BUILTIN_STRUCT_ABI,
       BUILTIN_STRUCTS,
     );
+    this.call.applyFn(this.fn);
+    this.expr.setFn(this.fn);
     this.struct = new Struct(this.IRB, this.expr, this.fn);
     this.variable = new Variable(this.IRB, this.expr, this.call, this.infer);
     this.loop = new Loop(this.IRB, this.expr, this.variable, this.block);
@@ -130,6 +134,7 @@ export class CodeGen {
     }
 
     this.IRB.initBuiltInStructs();
+    this.IRB.initNamespaces();
 
     const haveExport = this.ast.find((f) => f.type === "EXPORT");
 
@@ -139,6 +144,8 @@ this.IRB.exportNames = haveExport
 
     if (haveExport) {
       this.IRB.haveExport = true;
+      this.IRB.globals.push(`@argc = external global i32`);
+this.IRB.globals.push(`@argv = external global ptr`);
     }
 
     for (const node of this.ast) {
@@ -157,19 +164,24 @@ this.IRB.exportNames = haveExport
 define void @_assignSeed () {
   entry:
 
-  %t0 = call i32 @_time_millis()
-  store i32 %t0, ptr @SEED
+  %t0 = call i64 @_time_millis()
+  store i64 %t0, ptr @SEED
   ret void
 }
     `);
-        this.IRB.declareOneTime("_time_millis", "declare i32 @_time_millis()");
+        this.IRB.declareOneTime("_time_millis", "declare i64 @_time_millis()");
       }
     }
 
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
+      this.IRB.globals.push(`@argc = global ptr null`);
+      this.IRB.globals.push(`@argv = global i32 0`);
       this.IRB.emit(
         `define i32 @main(i32 %argc, ptr %argv) { \nentry:\n${this.IRB.stdlibMode ? "" : "call void @_assignSeed()"}`,
       );
+
+      this.IRB.emit(`store i32 %argc, ptr @argc`);
+      this.IRB.emit(`store ptr %argv, ptr @argv`);
     }
 
     // set builtins

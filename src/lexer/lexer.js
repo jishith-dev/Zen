@@ -28,7 +28,9 @@ export class Lexer {
     this.line = offsetLine;
     this.column = offsetColumn;
     this.IRB = IRB;
+    this.IRB.source = source;
     this.options = options;
+    this.angleDepth = 0;
   }
 
   lineAndColumn() {
@@ -211,6 +213,29 @@ this.addTokenAt(
       }
 
       // OPERATORS
+
+      // track possible generic '<' opens: only counts if it follows a type-like token
+if (this.currentChar === "<") {
+  const prev = this.tokens[this.tokens.length - 1];
+  if (
+    prev &&
+    (prev.type === TokenTypes.TYPE ||
+      prev.type === TokenTypes.KEYWORD
+  )) {
+    this.angleDepth++;
+  }
+  // don't return/continue — let it still fall through and be tokenized
+  // as a normal COMPARISON '<' below (or add it directly here, your choice)
+}
+
+// force '>' to close one generic level at a time instead of greedily
+// matching '>>' / '>>=' as a single operator
+if (this.currentChar === ">" && this.angleDepth > 0) {
+  this.addToken("COMPARISON", ">");
+  this.angleDepth--;
+  this.advance();
+  continue;
+}
 
       let matched = false;
 
