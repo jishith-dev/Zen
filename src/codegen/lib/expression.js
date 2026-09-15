@@ -732,12 +732,23 @@ if (this.IRB.hasVar(base.name, node) && this.IRB.getVar(base.name, node)?.type =
             const args = [];
             const callArgs = [];
 
+    const finalArgs = [...(node.args || [])];
+
+for (let i = finalArgs.length; i < fn.params.length; i++) {
+  const param = fn.params[i];
+
+  if (param.default) {
+    finalArgs.push(param.default);
+  }
+}
+
             // implicit this
             args.push(`ptr ${basePtr}`);
 
             // method args
-            for (let i = 0; i < (node.args || []).length; i++) {
-              const argNode = node.args[i];
+            for (let i = 0; i < finalArgs.length; i++) {
+    const argNode = finalArgs[i];
+              
               let arg;
 
               if (argNode.type === "FUNCTION_DECLARATION") {
@@ -1168,7 +1179,7 @@ if (this.IRB.hasVar(base.name, node) && this.IRB.getVar(base.name, node)?.type =
         const finalType = fieldInfo.llvmType;
 
         const isArray = finalType?.startsWith("[") || finalType?.isArray;
-        const isStructField = this.IRB.hasStruct(structName);
+        const isStructField =  this.IRB.hasStruct(structName);
         const fieldStructInfo = isStructField ? this.IRB.getStruct(structName, node) : null;
         const isOpaqueField = fieldStructInfo?.isBuiltin && fieldStructInfo?.isOpaque;
 

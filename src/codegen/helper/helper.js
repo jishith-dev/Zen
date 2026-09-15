@@ -1147,7 +1147,7 @@ case "long":
       }
 
       if (this.hasStruct(p.type.type)) {
-        
+
         
         types.push("ptr");
         paramStr.push(`ptr ${temp}`);
@@ -1193,7 +1193,9 @@ case "long":
     }
 
     if (isMethod) {
+      
       types.unshift("ptr");
+      
       paramStr.unshift(`ptr %this`);
       paramData.push({
         name: "this",
@@ -1211,6 +1213,7 @@ const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
 
 if (this.hasStruct(returnType) && !isOpaqueReturn) {
   paramStr.unshift(`ptr sret(%${returnType}) %sret`);
+  types.unshift("ptr")
 }
 
     return {
@@ -1307,11 +1310,13 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
 
     // NORMAL CALL
 
+    const displayName = fn.name.replace("_", ".");
+
     if (!isRest) {
       if (params.length !== args.length) {
         this.emitError(
           "ArgumentError",
-          `'${fn.name}' accepts exactly ${params.length} argument(s), got ${args.length}`,
+          `'${displayName}' accepts exactly ${params.length} argument(s), got ${args.length}`,
           node,
         );
       }
@@ -1325,7 +1330,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
           if (!actual?.isFunction) {
             this.emitError(
               "TypeError",
-              `Argument ${i + 1} of '${fn.name}' expects a callback`,
+              `Argument ${i + 1} of '${displayName}' expects a callback`,
               node,
             );
           }
@@ -1376,7 +1381,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
         if (expectedType !== actualType) {
           this.emitError(
             "TypeError",
-            `Argument type mismatch in '${fn.name}' — expected (${expectedType}), got (${actualType})`,
+            `Argument type mismatch in '${displayName}' — expected (${expectedType}), got (${actualType})`,
             node,
           );
         }
@@ -1402,7 +1407,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
       if (actual && expected !== actual) {
         this.emitError(
           "TypeError",
-          `'${fn.name}' expects type '${expected}', got '${actual}'`,
+          `'${displayName}' expects type '${expected}', got '${actual}'`,
           node,
         );
       }
@@ -1418,7 +1423,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
       if (actual !== restType) {
         this.emitError(
           "TypeError",
-          `'${fn.name}' rest parameter expects type '${restType}', got '${actual}'`,
+          `'${displayName}' rest parameter expects type '${restType}', got '${actual}'`,
           node,
         );
       }
@@ -1742,6 +1747,7 @@ end:
       return {
         type: "VARIABLE_REFERENCE",
         dataType: data.type,
+        isList: data?.isList,
         isConstant: data.isConstant,
         name: expr.name,
         value: expr.value,
@@ -2227,6 +2233,20 @@ if (expr.type === "byte" && targetType === "string") {
         local,
       };
     }
+
+    // BYTE -> INT
+
+if (expr.type === "byte" && targetType === "int") {
+  local.push(`${t} = zext i8 ${expr.ptr} to i32`);
+
+  return {
+    ptr: t,
+    llvmType: "i32",
+    type: "int",
+    local,
+    isTemp: fromTemporary
+  };
+}
 
     // LONG STRING
 
@@ -3796,7 +3816,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
         continue;
       }
 
-      if (!field.isList && this.hasStruct(field.type)) {
+      if (!field.isList &&   this.hasStruct(field.type)) {
         const expr = this.expr.handleExpression(prop.value, false, structName);
         this.emitExpr(expr);
         this.declareOneTime(

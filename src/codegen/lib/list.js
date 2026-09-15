@@ -256,12 +256,21 @@ if (element.type === "variable") {
         );
       }
 
-      if (isValidList && type !== expr.type) {
+      if (isValidList) {
+
+if (expr.type.startsWith("List<")) {
+          const generic = this.IRB.parseGenericFromString(expr.type);
+          const t = this.IRB.getDeepestGeneric(generic);
+          expr.type = t;
+}
+        
+      if (type !== expr.type) {
         this.IRB.emitError(
           "TypeError",
           `List ${name} expected ${type} but got ${expr.type}`,
           node,
         );
+      }
       }
 
       this.IRB.emitExpr(expr);

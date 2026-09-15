@@ -88,7 +88,12 @@ export class ZenFileSystem {
           ptr = tmp;
         }
 
-        const t = getArgType(e.type);
+        let t;
+        if (e?.isList) {
+          t = "ptr";
+        } else {
+          t = getArgType(e.type);
+        }
         return `${t} ${ptr}`;
       })
       .join(", ");

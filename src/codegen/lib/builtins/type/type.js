@@ -73,7 +73,7 @@ export class Type {
         node,
       );
     }
-    const cast = this.IRB.castExpression(expr, "int");
+    const cast = this.IRB.castExpression(expr, "int", "Int", node);
     this.IRB.emit(cast?.local.join("\n"));
 
     this.IRB.cleanupBuiltinStringTemps([expr])
@@ -112,7 +112,7 @@ export class Type {
         node,
       );
     }
-    const cast = this.IRB.castExpression(expr, "long");
+    const cast = this.IRB.castExpression(expr, "long", "Long", node);
     this.IRB.emit(cast?.local.join("\n"));
 
     this.IRB.cleanupBuiltinStringTemps([expr])
@@ -150,7 +150,7 @@ export class Type {
         node,
       );
     }
-    const cast = this.IRB.castExpression(expr, "int", "toInt");
+    const cast = this.IRB.castExpression(expr, "int", "toInt", node);
 
     this.IRB.cleanupBuiltinStringTemps([expr])
     
@@ -187,7 +187,7 @@ export class Type {
     }
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "double");
+    const cast = this.IRB.castExpression(expr, "double", "Double", node);
     this.IRB.emit(cast?.local.join("\n"));
 
 this.IRB.cleanupBuiltinStringTemps([expr])
@@ -224,7 +224,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     }
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "bool");
+    const cast = this.IRB.castExpression(expr, "bool", "Bool", node);
     this.IRB.emit(cast?.local.join("\n"));
 
 this.IRB.cleanupBuiltinStringTemps([expr])
@@ -261,7 +261,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     }
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "string");
+    const cast = this.IRB.castExpression(expr, "string", "String", node);
     this.IRB.emit(cast?.local.join("\n"));
 
 this.IRB.cleanupBuiltinStringTemps([expr])
@@ -298,7 +298,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     }
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "string", "toString");
+    const cast = this.IRB.castExpression(expr, "string", "toString", node);
     this.IRB.emit(cast?.local.join("\n"));
 
 this.IRB.cleanupBuiltinStringTemps([expr])
@@ -360,7 +360,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
 
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "byte");
+    const cast = this.IRB.castExpression(expr, "byte", "Byte", node);
 
     this.IRB.emit(cast?.local.join("\n"));
 

@@ -566,17 +566,23 @@ orgData.isFreed = false;
 
       const valExpr = this.expr.handleExpression(fakeNode);
 
-      const actual = valExpr?.isList ? `List` : valExpr.type;
-      const expected = declaredType;
+const declaredIsList = !!node.isList;
+const actualIsList = !!valExpr?.isList;
 
-      if (valExpr?.isList || declaredType !== valExpr.type) {
-        this.IRB.emitError(
-          "TypeError",
-          `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
-          node,
-        );
-      }
+const actual = actualIsList ? `List<${valExpr.type}>` : valExpr.type;
+const expected = declaredIsList ? `List<${declaredType}>` : declaredType;
 
+const typeMismatch =
+  declaredIsList !== actualIsList || declaredType !== valExpr.type;
+
+if (typeMismatch) {
+  this.IRB.emitError(
+    "TypeError",
+    `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
+    node,
+  );
+}
+      
       this.IRB.emitExpr(valExpr);
 
       let ptr;

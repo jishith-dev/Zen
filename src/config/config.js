@@ -1488,7 +1488,7 @@ const BUILTIN_MAP = {
   },
 
   readFileBytes: {
-    returnType: "byte",
+    returnType: "List<byte>",
     llvmName: "_fs_readFileBytes",
   },
 
@@ -2443,9 +2443,9 @@ const FILE_MAP = {
 
   _fs_writeFile: ["_fs_writeFile", "int", 2, ["string", "string"]],
 
-  _fs_readFileBytes: ["_fs_readFileBytes", "byte", 1, ["string"]],
+  _fs_readFileBytes: ["_fs_readFileBytes", "List<byte>", 1, ["string"]],
 
-  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "byte"]],
+  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "List<byte>"]],
 
   _fs_exists: ["_fs_exists", "bool", 1, ["string"]],
 

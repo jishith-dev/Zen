@@ -147,6 +147,20 @@ if (fs.existsSync(nativeDir)) {
 
     const seen = new Set();
 
+    // register all struct first so avoid dependency bug
+
+    for (const name of imports) {
+  if (tables.structTable.has(name)) {
+    const s = tables.structTable.get(name);
+
+    this.IRB.setStruct(name, s);
+
+    this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
+    const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
+    this.IRB.globals.push(`%${name} = type { ${fields} }`);
+  }
+    }
+
     for (const name of imports) {
 
       if (!tables.exportNames.has(name)) {
@@ -181,13 +195,13 @@ if (fs.existsSync(nativeDir)) {
 
         fn.importedModuleName = this.curruntModuleName;
 
-        const { types } = this.IRB.buildParams(fn.params, false, fn.returnType);
+        const { types } = this.IRB.buildParams(fn.params, false, fn.returnType?.type ?? fn.returnType);
 
-        const retType = tables.structTable.has(fn.returnType)
+        const retType = tables.structTable.has(fn.returnType?.type ?? fn.returnType)
           ? "void"
           : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
 
-        if (tables.structTable.has(fn.returnType)) {
+        if (tables.structTable.has(fn.returnType?.type ?? fn.returnType)) {
           fn.isStructReturn = true;
         }
 
@@ -205,7 +219,6 @@ if (fs.existsSync(nativeDir)) {
 
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
-        this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
         
         // methods
         for (const [fnName, fn] of tables.functionTable) {
@@ -215,10 +228,11 @@ if (fs.existsSync(nativeDir)) {
           fn.isImported = true;
           fn.importedModuleName = this.curruntModuleName;
 
+          
           const { types } = this.IRB.buildParams(
             fn.params,
             true,
-            fn.returnType,
+            fn.returnType.type ?? fn.returnType
           );
 
           const retType = tables.structTable.has(fn.returnType.type)
@@ -226,7 +240,7 @@ if (fs.existsSync(nativeDir)) {
             : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
           
 
-          if (tables.structTable.has(fn.returnType)) {
+          if (tables.structTable.has(fn.returnType.type)) {
             fn.isStructReturn = true;
           }
 
@@ -235,12 +249,6 @@ if (fs.existsSync(nativeDir)) {
 
           this.IRB.setFunction(fnName, fn);
         }
-
-        const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
-
-        this.IRB.globals.push(`%${name} = type { ${fields} }`);
-
-        this.IRB.setStruct(name, s);
 
         continue;
       }
