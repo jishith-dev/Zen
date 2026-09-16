@@ -284,6 +284,23 @@ isDeclaration(line) {
     }
   }
 
+ getLibDirs(prefix) {
+  const dirs = [path.join(prefix, "lib")];
+
+  try {
+    const entries = fs.readdirSync(path.join(prefix, "lib"), { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        dirs.push(path.join(prefix, "lib", entry.name));
+      }
+    }
+  } catch {
+    // $PREFIX/lib doesn't exist or isn't readable — fall back to just the base dir
+  }
+
+  return dirs;
+  }
+
   async compile(command) {
     this.setCompilerRoot();
 
@@ -713,29 +730,35 @@ for (const nativeFile of allNativeFiles) {
 
     const packageFlags = [...this.moduleFiles.flags];
 
-    const linkArgs = [
-      "clang",
-      outO,
-      ...moduleObjs,
-      ...stdlibObjs,
-      ...runtimeObjs,
-      ...compiledNativeObjs,
-      ...extraLinkObjs,
-      ...packageFlags,
-      ...extraFlags,
-      this.optFlag,
-    ];
+    const linkArgs = [...new Set([
+  "clang",
+  outO,
+  ...moduleObjs,
+  ...stdlibObjs,
+  ...runtimeObjs,
+  ...compiledNativeObjs,
+  ...extraLinkObjs,
+  ...packageFlags,
+  ...extraFlags,
+  this.optFlag,
+])];
 
     if (!this.isWindows) {
       linkArgs.push("-Wno-override-module");
       linkArgs.push("-lm");
     }
 
+    const prefix = process.env.PREFIX;
+
+if (!this.isWindows && prefix) {
+  const rpath = this.getLibDirs(prefix).join(":");
+  linkArgs.push(`-Wl,-rpath,${rpath}`);
+}
+
     linkArgs.push("-lcurl");
     linkArgs.push("-lcrypto");
     linkArgs.push("-o");
     linkArgs.push(outputExe);
-    console.log(linkArgs)
 
     this.run(linkArgs.join(" "));
 
