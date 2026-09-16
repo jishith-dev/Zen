@@ -261,7 +261,7 @@ if (
 
     const type = deepestType;
     const listLLVM = "ptr";
-    const elementSize = depth > 0 ? 8 : this.IRB.sizeOf(deepestType);
+    const elementSize = depth > 1 ? 8 : this.IRB.sizeOf(deepestType);
     
     let rootList = null;
 

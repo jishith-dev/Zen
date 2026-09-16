@@ -340,11 +340,13 @@ if (expr.type.startsWith("List<")) {
           actualType = this.infer.infer(el);
         }
 
+        if (el.type === "CALL") {
+          actualType = this.infer.infer(el)
+        }
+
         // Leaf check using the resolved actual type
         if (
-  actualType !== expectedType &&
-  !(actualType === "int" && expectedType === "long") &&
-  !(actualType === "long" && expectedType === "int")
+  actualType !== expectedType
 ) {
           this.IRB.emitError(
             "TypeError",
