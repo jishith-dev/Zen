@@ -830,7 +830,7 @@ for (const input of inputs) {
       continue;
     }
 
-    if (entry.name.endsWith(".o")) {
+    if (entry.name.endsWith(".o") || entry.name.endsWith(".c")) {
       native.push(path.join("native", entry.name));
     }
   }

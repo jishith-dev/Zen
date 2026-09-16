@@ -3,6 +3,7 @@ import { Parser } from "../../parser/parser.js";
 import { CodeGen } from "../codegen.js";
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 export class Module {
   constructor(IRB, moduleFiles) {
@@ -45,21 +46,27 @@ export class Module {
     const file = this.IRB.loadFile(source, node);
 
 const moduleDir = this.IRB.getModuleNativeDir(source);
-const nativeDir = path.join(moduleDir, "native");
 
-if (fs.existsSync(nativeDir)) {
-  for (const entry of fs.readdirSync(nativeDir, {
-    withFileTypes: true,
-  })) {
-    if (entry.isFile() && entry.name.endsWith(".o")) {
-      this.moduleFiles.addNative(
-        path.resolve(nativeDir, entry.name)
-      );
+const configPath = path.join(moduleDir, "zen.json");
+
+if (fs.existsSync(configPath)) {
+  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+  if (Array.isArray(config.flags)) {
+    for (const flag of config.flags) {
+      this.moduleFiles.addFlag(flag);
     }
+  }
+
+  if (Array.isArray(config.native)) {
+  for (const nativeFile of config.native) {
+    this.moduleFiles.nativeFiles.add(path.join(moduleDir, nativeFile));
+  }
   }
 }
 
-    const moduleName = path.basename(source, ".zen");
+    const moduleName = this.getModuleName(source);
+    
     this.curruntModuleName = moduleName;
 
     const prevModule = this.IRB.moduleName;
@@ -285,9 +292,21 @@ if (fs.existsSync(nativeDir)) {
     const dir = path.join(path.dirname(source), "build");
     fs.mkdirSync(dir, { recursive: true });
 
-    const out = path.join(dir, path.basename(source, ".zen") + ".ll");
+    const out = path.resolve(dir, path.basename(source, ".zen") + ".ll");
     fs.writeFileSync(out, ir);
 
     return out;
+  }
+
+  getModuleName(source) {
+  if (source.endsWith(".zen")) {
+    return path.basename(source, ".zen");
+  }
+
+  const configPath = path.join(os.homedir(), ".zen/packages", source, "zen.json");
+  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  const entry = config?.bin || config?.main;
+
+  return path.basename(entry, ".zen");
   }
 }

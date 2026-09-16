@@ -7,10 +7,15 @@ export class ModuleFiles {
     this.defFunctions = new Map();
     this.declFunctions = new Map();
     this.nativeFiles = new Set();
+    this.flags = new Set();
   }
 
   add(file) {
     this.moduleFiles.add(file);
+  }
+
+  addFlag(flag) {
+    this.flags.add(flag);
   }
 
   values() {

@@ -295,20 +295,40 @@ isDeclaration(line) {
     }
 
     const linkIndex = this.args.indexOf("--link");
+const flagsIndex = this.args.indexOf("--flags");
 
 let extraLinkObjs = [];
+let extraFlags = [];
 
 if (linkIndex !== -1) {
-  extraLinkObjs = this.args.slice(linkIndex + 1);
+  const end =
+    flagsIndex !== -1 && flagsIndex > linkIndex
+      ? flagsIndex
+      : this.args.length;
+
+  extraLinkObjs = this.args.slice(linkIndex + 1, end);
 
   for (const obj of extraLinkObjs) {
-    if (!obj.endsWith(".o")) {
-      console.error(`error: --link expects .o file, got '${obj}'`);
+    if (!obj.endsWith(".o") && !obj.endsWith(".c")) {
+      console.error(
+        `error: --link expects .o or .c file, got '${obj}'`
+      );
       process.exit(1);
     }
 
     if (!fs.existsSync(obj)) {
       console.error(`error: Link object not found: ${obj}`);
+      process.exit(1);
+    }
+  }
+}
+
+if (flagsIndex !== -1) {
+  extraFlags = this.args.slice(flagsIndex + 1);
+
+  for (const flag of extraFlags) {
+    if (!flag.trim()) {
+      console.error("error: --flags expects linker flags");
       process.exit(1);
     }
   }
@@ -369,14 +389,14 @@ if (this.pathType(file) === "project") {
         process.exit(1);
       }
 
-      if (!nativePath.endsWith(".o")) {
-        console.error(
-          `error: Native dependency must be a .o file: ${nativeFile}`,
-        );
-        process.exit(1);
-      }
+      if (!nativePath.endsWith(".o") && !nativePath.endsWith(".c")) {
+  console.error(
+    `error: Native dependency must be a .o or .c file: ${nativeFile}`,
+  );
+  process.exit(1);
+}
 
-      packageNativeObjs.push(nativePath);
+packageNativeObjs.push(nativePath);
     }
   }
 }
@@ -622,7 +642,7 @@ if (this.pathType(file) === "project") {
 
     for (const ll of moduleFiles) {
       try {
-        const absLL = path.resolve(this.PROJECT_ROOT, ll);
+        const absLL = path.isAbsolute(ll) ? ll : path.resolve(this.PROJECT_ROOT, ll);
         const obj = absLL.replace(".ll", ".o");
         this.run(`llc -filetype=obj -relocation-model=pic ${absLL} -o ${obj}`);
         moduleObjs.push(obj);
@@ -666,7 +686,32 @@ if (this.pathType(file) === "project") {
       this.isWindows ? `${this.moduleName}.exe` : this.moduleName,
     );
 
-    const libNativeObjs = [...this.moduleFiles.nativeFiles];
+    const allNativeFiles = [
+  ...packageNativeObjs,
+  ...this.moduleFiles.nativeFiles,
+];
+    
+const compiledNativeObjs = [];
+
+for (const nativeFile of allNativeFiles) {
+  if (nativeFile.endsWith(".o")) {
+    compiledNativeObjs.push(nativeFile);
+    continue;
+  }
+
+  if (nativeFile.endsWith(".c")) {
+    const obj = path.join(
+      buildDir,
+      `${path.basename(nativeFile, ".c")}.o`,
+    );
+
+    this.run(`clang -fPIC -c "${nativeFile}" -o "${obj}"`);
+
+    compiledNativeObjs.push(obj);
+  }
+}
+
+    const packageFlags = [...this.moduleFiles.flags];
 
     const linkArgs = [
       "clang",
@@ -674,9 +719,10 @@ if (this.pathType(file) === "project") {
       ...moduleObjs,
       ...stdlibObjs,
       ...runtimeObjs,
-      ...packageNativeObjs,
-      ...libNativeObjs,
-       ...extraLinkObjs,
+      ...compiledNativeObjs,
+      ...extraLinkObjs,
+      ...packageFlags,
+      ...extraFlags,
       this.optFlag,
     ];
 
@@ -689,6 +735,7 @@ if (this.pathType(file) === "project") {
     linkArgs.push("-lcrypto");
     linkArgs.push("-o");
     linkArgs.push(outputExe);
+    console.log(linkArgs)
 
     this.run(linkArgs.join(" "));
 

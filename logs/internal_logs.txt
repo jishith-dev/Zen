@@ -113,3 +113,7 @@ implimented `zen` command so it can be used REPL like interactive line by line f
 sep 12 
 
 added Map new methods such as keys() ans entries()
+
+added .c also as native dependency
+also zen.json support flags: [] so module level linling can supoort and also standalone 
+--flags -lmariadb  also supported

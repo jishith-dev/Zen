@@ -1143,7 +1143,7 @@ for (let i = finalArgs.length; i < fn.params.length; i++) {
 
           if (!isList && this.IRB.hasStruct(structName)) {
             const nextStructInfo = this.IRB.getStruct(structName);
-            if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque) {
+            if (nextStructInfo?.isBuiltin && nextStructInfo?.isOpaque && structName !== "Ptr") {
               const loaded = this.IRB.newTemp();
               this.IRB.emit(`${loaded} = load ptr, ptr ${basePtr}`);
               basePtr = loaded;

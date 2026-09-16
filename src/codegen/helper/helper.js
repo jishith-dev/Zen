@@ -3816,7 +3816,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
         continue;
       }
 
-      if (!field.isList &&   this.hasStruct(field.type)) {
+      if (!field.isList && field.type !== "Ptr" && this.hasStruct(field.type)) {
         const expr = this.expr.handleExpression(prop.value, false, structName);
         this.emitExpr(expr);
         this.declareOneTime(
