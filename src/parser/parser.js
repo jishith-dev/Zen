@@ -2133,7 +2133,7 @@ if (this.matchKeyword("fn")) {
 
     this.skipNewlines();
     this.expect("RIGHT_PARENTHESIS");
-
+  
     return this.node({
       isInbuilt: BUILTIN_FUNCTIONS.includes(name),
       type: ParserTypes.CALL,

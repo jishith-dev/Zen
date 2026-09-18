@@ -29,6 +29,7 @@ export class IRBuilder {
     this.currentFunction = null;
     this.functions = new Map();
     this.anonymFunctions = new Map();
+    this.currentThreadFunction = null;
     this.anonymCurrentFunction = null;
 
     this.moduleName = moduleName;
@@ -765,6 +766,19 @@ if (
         `inline function '${this.anonymCurrentFunction.name}' cannot capture outer variable '${name}'`,
         node
     );
+}
+
+        // Thread functions cannot capture outer variables.
+if (
+  this.currentThreadFunction?.name &&
+  sym?.ownerFunction &&
+  sym.ownerFunction !== this.currentThreadFunction.name
+) {
+  this.emitError(
+    "SemanticError",
+    `thread function '${this.currentThreadFunction.name}' cannot capture outer variable '${name}'`,
+    node
+  );
 }
         return sym;
       }
@@ -4039,6 +4053,10 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     this.registerBuiltInStructs("Ptr", [], { opaque: true }, true);
 
     this.registerBuiltInStructs("Map", [], { opaque: true });
+
+    this.registerBuiltInStructs("Tcp", [], { opaque: true });
+
+    this.registerBuiltInStructs("TcpServer", [], { opaque: true });
     
   }
 
@@ -4167,7 +4185,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
 
     const expr = this.expr.handleExpression(args[i]);
 
-    if (expr.isList) {
+ /*   if (expr.isList) {
       if (method.args[i] !== "List") {
         this.emitError(
           "TypeError",
@@ -4181,7 +4199,23 @@ if (sym.fromParam && sym.pIndex !== undefined) {
         `'${structName}.${methodName}()' argument ${i + 1} expects '${method.args[i]}', got '${expr.type}'`,
         node,
       );
-    }
+    }*/
+
+const actualType = this.getExpressionTypeString(expr);
+const expectedType = method.args[i].trim();
+
+if (
+  actualType !== expectedType &&
+  !(expectedType === "List" && actualType.startsWith("List<"))
+) {
+  this.emitError(
+    "TypeError",
+    `'${structName}.${methodName}()' argument ${i + 1} expects '${expectedType}', got '${actualType}'`,
+    node
+  );
+} 
+
+    
 
     if (expr.global?.length) {
       global.push(...expr.global);
@@ -4914,5 +4948,49 @@ this.declareOneTime("zen_list_set_meta","declare void @_zen_list_set_meta(ptr, i
     type: "List",
     generic: this.parseGenericFromString(match[1]),
   };
+  }
+
+  getExpressionTypeString(expr) {
+  if (!expr) return "";
+
+  const typeToString = (node) => {
+  if (!node) return "";
+
+  if (typeof node === "string") {
+    return node;
+  }
+
+  // Unwrap nested generic metadata
+  if (!node.type && node.generic) {
+    return typeToString(node.generic);
+  }
+
+  if (node.type === "List") {
+    return `List<${typeToString(node.generic)}>`;
+  }
+
+  return node.type ?? "";
+};
+
+  // Already structured: { type: "List", generic: { type: "byte" } }
+  if (expr.type === "List") {
+    return typeToString(expr);
+  }
+
+  
+  if (expr.isList) {
+    // Generic already contains the complete List type
+    if (expr.generic?.type === "List") {
+      return typeToString(expr.generic);
+    }
+
+    // Build List<T> only once
+    return `List<${
+      typeToString(expr.generic ?? { type: expr.type })
+    }>`;
+  }
+
+  // Normal type
+  return typeToString(expr);
   }
 }

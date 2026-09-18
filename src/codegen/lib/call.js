@@ -107,6 +107,7 @@ export class Call {
     }
 
     const name = node.name;
+    
     let isStdFn = false;
 
     if (STD_FUNCTIONS.includes(name)) {
@@ -832,11 +833,19 @@ export class Call {
       case "sizeOf":
         return this.type.sizeOf(node, globalScope);
 
+      case "stringToBytes":
+        return this.type.strToBytes(node, globalScope);
+
+     case "bytesToString":
+        return this.type.bytesToStr(node, globalScope);
+
       case "Byte":
         return this.type.Byte(node, globalScope);
 
       case "matchRegex":
         return this.string.matchRegex(node);
+
+      
 
       // these are same pattern functions
       // for future modification and semantic understanding of compiler internal we keep this now.

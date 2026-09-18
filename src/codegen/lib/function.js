@@ -347,6 +347,13 @@ this.IRB.funcTempCounter = 0;// reset counter per function
 
         const isDecl = node.isDeclaration;
         const isExtern = node.isExtern;
+        const isThread = node.isThread;
+
+      if (isThread) {
+        this.IRB.currentThreadFunction = {
+          name: node.name
+        }
+      }
 
         if (node.body !== null)
             this.globalState.defFunctions.set(node.name, true);
@@ -729,6 +736,10 @@ if (isInline) {
         this.IRB.exitScope();
 
         this.IRB.functionBuff.push(functionState.body.join("\n"));
+
+      if (isThread) {
+        this.IRB.currentThreadFunction = null;
+      }
 
         if (isInline) {
     this.IRB.anonymCurrentFunction = prevAnonymFunction;

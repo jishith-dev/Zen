@@ -1063,3 +1063,49 @@ int _zen_list_get_depth(ZenList *list) {
 int _zen_list_get_deepest_type(ZenList *list) {
     return list->deepestType;
 }
+
+// String <-> Bytes
+
+ZenList *_zen_strToBytes(const char *str) {
+    if (str == NULL) {
+        return _zen_list_new(sizeof(uint8_t));
+    }
+
+    size_t length = strlen(str);
+
+    ZenList *list = _zen_list_new(sizeof(uint8_t));
+
+    for (size_t i = 0; i < length; i++) {
+        uint8_t byte = (uint8_t)(unsigned char)str[i];
+        _zen_list_push(list, &byte);
+    }
+
+    return list;
+}
+
+
+char *_zen_bytesToStr(ZenList *list) {
+    if (list == NULL || list->data == NULL || list->size == 0) {
+        return strdup("");
+    }
+
+    char *str = malloc((size_t)list->size + 1);
+
+    if (str == NULL) {
+        fprintf(
+            stderr,
+            "[Zen RuntimeError]\n"
+            "  └── Failed to allocate string memory\n"
+        );
+        exit(1);
+    }
+
+    for (int i = 0; i < list->size; i++) {
+        uint8_t byte = *(uint8_t *)_zen_list_get(list, i);
+        str[i] = (char)byte;
+    }
+
+    str[list->size] = '\0';
+
+    return str;
+}

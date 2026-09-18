@@ -120,3 +120,31 @@ also zen.json support flags: [] so module level linling can supoort and also sta
 
 added zen read pkgname --raw?
 it reads installed pkges README.md and render in terminal
+
+TCP networking is built into Zen.
+
+Structs:
+- Tcp
+- TcpServer
+
+Namespace functions:
+- net.online() -> bool
+- net.connect(string host, int port) -> Tcp
+- net.listen(int port) -> TcpServer
+
+Tcp methods:
+- send(List<byte> data) -> long
+- receive(int maxBytes) -> List<byte>
+- close() -> void
+- isOpen() -> bool
+
+TcpServer methods:
+- accept() -> Tcp
+- close() -> void
+- isOpen() -> bool
+
+Native implementation: tcp.c
+
+added stringToBytes and bytesToString globals
+
+thread fn now catch compile time capture error

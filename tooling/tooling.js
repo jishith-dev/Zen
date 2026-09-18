@@ -678,6 +678,7 @@ packageNativeObjs.push(nativePath);
       "curlRuntime",
       "httpRuntime",
       "jsonRuntime",
+      "tcp"
     ];
 
     const runtimeObjs = runtimeFiles.map((name) => {

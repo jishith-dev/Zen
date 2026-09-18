@@ -180,6 +180,8 @@ const RESERVED_FUNCTIONS = [
   "sizeOf",
   "Byte",
   "Long",
+  "stringToBytes",
+  "bytesToString",
 
   // BASIC
   "isEven",
@@ -263,6 +265,8 @@ const BUILTIN_STRUCTS = [
   "JsonObject",
   "Ptr",
   "Map",
+  "Tcp",
+  "TcpServer"
 ];
 
 const BUILTIN_STRUCT_ABI = ["Ptr"];
@@ -284,6 +288,8 @@ const BUILTIN_FUNCTIONS = [
   "sizeOf",
   "Byte",
   "Long",
+  "stringToBytes",
+  "bytesToString",
 
   // BASIC
   "isEven",
@@ -423,6 +429,8 @@ const BUILTIN_FUNCTIONS = [
 
   // NET
   "_net_online",
+  "_net_connect",
+  "_net_listen",
 
   // TIME
   "_time_sleep",
@@ -701,7 +709,11 @@ const NAMESPACE_MAP = {
     "lastStatus",
   ],
 
-  net: ["online"],
+  net: [
+       "online",
+       "connect",
+       "listen"
+       ],
 
   ffi: [
     "printf",
@@ -759,6 +771,51 @@ const NAMESPACE_MAP = {
 };
 
 const BUILTIN_STRUCT_METHODS = {
+    Tcp: {
+    send: {
+      returnType: "long",
+      args: ["List<byte>"],
+      llvmName: "_zen_tcp_send",
+    },
+
+    receive: {
+      returnType: "List<byte>",
+      args: ["int"],
+      llvmName: "_zen_tcp_receive",
+    },
+
+    close: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_tcp_close",
+    },
+
+    isOpen: {
+      returnType: "bool",
+      args: [],
+      llvmName: "_zen_tcp_isOpen",
+    },
+  },
+
+  TcpServer: {
+    accept: {
+      returnType: "Tcp",
+      args: [],
+      llvmName: "_zen_tcp_accept",
+    },
+
+    close: {
+      returnType: "void",
+      args: [],
+      llvmName: "_zen_tcp_server_close",
+    },
+
+    isOpen: {
+      returnType: "bool",
+      args: [],
+      llvmName: "_zen_tcp_server_isOpen",
+    },
+  },
   Json: {
     getInt: {
       returnType: "int",
@@ -1402,6 +1459,16 @@ const BUILTIN_MAP = {
     llvmName: "Byte"
   },
 
+  stringToBytes: {
+    returnType: "List<byte>",
+    llvmName: "stringToBytes"
+  },
+
+  bytesToString: {
+    returnType: "string",
+    llvmName: "bytesToString"
+  },
+
   panic: {
     returnType: "void",
     llvmName: "_sys_panic",
@@ -1709,10 +1776,24 @@ base64UrlDecode: {
     llvmName: "_os_homeDir",
   },
 
+  // NET 
+  
   online: {
     returnType: "bool",
     llvmName: "_net_online",
   },
+
+  connect: {
+    returnType: "Tcp",
+    llvmName: "_net_connect"
+  },
+
+  listen: {
+    returnType: "TcpServer",
+    llvmName: "_net_listen"
+  },
+
+  // TIME
 
   sleep: {
     returnType: "void",
@@ -2512,6 +2593,8 @@ const TIME_MAP = {
 
 const NETWORK_MAP = {
   _net_online: ["_net_online", "bool", 0, []],
+  _net_connect: ["_net_connect", "Tcp", 2, ["string", "int"]],
+  _net_listen: ["_net_listen", "TcpServer", 1, ["int"]]
 };
 
 const HTTP_MAP = {
