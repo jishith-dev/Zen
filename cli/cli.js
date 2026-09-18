@@ -32,7 +32,8 @@ const VALID_COMMANDS = new Set([
   "fmt",
   "lint",
   "deps",
-  "installed"
+  "installed",
+  "read"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -54,7 +55,8 @@ const PACKAGE_COMMANDS = {
   mine: "mine",
   install: "install",
   deps: "deps",
-  installed: "installed"
+  installed: "installed",
+  read: "read"
 };
 
 const COMPILE_COMMANDS = new Set([
@@ -125,7 +127,8 @@ export class CLI {
     this.args = argv;
     this.command = this.args[0];
 
-    const optFlagFromCommand = this.args[2];
+    const optFlagFromCommand = this.args[2]?.slice(1);
+    
     const isValidOptFlag = OPT_FLAGS.includes(optFlagFromCommand);
     this.optFlag = isValidOptFlag ? optFlagFromCommand : "-O2";
   }

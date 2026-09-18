@@ -1016,12 +1016,9 @@ case "long":
   const RESET = "\x1b[0m";
 
   const WHITE = "\x1b[97m";
-  const ORANGE = "\x1b[38;5;208m";
   const RED = "\x1b[91m";
-  const YELLOW = "\x1b[93m";
   const MAGENTA = "\x1b[95m";
   const CYAN = "\x1b[96m";
-  const BOLD = "\x1b[1m";
 
   const loc = this.getNodeLocation(err.node);
 
@@ -1036,17 +1033,33 @@ case "long":
   ├── ${MAGENTA}Hint: ${err.hint}${RESET}`
     : "";
 
-  const line = err.line
-    ? `
+  // Safely format source-code location
+  let line = "";
 
-  ├── ${WHITE}${err.line.text}${RESET}
-  │   ${CYAN}${" ".repeat(err.line.column - 1)}${"^".repeat(err.line.length)}${RESET}`
-    : "";
+  if (err.line) {
+    const text = err.line.text ?? "";
+
+    const columnValue = Number(err.line.column);
+    const lengthValue = Number(err.line.length);
+
+    const column = Number.isFinite(columnValue)
+      ? Math.max(0, columnValue - 1)
+      : 0;
+
+    const length = Number.isFinite(lengthValue)
+      ? Math.max(1, lengthValue)
+      : 1;
+
+    line = `
+
+  ├── ${WHITE}${text}${RESET}
+  │   ${CYAN}${" ".repeat(column)}${"^".repeat(length)}${RESET}`;
+  }
 
   console.error(
-    `${WHITE}[ ${RESET}${RED}Zen ${err.type}${RESET}${WHITE} ]${RESET}
+    `${WHITE}[ ${RESET}${RED}Zen ${err.type ?? "Error"}${RESET}${WHITE} ]${RESET}
 
-  ├── ${err.message}${hint}${line}
+  ├── ${err.message ?? "Unknown compiler error"}${hint}${line}
 
   └── ${CYAN}At: ${location}${RESET}`,
   );

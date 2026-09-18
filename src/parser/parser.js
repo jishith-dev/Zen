@@ -1773,9 +1773,9 @@ parseShift() {
   parsePostfix(isAwait = false) {
     this.skipNewlines();
     let expr = this.node(this.parsePrimary());
-
+  
     while (true) {
-    
+    this.skipNewlines();
       if (this.match("DOT")) {
         this.skipNewlines();
         this.advance();

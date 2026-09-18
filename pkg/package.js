@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { renderMarkdown } from "../tooling/markdown_renderer.js";
 import readline from "readline";
 import { execSync } from "child_process";
 
@@ -731,6 +732,68 @@ for (const input of inputs) {
       process.exit(1);
     }
   }
+
+    async read() {
+    const packageName = this.args[1];
+    const isRaw = this.args.includes("--raw");
+
+    if (!packageName || packageName.startsWith("-")) {
+      console.error("error: Usage zen read <package> [--raw]");
+      process.exit(1);
+    }
+
+    // Prevent path traversal
+    if (
+      packageName.includes("/") ||
+      packageName.includes("\\") ||
+      packageName.includes("..")
+    ) {
+      console.error("error: Invalid package name");
+      process.exit(1);
+    }
+
+    const packagesDir = path.join(
+      os.homedir(),
+      ".zen",
+      "packages"
+    );
+
+    const packageDir = path.join(
+      packagesDir,
+      packageName
+    );
+
+    const readmePath = path.join(
+      packageDir,
+      "README.md"
+    );
+
+    if (!fs.existsSync(packageDir)) {
+      console.error(
+        `error: Package '${packageName}' is not installed`
+      );
+      process.exit(1);
+    }
+
+    if (!fs.existsSync(readmePath)) {
+      console.error(
+        `error: Package '${packageName}' has no README.md`
+      );
+      process.exit(1);
+    }
+
+    const markdown = fs.readFileSync(
+      readmePath,
+      "utf8"
+    );
+
+    if (isRaw) {
+      process.stdout.write(markdown);
+      return;
+    }
+
+    renderMarkdown(markdown);
+    }
 
   async init() {
     try {

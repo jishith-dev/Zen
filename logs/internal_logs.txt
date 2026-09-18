@@ -117,3 +117,6 @@ added Map new methods such as keys() ans entries()
 added .c also as native dependency
 also zen.json support flags: [] so module level linling can supoort and also standalone 
 --flags -lmariadb  also supported
+
+added zen read pkgname --raw?
+it reads installed pkges README.md and render in terminal

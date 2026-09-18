@@ -798,8 +798,23 @@ for (let i = finalArgs.length; i < fn.params.length; i++) {
                 this.IRB.anonymFunctions.set(argNode.name, data);
 
                 arg = this.func.handleFunction(argNode, true);
+              } else if (argNode.type === "ARRAY") {
+
+const param = fn.params[i];
+  const wrapped = param?.type;
+
+        const listGeneric = {
+          generic: wrapped?.generic,
+          type: this.IRB.getDeepestGeneric(wrapped),
+          depth: this.IRB.getListDepth(wrapped),
+        };
+
+    arg = this.handleExpression(argNode, false, listGeneric);
+     this.IRB.emitExpr(arg);
+    
+                
               } else {
-                arg = this.handleExpression(argNode);
+    arg = this.handleExpression(argNode);
                 this.IRB.emitExpr(arg);
               }
 
@@ -2486,6 +2501,13 @@ RNode.isTemp = true;
     }
 
     const normalize = (type, val, k) => {
+
+      if (type === "void") {
+        this.IRB.emitError(
+      "TypeError",
+      "void value cannot be used in an expression"
+    , node);
+      }
       if (type === "bool") {
         const t = this.IRB.newTemp();
         local.push(`${t} = zext i1 ${val} to i32`);
