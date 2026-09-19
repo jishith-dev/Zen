@@ -386,6 +386,8 @@ const BUILTIN_FUNCTIONS = [
 
   // THREAD
   "_threads_waitAll",
+  "_threads_count",
+  "_threads_currentId",
 
   "_debug_pretty",
 
@@ -636,7 +638,7 @@ const NAMESPACE_MAP = {
 
   httpServer: ["create"],
 
-  threads: ["waitAll"],
+  threads: ["waitAll", "count", "currentId"],
 
   debug: ["pretty"],
 
@@ -1600,6 +1602,16 @@ const BUILTIN_MAP = {
     llvmName: "_threads_waitAll",
   },
 
+  count: {
+    returnType: "long",
+    llvmName: "_threads_count"
+  },
+
+  currentId: {
+    returnType: "long",
+    llvmName: "_threads_currentId"
+  },
+
   pretty: {
     returnType: "string",
     llvmName: "debug_pretty",
@@ -2446,6 +2458,8 @@ const HTTPSERVER_MAP = {
 
 const THREAD_MAP = {
   _threads_waitAll: ["_threads_waitAll", "void", 0, []],
+  _threads_count: ["_threads_count", "long", 0, []],
+  _threads_currentId: ["_threads_currentId", "long", 0, []]
 };
 
 const DEBUG_MAP = {

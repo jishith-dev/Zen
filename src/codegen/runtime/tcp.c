@@ -1,7 +1,7 @@
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 200112L
 #endif
-/* Minimal TCP runtime for Zen */
+/* Production TCP runtime for Zen */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +22,8 @@
   #include <netdb.h>
   #include <unistd.h>
   #include <errno.h>
+  #include <signal.h>
+  #include <pthread.h>
   typedef int zen_socket_t;
   #define ZEN_INVALID_SOCKET (-1)
   #define zen_close_socket close
@@ -58,30 +60,49 @@ static void tcp_error(const char *message) {
           zen_socket_error());
 }
 
+/* ---- Platform init: thread-safe, one-time ---- */
+
 #ifdef _WIN32
-static bool tcp_platform_init(void) {
-  static bool initialized = false;
-  if (initialized)
-    return true;
+
+static BOOL CALLBACK tcp_win_init_once(PINIT_ONCE initOnce, PVOID param,
+                                        PVOID *context) {
+  (void)initOnce;
+  (void)param;
+  (void)context;
 
   WSADATA data;
   if (WSAStartup(MAKEWORD(2, 2), &data) != 0) {
     fprintf(stderr, "[Zen NetworkError] WSAStartup failed\n");
-    return false;
+    return FALSE;
   }
 
-  initialized = true;
-  return true;
+  return TRUE;
 }
-#else
+
 static bool tcp_platform_init(void) {
+  static INIT_ONCE once = INIT_ONCE_STATIC_INIT;
+  BOOL ok = InitOnceExecuteOnce(&once, tcp_win_init_once, NULL, NULL);
+  return ok != FALSE;
+}
+
+#else
+
+static void tcp_posix_init_once(void) {
+  /* A send() to a peer that has closed its end raises SIGPIPE, whose
+     default action terminates the whole process. We check send()'s
+     return value ourselves, so ignore it globally instead. */
+  signal(SIGPIPE, SIG_IGN);
+}
+
+static bool tcp_platform_init(void) {
+  static pthread_once_t once = PTHREAD_ONCE_INIT;
+  pthread_once(&once, tcp_posix_init_once);
   return true;
 }
+
 #endif
 
-static void tcp_free(ZenTcp *tcp) {
-  free(tcp);
-}
+/* ---- Connect ---- */
 
 ZenTcp *_net_connect(const char *host, int port) {
   if (!host || port < 1 || port > 65535 || !tcp_platform_init())
@@ -135,6 +156,8 @@ ZenTcp *_net_connect(const char *host, int port) {
   tcp->open = true;
   return tcp;
 }
+
+/* ---- Listen ---- */
 
 ZenTcpServer *_net_listen(int port) {
   if (port < 1 || port > 65535 || !tcp_platform_init())
@@ -201,6 +224,8 @@ ZenTcpServer *_net_listen(int port) {
   return server;
 }
 
+/* ---- Send ---- */
+
 long _zen_tcp_send(ZenTcp *tcp, ZenList *data) {
   if (!tcp || !tcp->open || !data || data->size <= 0)
     return 0;
@@ -210,15 +235,20 @@ long _zen_tcp_send(ZenTcp *tcp, ZenList *data) {
 
   while (total < data->size) {
     int sent = (int)send(tcp->socket, bytes + total, data->size - total, 0);
+
     if (sent <= 0) {
       tcp_error("Send failed");
+      tcp->open = false;   /* peer is gone; don't let caller keep writing */
       return total > 0 ? total : -1;
     }
+
     total += sent;
   }
 
   return total;
 }
+
+/* ---- Receive ---- */
 
 ZenList *_zen_tcp_receive(ZenTcp *tcp, int maxBytes) {
   if (!tcp || !tcp->open || maxBytes <= 0)
@@ -226,12 +256,14 @@ ZenList *_zen_tcp_receive(ZenTcp *tcp, int maxBytes) {
 
   uint8_t *buffer = malloc((size_t)maxBytes);
   if (!buffer)
-    return NULL;
+    return _zen_list_new(sizeof(uint8_t));   /* consistent with every other failure path */
 
   int received = (int)recv(tcp->socket, (char *)buffer, maxBytes, 0);
+
   if (received < 0) {
     tcp_error("Receive failed");
     free(buffer);
+    tcp->open = false;   /* a receive error means this connection is done */
     return _zen_list_new(sizeof(uint8_t));
   }
 
@@ -242,21 +274,28 @@ ZenList *_zen_tcp_receive(ZenTcp *tcp, int maxBytes) {
   free(buffer);
 
   if (received == 0)
-    tcp->open = false;
+    tcp->open = false;   /* peer performed an orderly shutdown */
 
   return list;
 }
+
+/* ---- Close / status ---- */
 
 void _zen_tcp_close(ZenTcp *tcp) {
   if (!tcp)
     return;
 
   if (tcp->open) {
+#ifndef _WIN32
+    shutdown(tcp->socket, SHUT_RDWR);
+#else
+    shutdown(tcp->socket, SD_BOTH);
+#endif
     zen_close_socket(tcp->socket);
     tcp->open = false;
   }
 
-  tcp_free(tcp);
+  free(tcp);
 }
 
 bool _zen_tcp_isOpen(ZenTcp *tcp) {
@@ -293,6 +332,7 @@ void _zen_tcp_server_close(ZenTcpServer *server) {
     server->open = false;
   }
 
+  free(server);
 }
 
 bool _zen_tcp_server_isOpen(ZenTcpServer *server) {

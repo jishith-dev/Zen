@@ -172,6 +172,7 @@ compile_c      src/codegen/runtime/jsonRuntime.c   src/codegen/runtime/jsonRunti
 compile_c      src/codegen/runtime/mapRuntime.c    src/codegen/runtime/mapRuntime.o
 compile_c      src/codegen/runtime/httpRuntime.c    src/codegen/runtime/httpRuntime.o
 compile_c_curl src/codegen/runtime/curlRuntime.c   src/codegen/runtime/curlRuntime.o
+compile_c_curl src/codegen/runtime/tcp.c   src/codegen/runtime/tcp.o
 
 info "Verifying build artifacts..."
 
@@ -184,6 +185,7 @@ ARTIFACTS=(
   src/codegen/runtime/curlRuntime.o
   src/codegen/runtime/httpRuntime.o
   src/codegen/runtime/jsonRuntime.o
+  src/codegen/runtime/tcp.o
 )
 
 for f in "${ARTIFACTS[@]}"; do

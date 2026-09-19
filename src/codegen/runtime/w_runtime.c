@@ -37,16 +37,25 @@ typedef void (*ZenThreadFn)(void *);
 typedef struct {
     ZenThreadFn fn;
     void *arg;
+    long id;
 } ZenThreadData;
 
 static HANDLE *zen_threads = NULL;
 static int zen_thread_count = 0;
 static int zen_thread_capacity = 0;
 
+static volatile LONG zen_active_thread_count = 0;
+static volatile LONG64 zen_next_thread_id = 0;
+static __declspec(thread) long zen_current_thread_id = -1; // -1 = main thread
+
 static DWORD WINAPI _zen_thread_runner(LPVOID arg) {
     ZenThreadData *data = (ZenThreadData *)arg;
 
+    zen_current_thread_id = data->id;
+
     data->fn(data->arg);
+
+    InterlockedDecrement(&zen_active_thread_count);
 
     free(data);
     return 0;
@@ -80,10 +89,14 @@ void _zen_thread(ZenThreadFn fn, void *ctx) {
 
     data->fn = fn;
     data->arg = ctx;
+    data->id = (long)InterlockedIncrement64(&zen_next_thread_id) - 1;
+
+    InterlockedIncrement(&zen_active_thread_count);
 
     HANDLE h = CreateThread(NULL, 0, _zen_thread_runner, data, 0, NULL);
 
     if (!h) {
+        InterlockedDecrement(&zen_active_thread_count);
         free(data);
 
         zen_error(
@@ -102,6 +115,14 @@ void _threads_waitAll() {
     }
 
     zen_thread_count = 0;
+}
+
+long _threads_count(void) {
+    return (long)zen_active_thread_count;
+}
+
+long _threads_currentId(void) {
+    return zen_current_thread_id;
 }
 
 char *_sys_clipboard_get(void) {

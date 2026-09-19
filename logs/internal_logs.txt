@@ -148,3 +148,8 @@ Native implementation: tcp.c
 added stringToBytes and bytesToString globals
 
 thread fn now catch compile time capture error
+
+added real concurrency behavior and thread fn now accept parameters.
+added threads namespace new methods: 
+   threads.count() and 
+   threads.currentId()

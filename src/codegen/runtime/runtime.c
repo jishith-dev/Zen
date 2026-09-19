@@ -16,6 +16,7 @@
 
 
 #include <pthread.h>
+#include <stdatomic.h>
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
@@ -27,16 +28,25 @@ typedef void (*ZenThreadFn)(void *);
 typedef struct {
     ZenThreadFn fn;
     void *arg;
+    long id;
 } ZenThreadData;
 
 static pthread_t *zen_threads = NULL;
 static int zen_thread_count = 0;
 static int zen_thread_capacity = 0;
 
+static atomic_int zen_active_thread_count = 0;
+static atomic_long zen_next_thread_id = 0;
+static __thread long zen_current_thread_id = -1; // -1 = main thread
+
 static void *_zen_thread_runner(void *arg) {
     ZenThreadData *data = (ZenThreadData *)arg;
 
+    zen_current_thread_id = data->id;
+
     data->fn(data->arg);
+
+    atomic_fetch_sub(&zen_active_thread_count, 1);
 
     free(data);
     return NULL;
@@ -70,6 +80,9 @@ void _zen_thread(ZenThreadFn fn, void *ctx) {
 
     data->fn = fn;
     data->arg = ctx;
+    data->id = atomic_fetch_add(&zen_next_thread_id, 1);
+
+    atomic_fetch_add(&zen_active_thread_count, 1);
 
     int result = pthread_create(
         &zen_threads[zen_thread_count],
@@ -79,6 +92,7 @@ void _zen_thread(ZenThreadFn fn, void *ctx) {
     );
 
     if (result != 0) {
+        atomic_fetch_sub(&zen_active_thread_count, 1);
         free(data);
 
         zen_error(
@@ -106,6 +120,14 @@ void _threads_waitAll() {
     }
 
     zen_thread_count = 0;
+}
+
+long _threads_count(void) {
+    return (long)atomic_load(&zen_active_thread_count);
+}
+
+long _threads_currentId(void) {
+    return zen_current_thread_id;
 }
     
 
