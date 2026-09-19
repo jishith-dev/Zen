@@ -153,3 +153,5 @@ added real concurrency behavior and thread fn now accept parameters.
 added threads namespace new methods: 
    threads.count() and 
    threads.currentId()
+
+added net.listen() and net.connect() for tcp

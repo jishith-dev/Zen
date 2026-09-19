@@ -2314,7 +2314,7 @@ const GLOBAL_EXTERNAL = {
   LN2: { type: "double", mutable: false },
   LN10: { type: "double", mutable: false },
 
-  SEED: { type: "i32", mutable: true },
+  SEED: { type: "i64", mutable: true },
 
   I32_MAX: { type: "i32", mutable: false },
   I32_MIN: { type: "i32", mutable: false },
