@@ -9,7 +9,7 @@ import {
   TYPE_MAP,
   BUILTIN_STRUCT_ABI,
   hints,
-  NAMESPACE_REG
+  NAMESPACE_REG,
 } from "../../config/config.js";
 
 import { InferType } from "../infer/infer.js";
@@ -36,7 +36,7 @@ export class IRBuilder {
 
     this.returnCount = 0;
     this.returnTypes = [];
-    
+
     this.nextOwnerId = 1;
     this.freedOwners = new Set();
 
@@ -47,6 +47,9 @@ export class IRBuilder {
 
     this.errors = [];
     this.hadError = false;
+
+    this.threadTrampolines = new Set();
+    this.threadCtxCounter = 0;
 
     this.runtimeStack = [];
     this.aliasFreedSet = new Set();
@@ -123,7 +126,7 @@ export class IRBuilder {
     this.haveExport = false;
     this.allocaBuff = [];
   }
-  
+
   genOwnerId() {
     return this.nextOwnerId++;
   }
@@ -151,13 +154,11 @@ export class IRBuilder {
   }
 
   updateReactive(name, visited = new Set()) {
-    
     if (visited.has(name)) return;
-    
+
     visited.add(name);
 
     const dependents = this.dependents.get(name) || [];
-    
 
     for (const d of dependents) {
       const reactive = this.reactiveMap.get(d);
@@ -196,19 +197,19 @@ export class IRBuilder {
   }
 
   emitExpr(expr) {
-  if (!expr || expr.__flushed) return;
+    if (!expr || expr.__flushed) return;
 
-  if (expr.local?.length) {
-    this.emit(expr.local.join("\n").trim());
-    expr.local = [];
-  }
+    if (expr.local?.length) {
+      this.emit(expr.local.join("\n").trim());
+      expr.local = [];
+    }
 
-  if (expr.global?.length) {
-    this.globals.push(expr.global.join("\n").trim());
-    expr.global = [];
-  }
+    if (expr.global?.length) {
+      this.globals.push(expr.global.join("\n").trim());
+      expr.global = [];
+    }
 
-  expr.__flushed = true;
+    expr.__flushed = true;
   }
 
   enterFunction(name) {
@@ -223,7 +224,6 @@ export class IRBuilder {
     this.expr = expr;
     this.infer = new InferType(this, this.expr);
   }
-  
 
   setFunction(name, data, node) {
     const old = this.functions.get(name);
@@ -306,21 +306,21 @@ export class IRBuilder {
 
     const structInfo = this.getStruct(type);
 
-if (structInfo) {
-  if (structInfo.isBuiltin) {
-    if (structInfo.align != null) return structInfo.align;
-    if (structInfo.isOpaque) return this.target.ptrSize;
-  }
+    if (structInfo) {
+      if (structInfo.isBuiltin) {
+        if (structInfo.align != null) return structInfo.align;
+        if (structInfo.isOpaque) return this.target.ptrSize;
+      }
 
-  let maxAlign = 1;
+      let maxAlign = 1;
 
-  for (const field of structInfo.layout) {
-    const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
-    maxAlign = Math.max(maxAlign, a);
-  }
+      for (const field of structInfo.layout) {
+        const a = field.isList ? this.target.ptrSize : this.alignOf(field.type);
+        maxAlign = Math.max(maxAlign, a);
+      }
 
-  return maxAlign;
-}
+      return maxAlign;
+    }
 
     return this.target.ptrSize;
   }
@@ -345,12 +345,11 @@ if (structInfo) {
     const structInfo = this.getStruct(type);
 
     if (structInfo) {
-      
       if (structInfo.isBuiltin) {
         if (structInfo?.byteSize != null) return structInfo.byteSize;
         if (structInfo.isOpaque) return this.target.ptrSize;
       }
-      
+
       let offset = 0;
       let maxAlign = 1;
 
@@ -486,8 +485,12 @@ if (structInfo) {
     if (this.functionParamTable.has(name)) {
       return this.functionParamTable.get(name);
     }
-    
-    this.emitError("ReferenceError", `callback function '${name}' not defined`, node);
+
+    this.emitError(
+      "ReferenceError",
+      `callback function '${name}' not defined`,
+      node,
+    );
   }
 
   typeMatches(expr, expectedType, expectedIsList = false) {
@@ -495,7 +498,6 @@ if (structInfo) {
   }
 
   getStruct(name, node) {
-    
     if (this.structTable.has(name)) {
       return this.structTable.get(name);
     }
@@ -574,12 +576,11 @@ if (structInfo) {
   }
 
   emit(line) {
-    
     const target = this.getActiveFunction()
-  ? this.getActiveFunction().body
-  : this.exported
-    ? null
-    : this.locals;
+      ? this.getActiveFunction().body
+      : this.exported
+        ? null
+        : this.locals;
 
     // if its exported module should not emit
     if (!target) return;
@@ -595,23 +596,25 @@ if (structInfo) {
   }
 
   getLLVMType(type) {
-    
     // struct ref
-if (this.structTable.has(type)) {
-  const s = this.getStruct(type);
+    if (this.structTable.has(type)) {
+      const s = this.getStruct(type);
 
-  if (s.isBuiltin && s.isOpaque) {
-    return "ptr";
-  }
+      if (s.isBuiltin && s.isOpaque) {
+        return "ptr";
+      }
 
-  return `%${type}`;
-}
-
-    
+      return `%${type}`;
+    }
 
     if (type === "struct") return "ptr";
 
-    if (type === "Map" || type === "List" || type === "ptr" || type.startsWith("List<")) {
+    if (
+      type === "Map" ||
+      type === "List" ||
+      type === "ptr" ||
+      type.startsWith("List<")
+    ) {
       return "ptr";
     }
 
@@ -624,17 +627,22 @@ if (this.structTable.has(type)) {
   }
 
   getIR() {
-    return [...this.meta, ...this.globals, ...this.functionBuff, ...this.locals].join("\n");
+    return [
+      ...this.meta,
+      ...this.globals,
+      ...this.functionBuff,
+      ...this.locals,
+    ].join("\n");
   }
-  
+
   emitAlloca(reg, type) {
     this.allocaBuff.push(`${reg} = alloca ${type}`);
   }
 
   newTemp() {
-    return `%t${this.getActiveFunction()
-        ? this.funcTempCounter++
-        : this.tempCount++}`;
+    return `%t${
+      this.getActiveFunction() ? this.funcTempCounter++ : this.tempCount++
+    }`;
   }
 
   newGlobalTemp() {
@@ -685,7 +693,7 @@ if (this.structTable.has(type)) {
     ownerId,
     pIndex,
     isCompileConstant,
-    value
+    value,
   }) {
     return {
       ptr,
@@ -716,36 +724,38 @@ if (this.structTable.has(type)) {
       ownerId,
       pIndex,
       isCompileConstant,
-      value
+      value,
     };
   }
 
   initialValue(type) {
-    return type === "int" || type === "bool"
-    || type === "long" || type === "byte"  ? "0"
+    return type === "int" ||
+      type === "bool" ||
+      type === "long" ||
+      type === "byte"
+      ? "0"
       : type === "double"
-        ? "0.0" 
+        ? "0.0"
         : type === "string"
           ? "null"
           : "";
   }
 
   setVar(name, data) {
-  const current = this.symbolTable[this.symbolTable.length - 1];
+    const current = this.symbolTable[this.symbolTable.length - 1];
 
-  if (current.has(name)) {
-    this.emitError(
-      "DeclarationError",
-      `Variable '${name}' is already defined`,
-    );
-  }
+    if (current.has(name)) {
+      this.emitError(
+        "DeclarationError",
+        `Variable '${name}' is already defined`,
+      );
+    }
 
-  const activeFunction = this.getActiveFunction();
+    const activeFunction = this.getActiveFunction();
 
-  data.ownerFunction = activeFunction?.name
-    ?? "main";
+    data.ownerFunction = activeFunction?.name ?? "main";
 
-  current.set(name, data);
+    current.set(name, data);
   }
 
   getVar(name, node) {
@@ -754,32 +764,36 @@ if (this.structTable.has(type)) {
         const sym = this.symbolTable[i].get(name);
 
         // Inline functions cannot capture variables
-// from an enclosing function.
-        
-if (
-    this.anonymCurrentFunction?.name &&
-    sym?.ownerFunction &&
-    sym.ownerFunction !== this.anonymCurrentFunction.name
-) {
-    this.emitError(
-        "SemanticError",
-        `inline function '${this.anonymCurrentFunction.name}' cannot capture outer variable '${name}'`,
-        node
-    );
-}
+        // from an enclosing function.
+
+        // avoid global namespace
+        if (sym?.type !== "namespace") {
+
+        if (
+          this.anonymCurrentFunction?.name &&
+          sym?.ownerFunction &&
+          sym.ownerFunction !== this.anonymCurrentFunction.name
+        ) {
+          this.emitError(
+            "SemanticError",
+            `inline function '${this.anonymCurrentFunction.name}' cannot capture outer variable '${name}'`,
+            node,
+          );
+        }
 
         // Thread functions cannot capture outer variables.
-if (
-  this.currentThreadFunction?.name &&
-  sym?.ownerFunction &&
-  sym.ownerFunction !== this.currentThreadFunction.name
-) {
-  this.emitError(
-    "SemanticError",
-    `thread function '${this.currentThreadFunction.name}' cannot capture outer variable '${name}'`,
-    node
-  );
-}
+        if (
+          this.currentThreadFunction?.name &&
+          sym?.ownerFunction &&
+          sym.ownerFunction !== this.currentThreadFunction.name
+        ) {
+          this.emitError(
+            "SemanticError",
+            `thread function '${this.currentThreadFunction.name}' cannot capture outer variable '${name}'`,
+            node,
+          );
+        }
+        }
         return sym;
       }
     }
@@ -797,22 +811,22 @@ if (
     // Anonymous Function?
     const afn = this.anonymFunctions.get(name);
 
-if (afn) {
-  const ptr = afn.isInline
-    ? `@_zen_${this.moduleName}_anonym_${name}`
-    : this.stdlibMode
-      ? `@${name}`
-      : `@zen_${this.moduleName}_${name}`;
+    if (afn) {
+      const ptr = afn.isInline
+        ? `@_zen_${this.moduleName}_anonym_${name}`
+        : this.stdlibMode
+          ? `@${name}`
+          : `@zen_${this.moduleName}_${name}`;
 
-  return {
-    ...afn,
-    ptr,
-    llvmType: "ptr",
-    type: "Function",
-    isFunction: true,
-    needsLoad: false,
-  };
-}
+      return {
+        ...afn,
+        ptr,
+        llvmType: "ptr",
+        type: "Function",
+        isFunction: true,
+        needsLoad: false,
+      };
+    }
 
     // Global function?
     const fn = this.functions.get(name);
@@ -836,9 +850,9 @@ if (afn) {
   }
 
   exitScope() {
-  this.symbolTable.pop();
-  this.freedVars.pop();
-} 
+    this.symbolTable.pop();
+    this.freedVars.pop();
+  }
 
   hasVar(name) {
     for (let i = this.symbolTable.length - 1; i >= 0; i--) {
@@ -880,9 +894,8 @@ if (afn) {
     if (type === "int") {
       this.emit(`${t} = icmp ne i32 ${val}, 0`);
     } else if (type === "long") {
-  this.emit(`${t} = icmp ne i64 ${val}, 0`);
-    }
-    else if (type === "double") {
+      this.emit(`${t} = icmp ne i64 ${val}, 0`);
+    } else if (type === "double") {
       this.emit(`${t} = fcmp one double ${val}, 0.0`);
     } else if (type === "string") {
       const t0 = this.newTemp();
@@ -919,9 +932,9 @@ if (afn) {
         return tmp;
 
       case "i64":
-case "long":
-  this.emit(`${tmp} = icmp ne i64 ${ptr}, 0`);
-  return tmp;
+      case "long":
+        this.emit(`${tmp} = icmp ne i64 ${ptr}, 0`);
+        return tmp;
 
       case "double":
         this.emit(`${tmp} = fcmp une double ${ptr}, 0.0`);
@@ -983,16 +996,21 @@ case "long":
     const finalMessage = isInternal
       ? `${message}\n\n[Compiler Bug] This should not happen. Please report this issue.`
       : message;
-  const loc = this.getNodeLocation(node);
-  const hint = this.genHint(type, message);
-  const lineConstruct = this.genLine(loc);
+    const loc = this.getNodeLocation(node);
+    const hint = this.genHint(type, message);
+    const lineConstruct = this.genLine(loc);
 
     if (!this.diagnosticMode) {
-      this.errors.push({ type, message: finalMessage, node, hint, line: lineConstruct });
+      this.errors.push({
+        type,
+        message: finalMessage,
+        node,
+        hint,
+        line: lineConstruct,
+      });
       this.hadError = true;
       this.printError(this.errors);
     } else {
-
       throw new Error(
         `[Zen Error] ${type}: ${finalMessage} at ${this.moduleName}.zen:line ${loc.line}:${loc.column}\n \n Hint: ${hint}\n \n ${lineConstruct?.text}\n`,
       );
@@ -1000,85 +1018,84 @@ case "long":
   }
 
   genLine(loc) {
-  const lines = this.source.split(/\r?\n/);
-  const text = lines[loc.line - 1];
+    const lines = this.source.split(/\r?\n/);
+    const text = lines[loc.line - 1];
 
-  if (!text) return null;
+    if (!text) return null;
 
-  return {
-    text,
-    column: loc.column,
-    length: text.length - (loc.column - 1),
-  };
+    return {
+      text,
+      column: loc.column,
+      length: text.length - (loc.column - 1),
+    };
   }
 
   genHint(type, message) {
+    const rules = hints[type];
 
-  const rules = hints[type];
+    if (!rules) return null;
 
-  if (!rules) return null;
+    const rule = rules.find(({ match }) => match.test(message));
 
-  const rule = rules.find(({ match }) => match.test(message));
-
-  return rule?.hint ?? null;
+    return rule?.hint ?? null;
   }
 
   printError() {
-  const err = this.errors?.[0];
-  if (!err) return;
+    const err = this.errors?.[0];
+    if (!err) return;
 
-  const RESET = "\x1b[0m";
+    const RESET = "\x1b[0m";
 
-  const WHITE = "\x1b[97m";
-  const RED = "\x1b[91m";
-  const MAGENTA = "\x1b[95m";
-  const CYAN = "\x1b[96m";
+    const WHITE = "\x1b[97m";
+    const RED = "\x1b[91m";
+    const MAGENTA = "\x1b[95m";
+    const CYAN = "\x1b[96m";
 
-  const loc = this.getNodeLocation(err.node);
+    const loc = this.getNodeLocation(err.node);
 
-  const location =
-    loc.line !== "?"
-      ? `${this.moduleName}.zen:${loc.line}:${loc.column}`
-      : `${this.moduleName}.zen`;
+    const location =
+      loc.line !== "?"
+        ? `${this.moduleName}.zen:${loc.line}:${loc.column}`
+        : `${this.moduleName}.zen`;
 
-  const hint = err.hint
-    ? `
+    const hint = err.hint
+      ? `
 
   ├── ${MAGENTA}Hint: ${err.hint}${RESET}`
-    : "";
+      : "";
 
-  // Safely format source-code location
-  let line = "";
+    // Safely format source-code location
+    let line = "";
 
-  if (err.line) {
-    const text = err.line.text ?? "";
+    if (err.line) {
+      const text = err.line.text ?? "";
 
-    const columnValue = Number(err.line.column);
-    const lengthValue = Number(err.line.length);
+      const columnValue = Number(err.line.column);
+      const lengthValue = Number(err.line.length);
 
-    const column = Number.isFinite(columnValue)
-      ? Math.max(0, columnValue - 1)
-      : 0;
+      const column = Number.isFinite(columnValue)
+        ? Math.max(0, columnValue - 1)
+        : 0;
 
-    const length = Number.isFinite(lengthValue)
-      ? Math.max(1, lengthValue)
-      : 1;
+      const length = Number.isFinite(lengthValue)
+        ? Math.max(1, lengthValue)
+        : 1;
 
-    line = `
+      line = `
 
   ├── ${WHITE}${text}${RESET}
   │   ${CYAN}${" ".repeat(column)}${"^".repeat(length)}${RESET}`;
-  }
+    }
 
-  console.error(
-    `${WHITE}[ ${RESET}${RED}Zen ${err.type ?? "Error"}${RESET}${WHITE} ]${RESET}
+    console.error(
+      `${WHITE}[ ${RESET}${RED}Zen ${err.type ?? "Error"}${RESET}${WHITE} ]${RESET}
 
   ├── ${err.message ?? "Unknown compiler error"}${hint}${line}
 
   └── ${CYAN}At: ${location}${RESET}`,
-  );
+    );
 
-  process.exit(1);
+    process.exit(1);
   }
 
   safeReadFile(filePath) {
@@ -1167,15 +1184,13 @@ case "long":
           llvmType: "%ZenList*",
           isList: true,
           isConstant: p.isConstant,
-          pIndex: i
+          pIndex: i,
         });
 
         continue;
       }
 
       if (this.hasStruct(p.type.type)) {
-
-        
         types.push("ptr");
         paramStr.push(`ptr ${temp}`);
 
@@ -1198,7 +1213,7 @@ case "long":
       if (isArray) {
         this.emitError(
           "SemanticError",
-          `Fixed-size arrays cannot be passed as function parameters`
+          `Fixed-size arrays cannot be passed as function parameters`,
         );
       }
 
@@ -1220,9 +1235,8 @@ case "long":
     }
 
     if (isMethod) {
-      
       types.unshift("ptr");
-      
+
       paramStr.unshift(`ptr %this`);
       paramData.push({
         name: "this",
@@ -1234,14 +1248,16 @@ case "long":
       });
     }
 
-    const retStruct = this.hasStruct(returnType) ? this.getStruct(returnType) : false;
-    
-const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
+    const retStruct = this.hasStruct(returnType)
+      ? this.getStruct(returnType)
+      : false;
 
-if (this.hasStruct(returnType) && !isOpaqueReturn) {
-  paramStr.unshift(`ptr sret(%${returnType}) %sret`);
-  types.unshift("ptr")
-}
+    const isOpaqueReturn = retStruct?.isBuiltin && retStruct?.isOpaque;
+
+    if (this.hasStruct(returnType) && !isOpaqueReturn) {
+      paramStr.unshift(`ptr sret(%${returnType}) %sret`);
+      types.unshift("ptr");
+    }
 
     return {
       ir: `(${paramStr.join(", ")})`,
@@ -1271,9 +1287,8 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
   }
 
   newGlobalString(str) {
-    
     this.declareOneTime("_str_dup", "declare ptr @_str_dup(ptr)");
-    
+
     if (this.cachedStrings.has(str)) {
       const cached = this.cachedStrings.get(str);
 
@@ -1283,7 +1298,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
       const ir = `getelementptr inbounds [${cached.len} x i8], ptr ${cached.globalName}, i64 0, i64 0`;
 
       this.emit(`${tmp} = ${ir}`);
-      
+
       this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
 
       return {
@@ -1313,7 +1328,7 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
     const ir = `getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`;
 
     this.emit(`${tmp} = ${ir}`);
-    
+
     this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
 
     // cache ONLY global data
@@ -1373,9 +1388,9 @@ if (this.hasStruct(returnType) && !isOpaqueReturn) {
           for (let j = 0; j < expected.params.length; j++) {
             const expectedType = expected.params[j].type.type;
             const actualType =
-  typeof actual.params[j].type === "string"
-    ? actual.params[j].type
-    : actual.params[j].type.type;
+              typeof actual.params[j].type === "string"
+                ? actual.params[j].type
+                : actual.params[j].type.type;
 
             if (expectedType !== actualType) {
               this.emitError(
@@ -1534,29 +1549,29 @@ entry:
   }
 
   emitScreenByte(val, format = "%d\n") {
-  this.formatMapByte = this.formatMapByte || new Map();
+    this.formatMapByte = this.formatMapByte || new Map();
 
-  let id;
+    let id;
 
-  if (this.formatMapByte.has(format)) {
-    id = this.formatMapByte.get(format);
-  } else {
-    id = this.formatMapByte.size;
-    this.formatMapByte.set(format, id);
+    if (this.formatMapByte.has(format)) {
+      id = this.formatMapByte.get(format);
+    } else {
+      id = this.formatMapByte.size;
+      this.formatMapByte.set(format, id);
 
-    const { llvmStr, length } = this.toLLVMString(format);
+      const { llvmStr, length } = this.toLLVMString(format);
 
-    const fmtName = `fmt_byte_${this.moduleName}_${id}`;
-    const fnName = `_screen_byte_${this.moduleName}_${id}`;
+      const fmtName = `fmt_byte_${this.moduleName}_${id}`;
+      const fnName = `_screen_byte_${this.moduleName}_${id}`;
 
-    this.declareOneTime(
-      fmtName,
-      `@.${fmtName} = private constant [${length} x i8] c"${llvmStr}"`,
-    );
+      this.declareOneTime(
+        fmtName,
+        `@.${fmtName} = private constant [${length} x i8] c"${llvmStr}"`,
+      );
 
-    this.declareOneTime(
-      fnName,
-      `define void @${fnName}(i8 %x) {
+      this.declareOneTime(
+        fnName,
+        `define void @${fnName}(i8 %x) {
 entry:
   %extended = sext i8 %x to i32
   call i32 (ptr, ...) @printf(ptr getelementptr ([${length} x i8], [${length} x i8]* @.${fmtName}, i32 0, i32 0),
@@ -1564,115 +1579,115 @@ entry:
   call i32 @fflush(ptr null)
   ret void
 }`,
-    );
-  }
+      );
+    }
 
-  const fnName = `_screen_byte_${this.moduleName}_${id}`;
+    const fnName = `_screen_byte_${this.moduleName}_${id}`;
 
-  this.emit(`call void @${fnName}(i8 ${val})`);
+    this.emit(`call void @${fnName}(i8 ${val})`);
   }
 
   emitScreenLong(val, format = "%lld\n") {
-  this.formatMapLong = this.formatMapLong || new Map();
+    this.formatMapLong = this.formatMapLong || new Map();
 
-  let id;
+    let id;
 
-  if (this.formatMapLong.has(format)) {
-    id = this.formatMapLong.get(format);
-  } else {
-    id = this.formatMapLong.size;
-    this.formatMapLong.set(format, id);
+    if (this.formatMapLong.has(format)) {
+      id = this.formatMapLong.get(format);
+    } else {
+      id = this.formatMapLong.size;
+      this.formatMapLong.set(format, id);
 
-    const { llvmStr, length } = this.toLLVMString(format);
+      const { llvmStr, length } = this.toLLVMString(format);
 
-    const fmtName = `fmt_long_${this.moduleName}_${id}`;
-    const fnName = `_screen_long_${this.moduleName}_${id}`;
+      const fmtName = `fmt_long_${this.moduleName}_${id}`;
+      const fnName = `_screen_long_${this.moduleName}_${id}`;
 
-    this.declareOneTime(
-      fmtName,
-      `@.${fmtName} = private constant [${length} x i8] c"${llvmStr}"`,
-    );
+      this.declareOneTime(
+        fmtName,
+        `@.${fmtName} = private constant [${length} x i8] c"${llvmStr}"`,
+      );
 
-    this.declareOneTime(
-      fnName,
-      `define void @${fnName}(i64 %x) {
+      this.declareOneTime(
+        fnName,
+        `define void @${fnName}(i64 %x) {
 entry:
   call i32 (ptr, ...) @printf(ptr getelementptr ([${length} x i8], [${length} x i8]* @.${fmtName}, i32 0, i32 0),
     i64 %x)
   call i32 @fflush(ptr null)
   ret void
 }`,
-    );
-  }
-
-  const fnName = `_screen_long_${this.moduleName}_${id}`;
-
-  this.emit(`call void @${fnName}(i64 ${val})`);
-  }
-  
-  toLLVMString(str) {
-  let result = "";
-  let len = 0;
-
-  for (let i = 0; i < str.length; i++) {
-    const c = str[i];
-
-    switch (c) {
-      case "\0":
-        result += "\\00";
-        break;
-
-      case "\x07":
-        result += "\\07";
-        break;
-
-      case "\b":
-        result += "\\08";
-        break;
-
-      case "\t":
-        result += "\\09";
-        break;
-
-      case "\n":
-        result += "\\0A";
-        break;
-
-      case "\v":
-        result += "\\0B";
-        break;
-
-      case "\f":
-        result += "\\0C";
-        break;
-
-      case "\r":
-        result += "\\0D";
-        break;
-
-      case '"':
-        result += "\\22";
-        break;
-
-      case "\\":
-        result += "\\5C";
-        break;
-
-      default:
-        result += c;
+      );
     }
 
-    len++;
+    const fnName = `_screen_long_${this.moduleName}_${id}`;
+
+    this.emit(`call void @${fnName}(i64 ${val})`);
   }
 
-  result += "\\00";
-  len++;
+  toLLVMString(str) {
+    let result = "";
+    let len = 0;
 
-  return {
-    llvmStr: result,
-    length: len,
-  };
-}
+    for (let i = 0; i < str.length; i++) {
+      const c = str[i];
+
+      switch (c) {
+        case "\0":
+          result += "\\00";
+          break;
+
+        case "\x07":
+          result += "\\07";
+          break;
+
+        case "\b":
+          result += "\\08";
+          break;
+
+        case "\t":
+          result += "\\09";
+          break;
+
+        case "\n":
+          result += "\\0A";
+          break;
+
+        case "\v":
+          result += "\\0B";
+          break;
+
+        case "\f":
+          result += "\\0C";
+          break;
+
+        case "\r":
+          result += "\\0D";
+          break;
+
+        case '"':
+          result += "\\22";
+          break;
+
+        case "\\":
+          result += "\\5C";
+          break;
+
+        default:
+          result += c;
+      }
+
+      len++;
+    }
+
+    result += "\\00";
+    len++;
+
+    return {
+      llvmStr: result,
+      length: len,
+    };
+  }
 
   emitScreenString(val, format) {
     this.formatMap = this.formatMap || new Map();
@@ -1978,10 +1993,7 @@ end:
       );
     }
 
-    const { full: arrayType } = this.buildArrayType(
-      baseType,
-      dims,
-    );
+    const { full: arrayType } = this.buildArrayType(baseType, dims);
     const elementSize = this.sizeOf(zenType);
     const length = value.elements.length;
     if (value && value.elements.length > 0) {
@@ -2090,7 +2102,6 @@ end:
   }
 
   castExpression(expr, targetType, fnName, node, fromTemporary = false) {
-    
     if (expr.type === targetType) {
       return expr;
     }
@@ -2100,104 +2111,94 @@ end:
 
     // INT -> BYTE
 
-if (expr.type === "int" && targetType === "byte") {
-  local.push(`${t} = trunc i32 ${expr.ptr} to i8`);
+    if (expr.type === "int" && targetType === "byte") {
+      local.push(`${t} = trunc i32 ${expr.ptr} to i8`);
 
-  return {
-    ptr: t,
-    llvmType: "i8",
-    type: "byte",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i8",
+        type: "byte",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
-// LONG -> BYTE
+    // LONG -> BYTE
 
-if (expr.type === "long" && targetType === "byte") {
-  local.push(`${t} = trunc i64 ${expr.ptr} to i8`);
+    if (expr.type === "long" && targetType === "byte") {
+      local.push(`${t} = trunc i64 ${expr.ptr} to i8`);
 
-  return {
-    ptr: t,
-    llvmType: "i8",
-    type: "byte",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i8",
+        type: "byte",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
-// BOOL -> BYTE
+    // BOOL -> BYTE
 
-if (expr.type === "bool" && targetType === "byte") {
-  local.push(`${t} = zext i1 ${expr.ptr} to i8`);
+    if (expr.type === "bool" && targetType === "byte") {
+      local.push(`${t} = zext i1 ${expr.ptr} to i8`);
 
-  return {
-    ptr: t,
-    llvmType: "i8",
-    type: "byte",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i8",
+        type: "byte",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
-// DOUBLE -> BYTE
+    // DOUBLE -> BYTE
 
-if (expr.type === "double" && targetType === "byte") {
-  const intTemp = this.newTemp();
+    if (expr.type === "double" && targetType === "byte") {
+      const intTemp = this.newTemp();
 
-  local.push(`${intTemp} = fptosi double ${expr.ptr} to i32`);
-  local.push(`${t} = trunc i32 ${intTemp} to i8`);
+      local.push(`${intTemp} = fptosi double ${expr.ptr} to i32`);
+      local.push(`${t} = trunc i32 ${intTemp} to i8`);
 
-  return {
-    ptr: t,
-    llvmType: "i8",
-    type: "byte",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i8",
+        type: "byte",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
-// STRING -> BYTE
+    // STRING -> BYTE
 
-if (expr.type === "string" && targetType === "byte") {
-  this.declareOneTime(
-    "string_to_byte",
-    "declare i8 @_string_to_byte(ptr)",
-  );
+    if (expr.type === "string" && targetType === "byte") {
+      this.declareOneTime("string_to_byte", "declare i8 @_string_to_byte(ptr)");
 
-  local.push(
-    `${t} = call i8 @_string_to_byte(ptr ${expr.ptr})`
-  );
+      local.push(`${t} = call i8 @_string_to_byte(ptr ${expr.ptr})`);
 
-  return {
-    ptr: t,
-    llvmType: "i8",
-    type: "byte",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i8",
+        type: "byte",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
-// BYTE -> STRING
+    // BYTE -> STRING
 
-if (expr.type === "byte" && targetType === "string") {
-  this.declareOneTime(
-    "byte_to_string",
-    "declare ptr @_byte_to_string(i8)",
-  );
+    if (expr.type === "byte" && targetType === "string") {
+      this.declareOneTime("byte_to_string", "declare ptr @_byte_to_string(i8)");
 
-  local.push(
-    `${t} = call ptr @_byte_to_string(i8 ${expr.ptr})`
-  );
+      local.push(`${t} = call ptr @_byte_to_string(i8 ${expr.ptr})`);
 
-  return {
-    ptr: t,
-    llvmType: "ptr",
-    type: "string",
-    local,
-    isTemp: fromTemporary,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "ptr",
+        type: "string",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
     if (fnName === "toInt") {
       if (expr.type === "string" && targetType === "int") {
@@ -2213,7 +2214,7 @@ if (expr.type === "byte" && targetType === "string") {
           llvmType: "i32",
           type: "int",
           local,
-          isTemp: fromTemporary
+          isTemp: fromTemporary,
         };
       }
     }
@@ -2231,7 +2232,7 @@ if (expr.type === "byte" && targetType === "string") {
           llvmType: "ptr",
           type: "string",
           local,
-          isTemp: fromTemporary
+          isTemp: fromTemporary,
         };
       }
 
@@ -2263,114 +2264,114 @@ if (expr.type === "byte" && targetType === "string") {
 
     // BYTE -> INT
 
-if (expr.type === "byte" && targetType === "int") {
-  local.push(`${t} = zext i8 ${expr.ptr} to i32`);
+    if (expr.type === "byte" && targetType === "int") {
+      local.push(`${t} = zext i8 ${expr.ptr} to i32`);
 
-  return {
-    ptr: t,
-    llvmType: "i32",
-    type: "int",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i32",
+        type: "int",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
     // LONG STRING
 
-if (expr.type === "long" && targetType === "string") {
-  this.declareOneTime(
-    "long_to_string",
-    "declare ptr @_long_to_string(i64)",
-  );
+    if (expr.type === "long" && targetType === "string") {
+      this.declareOneTime(
+        "long_to_string",
+        "declare ptr @_long_to_string(i64)",
+      );
 
-  local.push(`${t} = call ptr @_long_to_string(i64 ${expr.ptr})`);
+      local.push(`${t} = call ptr @_long_to_string(i64 ${expr.ptr})`);
 
-  return {
-    ptr: t,
-    llvmType: "ptr",
-    type: "string",
-    local,
-    isTemp: fromTemporary
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "ptr",
+        type: "string",
+        local,
+        isTemp: fromTemporary,
+      };
+    }
 
     // LONG -> INT
 
-if (expr.type === "long" && targetType === "int") {
-  local.push(`${t} = trunc i64 ${expr.ptr} to i32`);
+    if (expr.type === "long" && targetType === "int") {
+      local.push(`${t} = trunc i64 ${expr.ptr} to i32`);
 
-  return {
-    ptr: t,
-    llvmType: "i32",
-    type: "int",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i32",
+        type: "int",
+        local,
+      };
+    }
 
-// INT -> LONG
+    // INT -> LONG
 
-if (expr.type === "int" && targetType === "long") {
-  local.push(`${t} = sext i32 ${expr.ptr} to i64`);
+    if (expr.type === "int" && targetType === "long") {
+      local.push(`${t} = sext i32 ${expr.ptr} to i64`);
 
-  return {
-    ptr: t,
-    llvmType: "i64",
-    type: "long",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i64",
+        type: "long",
+        local,
+      };
+    }
 
-// LONG -> BOOL
+    // LONG -> BOOL
 
-if (expr.type === "long" && targetType === "bool") {
-  local.push(`${t} = icmp ne i64 ${expr.ptr}, 0`);
+    if (expr.type === "long" && targetType === "bool") {
+      local.push(`${t} = icmp ne i64 ${expr.ptr}, 0`);
 
-  return {
-    ptr: t,
-    llvmType: "i1",
-    type: "bool",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i1",
+        type: "bool",
+        local,
+      };
+    }
 
-// BOOL -> LONG
+    // BOOL -> LONG
 
-if (expr.type === "bool" && targetType === "long") {
-  local.push(`${t} = zext i1 ${expr.ptr} to i64`);
+    if (expr.type === "bool" && targetType === "long") {
+      local.push(`${t} = zext i1 ${expr.ptr} to i64`);
 
-  return {
-    ptr: t,
-    llvmType: "i64",
-    type: "long",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i64",
+        type: "long",
+        local,
+      };
+    }
 
-// LONG -> DOUBLE
+    // LONG -> DOUBLE
 
-if (expr.type === "long" && targetType === "double") {
-  local.push(`${t} = sitofp i64 ${expr.ptr} to double`);
+    if (expr.type === "long" && targetType === "double") {
+      local.push(`${t} = sitofp i64 ${expr.ptr} to double`);
 
-  return {
-    ptr: t,
-    llvmType: "double",
-    type: "double",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "double",
+        type: "double",
+        local,
+      };
+    }
 
-// DOUBLE -> LONG
+    // DOUBLE -> LONG
 
-if (expr.type === "double" && targetType === "long") {
-  local.push(`${t} = fptosi double ${expr.ptr} to i64`);
+    if (expr.type === "double" && targetType === "long") {
+      local.push(`${t} = fptosi double ${expr.ptr} to i64`);
 
-  return {
-    ptr: t,
-    llvmType: "i64",
-    type: "long",
-    local,
-  };
-}
+      return {
+        ptr: t,
+        llvmType: "i64",
+        type: "long",
+        local,
+      };
+    }
 
     // INT  DOUBLE
 
@@ -2442,7 +2443,7 @@ if (expr.type === "double" && targetType === "long") {
         llvmType: "ptr",
         type: "string",
         local,
-        isTemp: fromTemporary
+        isTemp: fromTemporary,
       };
     }
 
@@ -2461,7 +2462,7 @@ if (expr.type === "double" && targetType === "long") {
         llvmType: "ptr",
         type: "string",
         local,
-        isTemp: fromTemporary
+        isTemp: fromTemporary,
       };
     }
 
@@ -2476,7 +2477,7 @@ if (expr.type === "double" && targetType === "long") {
         llvmType: "ptr",
         type: "string",
         local,
-        isTemp: fromTemporary
+        isTemp: fromTemporary,
       };
     }
 
@@ -2512,7 +2513,7 @@ if (expr.type === "double" && targetType === "long") {
         local,
       };
     }
-  
+
     // STRING  BOOL
 
     if (expr.type === "string" && targetType === "bool") {
@@ -2942,16 +2943,16 @@ if (expr.type === "double" && targetType === "long") {
 
     // LONG
 
-if (type === "long") {
-  if (isListAccess) return value.addr;
+    if (type === "long") {
+      if (isListAccess) return value.addr;
 
-  const box = this.newTemp();
+      const box = this.newTemp();
 
-  this.emitAlloca(box, "i64");
-  this.emit(`store i64 ${vptr}, ptr ${box}`);
+      this.emitAlloca(box, "i64");
+      this.emit(`store i64 ${vptr}, ptr ${box}`);
 
-  return box;
-}
+      return box;
+    }
 
     // BOOL
 
@@ -3055,67 +3056,62 @@ if (type === "long") {
 
         // STRUCT LITERAL push({...})
         if (node.args[0]?.type === "STRUCT_LITERAL" && isStructElement) {
-  const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
+          const structPtr = this.emitStructLiteral(deepestType, node.args[0]);
 
-  const elementStruct = this.getStruct(deepestType);
-  const isOpaqueElement =
-    elementStruct?.isOpaque || BUILTIN_STRUCT_ABI.includes(deepestType);
+          const elementStruct = this.getStruct(deepestType);
+          const isOpaqueElement =
+            elementStruct?.isOpaque || BUILTIN_STRUCT_ABI.includes(deepestType);
 
-  if (!isOpaqueElement && structPtr.needsLoad) {
-    const t = this.newTemp();
-    this.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
-    structPtr.ptr = t;
-  }
+          if (!isOpaqueElement && structPtr.needsLoad) {
+            const t = this.newTemp();
+            this.emit(`${t} = load ptr, ptr ${structPtr.ptr}`);
+            structPtr.ptr = t;
+          }
 
-  this.emit(
-    `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
-  );
-  return {
-    ptr: null,
-    type: "void",
-    llvmType: "void",
-    local: [],
-    global: [],
-  };
-}
+          this.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
+          );
+          return {
+            ptr: null,
+            type: "void",
+            llvmType: "void",
+            local: [],
+            global: [],
+          };
+        }
 
         const arg = this.expr.handleExpression(node.args[0], false);
 
         if (this.hasStruct(arg.type)) {
-  const struct = this.getStruct(arg.type);
+          const struct = this.getStruct(arg.type);
 
-  if (struct?.isBuiltin && struct?.isOpaque) {
-    let p = arg.ptr;
+          if (struct?.isBuiltin && struct?.isOpaque) {
+            let p = arg.ptr;
 
-    if (!arg.needsLoad) {
-      const tmp = this.newTemp();
-      this.emitAlloca(tmp, "ptr");
-      this.emit(`store ptr ${arg.ptr}, ptr ${tmp}`);
-      p = tmp;
-    }
+            if (!arg.needsLoad) {
+              const tmp = this.newTemp();
+              this.emitAlloca(tmp, "ptr");
+              this.emit(`store ptr ${arg.ptr}, ptr ${tmp}`);
+              p = tmp;
+            }
 
-    this.emit(
-      `call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`,
-    );
+            this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
+          } else {
+            this.emit(
+              `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
+            );
+          }
 
-  } else {
-    this.emit(
-      `call void @_zen_list_push(ptr ${listPtr}, ptr ${arg.ptr})`,
-    );
-  }
-
-  return {
-    ptr: null,
-    type: "void",
-    llvmType: "void",
-    local: [],
-    global: [],
-  };
-}
+          return {
+            ptr: null,
+            type: "void",
+            llvmType: "void",
+            local: [],
+            global: [],
+          };
+        }
 
         let expType = object?.generic?.generic?.type;
-
-        
 
         if (expType === "List") {
           const expArgType = arg?.isList === true ? "List" : arg?.type;
@@ -3480,7 +3476,6 @@ if (type === "long") {
       }
 
       case "free": {
-      
         this.declareOneTime(
           "zen_list_free",
           "declare void @_zen_list_free(ptr)",
@@ -3491,8 +3486,6 @@ if (type === "long") {
           this.emit(`store ptr null, ptr ${object.ptr}`);
 
           this.freedVars[this.freedVars.length - 1].add(node.object.name);
-          
-          
         } else {
           // map inside list
 
@@ -3517,30 +3510,28 @@ if (type === "long") {
           const meta = this.maps.get(object.name);
           meta[freeField].freed = true;
           meta[freeField].freedAt = freeField;
-          
         }
-        
+
         if (node.object.type !== "variable") {
-  this.emitError(
-    "MemoryError",
-    "free() can only be called on an owning variable",
-    node,
-  );
-}
+          this.emitError(
+            "MemoryError",
+            "free() can only be called on an owning variable",
+            node,
+          );
+        }
 
-const sym = this.getVar(node.object.name);
+        const sym = this.getVar(node.object.name);
 
+        if (sym.ownerId !== undefined) {
+          this.freedOwners.add(sym.ownerId);
+        }
+        sym.isFreed = true;
 
-if (sym.ownerId !== undefined) {
-    this.freedOwners.add(sym.ownerId);
-}
-sym.isFreed = true;
-
-if (sym.fromParam && sym.pIndex !== undefined) {
-  this.functions
-    .get(this.currentFunction.name)
-    .freedPindex.add(sym.pIndex);
-}
+        if (sym.fromParam && sym.pIndex !== undefined) {
+          this.functions
+            .get(this.currentFunction.name)
+            .freedPindex.add(sym.pIndex);
+        }
 
         return {
           ptr: null,
@@ -3548,7 +3539,7 @@ if (sym.fromParam && sym.pIndex !== undefined) {
           llvmType: "void",
           local: [],
           global: [],
-          isFreed: true
+          isFreed: true,
         };
       }
 
@@ -3649,16 +3640,19 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   }
 
   constEval(node, context) {
-  
     if (node.type === "int") return Number(node.value);
-    
+
     if (this.enums.has(node?.object?.name)) {
       const field = node.field;
       const e = this.enums.get(node.object.name).members.has(field);
       if (e) {
         return Number(this.enums.get(node.object.name).members.get(field));
       } else {
-        this.emitError("ReferenceError", `enum '${node.object.name}' does't have member '${field}'`, node);
+        this.emitError(
+          "ReferenceError",
+          `enum '${node.object.name}' does't have member '${field}'`,
+          node,
+        );
       }
     }
 
@@ -3684,11 +3678,11 @@ if (sym.fromParam && sym.pIndex !== undefined) {
       const ref = this.getVar(node.name);
 
       if (!ref?.isCompileConstant) {
-  this.emitError(
-    "ArrayError",
-    "array size must be a compile-time constant",
-    node,
-  );
+        this.emitError(
+          "ArrayError",
+          "array size must be a compile-time constant",
+          node,
+        );
       }
 
       return Number(ref.value);
@@ -3747,12 +3741,12 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     );
 
     if (globalScope) {
-    structPtr = this.newGlobalTemp();
-    this.globals.push(`${structPtr} = global ${llvmType} zeroinitializer`);
-  } else {
-    structPtr = this.newTemp();
-    this.emitAlloca(structPtr, llvmType);
-  }
+      structPtr = this.newGlobalTemp();
+      this.globals.push(`${structPtr} = global ${llvmType} zeroinitializer`);
+    } else {
+      structPtr = this.newTemp();
+      this.emitAlloca(structPtr, llvmType);
+    }
 
     const structInfo = this.getStruct(structName);
 
@@ -3959,7 +3953,6 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     }
 
     const entryFile = path.join(packageDir, manifest.bin);
-    
 
     if (!fs.existsSync(entryFile)) {
       this.emitError(
@@ -3973,19 +3966,21 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   }
 
   getModuleNativeDir(source) {
-  if (source.endsWith(".zen")) {
-    return path.dirname(path.resolve(source));
+    if (source.endsWith(".zen")) {
+      return path.dirname(path.resolve(source));
+    }
+
+    return path.join(os.homedir(), ".zen", "packages", source);
   }
 
-  return path.join(
-    os.homedir(),
-    ".zen",
-    "packages",
-    source
-  );
-  }
-
-  registerBuiltInStructs(name, fields = [], methods = {}, needSize = false,  builtinSize = null, builtinAlign = null) {
+  registerBuiltInStructs(
+    name,
+    fields = [],
+    methods = {},
+    needSize = false,
+    builtinSize = null,
+    builtinAlign = null,
+  ) {
     const layout = [];
     const fieldMap = {};
     const llvmFields = [];
@@ -4030,11 +4025,11 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     });
 
     if (builtinSize === null) {
-  this.getStruct(name).byteSize = this.sizeOf(name);
-}
+      this.getStruct(name).byteSize = this.sizeOf(name);
+    }
     if (builtinAlign === null) {
-  this.getStruct(name).align = this.alignOf(name);
-}
+      this.getStruct(name).align = this.alignOf(name);
+    }
   }
 
   initBuiltInStructs() {
@@ -4057,7 +4052,6 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     this.registerBuiltInStructs("Tcp", [], { opaque: true });
 
     this.registerBuiltInStructs("TcpServer", [], { opaque: true });
-    
   }
 
   allocStructStorage(structInfo, structName, globalScope, allocate = true) {
@@ -4079,12 +4073,12 @@ if (sym.fromParam && sym.pIndex !== undefined) {
 
       const ptr = this.newTemp();
       this.emitAlloca(ptr, "ptr");
-      
-    if (allocate) {
-      const map = this.newTemp();
-      this.emit(`${map} = call ptr @_zen_map_new()`);
-      this.emit(`store ptr ${map}, ptr ${ptr}`);
-    }
+
+      if (allocate) {
+        const map = this.newTemp();
+        this.emit(`${map} = call ptr @_zen_map_new()`);
+        this.emit(`store ptr ${map}, ptr ${ptr}`);
+      }
 
       return ptr;
     }
@@ -4109,83 +4103,83 @@ if (sym.fromParam && sym.pIndex !== undefined) {
   }
 
   handleBuiltinStructMethod(
-  structName,
-  methodName,
-  object,
-  basePtr,
-  node,
-  obj,
-) {
-  const method = BUILTIN_STRUCT_METHODS?.[structName]?.[methodName];
-
-  if (!method) {
-    this.emitError(
-      "ReferenceError",
-      `'${structName}' has no method '${methodName}()'`,
-      node,
-    );
-  }
-
-  // Use-after-free
-  const currentFreed = this.freedVars[this.freedVars.length - 1];
-
-  if (currentFreed.has(object.name)) {
-    this.emitError(
-      "MemoryError",
-      `'${object.name}' has already been freed and cannot be used`,
-      node,
-    );
-  }
-
-  // Json.parse() validation
-  if (
-    structName === "Json" &&
-    methodName !== "parse" &&
-    !this.JsonParseMap.has(object.name)
+    structName,
+    methodName,
+    object,
+    basePtr,
+    node,
+    obj,
   ) {
-    this.emitError(
-      "SemanticError",
-      `'Json.${methodName}()' can only be used after 'Json.parse()'`,
-      node,
-    );
-  }
+    const method = BUILTIN_STRUCT_METHODS?.[structName]?.[methodName];
 
-  const args = node.args ?? [];
-
-  if (args.length !== method.args.length) {
-    this.emitError(
-      "ArgumentError",
-      `'${structName}.${methodName}()' expects ${method.args.length} argument(s), got ${args.length}`,
-      node,
-    );
-  }
-
-  const llvmArgs = [];
-  const llvmArgTypes = [];
-
-  // Deferred instructions
-  const local = [];
-  const global = [];
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i].type === "STRUCT_LITERAL") {
-      const ptr = this.emitStructLiteral(structName, args[i]);
-
-      if (ptr.needsLoad) {
-        const t = this.newTemp();
-        local.push(`${t} = load ptr, ptr ${ptr.ptr}`);
-        ptr.ptr = t;
-      }
-
-      llvmArgs.push(`ptr ${ptr.ptr}`);
-      llvmArgTypes.push("ptr");
-
-      continue;
+    if (!method) {
+      this.emitError(
+        "ReferenceError",
+        `'${structName}' has no method '${methodName}()'`,
+        node,
+      );
     }
 
-    const expr = this.expr.handleExpression(args[i]);
+    // Use-after-free
+    const currentFreed = this.freedVars[this.freedVars.length - 1];
 
- /*   if (expr.isList) {
+    if (currentFreed.has(object.name)) {
+      this.emitError(
+        "MemoryError",
+        `'${object.name}' has already been freed and cannot be used`,
+        node,
+      );
+    }
+
+    // Json.parse() validation
+    if (
+      structName === "Json" &&
+      methodName !== "parse" &&
+      !this.JsonParseMap.has(object.name)
+    ) {
+      this.emitError(
+        "SemanticError",
+        `'Json.${methodName}()' can only be used after 'Json.parse()'`,
+        node,
+      );
+    }
+
+    const args = node.args ?? [];
+
+    if (args.length !== method.args.length) {
+      this.emitError(
+        "ArgumentError",
+        `'${structName}.${methodName}()' expects ${method.args.length} argument(s), got ${args.length}`,
+        node,
+      );
+    }
+
+    const llvmArgs = [];
+    const llvmArgTypes = [];
+
+    // Deferred instructions
+    const local = [];
+    const global = [];
+
+    for (let i = 0; i < args.length; i++) {
+      if (args[i].type === "STRUCT_LITERAL") {
+        const ptr = this.emitStructLiteral(structName, args[i]);
+
+        if (ptr.needsLoad) {
+          const t = this.newTemp();
+          local.push(`${t} = load ptr, ptr ${ptr.ptr}`);
+          ptr.ptr = t;
+        }
+
+        llvmArgs.push(`ptr ${ptr.ptr}`);
+        llvmArgTypes.push("ptr");
+
+        continue;
+      }
+
+      const expr = this.expr.handleExpression(args[i]);
+
+      /*   if (expr.isList) {
       if (method.args[i] !== "List") {
         this.emitError(
           "TypeError",
@@ -4201,237 +4195,223 @@ if (sym.fromParam && sym.pIndex !== undefined) {
       );
     }*/
 
-const actualType = this.getExpressionTypeString(expr);
-const expectedType = method.args[i].trim();
+      const actualType = this.getExpressionTypeString(expr);
+      const expectedType = method.args[i].trim();
 
-if (
-  actualType !== expectedType &&
-  !(expectedType === "List" && actualType.startsWith("List<"))
-) {
-  this.emitError(
-    "TypeError",
-    `'${structName}.${methodName}()' argument ${i + 1} expects '${expectedType}', got '${actualType}'`,
-    node
-  );
-} 
+      if (
+        actualType !== expectedType &&
+        !(expectedType === "List" && actualType.startsWith("List<"))
+      ) {
+        this.emitError(
+          "TypeError",
+          `'${structName}.${methodName}()' argument ${i + 1} expects '${expectedType}', got '${actualType}'`,
+          node,
+        );
+      }
 
-    
+      if (expr.global?.length) {
+        global.push(...expr.global);
+      }
 
-    if (expr.global?.length) {
-      global.push(...expr.global);
+      if (expr.local?.length) {
+        local.push(...expr.local);
+      }
+
+      let t = this.newTemp();
+
+      if (expr?.needsLoad) {
+        local.push(`${t} = load ptr, ptr ${expr.ptr}`);
+      } else {
+        t = expr.ptr;
+      }
+
+      if (this.hasStruct(expr.type)) {
+        llvmArgs.push(`ptr ${t}`);
+        llvmArgTypes.push("ptr");
+      } else {
+        llvmArgs.push(`${expr.llvmType} ${t}`);
+        llvmArgTypes.push(expr.llvmType);
+      }
     }
 
-    if (expr.local?.length) {
-      local.push(...expr.local);
-    }
+    // Semantic state
 
-    let t = this.newTemp();
+    let ownerId;
 
-    if (expr?.needsLoad) {
-      local.push(`${t} = load ptr, ptr ${expr.ptr}`);
+    if (this.hasVar(object?.name)) {
+      const receiverVar = this.getVar(object.name);
+
+      if (receiverVar.ownerId === undefined) {
+        receiverVar.ownerId = this.genOwnerId();
+      }
+
+      ownerId = receiverVar.ownerId;
     } else {
-      t = expr.ptr;
+      ownerId = object?.ownerId ?? this.genOwnerId();
     }
 
-    if (this.hasStruct(expr.type)) {
-      llvmArgs.push(`ptr ${t}`);
-      llvmArgTypes.push("ptr");
-    } else {
-      llvmArgs.push(`${expr.llvmType} ${t}`);
-      llvmArgTypes.push(expr.llvmType);
-    }
-  }
-
-  // Semantic state
-
-  let ownerId;
-
-  if (this.hasVar(object?.name)) {
-    const receiverVar = this.getVar(object.name);
-
-    if (receiverVar.ownerId === undefined) {
-      receiverVar.ownerId = this.genOwnerId();
-    }
-
-    ownerId = receiverVar.ownerId;
-
-  } else {
-    ownerId = object?.ownerId ?? this.genOwnerId();
-  }
-
-  if (currentFreed.has(object.name)) {
-    this.emitError(
-      "MemoryError",
-      `'${object.name}' has already been freed and cannot be used`,
-      node,
-    );
-  }
-
-  // Ownership chain check
-  if (this.hasVar(object?.name)) {
-    const receiverVar = this.getVar(object.name);
-
-    if (
-      (receiverVar.ownerId !== undefined &&
-        this.freedOwners.has(receiverVar.ownerId)) ||
-      receiverVar.isFreed
-    ) {
+    if (currentFreed.has(object.name)) {
       this.emitError(
         "MemoryError",
-        `use-after-free: '${object.name}' is no longer valid`,
+        `'${object.name}' has already been freed and cannot be used`,
         node,
       );
     }
-  }
 
-  if (methodName === "parse") {
-    this.JsonParseMap.set(object.name, true);
-    currentFreed.delete(object.name);
-  }
+    // Ownership chain check
+    if (this.hasVar(object?.name)) {
+      const receiverVar = this.getVar(object.name);
 
-  if (methodName === "free") {
-    currentFreed.add(object.name);
-    this.freedOwners.add(ownerId);
-  }
+      if (
+        (receiverVar.ownerId !== undefined &&
+          this.freedOwners.has(receiverVar.ownerId)) ||
+        receiverVar.isFreed
+      ) {
+        this.emitError(
+          "MemoryError",
+          `use-after-free: '${object.name}' is no longer valid`,
+          node,
+        );
+      }
+    }
 
-  const isStruct = this.hasStruct(method.returnType);
+    if (methodName === "parse") {
+      this.JsonParseMap.set(object.name, true);
+      currentFreed.delete(object.name);
+    }
 
-  const llvmReturn = method.storeResult
-    ? "ptr"
-    : isStruct
+    if (methodName === "free") {
+      currentFreed.add(object.name);
+      this.freedOwners.add(ownerId);
+    }
+
+    const isStruct = this.hasStruct(method.returnType);
+
+    const llvmReturn = method.storeResult
       ? "ptr"
-      : this.getLLVMType(method.returnType);
+      : isStruct
+        ? "ptr"
+        : this.getLLVMType(method.returnType);
 
-  const fnName =
-    method.llvmName ?? `_zen_${structName}_${methodName}`;
+    const fnName = method.llvmName ?? `_zen_${structName}_${methodName}`;
 
-  const callArgs = [];
+    const callArgs = [];
 
-  if (method.hasReceiver !== false) {
-    callArgs.push(`ptr ${basePtr}`);
-  }
+    if (method.hasReceiver !== false) {
+      callArgs.push(`ptr ${basePtr}`);
+    }
 
-  callArgs.push(...llvmArgs);
+    callArgs.push(...llvmArgs);
 
-  this.declareOneTime(
-    fnName,
-    `declare ${llvmReturn} @${fnName}(${
-      callArgs.length
-        ? callArgs.map((a) => a.split(" ")[0]).join(", ")
-        : ""
-    })`,
-  );
+    this.declareOneTime(
+      fnName,
+      `declare ${llvmReturn} @${fnName}(${
+        callArgs.length ? callArgs.map((a) => a.split(" ")[0]).join(", ") : ""
+      })`,
+    );
 
-  // Methods that return a pointer to be stored into the object
-  if (method.storeResult) {
+    // Methods that return a pointer to be stored into the object
+    if (method.storeResult) {
+      const temp = this.newTemp();
+
+      local.push(`${temp} = call ptr @${fnName}(${callArgs.join(", ")})`);
+
+      local.push(`store ptr ${temp}, ptr ${obj.ptr}`);
+
+      return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global,
+        isVarRef: false,
+        needsLoad: false,
+        ownerId,
+      };
+    }
+
+    // Void methods
+    if (method.returnType === "void") {
+      local.push(`call void @${fnName}(${callArgs.join(", ")})`);
+
+      return {
+        ptr: null,
+        type: "void",
+        llvmType: "void",
+        local,
+        global,
+        isVarRef: false,
+        needsLoad: false,
+        ownerId,
+      };
+    }
+
     const temp = this.newTemp();
 
     local.push(
-      `${temp} = call ptr @${fnName}(${callArgs.join(", ")})`,
+      `${temp} = call ${llvmReturn} @${fnName}(${callArgs.join(", ")})`,
     );
 
-    local.push(
-      `store ptr ${temp}, ptr ${obj.ptr}`,
-    );
+    // Special case: Map.getList<T>()
+    if (structName === "Map" && methodName === "getList") {
+      if (!node.generic) {
+        this.emitError(
+          "TypeError",
+          `'map.getList' requires an explicit compile-time generic, e.g. map.getList<List<int>>("key")`,
+          node,
+        );
+      }
 
-    return {
-      ptr: null,
-      type: "void",
-      llvmType: "void",
-      local,
-      global,
-      isVarRef: false,
-      needsLoad: false,
-      ownerId,
-    };
-  }
+      const normalizedGeneric = this.normalizeGeneric(node.generic);
 
-  // Void methods
-  if (method.returnType === "void") {
-    local.push(
-      `call void @${fnName}(${callArgs.join(", ")})`,
-    );
+      const deepestType = this.getDeepestGeneric(normalizedGeneric);
 
-    return {
-      ptr: null,
-      type: "void",
-      llvmType: "void",
-      local,
-      global,
-      isVarRef: false,
-      needsLoad: false,
-      ownerId,
-    };
-  }
-
-  const temp = this.newTemp();
-
-  local.push(
-    `${temp} = call ${llvmReturn} @${fnName}(${callArgs.join(", ")})`,
-  );
-
-  // Special case: Map.getList<T>()
-  if (structName === "Map" && methodName === "getList") {
-    if (!node.generic) {
-      this.emitError(
-        "TypeError",
-        `'map.getList' requires an explicit compile-time generic, e.g. map.getList<List<int>>("key")`,
-        node,
-      );
+      return {
+        ptr: temp,
+        type: deepestType,
+        llvmType: "ptr",
+        local,
+        global,
+        isVarRef: false,
+        needsLoad: false,
+        isDirectCall: true,
+        isList: true,
+        generic: normalizedGeneric,
+        ownerId,
+      };
     }
-
-    const normalizedGeneric =
-      this.normalizeGeneric(node.generic);
-
-    const deepestType =
-      this.getDeepestGeneric(normalizedGeneric);
-
-    return {
-      ptr: temp,
-      type: deepestType,
-      llvmType: "ptr",
-      local,
-      global,
-      isVarRef: false,
-      needsLoad: false,
-      isDirectCall: true,
-      isList: true,
-      generic: normalizedGeneric,
-      ownerId,
-    };
-  }
 
     if (method.returnType.startsWith("List")) {
-  const generic = this.parseGenericFromString(method.returnType);
-  const deepestType = this.getDeepestGeneric(generic);
+      const generic = this.parseGenericFromString(method.returnType);
+      const deepestType = this.getDeepestGeneric(generic);
 
-  return {
-    ptr: temp,
-    type: deepestType,
-    llvmType: "ptr",
-    generic,
-    local,
-    global,
-    isVarRef: false,
-    needsLoad: false,
-    isDirectCall: true,
-    isList: true,
-    ownerId,
-  };
+      return {
+        ptr: temp,
+        type: deepestType,
+        llvmType: "ptr",
+        generic,
+        local,
+        global,
+        isVarRef: false,
+        needsLoad: false,
+        isDirectCall: true,
+        isList: true,
+        ownerId,
+      };
     }
 
-  // Generic return
-  return {
-    ptr: temp,
-    type: method.returnType,
-    llvmType: llvmReturn,
-    local,
-    global,
-    isVarRef: false,
-    isStruct,
-    ownerId,
-  };
-}
+    // Generic return
+    return {
+      ptr: temp,
+      type: method.returnType,
+      llvmType: llvmReturn,
+      local,
+      global,
+      isVarRef: false,
+      isStruct,
+      ownerId,
+    };
+  }
 
   handleBuiltinStructProp(structName, propName, object, basePtr, node) {
     const prop = BUILTIN_STRUCT_PROPS?.[structName]?.[propName];
@@ -4509,29 +4489,28 @@ if (
   }
 
   resolveFunction(name, node) {
-    
     if (this.functionParamTable.has(name)) {
-        const fn = this.functionParamTable.get(name);
+      const fn = this.functionParamTable.get(name);
 
-        if (
-            this.anonymCurrentFunction &&
-            fn.ownerFunction &&
-            fn.ownerFunction !== this.anonymCurrentFunction.name
-        ) {
-            this.emitError(
-                "SemanticError",
-                `inline function '${this.anonymCurrentFunction.name}' cannot capture outer function '${name}'`,
-                node
-            );
-        }
+      if (
+        this.anonymCurrentFunction &&
+        fn.ownerFunction &&
+        fn.ownerFunction !== this.anonymCurrentFunction.name
+      ) {
+        this.emitError(
+          "SemanticError",
+          `inline function '${this.anonymCurrentFunction.name}' cannot capture outer function '${name}'`,
+          node,
+        );
+      }
 
-        return fn;
+      return fn;
     }
 
     if (this.anonymCurrentFunction !== null) {
-        if (this.anonymFunctions.has(name)) {
-            return this.anonymFunctions.get(name);
-        }
+      if (this.anonymFunctions.has(name)) {
+        return this.anonymFunctions.get(name);
+      }
     }
 
     return this.getFunction(name, node);
@@ -4540,9 +4519,8 @@ if (
   // debug.pretty() helper
 
   newGlobalStringInto(buffer, str) {
-    
     this.declareOneTime("_str_dup", "declare ptr @_str_dup(ptr)");
-    
+
     let globalName, len;
 
     if (this.cachedStrings.has(str)) {
@@ -4559,11 +4537,11 @@ if (
 
     const tmp = this.newTemp();
     const value = this.newTemp();
-    
+
     buffer.push(
       `${tmp} = getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`,
     );
-    
+
     this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
     return value;
   }
@@ -4626,7 +4604,6 @@ if (
             `  call void @_debug_pretty_list_struct_impl(ptr ${loaded}, i32 ${depth}, ptr @${nested})`,
           );
         } else {
-          
           this.declareOneTime(
             "_debug_pretty_list_impl",
             "declare void @_debug_pretty_list_impl(ptr, i32, i32)",
@@ -4714,166 +4691,170 @@ if (
       needsLoad: true,
     };
   }
-  
+
   getTargetInfo() {
-  try {
-    const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
+    try {
+      const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
 
-    return {
-      triple: ir.match(/target triple = "([^"]+)"/)?.[1] || false,
-      dataLayout: ir.match(/target datalayout = "([^"]+)"/)?.[1] || false,
-    };
-  } catch {
-    return false;
-  }
-}
-
-
-getListTypeCode(type) {
-  
-  if (this.hasStruct(type)) return 0; // safe placeholder
-  
-  const code = TYPE_MAP[type];
-
-  if (code === undefined) {
-    this.emitError(
-      "InternalError",
-      `no type code mapping for '${type}'`,
-    );
+      return {
+        triple: ir.match(/target triple = "([^"]+)"/)?.[1] || false,
+        dataLayout: ir.match(/target datalayout = "([^"]+)"/)?.[1] || false,
+      };
+    } catch {
+      return false;
+    }
   }
 
-  return code;
-}
+  getListTypeCode(type) {
+    if (this.hasStruct(type)) return 0; // safe placeholder
 
+    const code = TYPE_MAP[type];
 
-inferDepthAndTypeFromElement(el) {
-  // nested list literal: recurse, since infer.infer() doesn't walk into these
-  if (el.type === "ARRAY" || el.type === "LIST_LITERAL") {
-    if (!el.elements || el.elements.length === 0) {
+    if (code === undefined) {
+      this.emitError("InternalError", `no type code mapping for '${type}'`);
+    }
+
+    return code;
+  }
+
+  inferDepthAndTypeFromElement(el) {
+    // nested list literal: recurse, since infer.infer() doesn't walk into these
+    if (el.type === "ARRAY" || el.type === "LIST_LITERAL") {
+      if (!el.elements || el.elements.length === 0) {
+        this.emitError(
+          "TypeError",
+          "cannot infer the element type of an empty nested list literal without context",
+          el,
+        );
+      }
+
+      const results = el.elements.map((c) =>
+        this.inferDepthAndTypeFromElement(c),
+      );
+      const first = results[0];
+
+      for (const r of results) {
+        if (r.deepestType !== first.deepestType || r.depth !== first.depth) {
+          this.emitError(
+            "TypeError",
+            "list literal has mixed element types",
+            el,
+          );
+        }
+      }
+
+      return { deepestType: first.deepestType, depth: first.depth + 1 };
+    }
+
+    if (el.type === "STRUCT_LITERAL") {
       this.emitError(
         "TypeError",
-        "cannot infer the element type of an empty nested list literal without context",
+        "cannot infer struct type inside an untyped list literal — assign it to a typed variable first",
         el,
       );
     }
 
-    const results = el.elements.map((c) => this.inferDepthAndTypeFromElement(c));
+    return { deepestType: this.infer.infer(el), depth: 0 };
+  }
+
+  countGenericDepth(generic) {
+    let depth = 0;
+    let g = generic;
+    while (g?.type === "List") {
+      depth++;
+      g = g.generic;
+    }
+    return depth;
+  }
+
+  inferListContextFromLiteral(node) {
+    if (!node.elements || node.elements.length === 0) {
+      this.emitError(
+        "TypeError",
+        "cannot infer the element type of an empty list literal — assign it to a typed variable first (e.g. List<int> a = [])",
+        node,
+      );
+    }
+
+    const results = node.elements.map((el) =>
+      this.inferDepthAndTypeFromElement(el),
+    );
     const first = results[0];
 
     for (const r of results) {
       if (r.deepestType !== first.deepestType || r.depth !== first.depth) {
-        this.emitError("TypeError", "list literal has mixed element types", el);
+        this.emitError(
+          "TypeError",
+          "list literal elements have inconsistent types",
+          node,
+        );
       }
     }
 
-    return { deepestType: first.deepestType, depth: first.depth + 1 };
-  }
-
-  if (el.type === "STRUCT_LITERAL") {
-    this.emitError(
-      "TypeError",
-      "cannot infer struct type inside an untyped list literal — assign it to a typed variable first",
-      el,
-    );
-  }
-
-  return { deepestType: this.infer.infer(el), depth: 0 };
-}
-
-countGenericDepth(generic) {
-  let depth = 0;
-  let g = generic;
-  while (g?.type === "List") {
-    depth++;
-    g = g.generic;
-  }
-  return depth;
-}
-
-inferListContextFromLiteral(node) {
-  if (!node.elements || node.elements.length === 0) {
-    this.emitError(
-      "TypeError",
-      "cannot infer the element type of an empty list literal — assign it to a typed variable first (e.g. List<int> a = [])",
-      node,
-    );
-  }
-
-  const results = node.elements.map((el) => this.inferDepthAndTypeFromElement(el));
-  const first = results[0];
-
-  for (const r of results) {
-    if (r.deepestType !== first.deepestType || r.depth !== first.depth) {
-      this.emitError("TypeError", "list literal elements have inconsistent types", node);
+    let generic = { type: first.deepestType };
+    for (let i = 0; i < first.depth; i++) {
+      generic = { type: "List", generic };
     }
+
+    return { generic, type: first.deepestType, depth: first.depth };
   }
 
-  let generic = { type: first.deepestType };
-  for (let i = 0; i < first.depth; i++) {
-    generic = { type: "List", generic };
+  handleStringFree(object, node) {
+    this.declareOneTime(
+      "_zen_string_free",
+      "declare void @_zen_string_free(ptr)",
+    );
+
+    if (node.object.type !== "variable") {
+      this.emitError(
+        "MemoryError",
+        "free() can only be called on an owning variable",
+        node,
+      );
+    }
+
+    const sym = this.getVar(node.object.name);
+
+    let v = this.newTemp();
+
+    if (object.needsLoad) {
+      this.emit(`${v} = load ptr, ptr ${object.ptr}`);
+    } else {
+      v = object.ptr;
+    }
+
+    this.emit(`call void @_zen_string_free(ptr ${v})`);
+
+    if (sym.ownerId !== undefined) {
+      this.freedOwners.add(sym.ownerId);
+    }
+    sym.isFreed = true;
+
+    if (sym.fromParam && sym.pIndex !== undefined) {
+      this.functions.get(this.currentFunction.name).freedPindex.add(sym.pIndex);
+    }
+
+    return {
+      ptr: null,
+      type: "void",
+      llvmType: "void",
+      local: [],
+      global: [],
+      isFreed: true,
+    };
   }
-
-  return { generic, type: first.deepestType, depth: first.depth };
-}
-
-handleStringFree(object, node) {
-  this.declareOneTime("_zen_string_free", "declare void @_zen_string_free(ptr)");
-  
-  if (node.object.type !== "variable") {
-  this.emitError(
-    "MemoryError",
-    "free() can only be called on an owning variable",
-    node,
-  );
-}
-
-const sym = this.getVar(node.object.name);
-
- let v = this.newTemp();
- 
- if (object.needsLoad) {
-   this.emit(`${v} = load ptr, ptr ${object.ptr}`);
- } else {
-   v = object.ptr;
- }
-
-this.emit(`call void @_zen_string_free(ptr ${v})`);
-
-
-if (sym.ownerId !== undefined) {
-    this.freedOwners.add(sym.ownerId);
-}
-sym.isFreed = true;
-
-if (sym.fromParam && sym.pIndex !== undefined) {
-  this.functions
-    .get(this.currentFunction.name)
-    .freedPindex.add(sym.pIndex);
-}
-
-        return {
-          ptr: null,
-          type: "void",
-          llvmType: "void",
-          local: [],
-          global: [],
-          isFreed: true
-        };
-  
-}
 
   cleanupBuiltinStringTemps(args) {
-  for (const a of args || []) {
-    
-    if (a.type === "string" && (a.isTemp || a?.kind === "literal")) {
-      this.declareOneTime(
-        "_zen_string_free",
-        "declare void @_zen_string_free(ptr)",
-      );
+    for (const a of args || []) {
+      if (a.type === "string" && (a.isTemp || a?.kind === "literal")) {
+        this.declareOneTime(
+          "_zen_string_free",
+          "declare void @_zen_string_free(ptr)",
+        );
 
-      this.emit(`call void @_zen_string_free(ptr ${a.ptr})`);
+        this.emit(`call void @_zen_string_free(ptr ${a.ptr})`);
+      }
     }
-  }
   }
 
   generateStructInitializer(name, layout) {
@@ -4882,115 +4863,168 @@ if (sym.fromParam && sym.pIndex !== undefined) {
     lines.push(`define void @_zen_init_${name}(ptr %this) {`);
 
     for (const field of layout) {
-        if (!field.isList) continue;
+      if (!field.isList) continue;
 
-        const deepest = this.getDeepestGeneric(field.generic);
-        const depth = this.getListDepth(field.generic);
+      const deepest = this.getDeepestGeneric(field.generic);
+      const depth = this.getListDepth(field.generic);
 
-        const elementSize =
-            depth > 1
-                ? 8
-                : this.sizeOf(deepest);
+      const elementSize = depth > 1 ? 8 : this.sizeOf(deepest);
 
-        const list = this.newTemp();
+      const list = this.newTemp();
 
-        lines.push(
-            `${list} = call ptr @_zen_list_new(i64 ${elementSize})`
-        );
+      lines.push(`${list} = call ptr @_zen_list_new(i64 ${elementSize})`);
 
-        lines.push(
-            `call void @_zen_list_set_meta(ptr ${list}, i32 ${depth}, i32 ${this.getListTypeCode(deepest)})`
-        );
+      lines.push(
+        `call void @_zen_list_set_meta(ptr ${list}, i32 ${depth}, i32 ${this.getListTypeCode(deepest)})`,
+      );
 
-        const fieldPtr = this.newTemp();
+      const fieldPtr = this.newTemp();
 
-        lines.push(
-            `${fieldPtr} = getelementptr %${name}, ptr %this, i32 0, i32 ${field.index}`
-        );
+      lines.push(
+        `${fieldPtr} = getelementptr %${name}, ptr %this, i32 0, i32 ${field.index}`,
+      );
 
-        lines.push(
-            `store ptr ${list}, ptr ${fieldPtr}`
-        );
+      lines.push(`store ptr ${list}, ptr ${fieldPtr}`);
     }
 
     lines.push("ret void");
     lines.push("}");
 
     this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
-this.declareOneTime("zen_list_set_meta","declare void @_zen_list_set_meta(ptr, i32, i32)");
+    this.declareOneTime(
+      "zen_list_set_meta",
+      "declare void @_zen_list_set_meta(ptr, i32, i32)",
+    );
     this.functionBuff.push(lines.join("\n"));
   }
 
   getActiveFunction() {
-  return this.anonymCurrentFunction ?? this.currentFunction;
+    return this.anonymCurrentFunction ?? this.currentFunction;
   }
 
   initNamespaces() {
-  for (const [name, map] of Object.entries(NAMESPACE_REG)) {
-    this.setVar(name, {
-      name,
-      returnType: null,
-      type: "namespace",
-      members: map,
-    });
-  }
+    for (const [name, map] of Object.entries(NAMESPACE_REG)) {
+      this.setVar(name, {
+        name,
+        returnType: null,
+        type: "namespace",
+        members: map,
+      });
+    }
   }
 
   parseGenericFromString(typeStr) {
-  const trimmed = typeStr.trim();
-  const match = trimmed.match(/^List<(.+)>$/);
+    const trimmed = typeStr.trim();
+    const match = trimmed.match(/^List<(.+)>$/);
 
-  if (!match) {
-    return this.normalizeGeneric(trimmed);
-  }
+    if (!match) {
+      return this.normalizeGeneric(trimmed);
+    }
 
-  return {
-    type: "List",
-    generic: this.parseGenericFromString(match[1]),
-  };
+    return {
+      type: "List",
+      generic: this.parseGenericFromString(match[1]),
+    };
   }
 
   getExpressionTypeString(expr) {
-  if (!expr) return "";
+    if (!expr) return "";
 
-  const typeToString = (node) => {
-  if (!node) return "";
+    const typeToString = (node) => {
+      if (!node) return "";
 
-  if (typeof node === "string") {
-    return node;
-  }
+      if (typeof node === "string") {
+        return node;
+      }
 
-  // Unwrap nested generic metadata
-  if (!node.type && node.generic) {
-    return typeToString(node.generic);
-  }
+      // Unwrap nested generic metadata
+      if (!node.type && node.generic) {
+        return typeToString(node.generic);
+      }
 
-  if (node.type === "List") {
-    return `List<${typeToString(node.generic)}>`;
-  }
+      if (node.type === "List") {
+        return `List<${typeToString(node.generic)}>`;
+      }
 
-  return node.type ?? "";
-};
+      return node.type ?? "";
+    };
 
-  // Already structured: { type: "List", generic: { type: "byte" } }
-  if (expr.type === "List") {
+    // Already structured: { type: "List", generic: { type: "byte" } }
+    if (expr.type === "List") {
+      return typeToString(expr);
+    }
+
+    if (expr.isList) {
+      
+      if (expr.generic?.type === "List") {
+        return typeToString(expr.generic);
+      }
+
+      // Build List<T> only once
+      return `List<${typeToString(expr.generic ?? { type: expr.type })}>`;
+    }
+
+    // Normal type
     return typeToString(expr);
   }
 
+  createThreadArgContext(fnName, fn, args, argStr, local) {
   
-  if (expr.isList) {
-    // Generic already contains the complete List type
-    if (expr.generic?.type === "List") {
-      return typeToString(expr.generic);
-    }
+  const parsed = argStr.map((s) => {
+    const i = s.indexOf(" ");
+    return { type: s.slice(0, i), value: s.slice(i + 1) };
+  });
 
-    // Build List<T> only once
-    return `List<${
-      typeToString(expr.generic ?? { type: expr.type })
-    }>`;
+  const structType = `{ ${parsed.map((p) => p.type).join(", ")} }`;
+  const mangledName = fnName; // @zen_name, already mangled by caller
+
+  // build (once per distinct thread fn) the trampoline
+  const trampolineName = `_${mangledName}_trampoline`;
+
+  if (!this.threadTrampolines.has(mangledName)) {
+    this.threadTrampolines.add(mangledName);
+
+    const tLines = [];
+    tLines.push(`define void @${trampolineName}(ptr %ctx) {`);
+    tLines.push(`entry:`);
+
+    const callArgs = parsed.map((p, idx) => {
+      const fieldPtr = `%f${idx}`;
+      const loaded = `%a${idx}`;
+      tLines.push(
+        `  ${fieldPtr} = getelementptr ${structType}, ptr %ctx, i32 0, i32 ${idx}`,
+      );
+      tLines.push(`  ${loaded} = load ${p.type}, ptr ${fieldPtr}`);
+      return `${p.type} ${loaded}`;
+    });
+
+    tLines.push(`  call void @${mangledName}(${callArgs.join(", ")})`);
+    tLines.push(`  ret void`);
+    tLines.push(`}`);
+
+    this.functionBuff.push(tLines.join("\n"));
   }
 
-  // Normal type
-  return typeToString(expr);
+  //  heap-allocate and pack the context struct (per call site)
+  this.declareOneTime("malloc", "declare ptr @malloc(i64)");
+
+  const id = ++this.threadCtxCounter;
+  const ctx = `%thread_ctx_${id}`;
+  const sizePtr = `%thread_ctx_size_${id}`;
+  const sizeInt = `%thread_ctx_sizeint_${id}`;
+
+  local.push(`${sizePtr} = getelementptr ${structType}, ptr null, i32 1`);
+  local.push(`${sizeInt} = ptrtoint ptr ${sizePtr} to i64`);
+  local.push(`${ctx} = call ptr @malloc(i64 ${sizeInt})`);
+
+  parsed.forEach((p, idx) => {
+    const fieldPtr = `%thread_ctx_field_${id}_${idx}`;
+    local.push(
+      `${fieldPtr} = getelementptr ${structType}, ptr ${ctx}, i32 0, i32 ${idx}`,
+    );
+    local.push(`store ${p.type} ${p.value}, ptr ${fieldPtr}`);
+  });
+
+  return { ctx, trampolineName };
   }
 }

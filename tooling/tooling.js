@@ -20,71 +20,86 @@ export class Compiler {
   }
 
   async repl() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: ">>> ",
-  });
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: ">>> ",
+    });
 
-  const declarations = []; // persisted forever — decls only, no side effects on replay
-  const replDir = path.join(process.cwd(), ".zen");
-  const replFile = path.join(replDir, "repl.zen");
+    const declarations = []; // persisted forever — decls only, no side effects on replay
+    const replDir = path.join(process.cwd(), ".zen");
+    const replFile = path.join(replDir, "repl.zen");
 
-  fs.mkdirSync(replDir, { recursive: true });
+    fs.mkdirSync(replDir, { recursive: true });
 
-  console.log("Zen REPL");
-  console.log("Type exit() or press Ctrl+D to exit.");
-
-  rl.prompt();
-
-  rl.on("line", (line) => {
-    const input = line.trim();
-
-    if (input === "exit()") { rl.close(); return; }
-    if (!input) { rl.prompt(); return; }
-
-    const isDecl = this.isDeclaration(input);
-    const program = [...declarations, input].join("\n") + "\n";
-
-    fs.writeFileSync(replFile, program);
-
-    const result = spawnSync(
-      process.execPath,
-      [process.argv[1], "run", replFile],
-      { stdio: "inherit" },
-    );
-
-    if (result.error) {
-      console.error(`error: ${result.error.message}`);
-    } else if (isDecl && result.status === 0) {
-      declarations.push(input); // only keep it if it actually compiled clean
-    }
+    console.log("Zen REPL");
+    console.log("Type exit() or press Ctrl+D to exit.");
 
     rl.prompt();
-  });
 
-  rl.on("close", () => {
-    try { fs.rmSync(replDir, { recursive: true, force: true }); } catch {}
-    process.exit(0);
-  });
-}
+    rl.on("line", (line) => {
+      const input = line.trim();
 
-isDeclaration(line) {
-  const DECL_STARTERS = [
-    "int", "double", "bool", "string", "byte", "long", // PRIMITIVE_TYPES
-    "List",
-    "Map",
-    "struct",
-    "fn",
-    "const",
-    "enum",
-    "extern",
-    "auto",
-  ];
+      if (input === "exit()") {
+        rl.close();
+        return;
+      }
+      if (!input) {
+        rl.prompt();
+        return;
+      }
 
-  return new RegExp(`^(${DECL_STARTERS.join("|")})\\b`).test(line)
-      || /^import\b/.test(line);
-}
+      const isDecl = this.isDeclaration(input);
+      const program = [...declarations, input].join("\n") + "\n";
+
+      fs.writeFileSync(replFile, program);
+
+      const result = spawnSync(
+        process.execPath,
+        [process.argv[1], "run", replFile],
+        { stdio: "inherit" },
+      );
+
+      if (result.error) {
+        console.error(`error: ${result.error.message}`);
+      } else if (isDecl && result.status === 0) {
+        declarations.push(input); // only keep it if it actually compiled clean
+      }
+
+      rl.prompt();
+    });
+
+    rl.on("close", () => {
+      try {
+        fs.rmSync(replDir, { recursive: true, force: true });
+      } catch {}
+      process.exit(0);
+    });
+  }
+
+  isDeclaration(line) {
+    const DECL_STARTERS = [
+      "int",
+      "double",
+      "bool",
+      "string",
+      "byte",
+      "long", // PRIMITIVE_TYPES
+      "List",
+      "Map",
+      "struct",
+      "fn",
+      "const",
+      "enum",
+      "extern",
+      "auto",
+    ];
+
+    return (
+      new RegExp(`^(${DECL_STARTERS.join("|")})\\b`).test(line) ||
+      /^import\b/.test(line)
+    );
+  }
 
   setCompilerRoot() {
     const __filename = fileURLToPath(import.meta.url);
@@ -284,21 +299,23 @@ isDeclaration(line) {
     }
   }
 
- getLibDirs(prefix) {
-  const dirs = [path.join(prefix, "lib")];
+  getLibDirs(prefix) {
+    const dirs = [path.join(prefix, "lib")];
 
-  try {
-    const entries = fs.readdirSync(path.join(prefix, "lib"), { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        dirs.push(path.join(prefix, "lib", entry.name));
+    try {
+      const entries = fs.readdirSync(path.join(prefix, "lib"), {
+        withFileTypes: true,
+      });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          dirs.push(path.join(prefix, "lib", entry.name));
+        }
       }
+    } catch {
+      // $PREFIX/lib doesn't exist or isn't readable — fall back to just the base dir
     }
-  } catch {
-    // $PREFIX/lib doesn't exist or isn't readable — fall back to just the base dir
-  }
 
-  return dirs;
+    return dirs;
   }
 
   async compile(command) {
@@ -312,111 +329,104 @@ isDeclaration(line) {
     }
 
     const linkIndex = this.args.indexOf("--link");
-const flagsIndex = this.args.indexOf("--flags");
+    const flagsIndex = this.args.indexOf("--flags");
 
-let extraLinkObjs = [];
-let extraFlags = [];
+    let extraLinkObjs = [];
+    let extraFlags = [];
 
-if (linkIndex !== -1) {
-  const end =
-    flagsIndex !== -1 && flagsIndex > linkIndex
-      ? flagsIndex
-      : this.args.length;
+    if (linkIndex !== -1) {
+      const end =
+        flagsIndex !== -1 && flagsIndex > linkIndex
+          ? flagsIndex
+          : this.args.length;
 
-  extraLinkObjs = this.args.slice(linkIndex + 1, end);
+      extraLinkObjs = this.args.slice(linkIndex + 1, end);
 
-  for (const obj of extraLinkObjs) {
-    if (!obj.endsWith(".o") && !obj.endsWith(".c")) {
-      console.error(
-        `error: --link expects .o or .c file, got '${obj}'`
-      );
-      process.exit(1);
+      for (const obj of extraLinkObjs) {
+        if (!obj.endsWith(".o") && !obj.endsWith(".c")) {
+          console.error(`error: --link expects .o or .c file, got '${obj}'`);
+          process.exit(1);
+        }
+
+        if (!fs.existsSync(obj)) {
+          console.error(`error: Link object not found: ${obj}`);
+          process.exit(1);
+        }
+      }
     }
 
-    if (!fs.existsSync(obj)) {
-      console.error(`error: Link object not found: ${obj}`);
-      process.exit(1);
-    }
-  }
-}
+    if (flagsIndex !== -1) {
+      extraFlags = this.args.slice(flagsIndex + 1);
 
-if (flagsIndex !== -1) {
-  extraFlags = this.args.slice(flagsIndex + 1);
-
-  for (const flag of extraFlags) {
-    if (!flag.trim()) {
-      console.error("error: --flags expects linker flags");
-      process.exit(1);
+      for (const flag of extraFlags) {
+        if (!flag.trim()) {
+          console.error("error: --flags expects linker flags");
+          process.exit(1);
+        }
+      }
     }
-  }
-}
 
     this.extractModuleName(file);
     this.setProjectRoot(file);
 
     let packageNativeObjs = [];
 
-if (this.pathType(file) === "project") {
-  const configPath = path.join(this.PROJECT_ROOT, "zen.json");
+    if (this.pathType(file) === "project") {
+      const configPath = path.join(this.PROJECT_ROOT, "zen.json");
 
-  if (!fs.existsSync(configPath)) {
-    console.error(`error: Package configuration not found: ${configPath}`);
-    process.exit(1);
-  }
+      if (!fs.existsSync(configPath)) {
+        console.error(`error: Package configuration not found: ${configPath}`);
+        process.exit(1);
+      }
 
-  let config;
+      let config;
 
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  } catch (err) {
-    console.error(`error: Invalid zen.json: ${err.message}`);
-    process.exit(1);
-  }
+      try {
+        config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      } catch (err) {
+        console.error(`error: Invalid zen.json: ${err.message}`);
+        process.exit(1);
+      }
 
-  if (config.native !== undefined) {
-    if (!Array.isArray(config.native)) {
-      console.error("error: 'native' in zen.json must be an array");
-      process.exit(1);
+      if (config.native !== undefined) {
+        if (!Array.isArray(config.native)) {
+          console.error("error: 'native' in zen.json must be an array");
+          process.exit(1);
+        }
+
+        for (const nativeFile of config.native) {
+          if (typeof nativeFile !== "string" || !nativeFile.trim()) {
+            console.error(
+              "error: each native dependency must be a non-empty string",
+            );
+            process.exit(1);
+          }
+
+          const nativePath = path.resolve(this.PROJECT_ROOT, nativeFile);
+
+          if (!fs.existsSync(nativePath)) {
+            console.error(`error: Native object not found: ${nativeFile}`);
+            process.exit(1);
+          }
+
+          if (!fs.statSync(nativePath).isFile()) {
+            console.error(
+              `error: Native dependency is not a file: ${nativeFile}`,
+            );
+            process.exit(1);
+          }
+
+          if (!nativePath.endsWith(".o") && !nativePath.endsWith(".c")) {
+            console.error(
+              `error: Native dependency must be a .o or .c file: ${nativeFile}`,
+            );
+            process.exit(1);
+          }
+
+          packageNativeObjs.push(nativePath);
+        }
+      }
     }
-
-    for (const nativeFile of config.native) {
-      if (typeof nativeFile !== "string" || !nativeFile.trim()) {
-        console.error(
-          "error: each native dependency must be a non-empty string",
-        );
-        process.exit(1);
-      }
-
-      const nativePath = path.resolve(
-        this.PROJECT_ROOT,
-        nativeFile,
-      );
-
-      if (!fs.existsSync(nativePath)) {
-        console.error(
-          `error: Native object not found: ${nativeFile}`,
-        );
-        process.exit(1);
-      }
-
-      if (!fs.statSync(nativePath).isFile()) {
-        console.error(
-          `error: Native dependency is not a file: ${nativeFile}`,
-        );
-        process.exit(1);
-      }
-
-      if (!nativePath.endsWith(".o") && !nativePath.endsWith(".c")) {
-  console.error(
-    `error: Native dependency must be a .o or .c file: ${nativeFile}`,
-  );
-  process.exit(1);
-}
-
-packageNativeObjs.push(nativePath);
-    }
-  }
-}
 
     let IRBuilder;
     try {
@@ -530,7 +540,7 @@ packageNativeObjs.push(nativePath);
 
     const lexer = new Lexer(this.source, IRB);
     const tokens = lexer.tokenize();
-      
+
     if (command === "tokens") {
       console.log(JSON.stringify(tokens, null, 2));
       process.exit(0);
@@ -601,17 +611,18 @@ packageNativeObjs.push(nativePath);
 
     this.moduleFiles.startCompiling(file);
 
-    const codegen = new CodeGen(ast, this.moduleName, this.moduleFiles, this.source);
+    const codegen = new CodeGen(
+      ast,
+      this.moduleName,
+      this.moduleFiles,
+      this.source,
+    );
     const llvm = codegen.generateLLVM();
 
     if (codegen.IRB.exported && command === "run") {
-  IRB.emitError(
-    "ModuleError",
-    "exported modules cannot be run directly",
-  );
+      IRB.emitError("ModuleError", "exported modules cannot be run directly");
     }
 
-    
     for (const [name, node] of this.moduleFiles.declFunctions) {
       if (!this.moduleFiles.defFunctions.has(name)) {
         IRB.emitError(
@@ -659,7 +670,9 @@ packageNativeObjs.push(nativePath);
 
     for (const ll of moduleFiles) {
       try {
-        const absLL = path.isAbsolute(ll) ? ll : path.resolve(this.PROJECT_ROOT, ll);
+        const absLL = path.isAbsolute(ll)
+          ? ll
+          : path.resolve(this.PROJECT_ROOT, ll);
         const obj = absLL.replace(".ll", ".o");
         this.run(`llc -filetype=obj -relocation-model=pic ${absLL} -o ${obj}`);
         moduleObjs.push(obj);
@@ -678,7 +691,7 @@ packageNativeObjs.push(nativePath);
       "curlRuntime",
       "httpRuntime",
       "jsonRuntime",
-      "tcp"
+      "tcp",
     ];
 
     const runtimeObjs = runtimeFiles.map((name) => {
@@ -705,44 +718,43 @@ packageNativeObjs.push(nativePath);
     );
 
     const allNativeFiles = [
-  ...packageNativeObjs,
-  ...this.moduleFiles.nativeFiles,
-];
-    
-const compiledNativeObjs = [];
+      ...packageNativeObjs,
+      ...this.moduleFiles.nativeFiles,
+    ];
 
-for (const nativeFile of allNativeFiles) {
-  if (nativeFile.endsWith(".o")) {
-    compiledNativeObjs.push(nativeFile);
-    continue;
-  }
+    const compiledNativeObjs = [];
 
-  if (nativeFile.endsWith(".c")) {
-    const obj = path.join(
-      buildDir,
-      `${path.basename(nativeFile, ".c")}.o`,
-    );
+    for (const nativeFile of allNativeFiles) {
+      if (nativeFile.endsWith(".o")) {
+        compiledNativeObjs.push(nativeFile);
+        continue;
+      }
 
-    this.run(`clang -fPIC -c "${nativeFile}" -o "${obj}"`);
+      if (nativeFile.endsWith(".c")) {
+        const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.o`);
 
-    compiledNativeObjs.push(obj);
-  }
-}
+        this.run(`clang -fPIC -c "${nativeFile}" -o "${obj}"`);
+
+        compiledNativeObjs.push(obj);
+      }
+    }
 
     const packageFlags = [...this.moduleFiles.flags];
 
-    const linkArgs = [...new Set([
-  "clang",
-  outO,
-  ...moduleObjs,
-  ...stdlibObjs,
-  ...runtimeObjs,
-  ...compiledNativeObjs,
-  ...extraLinkObjs,
-  ...packageFlags,
-  ...extraFlags,
-  this.optFlag,
-])];
+    const linkArgs = [
+      ...new Set([
+        "clang",
+        outO,
+        ...moduleObjs,
+        ...stdlibObjs,
+        ...runtimeObjs,
+        ...compiledNativeObjs,
+        ...extraLinkObjs,
+        ...packageFlags,
+        ...extraFlags,
+        this.optFlag,
+      ]),
+    ];
 
     if (!this.isWindows) {
       linkArgs.push("-Wno-override-module");
@@ -751,10 +763,10 @@ for (const nativeFile of allNativeFiles) {
 
     const prefix = process.env.PREFIX;
 
-if (!this.isWindows && prefix) {
-  const rpath = this.getLibDirs(prefix).join(":");
-  linkArgs.push(`-Wl,-rpath,${rpath}`);
-}
+    if (!this.isWindows && prefix) {
+      const rpath = this.getLibDirs(prefix).join(":");
+      linkArgs.push(`-Wl,-rpath,${rpath}`);
+    }
 
     linkArgs.push("-lcurl");
     linkArgs.push("-lcrypto");
@@ -768,10 +780,11 @@ if (!this.isWindows && prefix) {
       process.exit(0);
     }
 
-    const userArgs = linkIndex !== -1
-  ? this.args.slice(2, linkIndex).join(" ")
-  : this.args.slice(3).join(" ");
-    
+    const userArgs =
+      linkIndex !== -1
+        ? this.args.slice(2, linkIndex).join(" ")
+        : this.args.slice(3).join(" ");
+
     this.run(`${outputExe} ${userArgs}`);
   }
 }

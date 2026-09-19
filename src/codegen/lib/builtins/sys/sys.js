@@ -43,7 +43,9 @@ export class ZenSys {
       const loadedPtr = this.IRB.newTemp();
       this.IRB.emit(`${loadedC} = load i32, ptr @argc`);
       this.IRB.emit(`${loadedPtr} = load ptr, ptr @argv`);
-      this.IRB.emit(`${tmp} = call ptr @_sys_argv(i32 ${loadedC}, ptr ${loadedPtr})`);
+      this.IRB.emit(
+        `${tmp} = call ptr @_sys_argv(i32 ${loadedC}, ptr ${loadedPtr})`,
+      );
 
       return {
         ptr: tmp,
@@ -130,7 +132,7 @@ export class ZenSys {
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
     }
 
-    this.IRB.cleanupBuiltinStringTemps(exprs)
+    this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
       ptr: t,

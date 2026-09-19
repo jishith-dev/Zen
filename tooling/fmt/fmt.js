@@ -1,4 +1,3 @@
-
 import { ParserTypes } from "../../src/config/config.js";
 
 export class Fmt {
@@ -130,14 +129,14 @@ export class Fmt {
   }
 
   formatParam(p) {
-  let s =
-    p.type && p.type.type === "Function"
-      ? this.formatType(p.type)
-      : this.formatType(p.type) + " " + p.name;
-  if (p.isRest) s += "...";
-  if (p.default) s += " = " + this.capture(() => this.visit(p.default));
-  return s;
-}
+    let s =
+      p.type && p.type.type === "Function"
+        ? this.formatType(p.type)
+        : this.formatType(p.type) + " " + p.name;
+    if (p.isRest) s += "...";
+    if (p.default) s += " = " + this.capture(() => this.visit(p.default));
+    return s;
+  }
 
   visit(node) {
     if (!node) return;
@@ -146,7 +145,7 @@ export class Fmt {
       this.visitStatements(node);
       return;
     }
-    
+
     switch (node.type) {
       // statements
       case ParserTypes.VARIABLE_DECLARATION:
@@ -156,7 +155,7 @@ export class Fmt {
       case ParserTypes.VARIABLE_REFERENCE:
         this.visit(node.expression);
         break;
-        
+
       case ParserTypes.COMMENT:
         this.write(node.value.trimEnd());
         break;
@@ -303,9 +302,7 @@ export class Fmt {
     }
   }
 
-
   visitVariable(node) {
-    
     if (node.isConstant) this.write("const");
     // `StructName instance = value` (IDENTIFIER IDENTIFIER declaration)
     if (node.struct_ref) {
@@ -637,7 +634,6 @@ export class Fmt {
     if (node.isAwait) this.write("await ");
 
     if (node.callee) {
-
       this.writeOperand(node.callee, Infinity, false);
     } else {
       this.write(node.name);
@@ -662,7 +658,6 @@ export class Fmt {
   }
 
   visitUnary(node) {
-
     if (node.isPostfix) {
       this.writeOperand(node.argument, 7, false);
       this.write(node.operator);
@@ -730,26 +725,26 @@ export class Fmt {
   }
 
   escapeTemplateText(text) {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/`/g, "\\`")
-    .replace(/\$\{/g, "\\${")
-    .replace(/\n/g, "\\n")
-    .replace(/\t/g, "\\t")
-    .replace(/\r/g, "\\r");
-}
-
-visitTemplateLiteral(node) {
-  this.write("`");
-  for (const part of node.parts) {
-    if (typeof part === "string") {
-      this.write(this.escapeTemplateText(part));
-    } else {
-      this.write("${");
-      this.write(this.capture(() => this.visitStatements(part)));
-      this.write("}");
-    }
+    return text
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\$\{/g, "\\${")
+      .replace(/\n/g, "\\n")
+      .replace(/\t/g, "\\t")
+      .replace(/\r/g, "\\r");
   }
-  this.write("`");
-}
+
+  visitTemplateLiteral(node) {
+    this.write("`");
+    for (const part of node.parts) {
+      if (typeof part === "string") {
+        this.write(this.escapeTemplateText(part));
+      } else {
+        this.write("${");
+        this.write(this.capture(() => this.visitStatements(part)));
+        this.write("}");
+      }
+    }
+    this.write("`");
+  }
 }

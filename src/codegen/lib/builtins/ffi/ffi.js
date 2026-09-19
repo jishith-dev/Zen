@@ -147,7 +147,7 @@ export class FFI {
     const t = this.IRB.newTemp();
     this.IRB.emit(`${t} = call ${llvmRet} @${cSymbol}(${callArgs})`);
 
-    this.IRB.cleanupBuiltinStringTemps(exprs)
+    this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
       ptr: t,

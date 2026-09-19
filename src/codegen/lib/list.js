@@ -98,27 +98,29 @@ export class ZenList {
         return;
       }
 
-      // EXISTING LIST VARIABLE 
-if (element.type === "variable") {
-  const expr = this.expr.handleExpression(element);
-  this.IRB.emitExpr(expr);
+      // EXISTING LIST VARIABLE
+      if (element.type === "variable") {
+        const expr = this.expr.handleExpression(element);
+        this.IRB.emitExpr(expr);
 
-  if (expr.isList) {
-    let listVal = expr.ptr;
+        if (expr.isList) {
+          let listVal = expr.ptr;
 
-    if (expr.needsLoad) {
-      const t = this.IRB.newTemp();
-      this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
-      listVal = t;
-    }
+          if (expr.needsLoad) {
+            const t = this.IRB.newTemp();
+            this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+            listVal = t;
+          }
 
-    const tmp = this.IRB.newTemp();
-    this.IRB.emitAlloca(tmp, `ptr`);
-    this.IRB.emit(`store ptr ${listVal}, ptr ${tmp}`);
-    this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-    return;
-  }
-}
+          const tmp = this.IRB.newTemp();
+          this.IRB.emitAlloca(tmp, `ptr`);
+          this.IRB.emit(`store ptr ${listVal}, ptr ${tmp}`);
+          this.IRB.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+          );
+          return;
+        }
+      }
 
       // NESTED LIST
 
@@ -257,20 +259,19 @@ if (element.type === "variable") {
       }
 
       if (isValidList) {
-
-if (expr.type.startsWith("List<")) {
+        if (expr.type.startsWith("List<")) {
           const generic = this.IRB.parseGenericFromString(expr.type);
           const t = this.IRB.getDeepestGeneric(generic);
           expr.type = t;
-}
-        
-      if (type !== expr.type) {
-        this.IRB.emitError(
-          "TypeError",
-          `List ${name} expected ${type} but got ${expr.type}`,
-          node,
-        );
-      }
+        }
+
+        if (type !== expr.type) {
+          this.IRB.emitError(
+            "TypeError",
+            `List ${name} expected ${type} but got ${expr.type}`,
+            node,
+          );
+        }
       }
 
       this.IRB.emitExpr(expr);
@@ -341,13 +342,11 @@ if (expr.type.startsWith("List<")) {
         }
 
         if (el.type === "CALL") {
-          actualType = this.infer.infer(el)
+          actualType = this.infer.infer(el);
         }
 
         // Leaf check using the resolved actual type
-        if (
-  actualType !== expectedType
-) {
+        if (actualType !== expectedType) {
           this.IRB.emitError(
             "TypeError",
             `List ${name} expected ${expectedType} but got ${actualType}`,

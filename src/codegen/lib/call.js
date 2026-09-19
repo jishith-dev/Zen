@@ -14,7 +14,7 @@ import {
   CRYPTO_MAP,
   BUILTIN_STRUCT_ABI,
   BUILTIN_STRUCTS,
-  RESERVED_FUNCTIONS
+  RESERVED_FUNCTIONS,
 } from "../../config/config.js";
 
 export class Call {
@@ -36,7 +36,7 @@ export class Call {
     httpServer,
     thread,
     debug,
-    crypto
+    crypto,
   ) {
     this.IRB = IRB;
     this.moduleName = moduleName;
@@ -107,7 +107,7 @@ export class Call {
     }
 
     const name = node.name;
-    
+
     let isStdFn = false;
 
     if (STD_FUNCTIONS.includes(name)) {
@@ -168,8 +168,6 @@ export class Call {
         mangledName = `zen_${this.moduleName}_${name}`;
     }
 
-    
-
     const isStruct = fn.isStructReturn || this.IRB.hasStruct(fn.returnType);
 
     const isNativeABI = isStruct && this.isPtrReturn(fn.returnType);
@@ -224,9 +222,6 @@ export class Call {
           isVarRef: false,
         };
       } else if (arg.type === "FUNCTION_DECLARATION") {
-        
-        
-        
         if (!this.IRB.stdlibMode) {
           const stdlibSet = new Set([...RESERVED_FUNCTIONS]);
 
@@ -275,11 +270,10 @@ export class Call {
           isDeclaration: false,
           isExtern: false,
           freedPindex: new Set(),
-        };        
-        this.IRB.anonymFunctions.set(arg.name, data)
+        };
+        this.IRB.anonymFunctions.set(arg.name, data);
         val = this.func.handleFunction(arg, true);
-      }
-      else if (arg.type === "ARRAY") {
+      } else if (arg.type === "ARRAY") {
         const wrapped = param.type;
 
         const listGeneric = {
@@ -307,7 +301,7 @@ export class Call {
       args.push(val);
     }
 
-    for (const i of (fn.freedPindex ?? new Set())) {
+    for (const i of fn.freedPindex ?? new Set()) {
       const arg = node.args[i];
       if (!arg) continue;
 
@@ -387,9 +381,9 @@ export class Call {
       let local = [];
 
       for (let i = 0; i < fixedArgs.length; i++) {
-  const a = fixedArgs[i];
-  const expectedType = fn.params[i]?.type?.type || fn.params?.type;
-      
+        const a = fixedArgs[i];
+        const expectedType = fn.params[i]?.type?.type || fn.params?.type;
+
         if (a.global?.length) global.push(...a.global);
         if (a.local?.length) local.push(...a.local);
 
@@ -403,27 +397,25 @@ export class Call {
           }
 
           argStr.push(`ptr ${value}`);
-        } 
-        else if (a?.isStruct && BUILTIN_STRUCTS.includes(a?.type)) {
-        let value = a.ptr;
+        } else if (a?.isStruct && BUILTIN_STRUCTS.includes(a?.type)) {
+          let value = a.ptr;
 
-        if (a.needsLoad) {
-          const tmp = this.IRB.newTemp();
-          local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
-          value = tmp;
-        }
-        argStr.push(`ptr ${value}`);
-      }
-        else if (a?.isStruct) {
+          if (a.needsLoad) {
+            const tmp = this.IRB.newTemp();
+            local.push(`${tmp} = load ptr, ptr ${a.ptr}`);
+            value = tmp;
+          }
+          argStr.push(`ptr ${value}`);
+        } else if (a?.isStruct) {
           argStr.push(`ptr ${a.ptr}`);
         } else if (a.needsLoad) {
           const tmp = this.IRB.newTemp();
           local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
           argStr.push(`ptr ${tmp}`);
         } else {
-  let llvmType = a.llvmType;
+          let llvmType = a.llvmType;
 
-  argStr.push(`${llvmType} ${a.ptr}`);
+          argStr.push(`${llvmType} ${a.ptr}`);
         }
       }
 
@@ -437,7 +429,6 @@ export class Call {
       const expectedType = restParam?.type?.type || restParam?.type;
 
       let inferredType = first?.type;
-
 
       if (!first) {
         this.IRB.emitError(
@@ -469,7 +460,7 @@ export class Call {
       }
 
       const elementSize = this.IRB.sizeOf(inferredType);
-      
+
       const llvmType = this.IRB.getLLVMType(inferredType);
       const listPtr = this.IRB.newTemp();
 
@@ -503,17 +494,17 @@ export class Call {
           local.push(
             `${tmp} = call ptr ${isFunctionParam ? fn.ptr : `@${mangledName}`}(${argStr.join(", ")})`,
           );
-          
+
           for (const a of args) {
-  if (a.type === "string" && a.isTemp) {
-    this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
-          
+            if (a.type === "string" && a.isTemp) {
+              this.IRB.declareOneTime(
+                "_zen_string_free",
+                "declare void @_zen_string_free(ptr)",
+              );
+              local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+            }
+          }
+
           return {
             ptr: tmp,
             type: fn.returnType,
@@ -535,31 +526,47 @@ export class Call {
           );
 
           callTmp = tmp;
-          
-          for (const a of args) {
-  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
-    this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
-        } else {
-          const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
-          local.push(`call void ${target}(${argStr.join(", ")})`);
-          
           for (const a of args) {
-  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
-    
+            if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+              this.IRB.declareOneTime(
+                "_zen_string_free",
+                "declare void @_zen_string_free(ptr)",
+              );
+              local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+            }
+          }
+        } else {
+          if (fn.isThread) {
     this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
+      "_zen_thread",
+      "declare void @_zen_thread(ptr, ptr)",
     );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
+
+     const { ctx, trampolineName } = this.IRB.createThreadArgContext(
+  mangledName,
+  fn,
+  args,
+  argStr,
+  local
+);       
+
+    local.push(`call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`);
+  } else {
+    const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+
+    local.push(`call void ${target}(${argStr.join(", ")})`);
+          }
+
+          for (const a of args) {
+            if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+              this.IRB.declareOneTime(
+                "_zen_string_free",
+                "declare void @_zen_string_free(ptr)",
+              );
+              local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+            }
+          }
         }
       } else {
         callTmp = this.IRB.newTemp();
@@ -569,17 +576,16 @@ export class Call {
         local.push(
           `${callTmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`,
         );
-        
+
         for (const a of args) {
-  if (a.type === "string" && (a.isTemp || a.isLiteral)) {
-    
-    this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
+          if (a.type === "string" && (a.isTemp || a.isLiteral)) {
+            this.IRB.declareOneTime(
+              "_zen_string_free",
+              "declare void @_zen_string_free(ptr)",
+            );
+            local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+          }
+        }
       }
 
       if (asStatement) {
@@ -615,9 +621,9 @@ export class Call {
     // NORMAL CALL
 
     for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  const expectedType = fn.params[i]?.type?.type || fn.params?.type;
-      
+      const a = args[i];
+      const expectedType = fn.params[i]?.type?.type || fn.params?.type;
+
       if (a?.isStruct && BUILTIN_STRUCT_ABI.includes(a.type)) {
         let value = a.ptr;
 
@@ -637,18 +643,17 @@ export class Call {
           value = tmp;
         }
         argStr.push(`ptr ${value}`);
-      }
-      else if (a?.isStruct) {
+      } else if (a?.isStruct) {
         argStr.push(`ptr ${a.ptr}`);
       } else if (a.needsLoad) {
         const tmp = this.IRB.newTemp();
         local.push(`${tmp} = load ${a.llvmType}, ptr ${a.ptr}`);
         argStr.push(`ptr ${tmp}`);
       } else {
-  let llvmType = a.llvmType;
+        let llvmType = a.llvmType;
 
-  argStr.push(`${llvmType} ${a.ptr}`);
-    }
+        argStr.push(`${llvmType} ${a.ptr}`);
+      }
     }
 
     if (fn.returnType === "void" || isStruct) {
@@ -700,27 +705,33 @@ export class Call {
       if (fn.isThread) {
         this.IRB.declareOneTime(
           "_zen_thread",
-          "declare void @_zen_thread(ptr)",
+          "declare void @_zen_thread(ptr, ptr)",
         );
 
-        local.push(`call void @_zen_thread(ptr @${mangledName})`);
+        const { ctx, trampolineName } = this.IRB.createThreadArgContext(
+  mangledName,
+  fn,
+  args,
+  argStr,
+  local
+);
+
+        local.push(`call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`);
       } else {
         const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
         local.push(`call void ${target}(${argStr.join(", ")})`);
       }
-      
+
       for (const a of args) {
-        
-  if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
-    
-    this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
+        if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
+          this.IRB.declareOneTime(
+            "_zen_string_free",
+            "declare void @_zen_string_free(ptr)",
+          );
+          local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+        }
+      }
 
       if (asStatement) {
         this.IRB.emit(local.join("\n"));
@@ -745,17 +756,16 @@ export class Call {
     const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
     local.push(`${tmp} = call ${llvmRetType} ${target}(${argStr.join(", ")})`);
-    
+
     for (const a of args) {
-      
-  if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
-    this.IRB.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
-    local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
-  }
-}
+      if (a.type === "string" && (a.isTemp || a?.isLiteral)) {
+        this.IRB.declareOneTime(
+          "_zen_string_free",
+          "declare void @_zen_string_free(ptr)",
+        );
+        local.push(`call void @_zen_string_free(ptr ${a.ptr})`);
+      }
+    }
 
     if (asStatement) {
       this.IRB.emit(local.join("\n"));
@@ -836,7 +846,7 @@ export class Call {
       case "stringToBytes":
         return this.type.strToBytes(node, globalScope);
 
-     case "bytesToString":
+      case "bytesToString":
         return this.type.bytesToStr(node, globalScope);
 
       case "Byte":
@@ -844,8 +854,6 @@ export class Call {
 
       case "matchRegex":
         return this.string.matchRegex(node);
-
-      
 
       // these are same pattern functions
       // for future modification and semantic understanding of compiler internal we keep this now.

@@ -18,8 +18,6 @@
 #include <openssl/rand.h>
 #include <stdint.h>
 
-#define ZEN_MAX_THREADS 1024
-
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
     exit(1);
@@ -34,30 +32,41 @@ static void _zen_win_init(void) {
     }
 }
 
-typedef void (*ZenThreadFn)(void);
+typedef void (*ZenThreadFn)(void *);
 
 typedef struct {
     ZenThreadFn fn;
+    void *arg;
 } ZenThreadData;
 
-static HANDLE zen_threads[ZEN_MAX_THREADS];
+static HANDLE *zen_threads = NULL;
 static int zen_thread_count = 0;
+static int zen_thread_capacity = 0;
 
 static DWORD WINAPI _zen_thread_runner(LPVOID arg) {
     ZenThreadData *data = (ZenThreadData *)arg;
 
-    data->fn();
+    data->fn(data->arg);
 
     free(data);
     return 0;
 }
 
-void _zen_thread(ZenThreadFn fn) {
-    if (zen_thread_count >= ZEN_MAX_THREADS) {
-        zen_error(
-            "ThreadError",
-            "Maximum thread limit exceeded"
-        );
+void _zen_thread(ZenThreadFn fn, void *ctx) {
+    if (zen_thread_count >= zen_thread_capacity) {
+        int newCapacity = zen_thread_capacity == 0 ? 64 : zen_thread_capacity * 2;
+
+        HANDLE *grown = realloc(zen_threads, sizeof(HANDLE) * newCapacity);
+
+        if (!grown) {
+            zen_error(
+                "MemoryError",
+                "Failed to grow thread handle table"
+            );
+        }
+
+        zen_threads = grown;
+        zen_thread_capacity = newCapacity;
     }
 
     ZenThreadData *data = malloc(sizeof(ZenThreadData));
@@ -70,6 +79,7 @@ void _zen_thread(ZenThreadFn fn) {
     }
 
     data->fn = fn;
+    data->arg = ctx;
 
     HANDLE h = CreateThread(NULL, 0, _zen_thread_runner, data, 0, NULL);
 

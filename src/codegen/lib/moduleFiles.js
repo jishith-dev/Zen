@@ -23,7 +23,7 @@ export class ModuleFiles {
   }
 
   addNative(file) {
-  this.nativeFiles.add(file);
+    this.nativeFiles.add(file);
   }
 
   startCompiling(source) {

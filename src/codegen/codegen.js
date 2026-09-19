@@ -48,7 +48,7 @@ export class CodeGen {
 
     this.IRB = new IRBuilder(this.moduleName);
     this.IRB.source = source;
-    
+
     this.expr = new Expression(this.IRB, this.infer);
     this.time = new Time(this.IRB, this.expr);
     this.ffi = new FFI(this.IRB, this.expr);
@@ -94,7 +94,7 @@ export class CodeGen {
       this.httpServer,
       this.thread,
       this.debug,
-      this.crypto
+      this.crypto,
     );
 
     this.expr.setCall(this.call);
@@ -138,14 +138,12 @@ export class CodeGen {
 
     const haveExport = this.ast.find((f) => f.type === "EXPORT");
 
-this.IRB.exportNames = haveExport
-  ? new Set(haveExport.names)
-  : new Set();
+    this.IRB.exportNames = haveExport ? new Set(haveExport.names) : new Set();
 
     if (haveExport) {
       this.IRB.haveExport = true;
       this.IRB.globals.push(`@argc = external global i32`);
-this.IRB.globals.push(`@argv = external global ptr`);
+      this.IRB.globals.push(`@argv = external global ptr`);
     }
 
     for (const node of this.ast) {
@@ -239,6 +237,7 @@ define void @_assignSeed () {
         // thread fn CHECK
 
         if (node.isThread) {
+          /*
           if (node.params.length > 0) {
             this.IRB.emitError(
               "ThreadError",
@@ -246,6 +245,9 @@ define void @_assignSeed () {
               node.params,
             );
           }
+          */
+
+          
 
           if (returnType !== "void") {
             this.IRB.emitError(
@@ -309,7 +311,7 @@ define void @_assignSeed () {
       functionTable: this.IRB.functions || [],
       structTable: this.IRB.structTable || [],
       structInitializers: this.IRB.structInitializers || new Map(),
-      exportNames: this.IRB.exportNames
+      exportNames: this.IRB.exportNames,
     };
   }
 
@@ -367,6 +369,7 @@ define void @_assignSeed () {
         // thread fn CHECK
 
         if (node.isThread) {
+          /*
           if (node.params.length > 0) {
             this.IRB.emitError(
               "ThreadError",
@@ -374,6 +377,7 @@ define void @_assignSeed () {
               node.params,
             );
           }
+          */
 
           if (returnType !== "void") {
             this.IRB.emitError(
@@ -625,10 +629,10 @@ define void @_assignSeed () {
     if (isUnary) {
       return this.variable.handleUnary(node.expression);
     }
-    
+
     if (node.expression.type === "BINARY_EXPRESSION") {
-        return; // dead code
-      }
+      return; // dead code
+    }
 
     return this.variable.variableReference(node);
   }

@@ -102,7 +102,7 @@ export class DEBUG {
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
     }
 
-    this.IRB.cleanupBuiltinStringTemps(exprs)
+    this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
       ptr: t,
@@ -235,7 +235,7 @@ export class DEBUG {
         list: 5,
         map: 6,
         long: 7,
-        byte: 8
+        byte: 8,
       };
 
       const tv = type_map[deepestType];

@@ -13,39 +13,50 @@
 #include <termios.h>
 #include <fcntl.h>
 
-#include <pthread.h>
 
-#define ZEN_MAX_THREADS 1024
+
+#include <pthread.h>
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
     exit(1);
 }
 
-typedef void (*ZenThreadFn)(void);
+typedef void (*ZenThreadFn)(void *);
 
 typedef struct {
     ZenThreadFn fn;
+    void *arg;
 } ZenThreadData;
 
-static pthread_t zen_threads[ZEN_MAX_THREADS];
+static pthread_t *zen_threads = NULL;
 static int zen_thread_count = 0;
+static int zen_thread_capacity = 0;
 
 static void *_zen_thread_runner(void *arg) {
     ZenThreadData *data = (ZenThreadData *)arg;
 
-    data->fn();
+    data->fn(data->arg);
 
     free(data);
     return NULL;
 }
 
-void _zen_thread(ZenThreadFn fn) {
-    if (zen_thread_count >= ZEN_MAX_THREADS) {
-        zen_error(
-            "ThreadError",
-            "Maximum thread limit exceeded"
-        );
+void _zen_thread(ZenThreadFn fn, void *ctx) {
+    if (zen_thread_count >= zen_thread_capacity) {
+        int newCapacity = zen_thread_capacity == 0 ? 64 : zen_thread_capacity * 2;
+
+        pthread_t *grown = realloc(zen_threads, sizeof(pthread_t) * newCapacity);
+
+        if (!grown) {
+            zen_error(
+                "MemoryError",
+                "Failed to grow thread handle table"
+            );
+        }
+
+        zen_threads = grown;
+        zen_thread_capacity = newCapacity;
     }
 
     ZenThreadData *data = malloc(sizeof(ZenThreadData));
@@ -58,6 +69,7 @@ void _zen_thread(ZenThreadFn fn) {
     }
 
     data->fn = fn;
+    data->arg = ctx;
 
     int result = pthread_create(
         &zen_threads[zen_thread_count],
@@ -95,6 +107,8 @@ void _threads_waitAll() {
 
     zen_thread_count = 0;
 }
+    
+
 
 // clipboard API (not fully support)
 
@@ -168,7 +182,7 @@ int _sys_clipboard_hasText(void) {
 
 // ----
 
-void _time_sleep(int ms) {
+void _time_sleep(long ms) {
     usleep(ms * 1000);
 }
 
@@ -185,27 +199,11 @@ int _zen_regex_match(const char* str, const char* pattern) {
 
 double _sys_performance() {
 
-#ifdef _WIN32
-    static LARGE_INTEGER freq;
-    static int initialized = 0;
-
-    if (!initialized) {
-        QueryPerformanceFrequency(&freq);
-        initialized = 1;
-    }
-
-    LARGE_INTEGER counter;
-    QueryPerformanceCounter(&counter);
-
-    return (double)counter.QuadPart * 1000.0 / (double)freq.QuadPart;
-
-#else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
 
     return (double)ts.tv_sec * 1000.0 +
            (double)ts.tv_nsec / 1e6;
-#endif
 
 }
 
@@ -549,39 +547,24 @@ long _os_processMemory() {
 }
 
 const char* _os_osName() {
-#ifdef _WIN32
-    return "Windows";
-#else
     static struct utsname u;
     if (uname(&u) == 0)
         return u.sysname;
     return "Linux";
-#endif
 }
 
 const char* _os_osVersion() {
-#ifdef _WIN32
-    return "Windows-version";
-#else
     static struct utsname u;
     if (uname(&u) == 0)
         return u.release;
     return "unknown";
-#endif
 }
 
 
 char* _os_hostname() {
     char tmp[256];
-
-#ifdef _WIN32
-    DWORD size = 256;
-    if (!GetComputerNameA(tmp, &size))
-        return strdup("unknown");
-#else
     if (gethostname(tmp, sizeof(tmp)) != 0)
         return strdup("unknown");
-#endif
 
     tmp[sizeof(tmp) - 1] = '\0';
 
@@ -593,13 +576,6 @@ char* _os_hostname() {
 }
 
 const char* _os_username() {
-#ifdef _WIN32
-    static char name[128];
-    DWORD size = sizeof(name);
-    if (GetUserNameA(name, &size))
-        return name;
-    return "unknown";
-#else
     const char *u = getenv("USER");
     if (u) return u;
 
@@ -607,14 +583,10 @@ const char* _os_username() {
     if (u) return u;
 
     return "unknown";
-#endif
 }
 
 
 double _os_uptime() {
-#ifdef _WIN32
-    return GetTickCount64() / 1000.0;
-#else
     FILE *f = fopen("/proc/uptime", "r");
     if (f) {
         double t = -1;
@@ -634,7 +606,6 @@ double _os_uptime() {
     #endif
 
     return -1;
-#endif
 }
 
 int _fs_changeDir(const char *path) {
@@ -716,11 +687,9 @@ int _fs_appendFile(const char *path, const char *content) {
 
 
 bool _fs_exists(const char *path) {
-    #ifdef _WIN32
-return GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
-#else
+    
 return access(path, F_OK) == 0;
-#endif
+
 }
 
 int _fs_deleteFile(const char *path) {
@@ -733,11 +702,7 @@ int _fs_renameFile(const char *oldname, const char *newname) {
 
 int _fs_makeDir(const char *path) {
 
-#ifdef _WIN32
-    return _mkdir(path);
-#else
     return mkdir(path, 0755);
-#endif
 
 }
 

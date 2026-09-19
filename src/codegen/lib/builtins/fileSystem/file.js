@@ -117,8 +117,8 @@ export class ZenFileSystem {
     const listRetFn = ["_fs_readFileBytes"]; // only list return fn in fs namespace
     const generic = { generic: "byte" };
 
-this.IRB.cleanupBuiltinStringTemps(exprs)
-    
+    this.IRB.cleanupBuiltinStringTemps(exprs);
+
     return {
       ptr: isVoidFn ? null : t,
       type: isVoidFn ? "void" : returnType,
@@ -131,7 +131,7 @@ this.IRB.cleanupBuiltinStringTemps(exprs)
     };
   }
 
-    strToBytes(node) {
+  strToBytes(node) {
     const args = node.args;
 
     if (!args || args.length !== 1) {
@@ -145,11 +145,7 @@ this.IRB.cleanupBuiltinStringTemps(exprs)
     const expr = this.expr.handleExpression(args[0]);
 
     if (expr.type !== "string" || expr.isList || expr.isStruct) {
-      this.IRB.emitError(
-        "TypeError",
-        "strToBytes() expects a string",
-        node,
-      );
+      this.IRB.emitError("TypeError", "strToBytes() expects a string", node);
     }
 
     this.IRB.emitExpr(expr);
@@ -169,9 +165,7 @@ this.IRB.cleanupBuiltinStringTemps(exprs)
 
     const result = this.IRB.newTemp();
 
-    this.IRB.emit(
-      `${result} = call ptr @_zen_strToBytes(${callArgs})`,
-    );
+    this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
 
     this.IRB.cleanupBuiltinStringTemps([expr]);
 
@@ -201,11 +195,7 @@ this.IRB.cleanupBuiltinStringTemps(exprs)
     const expr = this.expr.handleExpression(args[0]);
 
     if (!expr.isList || expr.generic?.generic !== "byte") {
-      this.IRB.emitError(
-        "TypeError",
-        "bytesToStr() expects List<byte>",
-        node,
-      );
+      this.IRB.emitError("TypeError", "bytesToStr() expects List<byte>", node);
     }
 
     this.IRB.emitExpr(expr);
@@ -219,9 +209,7 @@ this.IRB.cleanupBuiltinStringTemps(exprs)
 
     const result = this.IRB.newTemp();
 
-    this.IRB.emit(
-      `${result} = call ptr @_zen_bytesToStr(${callArgs})`,
-    );
+    this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
 
     this.IRB.cleanupBuiltinStringTemps([expr]);
 

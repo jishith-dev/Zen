@@ -1,4 +1,3 @@
-
 const ANSI = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
@@ -16,8 +15,7 @@ const ANSI = {
   gray: "\x1b[90m",
 };
 
-const c = (color, text) =>
-  `${ANSI[color]}${text}${ANSI.reset}`;
+const c = (color, text) => `${ANSI[color]}${text}${ANSI.reset}`;
 
 function renderInline(text) {
   // Escape ANSI control sequences from README content.
@@ -34,54 +32,47 @@ function renderInline(text) {
   text = text.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     (_, label, url) =>
-      `${ANSI.cyan}${label}${ANSI.reset} ${ANSI.dim}(${url})${ANSI.reset}`
+      `${ANSI.cyan}${label}${ANSI.reset} ${ANSI.dim}(${url})${ANSI.reset}`,
   );
 
   // Images: ![alt](url)
   text = text.replace(
     /!\[([^\]]*)\]\(([^)]+)\)/g,
-    (_, alt, url) => `[Image: ${alt || url}]`
+    (_, alt, url) => `[Image: ${alt || url}]`,
   );
 
   // Bold + italic
   text = text.replace(
     /\*\*\*(.+?)\*\*\*/g,
-    `${ANSI.bold}${ANSI.italic}$1${ANSI.reset}`
+    `${ANSI.bold}${ANSI.italic}$1${ANSI.reset}`,
   );
 
   // Bold
-  text = text.replace(
-    /\*\*(.+?)\*\*/g,
-    `${ANSI.bold}$1${ANSI.reset}`
-  );
+  text = text.replace(/\*\*(.+?)\*\*/g, `${ANSI.bold}$1${ANSI.reset}`);
 
-  text = text.replace(
-    /__(.+?)__/g,
-    `${ANSI.bold}$1${ANSI.reset}`
-  );
+  text = text.replace(/__(.+?)__/g, `${ANSI.bold}$1${ANSI.reset}`);
 
   // Italic
   text = text.replace(
     /(?<!\*)\*([^*\n]+)\*(?!\*)/g,
-    `${ANSI.italic}$1${ANSI.reset}`
+    `${ANSI.italic}$1${ANSI.reset}`,
   );
 
   text = text.replace(
     /(?<!_)_([^_\n]+)_(?!_)/g,
-    `${ANSI.italic}$1${ANSI.reset}`
+    `${ANSI.italic}$1${ANSI.reset}`,
   );
 
   // Strikethrough
   text = text.replace(
     /~~(.+?)~~/g,
-    `${ANSI.dim}${ANSI.strikethrough || "\x1b[9m"}$1${ANSI.reset}`
+    `${ANSI.dim}${ANSI.strikethrough || "\x1b[9m"}$1${ANSI.reset}`,
   );
 
   // Restore inline code
   text = text.replace(
     /\x00CODE(\d+)\x00/g,
-    (_, index) =>
-      `${ANSI.cyan}${codeParts[Number(index)]}${ANSI.reset}`
+    (_, index) => `${ANSI.cyan}${codeParts[Number(index)]}${ANSI.reset}`,
   );
 
   return text;
@@ -91,10 +82,7 @@ function renderTable(lines, start) {
   const rows = [];
   let i = start;
 
-  while (
-    i < lines.length &&
-    lines[i].trim().startsWith("|")
-  ) {
+  while (i < lines.length && lines[i].trim().startsWith("|")) {
     const row = lines[i]
       .trim()
       .replace(/^\|/, "")
@@ -119,10 +107,7 @@ function renderTable(lines, start) {
 
   for (const row of rows) {
     for (let j = 0; j < width; j++) {
-      sizes[j] = Math.max(
-        sizes[j],
-        (row[j] || "").length
-      );
+      sizes[j] = Math.max(sizes[j], (row[j] || "").length);
     }
   }
 
@@ -132,20 +117,14 @@ function renderTable(lines, start) {
     const row = rows[rowIndex];
 
     const formatted = row
-      .map((cell, j) =>
-        ` ${cell.padEnd(sizes[j] || 0)} `
-      )
+      .map((cell, j) => ` ${cell.padEnd(sizes[j] || 0)} `)
       .join("|");
 
-    output.push(
-      `${ANSI.cyan}|${formatted}|${ANSI.reset}`
-    );
+    output.push(`${ANSI.cyan}|${formatted}|${ANSI.reset}`);
 
     if (rowIndex === 0 && rows.length > 1) {
       output.push(
-        "|" +
-        sizes.map((size) => "-".repeat(size + 2)).join("|") +
-        "|"
+        "|" + sizes.map((size) => "-".repeat(size + 2)).join("|") + "|",
       );
     }
   }
@@ -175,15 +154,13 @@ export function renderMarkdown(markdown, options = {}) {
         codeLanguage = line.trim().slice(3).trim();
         codeLines = [];
 
-        print(
-          c("gray", `┌─ Code${codeLanguage ? ` (${codeLanguage})` : ""}`)
-        );
+        print(c("gray", `┌─ Code${codeLanguage ? ` (${codeLanguage})` : ""}`));
       } else {
         inCode = false;
 
         for (const codeLine of codeLines) {
           print(
-            `${ANSI.gray}│${ANSI.reset} ${ANSI.cyan}${codeLine}${ANSI.reset}`
+            `${ANSI.gray}│${ANSI.reset} ${ANSI.cyan}${codeLine}${ANSI.reset}`,
           );
         }
 
@@ -219,22 +196,18 @@ export function renderMarkdown(markdown, options = {}) {
       const level = heading[1].length;
       const title = renderInline(heading[2].trim());
 
-      const colors = [
-        "yellow",
-        "cyan",
-        "green",
-        "magenta",
-        "blue",
-        "white",
-      ];
+      const colors = ["yellow", "cyan", "green", "magenta", "blue", "white"];
 
       const color = colors[level - 1];
 
       print();
+      print(`${ANSI.bold}${ANSI[color]}${title}${ANSI.reset}`);
       print(
-        `${ANSI.bold}${ANSI[color]}${title}${ANSI.reset}`
+        c(
+          "gray",
+          "─".repeat(Math.max(8, title.replace(/\x1b\[[0-9;]*m/g, "").length)),
+        ),
       );
-      print(c("gray", "─".repeat(Math.max(8, title.replace(/\x1b\[[0-9;]*m/g, "").length))));
       continue;
     }
 
@@ -243,7 +216,7 @@ export function renderMarkdown(markdown, options = {}) {
 
     if (quote) {
       print(
-        `${ANSI.gray}│${ANSI.reset} ${ANSI.italic}${renderInline(quote[1])}${ANSI.reset}`
+        `${ANSI.gray}│${ANSI.reset} ${ANSI.italic}${renderInline(quote[1])}${ANSI.reset}`,
       );
       continue;
     }
@@ -261,22 +234,18 @@ export function renderMarkdown(markdown, options = {}) {
 
     if (ordered) {
       print(
-        `  ${ANSI.cyan}${ordered[1]}.${ANSI.reset} ${renderInline(ordered[2])}`
+        `  ${ANSI.cyan}${ordered[1]}.${ANSI.reset} ${renderInline(ordered[2])}`,
       );
       continue;
     }
 
     // Task list
-    const task = line.match(
-      /^\s*[-*+]\s+\[([ xX])\]\s+(.+)$/
-    );
+    const task = line.match(/^\s*[-*+]\s+\[([ xX])\]\s+(.+)$/);
 
     if (task) {
       const checked = task[1].toLowerCase() === "x";
       const mark = checked ? "✓" : " ";
-      print(
-        `  ${ANSI.green}[${mark}]${ANSI.reset} ${renderInline(task[2])}`
-      );
+      print(`  ${ANSI.green}[${mark}]${ANSI.reset} ${renderInline(task[2])}`);
       continue;
     }
 
@@ -302,9 +271,7 @@ export function renderMarkdown(markdown, options = {}) {
 
   if (inCode) {
     for (const codeLine of codeLines) {
-      print(
-        `${ANSI.gray}│${ANSI.reset} ${ANSI.cyan}${codeLine}${ANSI.reset}`
-      );
+      print(`${ANSI.gray}│${ANSI.reset} ${ANSI.cyan}${codeLine}${ANSI.reset}`);
     }
 
     print(c("gray", "└─"));

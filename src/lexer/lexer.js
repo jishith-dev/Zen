@@ -161,18 +161,18 @@ export class Lexer {
 
         const num = this.number();
 
-this.addTokenAt(
-  num.type === "double"
-    ? TokenTypes.DOUBLE
-    : num.type === "long"
-      ? TokenTypes.LONG
-      : num.type === "byte"
-        ? TokenTypes.BYTE
-        : TokenTypes.INT,
-  num.value,
-  line,
-  column,
-);
+        this.addTokenAt(
+          num.type === "double"
+            ? TokenTypes.DOUBLE
+            : num.type === "long"
+              ? TokenTypes.LONG
+              : num.type === "byte"
+                ? TokenTypes.BYTE
+                : TokenTypes.INT,
+          num.value,
+          line,
+          column,
+        );
 
         continue;
       }
@@ -215,27 +215,26 @@ this.addTokenAt(
       // OPERATORS
 
       // track possible generic '<' opens: only counts if it follows a type-like token
-if (this.currentChar === "<") {
-  const prev = this.tokens[this.tokens.length - 1];
-  if (
-    prev &&
-    (prev.type === TokenTypes.TYPE ||
-      prev.type === TokenTypes.KEYWORD
-  )) {
-    this.angleDepth++;
-  }
-  // don't return/continue — let it still fall through and be tokenized
-  // as a normal COMPARISON '<' below (or add it directly here, your choice)
-}
+      if (this.currentChar === "<") {
+        const prev = this.tokens[this.tokens.length - 1];
+        if (
+          prev &&
+          (prev.type === TokenTypes.TYPE || prev.type === TokenTypes.KEYWORD)
+        ) {
+          this.angleDepth++;
+        }
+        // don't return/continue — let it still fall through and be tokenized
+        // as a normal COMPARISON '<' below (or add it directly here, your choice)
+      }
 
-// force '>' to close one generic level at a time instead of greedily
-// matching '>>' / '>>=' as a single operator
-if (this.currentChar === ">" && this.angleDepth > 0) {
-  this.addToken("COMPARISON", ">");
-  this.angleDepth--;
-  this.advance();
-  continue;
-}
+      // force '>' to close one generic level at a time instead of greedily
+      // matching '>>' / '>>=' as a single operator
+      if (this.currentChar === ">" && this.angleDepth > 0) {
+        this.addToken("COMPARISON", ">");
+        this.angleDepth--;
+        this.advance();
+        continue;
+      }
 
       let matched = false;
 
@@ -402,43 +401,23 @@ if (this.currentChar === ">" && this.angleDepth > 0) {
   }
 
   number() {
-  let result = "";
-  let hasDot = false;
+    let result = "";
+    let hasDot = false;
 
-  // HEX
-  if (this.currentChar === "0" && this.peek() === "x") {
-    this.advance(); // 0
-    this.advance(); // x
+    // HEX
+    if (this.currentChar === "0" && this.peek() === "x") {
+      this.advance(); // 0
+      this.advance(); // x
 
-    let hex = "";
+      let hex = "";
 
-    while (
-      this.currentChar !== null &&
-      /[0-9a-fA-F]/.test(this.currentChar)
-    ) {
-      hex += this.currentChar;
-      this.advance();
-    }
-
-    if (hex.length === 0) {
-      this.IRB.emitError(
-        "SyntaxError",
-        "Invalid hex literal",
-        this.lineAndColumn(),
-      );
-    }
-
-    let type = "int";
-
-    // L is not a valid hex digit, so it is already outside `hex`
-    if (this.currentChar === "L") {
-      type = "long";
-      this.advance();
-    }
-    // B IS a valid hex digit, so check the final hex character
-    else if (hex.endsWith("B")) {
-      type = "byte";
-      hex = hex.slice(0, -1);
+      while (
+        this.currentChar !== null &&
+        /[0-9a-fA-F]/.test(this.currentChar)
+      ) {
+        hex += this.currentChar;
+        this.advance();
+      }
 
       if (hex.length === 0) {
         this.IRB.emitError(
@@ -447,95 +426,109 @@ if (this.currentChar === ">" && this.angleDepth > 0) {
           this.lineAndColumn(),
         );
       }
-    }
 
-    // Anything alphabetic after the suffix is invalid
-    if (
-      this.currentChar !== null &&
-      /[a-zA-Z_]/.test(this.currentChar)
-    ) {
-      this.IRB.emitError(
-        "SyntaxError",
-        `Invalid numeric literal`,
-        this.lineAndColumn(),
-      );
-    }
+      let type = "int";
 
-    return {
-      value: parseInt(hex, 16),
-      type,
-    };
-  }
+      // L is not a valid hex digit, so it is already outside `hex`
+      if (this.currentChar === "L") {
+        type = "long";
+        this.advance();
+      }
+      // B IS a valid hex digit, so check the final hex character
+      else if (hex.endsWith("B")) {
+        type = "byte";
+        hex = hex.slice(0, -1);
 
-  // DECIMAL / DOUBLE
-  while (
-    this.currentChar !== null &&
-    (/\d/.test(this.currentChar) || this.currentChar === ".")
-  ) {
-    if (this.currentChar === ".") {
-      if (hasDot) {
-        break;
+        if (hex.length === 0) {
+          this.IRB.emitError(
+            "SyntaxError",
+            "Invalid hex literal",
+            this.lineAndColumn(),
+          );
+        }
       }
 
-      hasDot = true;
+      // Anything alphabetic after the suffix is invalid
+      if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
+        this.IRB.emitError(
+          "SyntaxError",
+          `Invalid numeric literal`,
+          this.lineAndColumn(),
+        );
+      }
+
+      return {
+        value: parseInt(hex, 16),
+        type,
+      };
     }
 
-    result += this.currentChar;
-    this.advance();
-  }
-
-  if (result.startsWith(".")) {
-    result = "0" + result;
-  }
-
-  // DOUBLE
-  if (hasDot) {
-    if (
-      this.currentChar === "L" ||
-      this.currentChar === "B" ||
-      /[a-zA-Z_]/.test(this.currentChar || "")
+    // DECIMAL / DOUBLE
+    while (
+      this.currentChar !== null &&
+      (/\d/.test(this.currentChar) || this.currentChar === ".")
     ) {
+      if (this.currentChar === ".") {
+        if (hasDot) {
+          break;
+        }
+
+        hasDot = true;
+      }
+
+      result += this.currentChar;
+      this.advance();
+    }
+
+    if (result.startsWith(".")) {
+      result = "0" + result;
+    }
+
+    // DOUBLE
+    if (hasDot) {
+      if (
+        this.currentChar === "L" ||
+        this.currentChar === "B" ||
+        /[a-zA-Z_]/.test(this.currentChar || "")
+      ) {
+        this.IRB.emitError(
+          "SyntaxError",
+          `Invalid floating-point literal: '${result}${this.currentChar}'`,
+          this.lineAndColumn(),
+        );
+      }
+
+      return {
+        value: result,
+        type: "double",
+      };
+    }
+
+    // INTEGER SUFFIX
+    let type = "int";
+
+    if (this.currentChar === "L") {
+      type = "long";
+      this.advance();
+    } else if (this.currentChar === "B") {
+      type = "byte";
+      this.advance();
+    }
+
+    // Reject anything else attached to the number
+    if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
       this.IRB.emitError(
         "SyntaxError",
-        `Invalid floating-point literal: '${result}${this.currentChar}'`,
+        `Invalid numeric literal: '${result}${this.currentChar}'`,
         this.lineAndColumn(),
       );
     }
 
     return {
       value: result,
-      type: "double",
+      type,
     };
   }
-
-  // INTEGER SUFFIX
-  let type = "int";
-
-  if (this.currentChar === "L") {
-    type = "long";
-    this.advance();
-  } else if (this.currentChar === "B") {
-    type = "byte";
-    this.advance();
-  }
-
-  // Reject anything else attached to the number
-  if (
-    this.currentChar !== null &&
-    /[a-zA-Z_]/.test(this.currentChar)
-  ) {
-    this.IRB.emitError(
-      "SyntaxError",
-      `Invalid numeric literal: '${result}${this.currentChar}'`,
-      this.lineAndColumn(),
-    );
-  }
-
-  return {
-    value: result,
-    type,
-  };
-}
 
   string() {
     let result = "";

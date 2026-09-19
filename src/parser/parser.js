@@ -7,7 +7,7 @@ import {
 import { Lexer } from "../lexer/lexer.js";
 
 export class Parser {
-  constructor(tokens, IRB, options = { preserveComments: false}, source) {
+  constructor(tokens, IRB, options = { preserveComments: false }, source) {
     this.tokens = tokens;
     this.pos = 0;
     this.IRB = IRB;
@@ -107,39 +107,42 @@ export class Parser {
 
     return body;
   }
-  
+
   isGenericStart(pos) {
-  return this.tokens[pos]?.value === "<" && this.tokens[pos + 1]?.value === "List";
-}
+    return (
+      this.tokens[pos]?.value === "<" && this.tokens[pos + 1]?.value === "List"
+    );
+  }
 
   // STATEMENTS
 
   parseStatement() {
-    
-    if (this.matchKeyword("const") &&
-    this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-    this.tokens[this.pos + 2]?.type === "IDENTIFIER") {
-    this.advance(); // const
-    return this.node(this.parseStructVariableDeclaration(true));
-}
+    if (
+      this.matchKeyword("const") &&
+      this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+      this.tokens[this.pos + 2]?.type === "IDENTIFIER"
+    ) {
+      this.advance(); // const
+      return this.node(this.parseStructVariableDeclaration(true));
+    }
 
-if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
-    return this.node(this.parseStructVariableDeclaration(false));
-}
-    
+    if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
+      return this.node(this.parseStructVariableDeclaration(false));
+    }
+
     if (
       this.match("TYPE") ||
       this.matchKeyword("auto") ||
-      this.matchKeyword("reactive") || 
+      this.matchKeyword("reactive") ||
       this.matchKeyword("const")
     ) {
       return this.node(this.parseVariableDeclaration());
     }
-    
+
     if (this.options.preserveComments) {
-    if (this.match("COMMENT")) {
-      return this.parseComment();
-    }
+      if (this.match("COMMENT")) {
+        return this.parseComment();
+      }
     }
 
     if (this.matchKeyword("switch")) {
@@ -225,40 +228,34 @@ if (this.match("IDENTIFIER") && this.peek("IDENTIFIER")) {
     }
 
     if (
-  this.matchKeyword("await") &&
-  this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
-  (
-    this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
-    this.isGenericStart(this.pos + 2)
-  )
-) {
-  this.advance();
+      this.matchKeyword("await") &&
+      this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&
+      (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+        this.isGenericStart(this.pos + 2))
+    ) {
+      this.advance();
 
-  const name = this.current().value;
+      const name = this.current().value;
 
-  this.advance();
+      this.advance();
 
-  return this.node(
-    this.parseCall(
-      name,
-      true, // isAwait
-    ),
-  );
-}
+      return this.node(
+        this.parseCall(
+          name,
+          true, // isAwait
+        ),
+      );
+    }
 
-if (
-  this.match("IDENTIFIER") &&
-  (
-    this.peek("LEFT_PARENTHESIS") ||
-    this.isGenericStart(this.pos + 1)
-  )
-) {
-  
-  const name = this.current().value;
-  
-  this.advance();
-  return this.node(this.parseCall(name, false));
-}
+    if (
+      this.match("IDENTIFIER") &&
+      (this.peek("LEFT_PARENTHESIS") || this.isGenericStart(this.pos + 1))
+    ) {
+      const name = this.current().value;
+
+      this.advance();
+      return this.node(this.parseCall(name, false));
+    }
 
     if (this.matchKeyword("continue")) {
       this.expectKeyword("continue");
@@ -282,7 +279,6 @@ if (
     }
 
     if (this.match("IDENTIFIER")) {
-      
       const expr = this.parseExpression();
 
       return this.node({
@@ -298,34 +294,34 @@ if (
       expression: expr,
     });
   }
-  
+
   parseStructVariableDeclaration(isConst = false) {
     const struct_ref = this.advance().value;
     const name = this.advance().value;
 
     let value = null;
     if (this.current().value === "=") {
-        this.advance();
-        value = this.node(this.parseExpression());
+      this.advance();
+      value = this.node(this.parseExpression());
     }
 
     return this.node({
-        type: ParserTypes.VARIABLE_DECLARATION,
-        struct_ref,
-        name,
-        value,
-        isConstant: isConst,
+      type: ParserTypes.VARIABLE_DECLARATION,
+      struct_ref,
+      name,
+      value,
+      isConstant: isConst,
     });
-}
-  
+  }
+
   parseComment() {
     const token = this.advance();
 
     return {
       type: ParserTypes.COMMENT,
-      value: token.value
+      value: token.value,
     };
-}
+  }
 
   parseStructLiteral() {
     this.skipNewlines();
@@ -484,7 +480,6 @@ if (
   }
 
   parseStruct() {
-  
     this.expectKeyword("struct");
 
     const name = this.expect("IDENTIFIER").value;
@@ -518,7 +513,11 @@ if (
         isThreadfn = true;
         this.advance();
       } else if (this.matchKeyword("fn")) {
-        this.IRB.emitError("SyntaxError", "method should be declared without 'fn' keyword", this.lineAndColumn());
+        this.IRB.emitError(
+          "SyntaxError",
+          "method should be declared without 'fn' keyword",
+          this.lineAndColumn(),
+        );
       }
 
       // METHOD
@@ -645,7 +644,7 @@ if (
       innerType = this.parseListGeneric();
     }
 
-    // primitive / struct 
+    // primitive / struct
     else if (this.match("TYPE") || this.match("IDENTIFIER")) {
       innerType = {
         type: this.advance().value,
@@ -668,9 +667,8 @@ if (
   }
 
   parseList(isConstant = false) {
-    
     const generic = this.parseListGeneric();
-    
+
     const name = this.expect("IDENTIFIER").value;
 
     let value;
@@ -922,20 +920,20 @@ if (
     this.expect("RIGHT_PARENTHESIS");
 
     let returnType = {
-  type: "void",
-  dimensions: [],
-};
-
-if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
-  if (this.matchKeyword("void")) {
-    returnType = {
-      type: this.expectKeyword("void").value,
+      type: "void",
       dimensions: [],
     };
-  } else {
-    returnType = this.parseType(true);
-  }
-}
+
+    if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
+      if (this.matchKeyword("void")) {
+        returnType = {
+          type: this.expectKeyword("void").value,
+          dimensions: [],
+        };
+      } else {
+        returnType = this.parseType(true);
+      }
+    }
 
     return {
       type: "Function",
@@ -952,7 +950,6 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
     isThread = false,
     isExtern = false,
   ) {
-    
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
         this.advance();
@@ -961,7 +958,7 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
       } else if (this.matchKeyword("extern")) this.advance();
 
       this.expectKeyword("fn");
-    } 
+    }
 
     let name;
 
@@ -984,23 +981,23 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
-      
+
       let isConstant = false;
 
-    if (this.matchKeyword("const")) {
+      if (this.matchKeyword("const")) {
         isConstant = true;
         this.advance();
-    }
+      }
 
       const t = this.parseType();
-      
+
       if (isConstant && t.type === "Function") {
-  this.IRB.emitError(
-    "TypeError",
-    "function callback parameters cannot be declared as 'const'",
-    this.lineAndColumn(),
-  );
-}
+        this.IRB.emitError(
+          "TypeError",
+          "function callback parameters cannot be declared as 'const'",
+          this.lineAndColumn(),
+        );
+      }
 
       let name;
 
@@ -1127,7 +1124,7 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
     const next1 = this.tokens[this.pos];
     const next2 = this.tokens[this.pos + 1];
-    
+
     const isLoopOf =
       next1?.type === "IDENTIFIER" &&
       next2?.type === "KEYWORD" &&
@@ -1299,31 +1296,31 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
   parseVariableDeclaration() {
     let isConst = false;
-    
+
     if (this.matchKeyword("const")) {
-  isConst = true;
-  this.advance();
+      isConst = true;
+      this.advance();
     }
-    
+
     let haveReactive = false;
     if (this.matchKeyword("reactive")) {
       haveReactive = true;
       this.advance();
     }
-    
+
     if (haveReactive && isConst) {
-    this.IRB.emitError(
+      this.IRB.emitError(
         "SyntaxError",
         "variable cannot be both 'const' and 'reactive'",
         this.lineAndColumn(),
-    );
-}
+      );
+    }
 
     // redirect to List or Map so const works there too.
     if (this.current().value === "List") {
-    return this.parseList(isConst);
-}
-    
+      return this.parseList(isConst);
+    }
+
     const dataType = this.advance().value;
 
     const name = this.expect("IDENTIFIER").value;
@@ -1339,7 +1336,7 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
 
       if (
         dim.type !== ParserTypes.INT &&
-        dim.type !== ParserTypes.BINARY_EXPRESSION && 
+        dim.type !== ParserTypes.BINARY_EXPRESSION &&
         dim.type !== "variable"
       ) {
         this.IRB.emitError(
@@ -1422,16 +1419,12 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
             type: ParserTypes.BOOLEAN,
             value: 0,
           });
-        }
-
-        else if (dataType === "byte") {
+        } else if (dataType === "byte") {
           value = this.node({
             type: ParserTypes.BYTE,
             value: 0,
           });
-        }
-
-        else if (dataType === "long") {
+        } else if (dataType === "long") {
           value = this.node({
             type: ParserTypes.LONG,
             value: 0,
@@ -1527,32 +1520,32 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
   }
 
   parseLogical() {
-  this.skipNewlines();
-
-  let expr = this.parseEquality();
-
-  while (true) {
     this.skipNewlines();
 
-    if (!this.match("LOGICAL")) {
-      break;
+    let expr = this.parseEquality();
+
+    while (true) {
+      this.skipNewlines();
+
+      if (!this.match("LOGICAL")) {
+        break;
+      }
+
+      const op = this.advance().value;
+
+      this.skipNewlines();
+
+      const right = this.node(this.parseEquality());
+
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
     }
 
-    const op = this.advance().value;
-
-    this.skipNewlines();
-
-    const right = this.node(this.parseEquality());
-
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
-  }
-
-  return expr;
+    return expr;
   }
 
   // COMPARISON
@@ -1598,150 +1591,151 @@ if (!this.match("COMMA") && !this.match("RIGHT_PARENTHESIS")) {
   // + -
 
   parseTerm() {
-  this.skipNewlines();
-
-  let expr = this.node(this.parseFactor());
-
-  while (true) {
     this.skipNewlines();
 
-    if (!this.match("PLUS") && !this.match("MINUS")) {
-      break;
+    let expr = this.node(this.parseFactor());
+
+    while (true) {
+      this.skipNewlines();
+
+      if (!this.match("PLUS") && !this.match("MINUS")) {
+        break;
+      }
+
+      const op = this.advance().value;
+
+      this.skipNewlines();
+
+      const right = this.node(this.parseFactor());
+
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
     }
 
-    const op = this.advance().value;
-
-    this.skipNewlines();
-
-    const right = this.node(this.parseFactor());
-
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
-  }
-
-  return expr;
+    return expr;
   }
 
   parseBitwiseOr() {
-  this.skipNewlines();
+    this.skipNewlines();
 
-  let expr = this.node(this.parseBitwiseXor());
+    let expr = this.node(this.parseBitwiseXor());
 
-  while (this.match("BITWISE") && this.tokens[this.pos].value === "|") {
-    const op = this.advance().value;
-    const right = this.node(this.parseBitwiseXor());
+    while (this.match("BITWISE") && this.tokens[this.pos].value === "|") {
+      const op = this.advance().value;
+      const right = this.node(this.parseBitwiseXor());
 
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
+    }
+
+    return expr;
   }
 
-  return expr;
-}
+  parseBitwiseXor() {
+    this.skipNewlines();
 
-parseBitwiseXor() {
-  this.skipNewlines();
+    let expr = this.node(this.parseBitwiseAnd());
 
-  let expr = this.node(this.parseBitwiseAnd());
+    while (this.match("BITWISE") && this.tokens[this.pos].value === "^") {
+      const op = this.advance().value;
+      const right = this.node(this.parseBitwiseAnd());
 
-  while (this.match("BITWISE") && this.tokens[this.pos].value === "^") {
-    const op = this.advance().value;
-    const right = this.node(this.parseBitwiseAnd());
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
+    }
 
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
+    return expr;
   }
 
-  return expr;
-}
+  parseBitwiseAnd() {
+    this.skipNewlines();
 
-parseBitwiseAnd() {
-  this.skipNewlines();
+    let expr = this.node(this.parseShift());
 
-  let expr = this.node(this.parseShift());
+    while (this.match("BITWISE") && this.tokens[this.pos].value === "&") {
+      const op = this.advance().value;
+      const right = this.node(this.parseShift());
 
-  while (this.match("BITWISE") && this.tokens[this.pos].value === "&") {
-    const op = this.advance().value;
-    const right = this.node(this.parseShift());
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
+    }
 
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
+    return expr;
   }
 
-  return expr;
-}
+  parseShift() {
+    this.skipNewlines();
 
-parseShift() {
-  this.skipNewlines();
+    let expr = this.node(this.parseTerm());
 
-  let expr = this.node(this.parseTerm());
+    while (
+      this.match("BITWISE") &&
+      (this.tokens[this.pos].value === "<<" ||
+        this.tokens[this.pos].value === ">>")
+    ) {
+      const op = this.advance().value;
+      const right = this.node(this.parseTerm());
 
-  while (
-    this.match("BITWISE") &&
-    (this.tokens[this.pos].value === "<<" || this.tokens[this.pos].value === ">>")
-  ) {
-    const op = this.advance().value;
-    const right = this.node(this.parseTerm());
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
+    }
 
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
+    return expr;
   }
-
-  return expr;
-}
 
   // * / %
 
   parseFactor() {
-  this.skipNewlines();
-
-  let expr = this.node(this.parseUnary());
-
-  while (true) {
     this.skipNewlines();
 
-    if (
-      !this.match("STAR") &&
-      !this.match("SLASH") &&
-      !this.match("MODULO")
-    ) {
-      break;
+    let expr = this.node(this.parseUnary());
+
+    while (true) {
+      this.skipNewlines();
+
+      if (
+        !this.match("STAR") &&
+        !this.match("SLASH") &&
+        !this.match("MODULO")
+      ) {
+        break;
+      }
+
+      const op = this.advance().value;
+
+      this.skipNewlines();
+
+      const right = this.node(this.parseUnary());
+
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
     }
 
-    const op = this.advance().value;
-
-    this.skipNewlines();
-
-    const right = this.node(this.parseUnary());
-
-    expr = this.node({
-      type: ParserTypes.BINARY_EXPRESSION,
-      left: expr,
-      operator: op,
-      right,
-    });
-  }
-
-  return expr;
+    return expr;
   }
 
   parseUnary() {
@@ -1756,7 +1750,7 @@ parseShift() {
     ) {
       this.skipNewlines();
       const op = this.advance().value;
-    
+
       const argument = this.node(this.parseUnary());
 
       return this.node({
@@ -1773,9 +1767,9 @@ parseShift() {
   parsePostfix(isAwait = false) {
     this.skipNewlines();
     let expr = this.node(this.parsePrimary());
-  
+
     while (true) {
-    this.skipNewlines();
+      this.skipNewlines();
       if (this.match("DOT")) {
         this.skipNewlines();
         this.advance();
@@ -1807,16 +1801,15 @@ parseShift() {
 
         continue;
       }
-      
+
       if (this.isGenericStart(this.pos)) {
         this.advance(); // <
-    expr.generic = this.parseListGeneric();
-    this.advance(); // >
-}
+        expr.generic = this.parseListGeneric();
+        this.advance(); // >
+      }
 
       if (this.match("LEFT_PARENTHESIS")) {
         this.advance();
-        
 
         const args = [];
 
@@ -1989,36 +1982,30 @@ parseShift() {
     // VARIABLE
     if (token.type === "IDENTIFIER") {
       this.advance();
-      
+
       if (
-  this.matchKeyword("await") &&
-  this.isGenericStart(this.pos + 2) &&
-  (
-    this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
-    this.tokens[this.pos + 2]?.value === "<"
-  )
-) {
-  this.advance();
+        this.matchKeyword("await") &&
+        this.isGenericStart(this.pos + 2) &&
+        (this.tokens[this.pos + 2]?.type === "LEFT_PARENTHESIS" ||
+          this.tokens[this.pos + 2]?.value === "<")
+      ) {
+        this.advance();
 
-  const name = this.current().value;
+        const name = this.current().value;
 
-  this.advance();
+        this.advance();
 
-  return this.node(
-    this.parseCall(
-      name,
-      true, // isAwait
-    ),
-  );
-}
+        return this.node(
+          this.parseCall(
+            name,
+            true, // isAwait
+          ),
+        );
+      }
 
-if (
-  this.match("LEFT_PARENTHESIS") ||
-  this.isGenericStart(this.pos)
-) {
-  return this.node(this.parseCall(token.value, false));
-}
-      
+      if (this.match("LEFT_PARENTHESIS") || this.isGenericStart(this.pos)) {
+        return this.node(this.parseCall(token.value, false));
+      }
 
       return this.node({
         type: ParserTypes.VARIABLE,
@@ -2090,25 +2077,24 @@ if (
   // FUNCTION CALL
 
   parseCall(name, isAwait = false) {
-    
     let generic = null;
 
-if (this.current().value === "<") {
-  this.advance();
+    if (this.current().value === "<") {
+      this.advance();
 
-  generic = this.parseListGeneric();
+      generic = this.parseListGeneric();
 
-  if (this.current().value === ">") {
-    this.advance();
-  } else {
-    this.IRB.emitError(
-      "SyntaxError",
-      "Expected '>' after generic type",
-      this.lineAndColumn(),
-    );
-  }
-}
-    
+      if (this.current().value === ">") {
+        this.advance();
+      } else {
+        this.IRB.emitError(
+          "SyntaxError",
+          "Expected '>' after generic type",
+          this.lineAndColumn(),
+        );
+      }
+    }
+
     this.expect("LEFT_PARENTHESIS");
     this.skipNewlines();
     const args = [];
@@ -2116,12 +2102,12 @@ if (this.current().value === "<") {
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
 
-if (this.matchKeyword("fn")) {
+      if (this.matchKeyword("fn")) {
         args.push(this.node(this.parseInlineCallback()));
-    } else {
+      } else {
         args.push(this.node(this.parseExpression()));
-}
-      
+      }
+
       this.skipNewlines();
       if (this.match("COMMA")) {
         this.advance();
@@ -2133,7 +2119,7 @@ if (this.matchKeyword("fn")) {
 
     this.skipNewlines();
     this.expect("RIGHT_PARENTHESIS");
-  
+
     return this.node({
       isInbuilt: BUILTIN_FUNCTIONS.includes(name),
       type: ParserTypes.CALL,
@@ -2145,6 +2131,6 @@ if (this.matchKeyword("fn")) {
   }
 
   parseInlineCallback() {
-   return this.parseFunction();
+    return this.parseFunction();
   }
 }

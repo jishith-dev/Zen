@@ -45,28 +45,28 @@ export class Module {
 
     const file = this.IRB.loadFile(source, node);
 
-const moduleDir = this.IRB.getModuleNativeDir(source);
+    const moduleDir = this.IRB.getModuleNativeDir(source);
 
-const configPath = path.join(moduleDir, "zen.json");
+    const configPath = path.join(moduleDir, "zen.json");
 
-if (fs.existsSync(configPath)) {
-  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-  if (Array.isArray(config.flags)) {
-    for (const flag of config.flags) {
-      this.moduleFiles.addFlag(flag);
+      if (Array.isArray(config.flags)) {
+        for (const flag of config.flags) {
+          this.moduleFiles.addFlag(flag);
+        }
+      }
+
+      if (Array.isArray(config.native)) {
+        for (const nativeFile of config.native) {
+          this.moduleFiles.nativeFiles.add(path.join(moduleDir, nativeFile));
+        }
+      }
     }
-  }
-
-  if (Array.isArray(config.native)) {
-  for (const nativeFile of config.native) {
-    this.moduleFiles.nativeFiles.add(path.join(moduleDir, nativeFile));
-  }
-  }
-}
 
     const moduleName = this.getModuleName(source);
-    
+
     this.curruntModuleName = moduleName;
 
     const prevModule = this.IRB.moduleName;
@@ -82,8 +82,14 @@ if (fs.existsSync(configPath)) {
 
     const codegen = new CodeGen(ast, moduleName, this.moduleFiles, file);
 
-    const { ir, symbolTable, functionTable, structTable, structInitializers, exportNames } =
-      codegen.generateLLVM();
+    const {
+      ir,
+      symbolTable,
+      functionTable,
+      structTable,
+      structInitializers,
+      exportNames,
+    } = codegen.generateLLVM();
 
     this.IRB.moduleName = prevModule;
 
@@ -92,7 +98,7 @@ if (fs.existsSync(configPath)) {
       functionTable,
       structTable,
       structInitializers,
-      exportNames
+      exportNames,
     };
 
     const exportNode = ast.find((n) => n.type === "EXPORT");
@@ -124,7 +130,6 @@ if (fs.existsSync(configPath)) {
     const seen = new Set();
 
     for (const name of exports) {
-      
       if (seen.has(name)) {
         this.IRB.emitError("ExportError", `Duplicate export '${name}'`, node);
       }
@@ -147,7 +152,7 @@ if (fs.existsSync(configPath)) {
 
   resolveImports(imports, source, tables, node) {
     for (const [structName, layout] of tables.structInitializers) {
-  this.IRB.structInitializers.set(structName, layout);
+      this.IRB.structInitializers.set(structName, layout);
     }
     const imported = this.moduleImports.get(source) || new Set();
     this.moduleImports.set(source, imported);
@@ -157,27 +162,26 @@ if (fs.existsSync(configPath)) {
     // register all struct first so avoid dependency bug
 
     for (const name of imports) {
-  if (tables.structTable.has(name)) {
-    const s = tables.structTable.get(name);
+      if (tables.structTable.has(name)) {
+        const s = tables.structTable.get(name);
 
-    this.IRB.setStruct(name, s);
+        this.IRB.setStruct(name, s);
 
-    this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
-    const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
-    this.IRB.globals.push(`%${name} = type { ${fields} }`);
-  }
+        this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
+        const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
+        this.IRB.globals.push(`%${name} = type { ${fields} }`);
+      }
     }
 
     for (const name of imports) {
-
       if (!tables.exportNames.has(name)) {
-  this.IRB.emitError(
-    "ImportError",
-    `'${name}' not exported from ${source}`,
-    node,
-  );
+        this.IRB.emitError(
+          "ImportError",
+          `'${name}' not exported from ${source}`,
+          node,
+        );
       }
-      
+
       if (seen.has(name)) {
         this.IRB.emitError("ImportError", `Duplicate import '${name}'`, node);
       }
@@ -195,16 +199,21 @@ if (fs.existsSync(configPath)) {
 
       if (tables.functionTable.has(name)) {
         const fn = tables.functionTable.get(name);
-      
 
         // add imported fn flag
         fn.isImported = true;
 
         fn.importedModuleName = this.curruntModuleName;
 
-        const { types } = this.IRB.buildParams(fn.params, false, fn.returnType?.type ?? fn.returnType);
+        const { types } = this.IRB.buildParams(
+          fn.params,
+          false,
+          fn.returnType?.type ?? fn.returnType,
+        );
 
-        const retType = tables.structTable.has(fn.returnType?.type ?? fn.returnType)
+        const retType = tables.structTable.has(
+          fn.returnType?.type ?? fn.returnType,
+        )
           ? "void"
           : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
 
@@ -213,11 +222,11 @@ if (fs.existsSync(configPath)) {
         }
 
         if (fn?.isExtern) {
-          this.IRB.globals.push(
-          `declare ${retType} @${fn.name}${types}`);
+          this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
         } else {
-        this.IRB.globals.push(
-          `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`);
+          this.IRB.globals.push(
+            `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`,
+          );
         }
 
         this.IRB.setFunction(name, fn);
@@ -226,7 +235,7 @@ if (fs.existsSync(configPath)) {
 
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
-        
+
         // methods
         for (const [fnName, fn] of tables.functionTable) {
           if (fnName === name) continue;
@@ -235,23 +244,20 @@ if (fs.existsSync(configPath)) {
           fn.isImported = true;
           fn.importedModuleName = this.curruntModuleName;
 
-          
           const { types } = this.IRB.buildParams(
             fn.params,
             true,
-            fn.returnType.type ?? fn.returnType
+            fn.returnType.type ?? fn.returnType,
           );
 
           const retType = tables.structTable.has(fn.returnType.type)
             ? "void"
             : this.IRB.getLLVMType(fn.returnType?.type ?? fn.returnType);
-          
 
           if (tables.structTable.has(fn.returnType.type)) {
             fn.isStructReturn = true;
           }
 
-          
           this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
 
           this.IRB.setFunction(fnName, fn);
@@ -299,14 +305,19 @@ if (fs.existsSync(configPath)) {
   }
 
   getModuleName(source) {
-  if (source.endsWith(".zen")) {
-    return path.basename(source, ".zen");
-  }
+    if (source.endsWith(".zen")) {
+      return path.basename(source, ".zen");
+    }
 
-  const configPath = path.join(os.homedir(), ".zen/packages", source, "zen.json");
-  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const entry = config?.bin || config?.main;
+    const configPath = path.join(
+      os.homedir(),
+      ".zen/packages",
+      source,
+      "zen.json",
+    );
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const entry = config?.bin || config?.main;
 
-  return path.basename(entry, ".zen");
+    return path.basename(entry, ".zen");
   }
 }

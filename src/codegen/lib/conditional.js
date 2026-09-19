@@ -72,10 +72,10 @@ export class Conditional {
 
     const activeFunction = this.IRB.getActiveFunction();
 
-const last = activeFunction
-  ? activeFunction.body[activeFunction.body.length - 1]
-  : this.IRB.locals[this.IRB.locals.length - 1];
-    
+    const last = activeFunction
+      ? activeFunction.body[activeFunction.body.length - 1]
+      : this.IRB.locals[this.IRB.locals.length - 1];
+
     if (last !== `${endLabel}:`) {
       if (endLabelUsed) {
         this.IRB.emit(`${endLabel}:`);

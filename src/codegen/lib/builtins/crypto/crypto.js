@@ -35,9 +35,7 @@ export class ZenCrypto {
       );
     }
 
-    const exprs = args.map((arg) =>
-      this.expr.handleExpression(arg),
-    );
+    const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
     // ARGUMENT VALIDATION
 
@@ -53,20 +51,14 @@ export class ZenCrypto {
       const actualIsList = expr?.isList === true;
       const actualType = expr.type;
 
-      const displayType = actualIsList
-        ? `List<${actualType}>`
-        : actualType;
+      const displayType = actualIsList ? `List<${actualType}>` : actualType;
 
       let valid;
 
       if (expectedIsList) {
-        valid =
-          actualIsList &&
-          actualType === expectedElementType;
+        valid = actualIsList && actualType === expectedElementType;
       } else {
-        valid =
-          !actualIsList &&
-          actualType === expectedType;
+        valid = !actualIsList && actualType === expectedType;
       }
 
       if (!valid) {
@@ -148,9 +140,7 @@ export class ZenCrypto {
       if (expr.needsLoad) {
         const tmp = this.IRB.newTemp();
 
-        this.IRB.emit(
-          `${tmp} = load ptr, ptr ${expr.ptr}`,
-        );
+        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
 
         value = tmp;
       }
@@ -161,18 +151,11 @@ export class ZenCrypto {
 
     const isList = returnType.startsWith("List<");
 
-    const type = isList
-      ? returnType.slice(5, -1)
-      : returnType;
+    const type = isList ? returnType.slice(5, -1) : returnType;
 
-    const baseReturnType = isList
-      ? "List"
-      : returnType;
+    const baseReturnType = isList ? "List" : returnType;
 
-    const llvmRet = this.IRB.getLLVMType(
-      baseReturnType,
-    );
-
+    const llvmRet = this.IRB.getLLVMType(baseReturnType);
 
     this.IRB.declareOneTime(
       funcName,
@@ -184,9 +167,7 @@ export class ZenCrypto {
     let t = null;
 
     if (llvmRet === "void") {
-      this.IRB.emit(
-        `call ${llvmRet} @${funcName}(${callArgs.join(", ")})`,
-      );
+      this.IRB.emit(`call ${llvmRet} @${funcName}(${callArgs.join(", ")})`);
     } else {
       t = this.IRB.newTemp();
 

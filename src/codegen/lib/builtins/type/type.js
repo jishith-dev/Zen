@@ -39,7 +39,7 @@ export class Type {
 
     this.IRB.emitExpr(expr);
 
-    this.IRB.cleanupBuiltinStringTemps([expr])
+    this.IRB.cleanupBuiltinStringTemps([expr]);
 
     return {
       ptr: str.name,
@@ -76,8 +76,8 @@ export class Type {
     const cast = this.IRB.castExpression(expr, "int", "Int", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-    this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "int",
@@ -88,7 +88,6 @@ export class Type {
       postOrPrefix: false,
     };
   }
-
 
   Long(node) {
     const args = node.args;
@@ -115,8 +114,8 @@ export class Type {
     const cast = this.IRB.castExpression(expr, "long", "Long", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-    this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "long",
@@ -152,8 +151,8 @@ export class Type {
     }
     const cast = this.IRB.castExpression(expr, "int", "toInt", node);
 
-    this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     this.IRB.emit(cast?.local.join("\n"));
     return {
       ptr: cast.ptr,
@@ -190,8 +189,8 @@ export class Type {
     const cast = this.IRB.castExpression(expr, "double", "Double", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "double",
@@ -227,8 +226,8 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     const cast = this.IRB.castExpression(expr, "bool", "Bool", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "bool",
@@ -264,8 +263,8 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     const cast = this.IRB.castExpression(expr, "string", "String", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "string",
@@ -301,8 +300,8 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     const cast = this.IRB.castExpression(expr, "string", "toString", node);
     this.IRB.emit(cast?.local.join("\n"));
 
-this.IRB.cleanupBuiltinStringTemps([expr])
-    
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
     return {
       ptr: cast.ptr,
       type: "string",
@@ -375,7 +374,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     };
   }
 
-    strToBytes(node) {
+  strToBytes(node) {
     const args = node.args;
 
     if (!args || args.length !== 1) {
@@ -389,11 +388,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     const expr = this.expr.handleExpression(args[0]);
 
     if (expr.type !== "string" || expr.isList || expr.isStruct) {
-      this.IRB.emitError(
-        "TypeError",
-        "strToBytes() expects a string",
-        node,
-      );
+      this.IRB.emitError("TypeError", "strToBytes() expects a string", node);
     }
 
     this.IRB.emitExpr(expr);
@@ -413,9 +408,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
 
     const result = this.IRB.newTemp();
 
-    this.IRB.emit(
-      `${result} = call ptr @_zen_strToBytes(${callArgs})`,
-    );
+    this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
 
     this.IRB.cleanupBuiltinStringTemps([expr]);
 
@@ -445,22 +438,18 @@ this.IRB.cleanupBuiltinStringTemps([expr])
     const expr = this.expr.handleExpression(args[0]);
 
     if (!expr.isList || expr.generic?.generic.type !== "byte") {
-      this.IRB.emitError(
-        "TypeError",
-        "bytesToStr() expects List<byte>",
-        node,
-      );
+      this.IRB.emitError("TypeError", "bytesToStr() expects List<byte>", node);
     }
 
     this.IRB.emitExpr(expr);
 
     const callArgs = expr.needsLoad
-  ? (() => {
-      const tmp = this.IRB.newTemp();
-      this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-      return `ptr ${tmp}`;
-    })()
-  : `ptr ${expr.ptr}`;
+      ? (() => {
+          const tmp = this.IRB.newTemp();
+          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+          return `ptr ${tmp}`;
+        })()
+      : `ptr ${expr.ptr}`;
 
     this.IRB.declareOneTime(
       "_zen_bytesToStr",
@@ -469,9 +458,7 @@ this.IRB.cleanupBuiltinStringTemps([expr])
 
     const result = this.IRB.newTemp();
 
-    this.IRB.emit(
-      `${result} = call ptr @_zen_bytesToStr(${callArgs})`,
-    );
+    this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
 
     this.IRB.cleanupBuiltinStringTemps([expr]);
 

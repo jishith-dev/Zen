@@ -6,7 +6,7 @@ const LLVM_TYPES_MAP = {
   string: "ptr",
   bool: "i1",
   byte: "i8",
-  long: "i64"
+  long: "i64",
 };
 
 const ZEN_TYPES_MAP = {
@@ -15,7 +15,7 @@ const ZEN_TYPES_MAP = {
   ptr: "string",
   i1: "bool",
   i8: "byte",
-  i64: "long"
+  i64: "long",
 };
 
 const TYPE_MAP = {
@@ -26,41 +26,41 @@ const TYPE_MAP = {
   List: 5,
   map: 6,
   long: 7,
-  byte: 8
+  byte: 8,
 };
 
 // hints map
 
 const hints = {
-    ImportError: [
-      {
-        match: /not exported by/,
-        hint: "Check the exported names in the imported module.",
-      },
-      {
-        match: /file not found/,
-        hint: "Check that the module path is correct and the file exists.",
-      },
-      {
-        match: /must appear before all other declarations/,
-        hint: "Move the import statement to the beginning of the file.",
-      },
-      {
-        match: /cannot resolve module/,
-        hint: "Check the module path and make sure the module is available.",
-      },
-      {
-        match: /invalid import/,
-        hint: "Check the import syntax and verify that the imported names exist.",
-      },
-    ],
-    SemanticError: [
-  {
-    match: /can only be used after 'Json\.parse\(\)'/,
-    hint: "Call 'Json.parse()' before accessing Json properties.",
-  },
-],
-  };
+  ImportError: [
+    {
+      match: /not exported by/,
+      hint: "Check the exported names in the imported module.",
+    },
+    {
+      match: /file not found/,
+      hint: "Check that the module path is correct and the file exists.",
+    },
+    {
+      match: /must appear before all other declarations/,
+      hint: "Move the import statement to the beginning of the file.",
+    },
+    {
+      match: /cannot resolve module/,
+      hint: "Check the module path and make sure the module is available.",
+    },
+    {
+      match: /invalid import/,
+      hint: "Check the import syntax and verify that the imported names exist.",
+    },
+  ],
+  SemanticError: [
+    {
+      match: /can only be used after 'Json\.parse\(\)'/,
+      hint: "Call 'Json.parse()' before accessing Json properties.",
+    },
+  ],
+};
 
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
@@ -266,7 +266,7 @@ const BUILTIN_STRUCTS = [
   "Ptr",
   "Map",
   "Tcp",
-  "TcpServer"
+  "TcpServer",
 ];
 
 const BUILTIN_STRUCT_ABI = ["Ptr"];
@@ -456,19 +456,19 @@ const BUILTIN_FUNCTIONS = [
   "_http_lastStatus",
 
   "_crypto_sha256",
-"_crypto_sha512",
+  "_crypto_sha512",
 
-"_crypto_hmacSha256",
-"_crypto_hmacSha512",
+  "_crypto_hmacSha256",
+  "_crypto_hmacSha512",
 
-"_crypto_randomBytes",
-"_crypto_randomInt",
+  "_crypto_randomBytes",
+  "_crypto_randomInt",
 
-"_crypto_base64Encode",
-"_crypto_base64Decode",
+  "_crypto_base64Encode",
+  "_crypto_base64Decode",
 
-"_crypto_base64UrlEncode",
-"_crypto_base64UrlDecode",
+  "_crypto_base64UrlEncode",
+  "_crypto_base64UrlDecode",
 
   // FFI
   "_ffi_printf",
@@ -641,17 +641,17 @@ const NAMESPACE_MAP = {
   debug: ["pretty"],
 
   crypto: [
-  "sha256",
-  "sha512",
-  "hmacSha256",
-  "hmacSha512",
- "randomBytes",
-  "randomInt",
- "base64Encode",
- "base64Decode",
- "base64UrlEncode",
-  "base64UrlDecode",
-],
+    "sha256",
+    "sha512",
+    "hmacSha256",
+    "hmacSha512",
+    "randomBytes",
+    "randomInt",
+    "base64Encode",
+    "base64Decode",
+    "base64UrlEncode",
+    "base64UrlDecode",
+  ],
 
   fs: [
     "readFile",
@@ -709,11 +709,7 @@ const NAMESPACE_MAP = {
     "lastStatus",
   ],
 
-  net: [
-       "online",
-       "connect",
-       "listen"
-       ],
+  net: ["online", "connect", "listen"],
 
   ffi: [
     "printf",
@@ -771,7 +767,7 @@ const NAMESPACE_MAP = {
 };
 
 const BUILTIN_STRUCT_METHODS = {
-    Tcp: {
+  Tcp: {
     send: {
       returnType: "long",
       args: ["List<byte>"],
@@ -826,21 +822,21 @@ const BUILTIN_STRUCT_METHODS = {
     map: {
       returnType: "Map",
       args: [],
-      llvmName: "_zen_json_map"
+      llvmName: "_zen_json_map",
     },
 
     getLong: {
-  returnType: "long",
-  args: ["string"],
-  llvmName: "_zen_json_getLong",
-},
+      returnType: "long",
+      args: ["string"],
+      llvmName: "_zen_json_getLong",
+    },
 
-getByte: {
-  returnType: "byte",
-  args: ["string"],
-  llvmName: "_zen_json_getByte",
-},
-    
+    getByte: {
+      returnType: "byte",
+      args: ["string"],
+      llvmName: "_zen_json_getByte",
+    },
+
     getDouble: {
       returnType: "double",
       args: ["string"],
@@ -939,16 +935,16 @@ getByte: {
       llvmName: "_zen_json_getInt",
     },
     getLong: {
-  returnType: "long",
-  args: ["string"],
-  llvmName: "_zen_json_getLong",
-},
+      returnType: "long",
+      args: ["string"],
+      llvmName: "_zen_json_getLong",
+    },
 
-getByte: {
-  returnType: "byte",
-  args: ["string"],
-  llvmName: "_zen_json_getByte",
-},
+    getByte: {
+      returnType: "byte",
+      args: ["string"],
+      llvmName: "_zen_json_getByte",
+    },
     getDouble: {
       returnType: "double",
       args: ["string"],
@@ -975,7 +971,7 @@ getByte: {
       llvmName: "_zen_json_getObject",
     },
     has: { returnType: "bool", args: ["string"], llvmName: "_zen_json_has" },
-    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" }
+    isNull: { returnType: "bool", args: [], llvmName: "_zen_json_isNull" },
   },
 
   JsonArray: {
@@ -990,16 +986,16 @@ getByte: {
       llvmName: "_zen_json_arrayGetInt",
     },
     arrayGetLong: {
-  returnType: "long",
-  args: ["int"],
-  llvmName: "_zen_json_arrayGetLong",
-},
+      returnType: "long",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetLong",
+    },
 
-arrayGetByte: {
-  returnType: "byte",
-  args: ["int"],
-  llvmName: "_zen_json_arrayGetByte",
-},
+    arrayGetByte: {
+      returnType: "byte",
+      args: ["int"],
+      llvmName: "_zen_json_arrayGetByte",
+    },
     arrayGetDouble: {
       returnType: "double",
       args: ["int"],
@@ -1024,7 +1020,7 @@ arrayGetByte: {
       returnType: "JsonArray",
       args: ["int"],
       llvmName: "_zen_json_arrayGetArray",
-    }
+    },
   },
 
   HttpServer: {
@@ -1115,10 +1111,10 @@ arrayGetByte: {
     },
 
     getHeader: {
-  returnType: "string",
-  args: ["string"],
-  llvmName: "_httpRequest_getHeader",
-}
+      returnType: "string",
+      args: ["string"],
+      llvmName: "_httpRequest_getHeader",
+    },
   },
 
   Ptr: {
@@ -1161,25 +1157,25 @@ arrayGetByte: {
     loadLong: {
       returnType: "long",
       args: [],
-      llvmName: "_zen_ptr_loadLong"
+      llvmName: "_zen_ptr_loadLong",
     },
 
     loadByte: {
       returnType: "byte",
       args: [],
-      llvmName: "_zen_ptr_loadByte"
+      llvmName: "_zen_ptr_loadByte",
     },
 
     storeLong: {
       returnType: "void",
       args: ["long"],
-      llvmName: "_zen_ptr_storeLong"
+      llvmName: "_zen_ptr_storeLong",
     },
 
     storeByte: {
       returnType: "void",
       args: ["byte"],
-      llvmName: "_zen_ptr_storeByte"
+      llvmName: "_zen_ptr_storeByte",
     },
 
     storeString: {
@@ -1247,33 +1243,33 @@ arrayGetByte: {
     keys: {
       returnType: "List<string>",
       args: [],
-      llvmName: "zen_map_keys"
+      llvmName: "zen_map_keys",
     },
 
     entries: {
       returnType: "List<List<string>>",
       args: [],
-      llvmName: "zen_map_entries"
+      llvmName: "zen_map_entries",
     },
-    
+
     getInt: {
       returnType: "int",
       args: ["string"],
       llvmName: "zen_map_get_int",
     },
 
-   getLong: {
-    returnType: "long",
-    args: ["string"],
-    llvmName: "zen_map_get_long",
-  },
+    getLong: {
+      returnType: "long",
+      args: ["string"],
+      llvmName: "zen_map_get_long",
+    },
 
-  getByte: {
-    returnType: "byte",
-    args: ["string"],
-    llvmName: "zen_map_get_byte",
-  },
-    
+    getByte: {
+      returnType: "byte",
+      args: ["string"],
+      llvmName: "zen_map_get_byte",
+    },
+
     getBool: {
       returnType: "bool",
       args: ["string"],
@@ -1298,7 +1294,7 @@ arrayGetByte: {
     json: {
       returnType: "string",
       args: [],
-      llvmName: "zen_map_json"
+      llvmName: "zen_map_json",
     },
 
     getList: {
@@ -1319,18 +1315,18 @@ arrayGetByte: {
       llvmName: "zen_map_set_bool",
     },
 
-   setLong: {
-    returnType: "void",
-    args: ["string", "long"],
-    llvmName: "zen_map_set_long",
-  },
+    setLong: {
+      returnType: "void",
+      args: ["string", "long"],
+      llvmName: "zen_map_set_long",
+    },
 
-  setByte: {
-    returnType: "void",
-    args: ["string", "byte"],
-    llvmName: "zen_map_set_byte",
-  },
-    
+    setByte: {
+      returnType: "void",
+      args: ["string", "byte"],
+      llvmName: "zen_map_set_byte",
+    },
+
     setDouble: {
       returnType: "void",
       args: ["string", "double"],
@@ -1416,7 +1412,7 @@ const BUILTIN_MAP = {
 
   Long: {
     returnType: "long",
-    llvmName: "Long"
+    llvmName: "Long",
   },
 
   Double: {
@@ -1453,20 +1449,20 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "sizeOf",
   },
-  
+
   Byte: {
     returnType: "byte",
-    llvmName: "Byte"
+    llvmName: "Byte",
   },
 
   stringToBytes: {
     returnType: "List<byte>",
-    llvmName: "stringToBytes"
+    llvmName: "stringToBytes",
   },
 
   bytesToString: {
     returnType: "string",
-    llvmName: "bytesToString"
+    llvmName: "bytesToString",
   },
 
   panic: {
@@ -1612,54 +1608,54 @@ const BUILTIN_MAP = {
   // crypto
 
   sha256: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_sha256",
-},
+    returnType: "List<byte>",
+    llvmName: "_crypto_sha256",
+  },
 
-sha512: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_sha512",
-},
+  sha512: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_sha512",
+  },
 
-hmacSha256: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_hmacSha256",
-},
+  hmacSha256: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_hmacSha256",
+  },
 
-hmacSha512: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_hmacSha512",
-},
+  hmacSha512: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_hmacSha512",
+  },
 
-randomBytes: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_randomBytes",
-},
+  randomBytes: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_randomBytes",
+  },
 
-randomInt: {
-  returnType: "int",
-  llvmName: "_crypto_randomInt",
-},
+  randomInt: {
+    returnType: "int",
+    llvmName: "_crypto_randomInt",
+  },
 
-base64Encode: {
-  returnType: "string",
-  llvmName: "_crypto_base64Encode",
-},
+  base64Encode: {
+    returnType: "string",
+    llvmName: "_crypto_base64Encode",
+  },
 
-base64Decode: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_base64Decode",
-},
+  base64Decode: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_base64Decode",
+  },
 
-base64UrlEncode: {
-  returnType: "string",
-  llvmName: "_crypto_base64UrlEncode",
-},
-  
-base64UrlDecode: {
-  returnType: "List<byte>",
-  llvmName: "_crypto_base64UrlDecode",
-},
+  base64UrlEncode: {
+    returnType: "string",
+    llvmName: "_crypto_base64UrlEncode",
+  },
+
+  base64UrlDecode: {
+    returnType: "List<byte>",
+    llvmName: "_crypto_base64UrlDecode",
+  },
 
   cpuCount: {
     returnType: "int",
@@ -1776,8 +1772,8 @@ base64UrlDecode: {
     llvmName: "_os_homeDir",
   },
 
-  // NET 
-  
+  // NET
+
   online: {
     returnType: "bool",
     llvmName: "_net_online",
@@ -1785,12 +1781,12 @@ base64UrlDecode: {
 
   connect: {
     returnType: "Tcp",
-    llvmName: "_net_connect"
+    llvmName: "_net_connect",
   },
 
   listen: {
     returnType: "TcpServer",
-    llvmName: "_net_listen"
+    llvmName: "_net_listen",
   },
 
   // TIME
@@ -2174,23 +2170,23 @@ const OP_CODES = {
     "%": "srem",
     "^": "xor",
     "&": "and",
-  "|": "or",
-  "<<": "shl",
-  ">>": "ashr"
+    "|": "or",
+    "<<": "shl",
+    ">>": "ashr",
   },
 
   long: {
-  "+": "add",
-  "-": "sub",
-  "*": "mul",
-  "/": "sdiv",
-  "%": "srem",
-  "^": "xor",
-  "&": "and",
-  "|": "or",
-  "<<": "shl",
-  ">>": "ashr"
-},
+    "+": "add",
+    "-": "sub",
+    "*": "mul",
+    "/": "sdiv",
+    "%": "srem",
+    "^": "xor",
+    "&": "and",
+    "|": "or",
+    "<<": "shl",
+    ">>": "ashr",
+  },
 
   double: {
     "+": "fadd",
@@ -2474,33 +2470,13 @@ const CRYPTO_MAP = {
     ["string", "string"],
   ],
 
-  _crypto_randomBytes: [
-    "_crypto_randomBytes",
-    "List<byte>",
-    1,
-    ["int"],
-  ],
+  _crypto_randomBytes: ["_crypto_randomBytes", "List<byte>", 1, ["int"]],
 
-  _crypto_randomInt: [
-    "_crypto_randomInt",
-    "int",
-    2,
-    ["int", "int"],
-  ],
+  _crypto_randomInt: ["_crypto_randomInt", "int", 2, ["int", "int"]],
 
-  _crypto_base64Encode: [
-    "_crypto_base64Encode",
-    "string",
-    1,
-    ["List<byte>"],
-  ],
+  _crypto_base64Encode: ["_crypto_base64Encode", "string", 1, ["List<byte>"]],
 
-  _crypto_base64Decode: [
-    "_crypto_base64Decode",
-    "List<byte>",
-    1,
-    ["string"],
-  ],
+  _crypto_base64Decode: ["_crypto_base64Decode", "List<byte>", 1, ["string"]],
 
   _crypto_base64UrlEncode: [
     "_crypto_base64UrlEncode",
@@ -2526,7 +2502,12 @@ const FILE_MAP = {
 
   _fs_readFileBytes: ["_fs_readFileBytes", "List<byte>", 1, ["string"]],
 
-  _fs_writeFileBytes: ["_fs_writeFileBytes", "void", 2, ["string", "List<byte>"]],
+  _fs_writeFileBytes: [
+    "_fs_writeFileBytes",
+    "void",
+    2,
+    ["string", "List<byte>"],
+  ],
 
   _fs_exists: ["_fs_exists", "bool", 1, ["string"]],
 
@@ -2594,7 +2575,7 @@ const TIME_MAP = {
 const NETWORK_MAP = {
   _net_online: ["_net_online", "bool", 0, []],
   _net_connect: ["_net_connect", "Tcp", 2, ["string", "int"]],
-  _net_listen: ["_net_listen", "TcpServer", 1, ["int"]]
+  _net_listen: ["_net_listen", "TcpServer", 1, ["int"]],
 };
 
 const HTTP_MAP = {
@@ -2772,5 +2753,5 @@ export {
   BUILTIN_STRUCT_ABI,
   PRIMITIVE_TYPES,
   hints,
-  NAMESPACE_REG
+  NAMESPACE_REG,
 };

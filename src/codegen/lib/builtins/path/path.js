@@ -59,9 +59,9 @@ export class PATH {
           case "string":
             return "ptr";
           case "long":
-          return "i64";
-        case "byte":
-          return "i8";
+            return "i64";
+          case "byte":
+            return "i8";
           default:
             this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
         }
@@ -156,7 +156,7 @@ export class PATH {
     const t = this.IRB.newTemp();
     this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
 
-    this.IRB.cleanupBuiltinStringTemps(exprs)
+    this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
       ptr: t,
