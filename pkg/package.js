@@ -718,7 +718,7 @@ export class Package {
       process.exit(1);
     }
 
-    const packagesDir = path.join(os.homedir(), ".zen", "packages");
+    const packagesDir = path.join(os.homedir(), ".zen_packages");
 
     const packageDir = path.join(packagesDir, packageName);
 

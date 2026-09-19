@@ -311,7 +311,7 @@ export class Module {
 
     const configPath = path.join(
       os.homedir(),
-      ".zen/packages",
+      ".zen_packages",
       source,
       "zen.json",
     );

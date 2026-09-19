@@ -3921,7 +3921,7 @@ end:
       return this.safeReadFile(source);
     }
 
-    const packageDir = path.join(os.homedir(), ".zen", "packages", source);
+    const packageDir = path.join(os.homedir(), ".zen_packages", source);
 
     if (!fs.existsSync(packageDir)) {
       this.emitError("ModuleError", `Package '${source}' not found`, node);
@@ -3970,7 +3970,7 @@ end:
       return path.dirname(path.resolve(source));
     }
 
-    return path.join(os.homedir(), ".zen", "packages", source);
+    return path.join(os.homedir(), ".zen_packages", source);
   }
 
   registerBuiltInStructs(

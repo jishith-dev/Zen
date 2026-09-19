@@ -5,6 +5,7 @@ set -euo pipefail
 REPO="https://github.com/jishith-dev/Zen.git"
 BRANCH="dev"
 INSTALL_DIR="$HOME/.zen"
+PACKAGE_DIR="$HOME/.zen_packages"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -103,6 +104,13 @@ git clone --depth 1 --branch "$BRANCH" "$REPO" "$INSTALL_DIR" || {
   error "Failed to clone repository."
   exit 1
 }
+
+if [ -d "$PACKAGE_DIR" ]; then
+  info "Package directory already exists: $PACKAGE_DIR"
+else
+  info "Creating package directory: $PACKAGE_DIR"
+  mkdir -p "$PACKAGE_DIR"
+fi
 
 cd "$INSTALL_DIR"
 
