@@ -76,8 +76,7 @@ export class Package {
     try {
       const packagesDir = path.join(
         process.env.HOME || process.env.USERPROFILE,
-        ".zen",
-        "packages",
+        ".zen_packages",
       );
 
       if (!fs.existsSync(packagesDir)) {
@@ -585,8 +584,7 @@ export class Package {
         // All library versions use the same directory.
         installDir = path.join(
           process.env.HOME || process.env.USERPROFILE,
-          ".zen",
-          "packages",
+          ".zen_packages",
           packageName,
         );
       } else {
@@ -633,7 +631,7 @@ export class Package {
       execSync(
         `git clone --branch v${installVersion} --single-branch https://github.com/${owner}/${repo}.git ${installDir}`,
         {
-          stdio: "inherit",
+          stdio: "ignore",
         },
       );
 
@@ -680,8 +678,7 @@ export class Package {
       if (!fs.existsSync(installDir)) {
         installDir = path.join(
           process.env.HOME || process.env.USERPROFILE,
-          ".zen",
-          "packages",
+          ".zen_packages",
           packageName,
         );
       }
@@ -908,8 +905,7 @@ export class Package {
 
           const packageDir = path.join(
             process.env.HOME || process.env.USERPROFILE,
-            ".zen",
-            "packages",
+            ".zen_packages",
             importPath,
           );
 

@@ -1,0 +1,116 @@
+# void function
+
+fn foo() void {
+  screen("foo called")
+}
+
+foo()
+
+# normal returning function
+
+fn add(int x, int y) int {
+  return x + y
+}
+
+screen(add(10, 20))
+
+# rest params function
+
+fn sum_all(int nums...) int {
+  int sum
+
+  # rest params are List under the hood
+  loop (v of nums) {
+    sum += v
+  }
+
+  return sum
+}
+
+screen(sum_all(10, 20, 30))
+
+# struct param and returning function
+
+struct Bazz {
+  bool active
+}
+
+# user defined structs are value semantics
+# builtin structs are reference semantics
+
+fn getBazz(Bazz b) Bazz {
+  b.active = false
+  return b
+}
+
+Bazz b = {
+  active: true
+}
+
+screen(b.active)
+
+Bazz j = getBazz(b)
+
+screen(j.active)
+screen(b.active)
+
+# callback functions
+# capturing outer variables in inline callback functions is a compile time error
+
+fn greet(string name) bool {
+  screen(`Welcome ${name}`)
+  return true
+}
+
+fn check(fn cb(string) bool) void {
+  bool status = cb("Jishith")
+
+  if (status) {
+    screen("ok")
+  } else {
+    screen("something wrong")
+  }
+}
+
+# named function as callback
+
+check(greet)
+
+# inline anonymous function as callback
+
+check(fn greet(string name) bool {
+  screen(`Welcome ${name}`)
+  return true
+})
+
+# async function
+# currently reserved and has no functionality yet
+
+async fn getName() string {
+  return "Jishith"
+}
+
+screen(getName())
+
+# external declaration
+
+extern fn strlen(string source) int
+
+int len = strlen("John Doe")
+
+screen(len)
+
+# thread function
+# thread functions currently do not return values
+
+thread fn worker(long a) void {
+  screen("hello worker " + a)
+}
+
+worker(10L)
+worker(20L)
+worker(30L)
+
+# wait for all threads to finish
+
+threads.waitAll()

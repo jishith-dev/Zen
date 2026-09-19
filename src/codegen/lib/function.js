@@ -443,6 +443,9 @@ export class HandleFunction {
         name,
         `declare ${llvmReturnType} @${name} ${types}`,
       );
+      this.IRB.allocaBuff = savedAllocaBuff;
+      this.IRB.funcTempCounter = savedFuncTempCounter;
+      
       return;
     }
 
@@ -460,6 +463,9 @@ export class HandleFunction {
         mangledName,
         `declare ${llvmReturnType} @${mangledName} ${types}`,
       );
+
+      this.IRB.allocaBuff = savedAllocaBuff;
+      this.IRB.funcTempCounter = savedFuncTempCounter;
       return;
     }
 

@@ -1,0 +1,49 @@
+
+    byte b = 10B
+    int i = 100
+    long l = 1000L
+    double d = 25.5
+    bool active = true
+    string name = "Zen"
+
+    List<int> nums = [10, i]
+
+    struct Foo {
+      int value
+
+      getValue() int {
+         return this.value
+      }
+    }
+
+    Foo f = {
+      value: 600
+    }
+
+    // print values
+    
+    screen(b)
+    screen(i)
+    screen(l)
+    screen(d)
+    screen(active)
+    screen(name)
+
+    // list access
+    
+    screen(nums[0])
+
+    // of loop
+    loop (v of nums) screen(v)
+
+    // pretty print
+    
+    debug.pretty(nums)
+
+    // struct access
+    
+    screen(f.value)
+
+    // method call
+
+    screen(f.getValue())

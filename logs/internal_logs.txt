@@ -155,3 +155,13 @@ added threads namespace new methods:
    threads.currentId()
 
 added net.listen() and net.connect() for tcp
+
+added builtin native language spec reference system in command line:
+  zen info namespace <name> 
+  zen info namespace <name> [--methodName]
+  zen info global <name>
+  zen info
+  zen info global <struct> 
+  zen info global <struct> --[--methodName]
+
+  added zen tests

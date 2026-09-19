@@ -1,5 +1,7 @@
 import { Package } from "../pkg/package.js";
 import { Compiler } from "../tooling/tooling.js";
+import { Info } from "../tooling/info/info.js";
+import { Tests } from "../tooling/tests/tests.js";
 
 const VALID_COMMANDS = new Set([
   "run",
@@ -34,6 +36,8 @@ const VALID_COMMANDS = new Set([
   "deps",
   "installed",
   "read",
+  "info",
+  "tests"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -69,6 +73,14 @@ const COMPILE_COMMANDS = new Set([
 
   "fmt", // format
   "lint", // linter
+]);
+
+const INFO_COMMANDS = new Set([
+  "info",
+]);
+
+const TEST_COMMANDS = new Set([
+  "tests"
 ]);
 
 function help() {
@@ -113,6 +125,12 @@ Account:
 Other:
   zen --help
   zen --version
+  zen info
+  zen info namespace <name>
+  zen info namespace <name> --<methodName>
+  zen info global <name> 
+  zen info global <struct> --<methodName>
+  zen tests
 
 Optimization Levels:
   -O0    No optimization
@@ -162,6 +180,18 @@ export class CLI {
       const pkg = new Package(this.args);
       await pkg[PACKAGE_COMMANDS[command]]();
       return;
+    }
+
+    if (INFO_COMMANDS.has(command)) {
+     const info = new Info(this.args);
+     await info.run();
+     return;
+    }
+
+    if (TEST_COMMANDS.has(command)) {
+     const tests = new Tests(this.args);
+     await tests.run();
+     return;
     }
 
     if (COMPILE_COMMANDS.has(command)) {
