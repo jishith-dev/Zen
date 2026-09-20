@@ -1,0 +1,125 @@
+# fixed array
+
+int numbers[5] = [10, 20, 30, 40, 50]
+
+screen(numbers[0])
+screen(numbers[4])
+
+numbers[2] = 100
+screen(numbers[2])
+
+# multidimensional array
+
+int matrix[2][3] = [
+  [1, 2, 3],
+  [4, 5, 6]
+]
+
+screen(matrix[0][1])
+screen(matrix[1][2])
+
+matrix[1][1] = 50
+screen(matrix[1][1])
+
+# dynamic List
+
+List<int> nums = [10, 20, 30]
+
+screen(nums.length)
+screen(nums[0])
+
+nums.push(40)
+
+screen(nums.length)
+screen(nums[3])
+
+# List mutation
+
+nums[1] = 200
+
+screen(nums[1])
+
+# nested List
+
+List<List<List<int>>> data = [
+  [
+    [1, 2, 3],
+    [4, 5, 6]
+  ],
+  [
+    [7, 8, 9],
+    [10, 11, 12]
+  ]
+]
+
+screen(data[0][0][1])
+screen(data[1][1][2])
+
+data[0][1][0] = 100
+
+screen(data[0][1][0])
+
+# List of nested structs
+
+struct Address {
+  string city
+  string country
+}
+
+struct Profile {
+  string username
+  Address address
+}
+
+struct User {
+  string name
+  int age
+  Profile profile
+}
+
+List<User> users = [
+  {
+    name: "Jishith",
+    age: 21,
+    profile: {
+      username: "jishith_dev",
+      address: {
+        city: "Kannur",
+        country: "India"
+      }
+    }
+  },
+  {
+    name: "Abhinav",
+    age: 22,
+    profile: {
+      username: "abhinav_dev",
+      address: {
+        city: "Kozhikode",
+        country: "India"
+      }
+    }
+  }
+]
+
+screen(users[0].name)
+screen(users[0].profile.username)
+screen(users[0].profile.address.city)
+
+users[0].profile.address.city = "Thalassery"
+
+screen(users[0].profile.address.city)
+
+# Map
+
+Map person = {
+  name: "Jishith",
+  age: 21
+}
+
+screen(person.getString("name"))
+screen(person.getInt("age"))
+
+person.setString("name", "John")
+
+screen(person.getString("name"))

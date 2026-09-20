@@ -50,8 +50,6 @@ export class ZenFileSystem {
       }
     });
 
-    // Arg type mapper
-
     const getArgType = (e) => {
       switch (e) {
         case "int":
@@ -71,8 +69,6 @@ export class ZenFileSystem {
       }
     };
 
-    // Emit inner code first
-
     exprs.forEach((e) => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
@@ -88,21 +84,19 @@ export class ZenFileSystem {
           ptr = tmp;
         }
 
-        let t;
-        if (e?.isList) {
-          t = "ptr";
-        } else {
-          t = getArgType(e.type);
-        }
+        const t = e.isList ? "ptr" : getArgType(e.type);
         return `${t} ${ptr}`;
       })
       .join(", ");
 
-    const llvmRet = this.IRB.getLLVMType(returnType);
+    const isListRet = ["_fs_readFileBytes"].includes(funcName);
+    const llvmRet = isListRet ? "ptr" : this.IRB.getLLVMType(returnType);
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${exprs.map((e) => getArgType(e.type)).join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${exprs
+        .map((e) => (e.isList ? "ptr" : getArgType(e.type)))
+        .join(", ")})`,
     );
 
     const isVoidFn = llvmRet === "void";
@@ -114,113 +108,19 @@ export class ZenFileSystem {
       this.IRB.emit(`${t} = call ${llvmRet} @${funcName}(${callArgs})`);
     }
 
-    const listRetFn = ["_fs_readFileBytes"]; // only list return fn in fs namespace
-    const generic = { generic: "byte" };
-
     this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
       ptr: isVoidFn ? null : t,
-      type: isVoidFn ? "void" : returnType,
+      type: isVoidFn ? "void" : isListRet ? "byte" : returnType,
       llvmType: llvmRet,
       local: [],
       global: [],
       postOrPrefix: false,
-      isList: listRetFn.includes(funcName),
-      generic: listRetFn.includes(funcName) ? generic : null,
-    };
-  }
-
-  strToBytes(node) {
-    const args = node.args;
-
-    if (!args || args.length !== 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function strToBytes() accepts exactly 1 argument",
-        node,
-      );
-    }
-
-    const expr = this.expr.handleExpression(args[0]);
-
-    if (expr.type !== "string" || expr.isList || expr.isStruct) {
-      this.IRB.emitError("TypeError", "strToBytes() expects a string", node);
-    }
-
-    this.IRB.emitExpr(expr);
-
-    const callArgs = expr.needsLoad
-      ? (() => {
-          const tmp = this.IRB.newTemp();
-          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-          return `ptr ${tmp}`;
-        })()
-      : `ptr ${expr.ptr}`;
-
-    this.IRB.declareOneTime(
-      "_zen_strToBytes",
-      "declare ptr @_zen_strToBytes(ptr)",
-    );
-
-    const result = this.IRB.newTemp();
-
-    this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
-
-    this.IRB.cleanupBuiltinStringTemps([expr]);
-
-    return {
-      ptr: result,
-      type: "List",
-      llvmType: "ptr",
-      isList: true,
-      generic: { generic: "byte" },
-      local: [],
-      global: [],
-      postOrPrefix: false,
-    };
-  }
-
-  bytesToStr(node) {
-    const args = node.args;
-
-    if (!args || args.length !== 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function bytesToStr() accepts exactly 1 argument",
-        node,
-      );
-    }
-
-    const expr = this.expr.handleExpression(args[0]);
-
-    if (!expr.isList || expr.generic?.generic !== "byte") {
-      this.IRB.emitError("TypeError", "bytesToStr() expects List<byte>", node);
-    }
-
-    this.IRB.emitExpr(expr);
-
-    const callArgs = `ptr ${expr.ptr}`;
-
-    this.IRB.declareOneTime(
-      "_zen_bytesToStr",
-      "declare ptr @_zen_bytesToStr(ptr)",
-    );
-
-    const result = this.IRB.newTemp();
-
-    this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
-
-    this.IRB.cleanupBuiltinStringTemps([expr]);
-
-    return {
-      ptr: result,
-      type: "string",
-      llvmType: "ptr",
-      isConstant: false,
-      local: [],
-      global: [],
-      postOrPrefix: false,
+      isList: isListRet,
+      internalType: isListRet ? "List" : undefined,
+      retGeneric: isListRet ? "byte" : undefined,
+      generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
     };
   }
 }

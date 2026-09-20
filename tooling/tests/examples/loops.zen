@@ -1,0 +1,82 @@
+# default loop
+
+loop (int i = 0, i < 10, i++) {
+  screen("iteration" + i)
+}
+
+# fixed size array
+
+int arr[5] = [10, 20, 30, 40, 50]
+
+loop (value of arr) {
+  screen("value of fixed size array is :" + value)
+}
+
+# dynamic array
+
+List<int> nums = [1, 2, 3, 4, 5]
+
+loop (value of nums) {
+  screen("value is :" + value)
+}
+
+# fill fixed size array using loop
+
+int fixed[5]
+
+loop (int i = 0, i < 5, i++) {
+  fixed[i] = (i + 1) * 10
+}
+
+loop (value of fixed) {
+  screen("filled fixed array :" + value)
+}
+
+# fill dynamic array using loop
+
+List<int> dynamic = []
+
+loop (int i = 1, i <= 5, i++) {
+  dynamic.push(i * 100)
+}
+
+loop (value of dynamic) {
+  screen("filled dynamic array :" + value)
+}
+
+# list of structs
+
+struct User {
+  string name
+  int age
+}
+
+List<User> users = [
+  { name: "Jishith", age: 21 },
+  { name: "Abhinav", age: 22 },
+  { name: "Abhishek", age: 23 }
+]
+
+loop (user of users) {
+  screen(user.name)
+  screen(user.age)
+}
+
+# while loop
+
+int count // lowered to int count = 0
+
+while (count < 5) {
+  screen("while :" + count)
+  count++
+}
+
+# do while loop
+
+int number
+
+do {
+  number = Int(input("Enter a number greater than 0: "))
+} while (number <= 0)
+
+screen("Valid number: " + number)

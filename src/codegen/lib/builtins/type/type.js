@@ -375,101 +375,110 @@ export class Type {
   }
 
   strToBytes(node) {
-    const args = node.args;
+  const args = node.args;
 
-    if (!args || args.length !== 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function strToBytes() accepts exactly 1 argument",
-        node,
-      );
-    }
-
-    const expr = this.expr.handleExpression(args[0]);
-
-    if (expr.type !== "string" || expr.isList || expr.isStruct) {
-      this.IRB.emitError("TypeError", "strToBytes() expects a string", node);
-    }
-
-    this.IRB.emitExpr(expr);
-
-    const callArgs = expr.needsLoad
-      ? (() => {
-          const tmp = this.IRB.newTemp();
-          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-          return `ptr ${tmp}`;
-        })()
-      : `ptr ${expr.ptr}`;
-
-    this.IRB.declareOneTime(
-      "_zen_strToBytes",
-      "declare ptr @_zen_strToBytes(ptr)",
+  if (!args || args.length !== 1) {
+    this.IRB.emitError(
+      "ArgumentError",
+      "Function stringToBytes() accepts exactly 1 argument",
+      node,
     );
-
-    const result = this.IRB.newTemp();
-
-    this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
-
-    this.IRB.cleanupBuiltinStringTemps([expr]);
-
-    return {
-      ptr: result,
-      type: "byte",
-      llvmType: "ptr",
-      isList: true,
-      generic: { generic: "byte" },
-      local: [],
-      global: [],
-      postOrPrefix: false,
-    };
   }
 
-  bytesToStr(node) {
-    const args = node.args;
+  const expr = this.expr.handleExpression(args[0]);
 
-    if (!args || args.length !== 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function bytesToStr() accepts exactly 1 argument",
-        node,
-      );
-    }
-
-    const expr = this.expr.handleExpression(args[0]);
-
-    if (!expr.isList || expr.generic?.generic.type !== "byte") {
-      this.IRB.emitError("TypeError", "bytesToStr() expects List<byte>", node);
-    }
-
-    this.IRB.emitExpr(expr);
-
-    const callArgs = expr.needsLoad
-      ? (() => {
-          const tmp = this.IRB.newTemp();
-          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-          return `ptr ${tmp}`;
-        })()
-      : `ptr ${expr.ptr}`;
-
-    this.IRB.declareOneTime(
-      "_zen_bytesToStr",
-      "declare ptr @_zen_bytesToStr(ptr)",
-    );
-
-    const result = this.IRB.newTemp();
-
-    this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
-
-    this.IRB.cleanupBuiltinStringTemps([expr]);
-
-    return {
-      ptr: result,
-      type: "string",
-      llvmType: "ptr",
-      isConstant: false,
-      local: [],
-      global: [],
-      postOrPrefix: false,
-    };
+  if (expr.type !== "string" || expr.isList || expr.isStruct) {
+    this.IRB.emitError("TypeError", "stringToBytes() expects a string", node);
   }
+
+  this.IRB.emitExpr(expr);
+
+  const callArgs = expr.needsLoad
+    ? (() => {
+        const tmp = this.IRB.newTemp();
+        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+        return `ptr ${tmp}`;
+      })()
+    : `ptr ${expr.ptr}`;
+
+  this.IRB.declareOneTime(
+    "_zen_strToBytes",
+    "declare ptr @_zen_strToBytes(ptr)",
+  );
+
+  const result = this.IRB.newTemp();
+
+  this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
+
+  this.IRB.cleanupBuiltinStringTemps([expr]);
+
+  return {
+    ptr: result,
+    type: "byte",
+    llvmType: "ptr",
+    isList: true,
+    internalType: "List",
+    retGeneric: "byte",
+    generic: { type: "List", generic: { type: "byte" } },
+    local: [],
+    global: [],
+    postOrPrefix: false,
+  };
+}
+
+bytesToStr(node) {
+  const args = node.args;
+
+  if (!args || args.length !== 1) {
+    this.IRB.emitError(
+      "ArgumentError",
+      "Function bytesToString() accepts exactly 1 argument",
+      node,
+    );
+  }
+
+  const expr = this.expr.handleExpression(args[0]);
+
+  const elem = expr.generic?.generic;
+  const elemType = typeof elem === "string" ? elem : elem?.type;
+
+  if (!expr.isList || elemType !== "byte") {
+    this.IRB.emitError(
+      "TypeError",
+      "bytesToString() expects List<byte>",
+      node,
+    );
+  }
+
+  this.IRB.emitExpr(expr);
+
+  const callArgs = expr.needsLoad
+    ? (() => {
+        const tmp = this.IRB.newTemp();
+        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+        return `ptr ${tmp}`;
+      })()
+    : `ptr ${expr.ptr}`;
+
+  this.IRB.declareOneTime(
+    "_zen_bytesToStr",
+    "declare ptr @_zen_bytesToStr(ptr)",
+  );
+
+  const result = this.IRB.newTemp();
+
+  this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
+
+  this.IRB.cleanupBuiltinStringTemps([expr]);
+
+  return {
+    ptr: result,
+    type: "string",
+    llvmType: "ptr",
+    isConstant: false,
+    local: [],
+    global: [],
+    postOrPrefix: false,
+  };
+}
 }

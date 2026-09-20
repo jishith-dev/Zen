@@ -24,6 +24,31 @@ const TESTS = [
   {
     name: "Functions and builtins",
     file: "functions.zen"
+  },
+
+  {
+    name: "Tests Zen's loop constructs, including iteration, nested loops, while loops, and collection traversal.",
+    file: "loops.zen"
+  },
+
+  {
+    name: "Control flow",
+    file: "control_flow.zen"
+  },
+
+  {
+    name: "Data structures",
+    file: "data_structure.zen"
+  },
+
+  {
+    name: "operators and type promotion rules",
+    file: "operators.zen"
+  },
+
+  {
+    name: "Zen built-ins",
+    file: "builtins.zen"
   }
 ];
 
@@ -134,8 +159,8 @@ export class Tests {
   fs.copyFileSync(filePath, tempFile);
 
   const child = spawn(
-    "zen",
-    ["run", tempFile],
+    "node",
+    ["/sdcard/zen/bin/zen.js", "run", tempFile],
     {
       stdio: "inherit"
     }

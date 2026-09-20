@@ -1,0 +1,350 @@
+# numeric promotion
+
+byte b = 10B
+int i = 20
+long l = 30L
+double d = 40.0
+
+screen(b + 5B)
+screen(type(b + 5B))
+
+screen(b + i)
+screen(type(b + i))
+
+screen(i + l)
+screen(type(i + l))
+
+screen(l + d)
+screen(type(l + d))
+
+screen(b - 2B)
+screen(type(b - 2B))
+
+screen(i - b)
+screen(type(i - b))
+
+screen(l - i)
+screen(type(l - i))
+
+screen(d - l)
+screen(type(d - l))
+
+screen(b * 2B)
+screen(type(b * 2B))
+
+screen(i * b)
+screen(type(i * b))
+
+screen(l * i)
+screen(type(l * i))
+
+screen(d * l)
+screen(type(d * l))
+
+screen(b / 2B)
+screen(type(b / 2B))
+
+screen(i / b)
+screen(type(i / b))
+
+screen(l / i)
+screen(type(l / i))
+
+screen(d / l)
+screen(type(d / l))
+
+screen(b % 3B)
+screen(type(b % 3B))
+
+screen(i % b)
+screen(type(i % b))
+
+screen(l % i)
+screen(type(l % i))
+
+screen(d % 3.0)
+screen(type(d % 3.0))
+
+# unary operators
+
+int x = 10
+
+screen(+x)
+screen(-x)
+
+bool active = true
+
+screen(!active)
+screen(!false)
+
+# postfix increment
+
+int postInc = 10
+
+screen(postInc++)
+screen(postInc)
+
+# postfix decrement
+
+int postDec = 10
+
+screen(postDec--)
+screen(postDec)
+
+# prefix increment
+
+int preInc = 10
+
+screen(++preInc)
+screen(preInc)
+
+# prefix decrement
+
+int preDec = 10
+
+screen(--preDec)
+screen(preDec)
+
+# increment and decrement with byte
+
+byte byteInc = 10B
+
+screen(byteInc++)
+screen(byteInc)
+
+++byteInc
+
+screen(byteInc)
+
+byte byteDec = 10B
+
+screen(byteDec--)
+screen(byteDec)
+
+--byteDec
+
+screen(byteDec)
+
+# bitwise operators
+
+byte bitByte = 6B
+int bitInt = 3
+long bitLong = 5L
+
+screen(bitByte & 3B)
+screen(type(bitByte & 3B))
+
+screen(bitByte | 3B)
+screen(type(bitByte | 3B))
+
+screen(bitByte ^ 3B)
+screen(type(bitByte ^ 3B))
+
+screen(bitByte << 1)
+screen(type(bitByte << 1))
+
+screen(bitInt & 1)
+screen(type(bitInt & 1))
+
+screen(bitInt | 1)
+screen(type(bitInt | 1))
+
+screen(bitInt ^ 1)
+screen(type(bitInt ^ 1))
+
+screen(bitLong & 1L)
+screen(type(bitLong & 1L))
+
+screen(bitLong | 1L)
+screen(type(bitLong | 1L))
+
+screen(bitLong ^ 1L)
+screen(type(bitLong ^ 1L))
+
+screen(bitInt << 2)
+screen(type(bitInt << 2))
+
+screen(bitLong >> 1L)
+screen(type(bitLong >> 1L))
+
+screen(~bitByte)
+screen(type(~bitByte))
+
+screen(~bitInt)
+screen(type(~bitInt))
+
+screen(~bitLong)
+screen(type(~bitLong))
+
+# bool arithmetic
+
+bool t = true
+bool f = false
+
+screen(t + f)
+screen(type(t + f))
+
+screen(t + 5)
+screen(type(t + 5))
+
+screen(f + 5)
+screen(type(f + 5))
+
+screen(t * 5)
+screen(type(t * 5))
+
+screen(t - f)
+screen(type(t - f))
+
+screen(t / 1)
+screen(type(t / 1))
+
+# bool bitwise
+
+screen(t & f)
+screen(type(t & f))
+
+screen(t | f)
+screen(type(t | f))
+
+screen(t ^ f)
+screen(type(t ^ f))
+
+screen(t << 1)
+screen(type(t << 1))
+
+screen(t >> 1)
+screen(type(t >> 1))
+
+# comparison operators
+
+int a = 10
+int c = 20
+
+screen(a == c)
+screen(a != c)
+screen(a < c)
+screen(a <= c)
+screen(a > c)
+screen(a >= c)
+
+screen(type(a == c))
+screen(type(a != c))
+screen(type(a < c))
+screen(type(a <= c))
+screen(type(a > c))
+screen(type(a >= c))
+
+# boolean comparisons
+
+screen(true == true)
+screen(true != false)
+screen(false == true)
+
+# logical operators
+
+bool first = true
+bool second = false
+
+screen(first && second)
+screen(first || second)
+screen(!first)
+screen(!second)
+
+screen(type(first && second))
+screen(type(first || second))
+screen(type(!first))
+
+# logical combinations
+
+screen(true && true)
+screen(true && false)
+screen(false && true)
+screen(false || true)
+screen(false || false)
+
+# operator precedence
+
+screen(2 + 3 * 4)
+screen((2 + 3) * 4)
+
+screen(10 - 2 * 3)
+screen((10 - 2) * 3)
+
+screen(20 / 2 + 3)
+screen(20 / (2 + 3))
+
+screen(2 + 3 > 4)
+screen((2 + 3) > 4)
+
+screen(true || false && false)
+screen((true || false) && false)
+
+# mixed numeric expressions
+
+byte mb = 5B
+int mi = 10
+long ml = 20L
+double md = 2.5
+
+screen(mb + mi * 2)
+screen(type(mb + mi * 2))
+
+screen(mi + ml * 2L)
+screen(type(mi + ml * 2L))
+
+screen(ml + md * 2.0)
+screen(type(ml + md * 2.0))
+
+# chained increment and decrement
+
+int counter = 5
+
+++counter
+++counter
+
+screen(counter)
+
+counter--
+counter--
+
+screen(counter)
+
+counter++
+counter++
+
+screen(counter)
+
+# auto inference
+
+auto autoB = 6B
+auto autoI = 20
+auto autoL = 30L
+auto autoD = 2.5
+auto autoT = true
+
+auto r1 = autoB + autoB
+auto r2 = autoB + autoI
+auto r3 = autoI + autoL
+auto r4 = autoL + autoD
+auto r5 = autoB & autoB
+auto r6 = ~autoB
+auto r7 = autoT + autoT
+auto r8 = autoI > autoB
+auto autoS = autoB + autoI * 2
+
+screen(type(autoB))
+screen(type(autoI))
+screen(type(autoL))
+screen(type(autoD))
+screen(type(autoT))
+screen(type(r1))
+screen(type(r2))
+screen(type(r3))
+screen(type(r4))
+screen(type(r5))
+screen(type(r6))
+screen(type(r7))
+screen(type(r8))
+screen(type(autoS))
+screen(autoS)

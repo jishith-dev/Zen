@@ -384,7 +384,7 @@ export class HandleFunction {
       } else if (isExtern) {
         mangledName = name;
       } else if (this.IRB.stdlibMode) {
-        mangledName = name;
+        mangledName = `_zen_std_${name}`;
       } else {
         mangledName = `zen_${this.moduleName}_${name}`;
       }

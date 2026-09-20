@@ -1519,24 +1519,16 @@ export class Parser {
     return condition;
   }
 
-  parseLogical() {
+parseLogical() {
     this.skipNewlines();
-
-    let expr = this.parseEquality();
+    let expr = this.node(this.parseLogicalAnd());
 
     while (true) {
       this.skipNewlines();
-
-      if (!this.match("LOGICAL")) {
-        break;
-      }
-
+      if (!(this.match("LOGICAL") && this.current().value === "||")) break;
       const op = this.advance().value;
-
       this.skipNewlines();
-
-      const right = this.node(this.parseEquality());
-
+      const right = this.node(this.parseLogicalAnd());
       expr = this.node({
         type: ParserTypes.BINARY_EXPRESSION,
         left: expr,
@@ -1547,6 +1539,27 @@ export class Parser {
 
     return expr;
   }
+
+  parseLogicalAnd() {
+    this.skipNewlines();
+    let expr = this.node(this.parseEquality());
+
+    while (true) {
+      this.skipNewlines();
+      if (!(this.match("LOGICAL") && this.current().value === "&&")) break;
+      const op = this.advance().value;
+      this.skipNewlines();
+      const right = this.node(this.parseEquality());
+      expr = this.node({
+        type: ParserTypes.BINARY_EXPRESSION,
+        left: expr,
+        operator: op,
+        right,
+      });
+    }
+
+    return expr;
+  }  
 
   // COMPARISON
 
@@ -1852,7 +1865,10 @@ export class Parser {
       }
 
       // existing postfix ++ --
-      if (this.match("PLUS_PLUS") || this.match("MINUS_MINUS")) {
+      if (
+        (this.match("PLUS_PLUS") || this.match("MINUS_MINUS")) &&
+        this.tokens[this.pos - 1]?.type !== "NEWLINE"
+      ) {
         const op = this.advance().value;
 
         expr = this.node({

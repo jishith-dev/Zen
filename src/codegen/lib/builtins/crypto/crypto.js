@@ -15,8 +15,6 @@ export class ZenCrypto {
   ) {
     const args = node.args;
 
-    // mark in used namespace
-
     this.IRB.usedNameSpaces.add("crypto");
 
     if (!args) {
@@ -36,8 +34,6 @@ export class ZenCrypto {
     }
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
-
-    // ARGUMENT VALIDATION
 
     exprs.forEach((expr, i) => {
       const expectedType = params[i];
@@ -72,8 +68,6 @@ export class ZenCrypto {
       }
     });
 
-    // EMIT EXPRESSION LOCALS / GLOBALS
-
     exprs.forEach((e) => {
       if (e.local?.length) {
         this.IRB.emit(e.local.join("\n"));
@@ -83,8 +77,6 @@ export class ZenCrypto {
         this.IRB.emit(e.global.join("\n"));
       }
     });
-
-    // ARGUMENT LLVM TYPES
 
     const getArgType = (type) => {
       if (type.startsWith("List<")) {
@@ -125,8 +117,6 @@ export class ZenCrypto {
       }
     };
 
-    // BUILD CALL ARGUMENTS
-
     const callArgs = [];
     const declarationArgs = [];
 
@@ -162,8 +152,6 @@ export class ZenCrypto {
       `declare ${llvmRet} @${funcName}(${declarationArgs.join(", ")})`,
     );
 
-    // FUNCTION CALL
-
     let t = null;
 
     if (llvmRet === "void") {
@@ -178,12 +166,13 @@ export class ZenCrypto {
 
     this.IRB.cleanupBuiltinStringTemps(exprs);
 
-    // RESULT
-
     return {
       ptr: t,
       type,
       isList,
+      internalType: isList ? "List" : undefined,
+      retGeneric: isList ? type : undefined,
+      generic: isList ? { type: "List", generic: { type } } : null,
       llvmType: llvmRet,
       local: [],
       global: [],

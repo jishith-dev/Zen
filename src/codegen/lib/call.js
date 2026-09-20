@@ -122,15 +122,15 @@ export class Call {
       return this.handleBuiltInCall(node, globalScope);
     }
 
-    if (node.isAwait && !this.IRB.currentFunction.isAsync) {
+    const fn = this.IRB.resolveFunction(name, node);
+
+    if (node.isAwait && !fn.isAsync) {
       this.IRB.emitError(
         "SyntaxError",
         "await can only be used inside async functions",
         node,
       );
     }
-
-    const fn = this.IRB.resolveFunction(name, node);
 
     const isImportedFn = !!fn.isImported;
     const importedModuleName = fn?.importedModuleName;
@@ -156,10 +156,10 @@ export class Call {
         mangledName = name;
         break;
       case this.IRB.stdlibMode:
-        mangledName = name;
+        mangledName = `_zen_std_${name}`;
         break;
       case isStdFn:
-        mangledName = name;
+        mangledName = `_zen_std_${name}`;
         break;
       case isImportedFn:
         mangledName = `zen_${importedModuleName}_${name}`;

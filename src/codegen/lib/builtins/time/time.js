@@ -104,7 +104,7 @@ export class Time {
       local: [],
       global: [],
       postOrPrefix: false,
-      needsLoad: true,
+      needsLoad: false,
     };
   }
 }

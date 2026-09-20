@@ -1995,7 +1995,7 @@ end:
 
     const { full: arrayType } = this.buildArrayType(baseType, dims);
     const elementSize = this.sizeOf(zenType);
-    const length = value.elements.length;
+    const length = Number(dims[0]);
     if (value && value.elements.length > 0) {
       this.validateArrayType(arrayType, value, zenType, name);
       this.validateArray(dimensions, value);

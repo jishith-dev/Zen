@@ -16,4 +16,4 @@ source_filename = "constants.ll"
 @INF = local_unnamed_addr constant double 0x7FF0000000000000
 @NEG_INF = local_unnamed_addr constant double 0xFFF0000000000000
 @NAN = local_unnamed_addr constant double 0x7FF8000000000000
-@SEED = global i32 123456789
+@SEED = global i64 123456789

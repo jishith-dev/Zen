@@ -866,9 +866,94 @@ char* _path_join(
     return out;
 }
 
-char* _path_normalize(const char* path) {
+static int isSep(char c) { return c == '/' || c == '\\'; }
 
-    return strdup(path);
+char* _path_normalize(const char* path) {
+    if (!path) path = "";
+
+    size_t len = strlen(path);
+    size_t i = 0;
+
+    int drive = len >= 2 && path[1] == ':' &&
+                ((path[0] | 32) >= 'a' && (path[0] | 32) <= 'z');
+    if (drive) i = 2;
+
+    int unc = !drive && len > 2 && isSep(path[0]) && isSep(path[1]) && !isSep(path[2]);
+    int absolute = unc || (i < len && isSep(path[i]));
+    size_t pinned = unc ? 2 : 0;
+    int trailing = len > 0 && isSep(path[len - 1]);
+
+    const char** seg = malloc(sizeof(char*) * (len / 2 + 2));
+    size_t* segLen = malloc(sizeof(size_t) * (len / 2 + 2));
+    char* out = malloc(len + 4);
+
+    if (!seg || !segLen || !out) {
+        free(seg);
+        free(segLen);
+        free(out);
+        return NULL;
+    }
+
+    size_t count = 0;
+
+    while (i < len) {
+        while (i < len && isSep(path[i])) i++;
+        if (i >= len) break;
+
+        size_t start = i;
+        while (i < len && !isSep(path[i])) i++;
+        size_t n = i - start;
+
+        if (n == 1 && path[start] == '.') continue;
+
+        if (n == 2 && path[start] == '.' && path[start + 1] == '.') {
+            int lastIsParent = count > 0 && segLen[count - 1] == 2 &&
+                               seg[count - 1][0] == '.' && seg[count - 1][1] == '.';
+
+            if (count > pinned && !lastIsParent) {
+                count--;
+            } else if (!absolute) {
+                seg[count] = path + start;
+                segLen[count] = n;
+                count++;
+            }
+            continue;
+        }
+
+        seg[count] = path + start;
+        segLen[count] = n;
+        count++;
+    }
+
+    size_t pos = 0;
+
+    if (drive) {
+        out[pos++] = path[0];
+        out[pos++] = ':';
+    }
+
+    if (unc) {
+        out[pos++] = '\\';
+        out[pos++] = '\\';
+    } else if (absolute) {
+        out[pos++] = '\\';
+    }
+
+    for (size_t k = 0; k < count; k++) {
+        if (k > 0) out[pos++] = '\\';
+        memcpy(out + pos, seg[k], segLen[k]);
+        pos += segLen[k];
+    }
+
+    if (count == 0 && !absolute) out[pos++] = '.';
+    if (trailing && out[pos - 1] != '\\') out[pos++] = '\\';
+
+    out[pos] = '\0';
+
+    free(seg);
+    free(segLen);
+
+    return out;
 }
 
 void _os_exit(int code) {

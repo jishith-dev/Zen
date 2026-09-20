@@ -1,0 +1,309 @@
+# Examples only: a sample of builtins, not full coverage
+
+# constants
+
+screen(PI)
+screen(I32_MAX)
+screen(I32_MIN)
+
+# conversion
+
+screen(String(42))
+screen(Int("123") + 1)
+
+screen(toString(42)) // toString() is ASCII conversion, for normal string conversion use String()
+screen(toInt("123") + 1) // toInt() is ASCII conversion, for normal string conversion use Int()
+
+screen(Double(5))
+screen(type(Double(5)))
+screen(Long(5))
+screen(type(Long(5)))
+screen(length("hello"))
+
+# basic
+
+screen(abs(-5))
+screen(max(3, 9))
+screen(min(3, 9))
+screen(clamp(15, 0, 10))
+screen(sign(-8))
+screen(isEven(4))
+screen(isOdd(4))
+screen(between(5, 1, 10))
+
+# power and roots
+
+screen(pow(2, 10))
+screen(type(pow(2, 10)))
+screen(square(7))
+screen(cube(3))
+screen(sqrt(16))
+
+# rounding
+
+screen(floor(2.7))
+screen(ceil(2.1))
+screen(toFixed(3.14159, 2))
+
+# number theory
+
+screen(gcd(12, 18))
+screen(lcm(4, 6))
+screen(factorial(5))
+screen(isPrime(97))
+screen(isPrime(91))
+
+# interpolation
+
+screen(lerp(0.0, 10.0, 0.5))
+screen(normalize(5.0, 0.0, 10.0))
+
+# strings
+
+screen(upperCase("zen"))
+screen(lowerCase("ZEN"))
+screen(capitalize("zen"))
+screen(reverse("abc"))
+screen(trim("  hi  "))
+screen(repeat("ab", 3))
+screen(charAt("hello", 1))
+screen(slice("hello world", 0, 5))
+screen(indexOf("hello", "l"))
+screen(count("banana", "a"))
+screen(contains("hello world", "world"))
+screen(startsWith("hello", "he"))
+screen(endsWith("hello", "lo"))
+screen(replaceAll("a-b-c", "-", "+"))
+screen(padStart("7", 3, "0"))
+screen(padEnd("7", 3, "0"))
+screen(padCenter("7", 3, "-"))
+screen(type(upperCase("a")))
+
+# result types
+
+screen(type(abs(-5)))
+screen(type(isPrime(7)))
+screen(type(floor(2.7)))
+screen(type(factorial(5)))
+
+# random
+
+int r = randomInt(1, 10)
+screen(between(r, 1, 10))
+
+double rd = random()
+screen(rd >= 0.0 && rd < 1.0)
+
+# path
+
+screen(path.basename("/a/b/c.txt"))
+screen(path.dirname("/a/b/c.txt"))
+screen(path.extname("/a/b/c.txt"))
+screen(path.join("/a", "b"))
+screen(path.normalize("/a/b/../c"))
+screen(path.normalize("/a//b/./c/")) // trailing slash is kept
+screen(path.normalize("a/../.."))
+
+# crypto
+
+screen(crypto.base64Encode(stringToBytes("hello")))
+screen(bytesToString(crypto.base64Decode("aGVsbG8=")))
+screen(crypto.base64Encode(stringToBytes("???"))) // "???" gives '/' in base64 and '_' in the url variant
+screen(crypto.base64UrlEncode(stringToBytes("???")))
+screen(bytesToString(crypto.base64UrlDecode("Pz8_")))
+screen(crypto.base64Encode(crypto.sha256("abc")))
+screen(crypto.base64Encode(crypto.hmacSha256("key", "msg")))
+
+// list results go straight to debug.pretty, not through screen
+debug.pretty(stringToBytes("abc"))
+debug.pretty(crypto.base64Decode("aGVsbG8="))
+debug.pretty(crypto.base64UrlDecode("Pz8_"))
+debug.pretty(crypto.sha256("abc"))
+debug.pretty(crypto.hmacSha256("key", "msg"))
+debug.pretty(crypto.sha512("abc"))
+debug.pretty(crypto.randomBytes(4))
+
+int cr = crypto.randomInt(1, 10)
+screen(between(cr, 1, 10))
+
+# fs
+
+screen(type(fs.cwd()))
+
+fs.writeFile("zen_a.txt", "hello")
+screen(fs.exists("zen_a.txt"))
+screen(fs.readFile("zen_a.txt"))
+
+fs.appendFile("zen_a.txt", " world")
+screen(fs.readFile("zen_a.txt"))
+
+fs.renameFile("zen_a.txt", "zen_b.txt")
+screen(fs.exists("zen_a.txt"))
+screen(fs.exists("zen_b.txt"))
+
+fs.writeFileBytes("zen_c.bin", stringToBytes("abc"))
+List<byte> fileBytes = fs.readFileBytes("zen_b.txt")
+screen(fileBytes.length)
+
+screen(bytesToString(fs.readFileBytes("zen_c.bin")))
+debug.pretty(fs.readFileBytes("zen_c.bin"))
+
+fs.deleteFile("zen_b.txt")
+fs.deleteFile("zen_c.bin")
+screen(fs.exists("zen_b.txt"))
+screen(fs.exists("zen_c.bin"))
+
+fs.makeDir("zen_dir")
+screen(fs.exists("zen_dir"))
+screen(sys.exec("rmdir zen_dir")) // 0 means the command succeeded
+screen(fs.exists("zen_dir"))
+
+# sys
+
+sys.setEnv("ZEN_TEST", "42")
+screen(sys.hasEnv("ZEN_TEST"))
+screen(sys.getEnv("ZEN_TEST"))
+screen(sys.hasEnv("ZEN_NOT_SET"))
+screen(trim(sys.execOutput("echo hi"))) // output keeps the trailing newline
+screen(sys.exec("true"))
+screen(type(sys.performance()))
+
+# time
+
+screen(type(time.millis()))
+screen(type(time.now()))
+screen(time.year() >= 2026)
+screen(between(time.month(), 1, 12))
+screen(between(time.date(), 1, 31)) // date() is the day of the month
+screen(between(time.day(), 0, 6)) // day() is the weekday, Sunday is 0
+screen(type(time.format(time.now())))
+
+long t0 = time.millis()
+time.sleep(100L)
+long t1 = time.millis()
+screen(t1 - t0 >= 100L)
+
+# os
+
+screen(os.cpuCount() > 0)
+screen(type(os.cpuCount()))
+screen(type(os.totalMemory()))
+screen(os.pid() > 0L)
+screen(type(os.hostname()))
+screen(os.isWindows())
+screen(os.isMac())
+
+# http
+
+screen(http.urlEncode("a b&c"))
+screen(http.urlDecode("a%20b"))
+
+# ffi
+
+// these call libc directly, std versions of abs/sqrt/pow are separate (_zen_std_*)
+screen(ffi.strlen("hello"))
+screen(ffi.strcmp("a", "a"))
+screen(ffi.atoi("42"))
+screen(ffi.atof("2.5"))
+screen(ffi.abs(-4))
+screen(ffi.toupper(97))
+screen(ffi.isdigit(53) != 0) // libc returns any nonzero value for true
+screen(ffi.sqrt(16.0))
+screen(ffi.pow(2.0, 8.0))
+screen(ffi.fmod(7.0, 3.0))
+screen(ffi.log2(8.0))
+screen(ffi.cbrt(27.0))
+screen(ffi.trunc(2.9))
+
+# Ptr
+
+// allocation comes from libc, Ptr itself only reads, writes and frees
+extern fn malloc(int size) Ptr
+
+Ptr p = malloc(16)
+screen(p.isNull())
+
+p.storeInt(42)
+screen(p.loadInt())
+
+Ptr p4 = p.offset(4) // offset is in bytes
+p4.storeInt(7)
+screen(p4.loadInt())
+screen(p.loadInt())
+
+Ptr p8 = p.offset(8)
+p8.storeDouble(2.5)
+screen(p8.loadDouble())
+
+Ptr wide = malloc(16)
+wide.storeLong(9000000000L)
+screen(wide.loadLong())
+
+Ptr b = wide.offset(8)
+b.storeByte(65B)
+screen(b.loadByte())
+
+Ptr flag = wide.offset(9)
+flag.storeBool(true)
+screen(flag.loadBool())
+
+Ptr text = malloc(8) // holds a string pointer, not the characters
+text.storeString("zen")
+screen(text.loadString())
+
+Ptr holder = malloc(8)
+holder.storePtr(p)
+Ptr back = holder.loadPtr()
+screen(back.loadInt())
+
+Ptr dst = malloc(16)
+dst.copyFrom(p, 16)
+screen(dst.loadInt())
+screen(dst.offset(4).loadInt())
+
+Ptr dst2 = malloc(16)
+p.copyTo(dst2, 16)
+screen(dst2.loadInt())
+
+dst.fill(0, 16)
+screen(dst.loadInt())
+screen(dst.offset(4).loadInt())
+
+p.free()
+wide.free()
+text.free()
+holder.free()
+dst.free()
+dst2.free()
+
+# Map
+
+// a Map comes from parsed JSON
+Json j 
+j.parse("{\"name\":\"zen\",\"version\":3,\"stable\":false,\"pi\":3.5}")
+
+Map m = j.map()
+
+screen(m.getString("name"))
+screen(m.getLong("version")) // after conversion of .map() integer values always long, ie: nature of json data
+screen(m.getBool("stable"))
+screen(m.getDouble("pi"))
+screen(m.has("name"))
+screen(m.has("nope"))
+
+m.setInt("count", 7)
+screen(m.getInt("count"))
+
+m.setString("lang", "Zen")
+screen(m.getString("lang"))
+
+m.setDouble("ratio", 0.25)
+screen(m.getDouble("ratio"))
+
+m.remove("count")
+screen(m.has("count"))
+
+debug.pretty(m.keys())
+debug.pretty(m)
+
+j.free()

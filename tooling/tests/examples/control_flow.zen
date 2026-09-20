@@ -1,0 +1,145 @@
+# if / else
+
+int age = 21
+
+if (age >= 18) {
+  screen("adult")
+} else {
+  screen("minor")
+}
+
+# else if
+
+int score = 85
+
+if (score >= 90) {
+  screen("A")
+} else if (score >= 80) {
+  screen("B")
+} else if (score >= 70) {
+  screen("C")
+} else {
+  screen("D")
+}
+
+# nested if
+
+bool loggedIn = true
+bool admin = true
+
+if (loggedIn) {
+  if (admin) {
+    screen("admin")
+  } else {
+    screen("user")
+  }
+} else {
+  screen("login required")
+}
+
+# logical conditions
+
+int x = 10
+
+if (x > 5 && x < 20) {
+  screen("and works")
+}
+
+if (x == 10 || x == 20) {
+  screen("or works")
+}
+
+if (!(x == 0)) {
+  screen("not works")
+}
+
+# ternary
+
+int num = 10 > 5 ? 40 : 70
+
+screen(num)
+
+# ternary with false condition
+
+int other = 10 < 5 ? 40 : 70
+
+screen(other)
+
+# switch
+
+int value = 2
+
+switch (value) {
+  case 1:
+    screen("one")
+  case 2:
+    screen("two")
+  case 3:
+    screen("three")
+  default:
+    screen("default")
+}
+
+# switch must not fall through
+
+int selected = 1
+
+switch (selected) {
+  case 1:
+    screen("case one")
+  case 2:
+    screen("case two")
+  default:
+    screen("default case")
+}
+
+# switch with compile-time constant expressions
+# case values must be compile-time constants
+# duplicate evaluated case values are rejected
+
+int number = 10
+
+switch (number) {
+  case 5 + 5:
+    screen("ten")
+  case 20 + 1:
+    screen("twenty one")
+  default:
+    screen("other")
+}
+
+# break
+
+loop (int i = 0, i < 10, i++) {
+  if (i == 3) {
+    break
+  }
+
+  screen("break :" + i)
+}
+
+# continue
+
+loop (int i = 0, i < 5, i++) {
+  if (i == 2) {
+    continue
+  }
+
+  screen("continue :" + i)
+}
+
+# return through control flow
+
+fn check(int value) string {
+  if (value > 0) {
+    return "positive"
+  } else if (value < 0) {
+    return "negative"
+  }
+
+  return "zero"
+}
+
+screen(check(10))
+screen(check(-10))
+screen(check(0))

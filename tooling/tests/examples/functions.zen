@@ -14,6 +14,16 @@ fn add(int x, int y) int {
 
 screen(add(10, 20))
 
+# list returning function
+
+fn getUsers() List<string> {
+  return ["Jishith", "Abhinav", "Abhishek"]
+}
+
+screen(getUsers()[0]) // get first user
+
+screen(getUsers().length) // get total length
+
 # rest params function
 
 fn sum_all(int nums...) int {
@@ -43,6 +53,7 @@ fn getBazz(Bazz b) Bazz {
   return b
 }
 
+// this is user defined struct
 Bazz b = {
   active: true
 }
@@ -53,6 +64,26 @@ Bazz j = getBazz(b)
 
 screen(j.active)
 screen(b.active)
+
+# builtin structs are reference semantics
+# changes inside functions affect the original object
+
+Map person = {
+  name: "Jishith",
+  age: 21
+}
+
+fn getPerson(Map person) string {
+  person.setString("name", "John doe")
+  return person.getString("name")
+}
+
+screen(person.getString("name"))
+
+string name = getPerson(person)
+
+screen(name)
+screen(person.getString("name"))
 
 # callback functions
 # capturing outer variables in inline callback functions is a compile time error
@@ -84,13 +115,17 @@ check(fn greet(string name) bool {
 })
 
 # async function
-# currently reserved and has no functionality yet
+# currently reserved keyword and has no functionality yet
 
 async fn getName() string {
   return "Jishith"
 }
 
-screen(getName())
+screen(getName()) // no async behaviour yet
+
+screen(await getName()) // no await behaviour
+
+// instead users can use thread function for parellelism and concurrency
 
 # external declaration
 

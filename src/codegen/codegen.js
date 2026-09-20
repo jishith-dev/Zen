@@ -172,8 +172,8 @@ define void @_assignSeed () {
     }
 
     if (!this.IRB.exported && !this.IRB.stdlibMode) {
-      this.IRB.globals.push(`@argc = global ptr null`);
-      this.IRB.globals.push(`@argv = global i32 0`);
+      this.IRB.globals.push(`@argc = global i32 0`);
+      this.IRB.globals.push(`@argv = global ptr null`);
       this.IRB.emit(
         `define i32 @main(i32 %argc, ptr %argv) { \nentry:\n${this.IRB.stdlibMode ? "" : "call void @_assignSeed()"}`,
       );
@@ -270,6 +270,7 @@ define void @_assignSeed () {
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
           freedPindex: new Set(),
+          isAsync: node?.isAsync
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);
@@ -299,7 +300,7 @@ define void @_assignSeed () {
 
           const params = fn.params.join(", ");
 
-          this.IRB.globals.unshift(`declare ${fn.ret} @${name}(${params})`);
+          this.IRB.globals.unshift(`declare ${fn.ret} @_zen_std_${name}(${params})`);
         }
       }
     }
@@ -400,6 +401,7 @@ define void @_assignSeed () {
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
           freedPindex: new Set(),
+          isAsync: node?.isAsync
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);

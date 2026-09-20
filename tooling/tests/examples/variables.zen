@@ -6,6 +6,13 @@
     bool active = true
     string name = "Zen"
 
+    // auto inference
+
+    auto x = 10
+    auto y = x + 20
+    screen(type(x))
+    screen(y)
+
     List<int> nums = [10, i]
 
     struct Foo {
