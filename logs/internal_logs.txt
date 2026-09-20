@@ -165,3 +165,7 @@ added builtin native language spec reference system in command line:
   zen info global <struct> --[--methodName]
 
   added zen tests
+
+  now supported multiple export in same file as well as multiple imports
+
+  added zen update --dev so it can install dev version

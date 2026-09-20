@@ -7,6 +7,7 @@ import { execSync } from "child_process";
 
 const BACKEND_URL = "https://zen-registry.onrender.com";
 const AUTH_PATH = path.join(os.homedir(), ".zen", "auth.json");
+import { fileURLToPath } from "url";
 
 function ask(rl, q) {
   return new Promise((resolve) => rl.question(q, resolve));
@@ -792,21 +793,49 @@ export class Package {
   }
 
   update() {
-    try {
-      console.log("Updating Zen...");
+  const dev = this.args.includes("--dev");
+  const branch = dev ? "dev" : "main";
+  const script = dev ? "install-dev.sh" : "install.sh";
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const stampFile = path.join(root, ".commit");
 
-      execSync(
-        "curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash",
-        { stdio: "inherit", shell: true },
-      );
-
-      console.log("Zen updated successfully.");
-    } catch {
-      console.error("error: Update failed.");
-      process.exit(1);
-    }
+  let latest;
+  try {
+    latest = execSync(
+      `curl -fsSL -H "Accept: application/vnd.github.sha" https://api.github.com/repos/jishith-dev/Zen/commits/${branch}`,
+      { encoding: "utf8" },
+    ).trim();
+  } catch {
+    console.error("error: Could not check latest version.");
+    process.exit(1);
   }
 
+  const stamp = `${branch}:${latest}`;
+  const installed = fs.existsSync(stampFile)
+    ? fs.readFileSync(stampFile, "utf8").trim()
+    : "";
+
+  if (installed === stamp) {
+    console.log(`Zen is already up to date${dev ? " (dev)" : ""}.`);
+    return;
+  }
+
+  try {
+    console.log(`Updating Zen${dev ? " (dev)" : ""}...`);
+
+    execSync(
+      `curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/${branch}/${script} | bash`,
+      { stdio: "inherit", shell: true },
+    );
+
+    fs.writeFileSync(stampFile, stamp);
+    console.log("Zen updated successfully.");
+  } catch {
+    console.error("error: Update failed.");
+    process.exit(1);
+  }
+  }
+  
   async deps() {
     try {
       const projectDir = process.cwd();

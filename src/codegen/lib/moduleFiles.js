@@ -8,6 +8,7 @@ export class ModuleFiles {
     this.declFunctions = new Map();
     this.nativeFiles = new Set();
     this.flags = new Set();
+    this.baseDir = null;
   }
 
   add(file) {

@@ -136,15 +136,17 @@ export class CodeGen {
     this.IRB.initBuiltInStructs();
     this.IRB.initNamespaces();
 
-    const haveExport = this.ast.find((f) => f.type === "EXPORT");
+    const exportNodes = this.ast.filter((f) => f.type === "EXPORT");
 
-    this.IRB.exportNames = haveExport ? new Set(haveExport.names) : new Set();
+this.IRB.exportNames = new Set(
+  exportNodes.flatMap((node) => node.names || [])
+);
 
-    if (haveExport) {
-      this.IRB.haveExport = true;
-      this.IRB.globals.push(`@argc = external global i32`);
-      this.IRB.globals.push(`@argv = external global ptr`);
-    }
+if (exportNodes.length > 0) {
+  this.IRB.haveExport = true;
+  this.IRB.globals.push(`@argc = external global i32`);
+  this.IRB.globals.push(`@argv = external global ptr`);
+}
 
     for (const node of this.ast) {
       if (node.type === "EXPORT") {

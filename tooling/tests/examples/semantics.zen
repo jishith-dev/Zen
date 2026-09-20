@@ -1,0 +1,253 @@
+# Variable semantics
+// Primitive variables use value semantics
+
+int a = 10
+int b = a
+
+screen(b)
+
+a = 50
+
+screen(b)
+
+
+# Constants
+
+const int MAX_ALLOWED = 200
+
+// MAX_ALLOWED = 900
+// reassignment of constant variables is a compile time error
+
+const List<string> names = ["Jishith", "Abhi"]
+
+// names = ["John"]
+// reassignment of constant list variables is a compile time error.
+// But modifying elements is allowed.
+
+names[1] = "Abhishek"
+
+screen(names[1])
+
+
+# User-defined struct semantics
+
+struct Foo {
+  int value
+}
+
+Foo f = {
+  value: 200
+}
+
+Foo foo = f
+
+// User-defined structs use value semantics.
+// Mutating the copy does not affect the original.
+
+foo.value = 500
+
+screen(foo.value)
+screen(f.value)
+
+
+# Built-in struct semantics
+
+Map data = {
+  name: "Jishith"
+}
+
+Map new_data = data
+
+// Built-in structs use reference semantics.
+// Both variables refer to the same object.
+
+new_data.setString("name", "Abhi")
+
+screen(data.getString("name"))
+screen(new_data.getString("name"))
+
+
+# Memory semantics
+
+// Heap-owned objects should be released with .free() when required.
+// Using an object after free is a compile time error where Zen can
+// prove the invalid usage.
+//
+// zen info global <struct>
+// can be used to inspect whether a builtin struct exposes .free().
+
+string userName = "Jishith"
+
+userName.free()
+
+// screen(userName)
+// use-after-free is a compile time error
+
+
+# Explicit pointer allocation
+
+extern fn malloc(int size) Ptr
+
+Ptr p = malloc(4)
+
+p.storeInt(1000)
+
+screen(p.loadInt())
+
+p.free()
+
+
+# Temporary memory
+
+// Temporary heap values are managed internally by Zen where applicable.
+// String literals used directly do not require manual free.
+
+screen("Hello world")
+
+
+# Function return semantics
+
+// Return values must match the declared return type.
+//
+// The following is a compile time error:
+//
+// fn getNum() int {
+//   int i = 21
+//
+//   if (10 > 5) return 10
+//   if (20 == 21) return "ok"
+// }
+
+
+# Scope semantics
+
+int globalValue = 100
+
+fn scopeTest() void {
+  int localValue = 200
+
+  screen(globalValue)
+  screen(localValue)
+}
+
+scopeTest()
+
+// localValue exists only inside scopeTest.
+//
+// screen(localValue)
+// compile time error.
+
+
+# Nested scopes
+
+fn nestedScope() void {
+  int outerValue = 10
+
+  if (outerValue > 5) {
+    int innerValue = 20
+
+    screen(outerValue)
+    screen(innerValue)
+  }
+
+  // innerValue is unavailable here.
+  //
+  // screen(innerValue)
+  // compile time error.
+}
+
+nestedScope()
+
+
+# Variable shadowing
+
+fn shadowTest() void {
+  int value = 10
+
+  if (true) {
+    int value = 20
+    screen(value)
+  }
+
+  screen(value)
+}
+
+shadowTest()
+
+
+# Callback capture semantics
+
+int outerValue = 100
+
+// Callback functions cannot capture outer variables.
+// Capturing an outer variable is a compile time error.
+//
+// check(fn callback(int value) bool {
+//   screen(outerValue)
+//   return true
+// })
+
+
+// Callback can use parameters and local variables.
+
+fn callbackTest(fn cb(int) bool) void {
+  bool result = cb(50)
+
+  if (result) {
+    screen("callback ok")
+  }
+}
+
+callbackTest(fn callback(int value) bool {
+  int localValue = value + 10
+
+  screen(localValue)
+
+  return true
+})
+
+
+# Thread capture semantics
+
+int threadGlobal = 500
+
+// Thread functions cannot capture outer variables.
+// Capturing an outer variable is a compile time error.
+//
+// thread fn invalidWorker() void {
+//   screen(threadGlobal)
+// }
+
+
+// Thread functions must receive values through parameters.
+
+thread fn worker(int value) void {
+  int localValue = value + 10
+
+  screen(localValue)
+}
+
+worker(100)
+worker(200)
+
+threads.waitAll()
+
+
+# Function scope vs thread scope
+
+fn normalFunction(int value) void {
+  int localValue = value
+
+  screen(localValue)
+}
+
+thread fn threadFunction(int value) void {
+  int localValue = value
+
+  screen(localValue)
+}
+
+normalFunction(10)
+threadFunction(30)
+
+threads.waitAll()

@@ -1,0 +1,265 @@
+# Zen modules
+# 
+# Zen supports importing symbols from another Zen source file or
+# installed package. A module may export functions, global values,
+# fixed-size arrays, and user-defined structs.
+#
+# Multiple import declarations are allowed. The same module can be
+# imported multiple times, and different symbols can be imported
+# from each declaration.
+#
+# Multiple export declarations are also allowed. Export names from
+# all export declarations are combined into the module's public
+# export list.
+#
+# These are both valid:
+#
+# import (add) from "module_basic.zen"
+# import (mul) from "module_basic.zen"
+#
+# export (add)
+# export (mul)
+#
+# A single import or export declaration can also contain multiple
+# names:
+#
+# import (add, mul) from "module_basic.zen"
+# export (add, mul)
+#
+# Only explicitly exported symbols are visible to importing modules.
+
+
+# Multiple imports from the same module
+
+import (add) from "module_basic.zen"
+import (mul) from "module_basic.zen"
+
+add()
+mul()
+
+
+# Multiple names in one import
+
+import (getSquare, getCube) from "module_basic.zen"
+
+getSquare(5)
+getCube(3)
+
+
+# Exported global values
+
+import (answer) from "module_basic.zen"
+import (message) from "module_basic.zen"
+
+screen(answer)
+screen(message)
+
+
+# Exported fixed-size array
+
+import (numbers) from "module_basic.zen"
+
+screen(numbers[0])
+screen(numbers[1])
+screen(numbers[2])
+
+
+# Multiple exports from one module
+
+import (first, second) from "module_nested.zen"
+import (third, fourth) from "module_nested.zen"
+
+screen(first)
+screen(second)
+screen(third)
+screen(fourth)
+
+
+# Exported user-defined struct
+
+import (Person) from "module_struct.zen"
+
+Person person = {
+  name: "Jishith",
+  age: 21
+}
+
+screen(person.name)
+screen(person.age)
+
+
+# Struct methods from an imported module
+
+import (User) from "module_struct.zen"
+
+User user = {
+  name: "Zen"
+}
+
+user.greet("Jishith")
+
+
+# Module symbols are isolated
+#
+# A symbol that is not exported by the source module cannot be
+# imported by another module.
+#
+# The following is intentionally disabled because it must produce
+# a compile-time ImportError:
+#
+# import (privateValue) from "module_basic.zen"
+
+
+# Importing a symbol that does not exist must fail
+#
+# The following is intentionally disabled because it must produce
+# a compile-time ImportError:
+#
+# import (doesNotExist) from "module_basic.zen"
+
+
+# Builtin namespaces cannot be exported or imported
+#
+# The following are intentionally disabled because they must
+# produce compile-time ImportError / ExportError diagnostics:
+#
+# import (net) from "module_basic.zen"
+# export (net)
+
+
+# Builtin functions cannot be exported or imported
+#
+# Builtin functions belong to Zen itself and are not module exports.
+#
+# The following is intentionally disabled because it must fail:
+#
+# import (screen) from "module_basic.zen"
+# export (screen)
+
+
+# Duplicate imports of the same symbol must fail
+#
+# Importing the same symbol twice from the same module is invalid.
+#
+# The following is intentionally disabled:
+#
+# import (add) from "module_basic.zen"
+# import (add) from "module_basic.zen"
+
+
+# Multiple import declarations themselves are valid.
+# Only duplicate symbol imports are invalid.
+
+
+# Multiple export declarations themselves are valid.
+# Only duplicate export names are invalid.
+#
+# Example of an invalid module:
+#
+# export (add)
+# export (add)
+
+
+# Importing a non-exported struct must fail
+#
+# The following is intentionally disabled:
+#
+# import (PrivateStruct) from "module_struct.zen"
+
+
+# Module path resolution
+#
+# A .zen source path can be imported directly. Relative paths are
+# resolved from the importing source context.
+#
+# Installed packages can also be imported using a bare package name.
+#
+# Example:
+#
+# import (WebSocket) from "websocket"
+#
+# Package imports are not executed in this test because they would
+# make the test depend on an installed external package.
+
+
+# Modules can be imported by different declarations without being
+# compiled repeatedly. Zen caches the compiled module and resolves
+# each requested symbol from the cached module information.
+
+
+screen("Modules test passed")
+
+
+# Reference file
+
+/*
+
+module_basic.zen
+
+fn add() {
+  screen("called add")
+}
+
+fn mul() {
+  screen("called mul")
+}
+
+fn getSquare(int value) {
+  screen(value * value)
+}
+
+fn getCube(int value) {
+  screen(value * value * value)
+}
+
+const int answer = 42
+
+string message = "Hello from module"
+
+int numbers[3] = [10, 20, 30]
+
+export (add)
+export (mul)
+export (getSquare, getCube)
+export (answer)
+export (message, numbers)
+
+*/
+
+/* 
+
+module_struct.zen
+
+struct Person {
+  string name
+  int age
+}
+
+struct User {
+  string name
+
+  greet(string name) void {
+     this.name = name
+     screen("Hello " + this.name)
+  }
+}
+
+export (Person)
+export (User)
+
+*/
+
+/* 
+
+module_nested.zen
+
+const int first = 10
+const int second = 20
+const int third = 30
+const int fourth = 40
+
+export (first, second)
+export (third)
+export (fourth)
+
+*/

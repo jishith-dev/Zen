@@ -49,7 +49,22 @@ const TESTS = [
   {
     name: "Zen built-ins",
     file: "builtins.zen"
-  }
+  },
+
+  {
+    name: "Zen Semantics",
+    file: "semantics.zen"
+  },
+
+  {
+    name: "Reactive variables",
+    file: "reactive.zen"
+  },
+
+  {
+   name: "Zen modules, imports, exports, paths, and module validation",
+   file: "modules.zen"
+ },
 ];
 
 export class Tests {
@@ -158,6 +173,78 @@ export class Tests {
 
   fs.copyFileSync(filePath, tempFile);
 
+  const moduleFiles = {
+    "module_basic.zen": `
+fn add() {
+  screen("called add")
+}
+
+fn mul() {
+  screen("called mul")
+}
+
+fn getSquare(int value) {
+  screen(value * value)
+}
+
+fn getCube(int value) {
+  screen(value * value * value)
+}
+
+const int answer = 42
+
+string message = "Hello from module"
+
+int numbers[3] = [10, 20, 30]
+
+export (add)
+export (mul)
+export (getSquare, getCube)
+export (answer)
+export (message, numbers)
+`,
+
+    "module_struct.zen": `
+struct Person {
+  string name
+  int age
+}
+
+struct User {
+  string name
+
+  greet(string name) void {
+     this.name = name
+     screen("Hello " + this.name)
+  }
+}
+
+export (Person)
+export (User)
+`,
+
+    "module_nested.zen": `
+const int first = 10
+const int second = 20
+const int third = 30
+const int fourth = 40
+
+export (first, second)
+export (third)
+export (fourth)
+`
+  };
+
+  if (path.basename(filePath) === "modules.zen") {
+    
+    for (const [moduleFile, source] of Object.entries(moduleFiles)) {
+      fs.writeFileSync(
+        path.join(tempDir, moduleFile),
+        source.trim() + "\n"
+      );
+    }
+  }
+
   const child = spawn(
     "node",
     ["/sdcard/zen/bin/zen.js", "run", tempFile],
@@ -182,6 +269,15 @@ export class Tests {
   });
 
   fs.rmSync(tempFile, { force: true });
+
+  if (path.basename(filePath) === "modules.zen") {
+    for (const moduleFile of Object.keys(moduleFiles)) {
+      fs.rmSync(
+        path.join(tempDir, moduleFile),
+        { force: true }
+      );
+    }
+  }
   }
 
   question(prompt) {

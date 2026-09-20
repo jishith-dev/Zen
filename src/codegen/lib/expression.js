@@ -977,6 +977,8 @@ export class Expression {
               args.push(`ptr ${listPtr}`);
             }
 
+    this.IRB.validateCallArgs(fn, callArgs, hasRest, restIndex, node);
+
             // void method
             if (fn.returnType.type === "void") {
               local.push(`call void @${possibleMethod}(${args.join(", ")})`);
@@ -1002,8 +1004,6 @@ export class Expression {
             const isOpaqueStruct =
               structInfo?.isBuiltin ||
               BUILTIN_STRUCT_ABI.includes(fn.returnType.type);
-
-            this.IRB.validateCallArgs(fn, callArgs, hasRest, restIndex, node);
 
             // opaque builtin struct returned as a plain ptr handle, no sret
             if (isOpaqueStruct) {

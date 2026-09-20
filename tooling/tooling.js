@@ -609,6 +609,7 @@ export class Compiler {
       process.exit(1);
     }
 
+    this.moduleFiles.baseDir = this.PROJECT_ROOT;
     this.moduleFiles.startCompiling(file);
 
     const codegen = new CodeGen(

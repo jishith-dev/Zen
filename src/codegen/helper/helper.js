@@ -90,7 +90,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = true;
+    this.diagnosticMode = false;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -613,7 +613,7 @@ export class IRBuilder {
       type === "Map" ||
       type === "List" ||
       type === "ptr" ||
-      type.startsWith("List<")
+      type?.startsWith("List<")
     ) {
       return "ptr";
     }
@@ -1351,9 +1351,12 @@ export class IRBuilder {
     const params = fn.params;
 
     // NORMAL CALL
+    let displayName = fn.name;
 
-    const displayName = fn.name.replace("_", ".");
-
+    if (fn?.isMethod) {
+       displayName = fn.name.replace("_", ".");
+    } 
+    
     if (!isRest) {
       if (params.length !== args.length) {
         this.emitError(

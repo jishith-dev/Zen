@@ -1,0 +1,265 @@
+# Reactive variables
+// reactive variables automatically recompute when a referenced variable changes
+
+int a = 10
+
+reactive int b = a + 10
+
+screen(b)
+
+a = 20
+
+screen(b)
+
+
+# Multiple dependencies
+// A reactive variable can depend on multiple variables
+
+int x = 10
+int y = 20
+
+reactive int total = x + y
+
+screen(total)
+
+x = 30
+
+screen(total)
+
+y = 40
+
+screen(total)
+
+
+# Chained reactive variables
+// Reactive variables can depend on other reactive variables
+
+int base = 10
+
+reactive int doubled = base * 2
+reactive int result = doubled + 5
+
+screen(doubled)
+screen(result)
+
+base = 20
+
+screen(doubled)
+screen(result)
+
+
+# Reactive reassignment
+// Reassigning the source variable recomputes the reactive variable
+
+int price = 100
+
+reactive int finalPrice = price + 20
+
+screen(finalPrice)
+
+price = 200
+
+screen(finalPrice)
+
+price = 500
+
+screen(finalPrice)
+
+
+# Reactive dependency tracking
+// Only variables directly referenced by the reactive expression are tracked
+
+int first = 10
+int second = 20
+int unrelated = 100
+
+reactive int value = first + second
+
+screen(value)
+
+unrelated = 500
+
+// Changing an unrelated variable does not affect the reactive value.
+
+screen(value)
+
+first = 30
+
+screen(value)
+
+
+# Array mutation does not trigger reactive recomputation
+// Reactive tracking only follows variable reference changes.
+// Element mutation is not tracked.
+
+List<int> numbers = [10, 20, 30]
+
+reactive int firstNumber = numbers[0]
+
+screen(firstNumber)
+
+numbers[0] = 100
+
+// Array element mutation does not trigger reactive recomputation.
+
+screen(firstNumber)
+
+
+# Array variable reassignment
+// Reassigning the variable itself is a tracked reference change.
+
+numbers = [100, 200, 300]
+
+screen(firstNumber)
+
+
+# Multiple array references
+// Mutating an array element does not trigger dependent reactives.
+
+List<int> values = [1, 2, 3]
+
+reactive int calculated = values[0] + 10
+
+screen(calculated)
+
+values[0] = 50
+
+screen(calculated)
+
+values = [100, 200, 300]
+
+screen(calculated)
+
+
+# Reactive string variables
+
+string name = "Jishith"
+
+reactive string greeting = "Hello " + name
+
+screen(greeting)
+
+name = "Abhishek"
+
+screen(greeting)
+
+
+# Reactive boolean variables
+
+bool active = true
+
+reactive bool status = active
+
+screen(status)
+
+active = false
+
+screen(status)
+
+
+# Reactive dependency chain
+
+int count = 5
+
+reactive int doubledCount = count * 2
+reactive int finalCount = doubledCount + 10
+reactive int multipliedCount = finalCount * 2
+
+screen(doubledCount)
+screen(finalCount)
+screen(multipliedCount)
+
+count = 10
+
+screen(doubledCount)
+screen(finalCount)
+screen(multipliedCount)
+
+
+# Multiple source changes
+
+int width = 10
+int height = 20
+
+reactive int area = width * height
+
+screen(area)
+
+width = 30
+
+screen(area)
+
+height = 40
+
+screen(area)
+
+
+# Reactive local variables
+
+fn testReactive() void {
+  int value = 10
+
+  reactive int result = value + 5
+
+  screen(result)
+
+  value = 20
+
+  screen(result)
+}
+
+testReactive()
+
+
+# Reactive variables should use the latest source value
+
+int temperature = 20
+
+reactive int adjusted = temperature + 5
+
+screen(adjusted)
+
+temperature = 30
+screen(adjusted)
+
+temperature = 40
+screen(adjusted)
+
+temperature = 10
+screen(adjusted)
+
+
+# Independent reactive variables
+
+int source = 10
+
+reactive int plusTen = source + 10
+reactive int plusHundred = source + 100
+
+screen(plusTen)
+screen(plusHundred)
+
+source = 50
+
+screen(plusTen)
+screen(plusHundred)
+
+
+# Reactive variables do not track unrelated changes
+
+int tracked = 10
+int other = 20
+
+reactive int resultValue = tracked * 2
+
+screen(resultValue)
+
+other = 100
+other = 200
+other = 300
+
+screen(resultValue)
+
+tracked = 25
+
+screen(resultValue)

@@ -6,6 +6,12 @@
     bool active = true
     string name = "Zen"
 
+    // constants
+
+    const double pi_value = 3.14
+
+    //  pi_value = 45.7 // reassignment of constants variables are compile time error
+
     // auto inference
 
     auto x = 10
@@ -14,6 +20,8 @@
     screen(y)
 
     List<int> nums = [10, i]
+
+    const List<int> REG_NO = [1, 2, 3]
 
     struct Foo {
       int value
@@ -25,6 +33,10 @@
 
     Foo f = {
       value: 600
+    }
+
+    const Foo foo = {
+       value: 1000
     }
 
     // print values

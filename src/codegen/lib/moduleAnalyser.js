@@ -4,6 +4,14 @@ import { CodeGen } from "../codegen.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import {
+  BUILTIN_FUNCTIONS,
+  RESERVED_FUNCTIONS,
+  BUILTIN_MAP,
+  BUILTIN_STRUCTS,
+  NAMESPACE_MAP,
+  GLOBAL_EXTERNAL,
+} from "../../config/config.js";
 
 export class Module {
   constructor(IRB, moduleFiles) {
@@ -17,9 +25,16 @@ export class Module {
   }
 
   moduleAnalyser(node) {
-    const source = node.source;
+    const source =
+  node.source && node.source.endsWith(".zen")
+    ? path.resolve(this.moduleFiles.baseDir || process.cwd(), node.source)
+    : node.source;
     const imports = node.names || [];
 
+    if (/^https?:\/\//.test(node.source || "")) {
+  this.IRB.emitError("ImportError", "URL imports are not supported yet", node);
+    }
+    
     // reset used namespace set
     this.IRB.usedNameSpaces = new Set();
 
@@ -36,8 +51,20 @@ export class Module {
     }
 
     if (this.modules.has(source)) {
-      this.resolveImports(imports, source);
-      return;
+  const module = this.modules.get(source);
+
+  const tables = {
+    functionTable: module.functions,
+    symbolTable: module.variables,
+    structTable: module.structs,
+    structInitializers: module.structInitializers,
+    exportNames: module.exportNames,
+  };
+
+  this.curruntModuleName = module.moduleName;
+
+  this.resolveImports(imports, source, tables, node);
+  return;
     }
 
     this.loadingStack.add(source);
@@ -66,6 +93,7 @@ export class Module {
     }
 
     const moduleName = this.getModuleName(source);
+    
 
     this.curruntModuleName = moduleName;
 
@@ -74,6 +102,10 @@ export class Module {
     this.IRB.reset();
     this.IRB.moduleName = moduleName;
 
+
+    const prevBase = this.moduleFiles.baseDir;
+if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
+    
     const lexer = new Lexer(file, this.IRB);
     const tokens = lexer.tokenize();
 
@@ -91,8 +123,6 @@ export class Module {
       exportNames,
     } = codegen.generateLLVM();
 
-    this.IRB.moduleName = prevModule;
-
     const tables = {
       symbolTable: symbolTable[0],
       functionTable,
@@ -101,18 +131,26 @@ export class Module {
       exportNames,
     };
 
-    const exportNode = ast.find((n) => n.type === "EXPORT");
-    const exports = exportNode ? exportNode.names : [];
+    this.moduleFiles.baseDir = prevBase;
+
+    const exports = ast
+  .filter((n) => n.type === "EXPORT")
+  .flatMap((n) => n.names || []);
 
     this.moduleFiles.IRB = this.IRB;
 
     this.collectExports(exports, moduleName, tables, node);
 
     this.modules.set(source, {
-      functions: this.extract(functionTable),
-      variables: this.extract(symbolTable[0]),
-      structs: this.extract(structTable),
-    });
+  moduleName,
+  functions: this.extract(functionTable),
+  variables: this.extract(symbolTable[0]),
+  structs: this.extract(structTable),
+  structInitializers,
+  exportNames,
+});
+
+    this.IRB.moduleName = prevModule;
 
     this.resolveImports(imports, source, tables, node);
 
@@ -124,33 +162,44 @@ export class Module {
     this.moduleFiles.finishCompiling(source);
   }
 
-  collectExports(exports, moduleName, tables, node) {
-    if (!exports || exports.length === 0) return;
+collectExports(exports, moduleName, tables, node) {
+  if (!exports || exports.length === 0) return;
 
-    const seen = new Set();
+  const seen = new Set();
 
-    for (const name of exports) {
-      if (seen.has(name)) {
-        this.IRB.emitError("ExportError", `Duplicate export '${name}'`, node);
-      }
-      seen.add(name);
+  for (const name of exports) {
+    if (seen.has(name)) {
+      this.IRB.emitError("ExportError", `Duplicate export '${name}'`, node);
+    }
+    seen.add(name);
 
-      const ok =
-        tables.functionTable.has(name) ||
-        tables.symbolTable.has(name) ||
-        tables.structTable.has(name);
+    const kind = this.builtinKind(name, tables);
 
-      if (!ok) {
-        this.IRB.emitError(
-          "ExportError",
-          `'${name}' not defined in ${moduleName}`,
-          node,
-        );
-      }
+    if (kind) {
+      this.IRB.emitError(
+        "ExportError",
+        `'${name}' is a ${kind} and cannot be exported`,
+        node,
+      );
+    }
+
+    const ok =
+      tables.functionTable.has(name) ||
+      tables.symbolTable.has(name) ||
+      tables.structTable.has(name);
+
+    if (!ok) {
+      this.IRB.emitError(
+        "ExportError",
+        `'${name}' not defined in ${moduleName}`,
+        node,
+      );
     }
   }
-
+}
+  
   resolveImports(imports, source, tables, node) {
+    
     for (const [structName, layout] of tables.structInitializers) {
       this.IRB.structInitializers.set(structName, layout);
     }
@@ -174,6 +223,17 @@ export class Module {
     }
 
     for (const name of imports) {
+
+      const kind = this.builtinKind(name, tables);
+
+      if (kind) {
+        this.IRB.emitError(
+          "ImportError",
+          `'${name}' is a ${kind} and cannot be imported from ${source}`,
+          node,
+        );
+      }
+      
       if (!tables.exportNames.has(name)) {
         this.IRB.emitError(
           "ImportError",
@@ -238,6 +298,7 @@ export class Module {
 
         // methods
         for (const [fnName, fn] of tables.functionTable) {
+          if (!fn?.isMethod) continue;
           if (fnName === name) continue;
           if (!fnName.startsWith(`${name}_`)) continue;
 
@@ -319,5 +380,32 @@ export class Module {
     const entry = config?.bin || config?.main;
 
     return path.basename(entry, ".zen");
+  }
+
+  builtinKind(name, tables) {
+  if (
+    tables.symbolTable.get(name)?.type === "namespace" ||
+    Object.hasOwn(NAMESPACE_MAP, name)
+  ) {
+    return "namespace";
+  }
+
+  if (BUILTIN_STRUCTS.includes(name) || tables.structTable.get(name)?.isBuiltin) {
+    return "builtin struct";
+  }
+
+  if (
+    BUILTIN_FUNCTIONS.includes(name) ||
+    RESERVED_FUNCTIONS.includes(name) ||
+    Object.hasOwn(BUILTIN_MAP, name)
+  ) {
+    return "builtin function";
+  }
+
+  if (Object.hasOwn(GLOBAL_EXTERNAL, name)) {
+    return "builtin variable";
+  }
+
+  return null;
   }
 }
