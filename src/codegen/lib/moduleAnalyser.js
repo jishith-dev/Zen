@@ -68,9 +68,10 @@ export class Module {
     }
 
     this.loadingStack.add(source);
-    this.moduleFiles.startCompiling(source);
-
     const file = this.IRB.loadFile(source, node);
+    const moduleName = path.basename(source, ".zen");
+    
+    this.moduleFiles.startCompiling(moduleName, file);
 
     const moduleDir = this.IRB.getModuleNativeDir(source);
 
@@ -92,16 +93,13 @@ export class Module {
       }
     }
 
-    const moduleName = this.getModuleName(source);
     
 
-    this.curruntModuleName = moduleName;
+ this.curruntModuleName = moduleName;
 
-    const prevModule = this.IRB.moduleName;
+ const prevModule = this.IRB.moduleName;
 
-    this.IRB.reset();
-    this.IRB.moduleName = moduleName;
-
+this.IRB.reset();
 
     const prevBase = this.moduleFiles.baseDir;
 if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
@@ -112,7 +110,8 @@ if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
     const parser = new Parser(tokens, this.IRB, {}, file);
     const ast = parser.parse();
 
-    const codegen = new CodeGen(ast, moduleName, this.moduleFiles, file);
+    const codegen = new CodeGen(ast, this.moduleFiles);
+    codegen.IRB.isPkg = !source.endsWith(".zen");
 
     const {
       ir,
@@ -365,24 +364,10 @@ collectExports(exports, moduleName, tables, node) {
     return out;
   }
 
-  getModuleName(source) {
-    if (source.endsWith(".zen")) {
-      return path.basename(source, ".zen");
-    }
-
-    const configPath = path.join(
-      os.homedir(),
-      ".zen_packages",
-      source,
-      "zen.json",
-    );
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    const entry = config?.bin || config?.main;
-
-    return path.basename(entry, ".zen");
-  }
-
   builtinKind(name, tables) {
+
+    const NAMESPACE_METHODS = new Set(Object.values(NAMESPACE_MAP).flat());
+    
   if (
     tables.symbolTable.get(name)?.type === "namespace" ||
     Object.hasOwn(NAMESPACE_MAP, name)
@@ -395,11 +380,11 @@ collectExports(exports, moduleName, tables, node) {
   }
 
   if (
-    BUILTIN_FUNCTIONS.includes(name) ||
-    RESERVED_FUNCTIONS.includes(name) ||
-    Object.hasOwn(BUILTIN_MAP, name)
-  ) {
-    return "builtin function";
+  BUILTIN_FUNCTIONS.includes(name) ||
+  RESERVED_FUNCTIONS.includes(name) ||
+  (Object.hasOwn(BUILTIN_MAP, name) && !NAMESPACE_METHODS.has(name))
+) {
+  return "builtin function";
   }
 
   if (Object.hasOwn(GLOBAL_EXTERNAL, name)) {

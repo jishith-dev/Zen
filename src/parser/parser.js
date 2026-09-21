@@ -117,6 +117,18 @@ export class Parser {
   // STATEMENTS
 
   parseStatement() {
+  const start = this.current();
+  const stmt = this.parseStatementInner();
+
+  if (stmt && start) {
+    stmt.line = start.line;
+    stmt.column = start.column;
+  }
+
+  return stmt;
+  }
+
+  parseStatementInner() {
     if (
       this.matchKeyword("const") &&
       this.tokens[this.pos + 1]?.type === "IDENTIFIER" &&

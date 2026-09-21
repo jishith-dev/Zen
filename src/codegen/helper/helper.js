@@ -26,6 +26,8 @@ export class IRBuilder {
     this.meta = [];
     this.allocaBuff = [];
 
+    this.isPkg = false; // flag for module analyser to do diagnostic module name only pkg name not with .zen suffix
+
     this.currentFunction = null;
     this.functions = new Map();
     this.anonymFunctions = new Map();
@@ -47,6 +49,8 @@ export class IRBuilder {
 
     this.errors = [];
     this.hadError = false;
+
+    this.sourceName = path.basename(this.moduleName, ".zen").replace(/[^A-Za-z0-9_]/g, "_");
 
     this.threadTrampolines = new Set();
     this.threadCtxCounter = 0;
@@ -646,11 +650,11 @@ export class IRBuilder {
   }
 
   newGlobalTemp() {
-    return `@t${this.exported ? ".e" : ""}_${this.moduleName}_${this.globalTempCount++}`;
+    return `@t${this.exported ? ".e" : ""}_${this.sourceName}_${this.globalTempCount++}`;
   }
 
   strTemp() {
-    return `@.str${this.exported ? ".e" : ""}${this.stdlibMode ? "_stdlib" : ""}_${this.moduleName}_${this.strCount++}`;
+    return `@.str${this.exported ? ".e" : ""}${this.stdlibMode ? "_stdlib" : ""}_${this.sourceName}_${this.strCount++}`;
   }
 
   newLabel(name = "label") {
@@ -813,10 +817,10 @@ export class IRBuilder {
 
     if (afn) {
       const ptr = afn.isInline
-        ? `@_zen_${this.moduleName}_anonym_${name}`
+        ? `@_zen_${this.sourceName}_anonym_${name}`
         : this.stdlibMode
           ? `@${name}`
-          : `@zen_${this.moduleName}_${name}`;
+          : `@zen_${this.sourceName}_${name}`;
 
       return {
         ...afn,
@@ -833,7 +837,7 @@ export class IRBuilder {
     if (fn) {
       return {
         ...fn,
-        ptr: this.stdlibMode ? `@${name}` : `@zen_${this.moduleName}_${name}`,
+        ptr: this.stdlibMode ? `@${name}` : `@zen_${this.sourceName}_${name}`,
         llvmType: "ptr",
         type: "Function",
         isFunction: true,
@@ -1018,7 +1022,9 @@ export class IRBuilder {
   }
 
   genLine(loc) {
+    
     const lines = this.source?.split(/\r?\n/);
+    if (!lines) return null;
     const text = lines[loc.line - 1];
 
     if (!text) return null;
@@ -1026,7 +1032,7 @@ export class IRBuilder {
     return {
       text,
       column: loc.column,
-      length: text.length - (loc.column - 1),
+      length: Math.max(1, text.length - Math.max(0, loc.column - 1))
     };
   }
 
@@ -1053,10 +1059,14 @@ export class IRBuilder {
 
     const loc = this.getNodeLocation(err.node);
 
-    const location =
-      loc.line !== "?"
-        ? `${this.moduleName}.zen:${loc.line}:${loc.column}`
-        : `${this.moduleName}.zen`;
+    const mName = this.moduleName.includes(".zen") ? this.moduleName : `${this.moduleName}.zen`
+    
+    const name = this.isPkg ? this.moduleName : mName;
+
+const location =
+  loc.line !== "?"
+    ? `${name}:${loc.line}:${loc.column}`
+    : name;
 
     const hint = err.hint
       ? `
@@ -1488,8 +1498,8 @@ export class IRBuilder {
 
       const { llvmStr, length } = this.toLLVMString(format);
 
-      const fmtName = `fmt_double_${this.moduleName}_${id}`;
-      const fnName = `_screen_double_${this.moduleName}_${id}`;
+      const fmtName = `fmt_double_${this.sourceName}_${id}`;
+      const fnName = `_screen_double_${this.sourceName}_${id}`;
 
       this.declareOneTime(
         fmtName,
@@ -1508,7 +1518,7 @@ entry:
       );
     }
 
-    const fnName = `_screen_double_${this.moduleName}_${id}`;
+    const fnName = `_screen_double_${this.sourceName}_${id}`;
 
     this.emit(`call void @${fnName}(double ${val})`);
   }
@@ -1526,8 +1536,8 @@ entry:
 
       const { llvmStr, length } = this.toLLVMString(format);
 
-      const fmtName = `fmt_int_${this.moduleName}_${id}`;
-      const fnName = `_screen_int_${this.moduleName}_${id}`;
+      const fmtName = `fmt_int_${this.sourceName}_${id}`;
+      const fnName = `_screen_int_${this.sourceName}_${id}`;
 
       this.declareOneTime(
         fmtName,
@@ -1546,7 +1556,7 @@ entry:
       );
     }
 
-    const fnName = `_screen_int_${this.moduleName}_${id}`;
+    const fnName = `_screen_int_${this.sourceName}_${id}`;
 
     this.emit(`call void @${fnName}(i32 ${val})`);
   }
@@ -1564,8 +1574,8 @@ entry:
 
       const { llvmStr, length } = this.toLLVMString(format);
 
-      const fmtName = `fmt_byte_${this.moduleName}_${id}`;
-      const fnName = `_screen_byte_${this.moduleName}_${id}`;
+      const fmtName = `fmt_byte_${this.sourceName}_${id}`;
+      const fnName = `_screen_byte_${this.sourceName}_${id}`;
 
       this.declareOneTime(
         fmtName,
@@ -1585,7 +1595,7 @@ entry:
       );
     }
 
-    const fnName = `_screen_byte_${this.moduleName}_${id}`;
+    const fnName = `_screen_byte_${this.sourceName}_${id}`;
 
     this.emit(`call void @${fnName}(i8 ${val})`);
   }
@@ -1603,8 +1613,8 @@ entry:
 
       const { llvmStr, length } = this.toLLVMString(format);
 
-      const fmtName = `fmt_long_${this.moduleName}_${id}`;
-      const fnName = `_screen_long_${this.moduleName}_${id}`;
+      const fmtName = `fmt_long_${this.sourceName}_${id}`;
+      const fnName = `_screen_long_${this.sourceName}_${id}`;
 
       this.declareOneTime(
         fmtName,
@@ -1623,7 +1633,7 @@ entry:
       );
     }
 
-    const fnName = `_screen_long_${this.moduleName}_${id}`;
+    const fnName = `_screen_long_${this.sourceName}_${id}`;
 
     this.emit(`call void @${fnName}(i64 ${val})`);
   }
@@ -1705,8 +1715,8 @@ entry:
 
       const { llvmStr, length } = this.toLLVMString(format);
 
-      const fmtName = `fmt_string_${this.moduleName}_${id}`;
-      const fnName = `_screen_string_${this.moduleName}_${id}`;
+      const fmtName = `fmt_string_${this.sourceName}_${id}`;
+      const fnName = `_screen_string_${this.sourceName}_${id}`;
 
       this.declareOneTime(
         fmtName,
@@ -1725,7 +1735,7 @@ entry:
       );
     }
 
-    const fnName = `_screen_string_${this.moduleName}_${id}`;
+    const fnName = `_screen_string_${this.sourceName}_${id}`;
 
     this.emit(`call void @${fnName}(ptr ${val})`);
   }

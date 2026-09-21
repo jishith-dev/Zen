@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "url";
 import { performance } from "node:perf_hooks";
 import { ModuleFiles } from "../src/codegen/lib/moduleFiles.js";
 import readline from "readline";
+import crypto from "crypto";
 
 export class Compiler {
   constructor(args, optFlag) {
@@ -610,13 +611,11 @@ export class Compiler {
     }
 
     this.moduleFiles.baseDir = this.PROJECT_ROOT;
-    this.moduleFiles.startCompiling(file);
+    this.moduleFiles.startCompiling(file, this.source);
 
     const codegen = new CodeGen(
       ast,
-      this.moduleName,
-      this.moduleFiles,
-      this.source,
+      this.moduleFiles
     );
     const llvm = codegen.generateLLVM();
 
@@ -732,7 +731,8 @@ export class Compiler {
       }
 
       if (nativeFile.endsWith(".c")) {
-        const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.o`);
+        const id = crypto.createHash("sha1").update(nativeFile).digest("hex").slice(0, 8);
+const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.${id}.native.o`);
 
         this.run(`clang -fPIC -c "${nativeFile}" -o "${obj}"`);
 

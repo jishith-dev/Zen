@@ -42,12 +42,12 @@ import {
 } from "../config/config.js";
 
 export class CodeGen {
-  constructor(ast, moduleName, moduleFiles, source) {
+  constructor(ast, moduleFiles) {
     this.ast = ast;
-    this.moduleName = moduleName;
+    this.moduleName = moduleFiles.currentModuleName;
 
     this.IRB = new IRBuilder(this.moduleName);
-    this.IRB.source = source;
+    this.IRB.source = moduleFiles.getCurrentCompilingSource();
 
     this.expr = new Expression(this.IRB, this.infer);
     this.time = new Time(this.IRB, this.expr);
@@ -95,6 +95,7 @@ export class CodeGen {
       this.thread,
       this.debug,
       this.crypto,
+      this.IRB.sourceName
     );
 
     this.expr.setCall(this.call);
@@ -112,6 +113,7 @@ export class CodeGen {
       this.moduleName,
       BUILTIN_STRUCT_ABI,
       BUILTIN_STRUCTS,
+      this.IRB.sourceName
     );
     this.call.applyFn(this.fn);
     this.expr.setFn(this.fn);

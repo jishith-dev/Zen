@@ -9,6 +9,8 @@ export class ModuleFiles {
     this.nativeFiles = new Set();
     this.flags = new Set();
     this.baseDir = null;
+    this.source = "";
+    this.currentModuleName = "";
   }
 
   add(file) {
@@ -27,15 +29,23 @@ export class ModuleFiles {
     this.nativeFiles.add(file);
   }
 
-  startCompiling(source) {
+  startCompiling(source, fileContent) {
     this.inProgress.add(source);
+    this.source = fileContent;
+    this.currentModuleName = source;
   }
 
   finishCompiling(source) {
     this.inProgress.delete(source);
+    this.source = "";
+    this.currentModuleName = "";
   }
 
   isCompiling(source) {
     return this.inProgress.has(source);
+  }
+
+  getCurrentCompilingSource() {
+    return this.source;
   }
 }

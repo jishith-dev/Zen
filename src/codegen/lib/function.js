@@ -1,5 +1,5 @@
 export class HandleFunction {
-  constructor(IRB, expr, block, infer, g, moduleName, abi, S) {
+  constructor(IRB, expr, block, infer, g, moduleName, abi, S, sourceName) {
     this.IRB = IRB;
     this.block = block;
     this.expr = expr;
@@ -10,6 +10,7 @@ export class HandleFunction {
     this.moduleName = moduleName;
     this.BUILTIN_STRUCT_ABI = abi;
     this.BUILTIN_STRUCTS = S;
+    this.sourceName = sourceName;
   }
 
   // A struct returns/passes as a raw `ptr` (no sret, no alloca-by-value)
@@ -380,13 +381,13 @@ export class HandleFunction {
       if (isInline) {
         const anonymId = this.IRB.anonymFunctionCounter++;
 
-        mangledName = `_zen_${this.moduleName}_anonym_${name}_${anonymId}`;
+        mangledName = `_zen_${this.sourceName}_anonym_${name}_${anonymId}`;
       } else if (isExtern) {
         mangledName = name;
       } else if (this.IRB.stdlibMode) {
         mangledName = `_zen_std_${name}`;
       } else {
-        mangledName = `zen_${this.moduleName}_${name}`;
+        mangledName = `zen_${this.sourceName}_${name}`;
       }
     }
 

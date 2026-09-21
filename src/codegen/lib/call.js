@@ -37,6 +37,7 @@ export class Call {
     thread,
     debug,
     crypto,
+    sourceName
   ) {
     this.IRB = IRB;
     this.moduleName = moduleName;
@@ -55,6 +56,7 @@ export class Call {
     this.THREAD = thread;
     this.DEBUG = debug;
     this.crypto = crypto;
+    this.sourceName = sourceName;
   }
 
   setExpression(expr) {
@@ -150,7 +152,7 @@ export class Call {
         mangledName = null;
         break;
       case isInline:
-        mangledName = `_zen_${this.moduleName}_anonym_${name}`;
+        mangledName = `_zen_${this.sourceName}_anonym_${name}`;
         break;
       case isExternDecl:
         mangledName = name;
@@ -165,7 +167,7 @@ export class Call {
         mangledName = `zen_${importedModuleName}_${name}`;
         break;
       default:
-        mangledName = `zen_${this.moduleName}_${name}`;
+        mangledName = `zen_${this.sourceName}_${name}`;
     }
 
     const isStruct = fn.isStructReturn || this.IRB.hasStruct(fn.returnType);
