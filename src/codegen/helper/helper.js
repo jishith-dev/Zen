@@ -1018,7 +1018,7 @@ export class IRBuilder {
   }
 
   genLine(loc) {
-    const lines = this.source.split(/\r?\n/);
+    const lines = this.source?.split(/\r?\n/);
     const text = lines[loc.line - 1];
 
     if (!text) return null;
