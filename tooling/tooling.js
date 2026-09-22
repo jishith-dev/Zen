@@ -21,61 +21,63 @@ export class Compiler {
   }
 
   async repl() {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: ">>> ",
-    });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: ">>> ",
+  });
 
-    const declarations = []; // persisted forever — decls only, no side effects on replay
-    const replDir = path.join(process.cwd(), ".zen");
-    const replFile = path.join(replDir, "repl.zen");
+  const declarations = []; // persisted forever — decls only, no side effects on replay
+  const replDir = path.join(process.cwd(), ".zen", "repl");
+  const replFile = path.join(replDir, "repl.zen");
 
-    fs.mkdirSync(replDir, { recursive: true });
+  fs.mkdirSync(replDir, { recursive: true });
 
-    console.log("Zen REPL");
-    console.log("Type exit() or press Ctrl+D to exit.");
+  console.log("Zen REPL");
+  console.log("Type exit() or press Ctrl+D to exit.");
+
+  rl.prompt();
+
+  rl.on("line", (line) => {
+    const input = line.trim();
+
+    if (input === "exit()") {
+      rl.close();
+      return;
+    }
+
+    if (!input) {
+      rl.prompt();
+      return;
+    }
+
+    const isDecl = this.isDeclaration(input);
+    const program = [...declarations, input].join("\n") + "\n";
+
+    fs.writeFileSync(replFile, program);
+
+    const result = spawnSync(
+      process.execPath,
+      [process.argv[1], "run", replFile],
+      { stdio: "inherit" },
+    );
+
+    if (result.error) {
+      console.error(`error: ${result.error.message}`);
+    } else if (isDecl && result.status === 0) {
+      declarations.push(input);
+    }
 
     rl.prompt();
+  });
 
-    rl.on("line", (line) => {
-      const input = line.trim();
+  rl.on("close", () => {
+    try {
+      fs.rmSync(replDir, { recursive: true, force: true });
+    } catch {}
 
-      if (input === "exit()") {
-        rl.close();
-        return;
-      }
-      if (!input) {
-        rl.prompt();
-        return;
-      }
-
-      const isDecl = this.isDeclaration(input);
-      const program = [...declarations, input].join("\n") + "\n";
-
-      fs.writeFileSync(replFile, program);
-
-      const result = spawnSync(
-        process.execPath,
-        [process.argv[1], "run", replFile],
-        { stdio: "inherit" },
-      );
-
-      if (result.error) {
-        console.error(`error: ${result.error.message}`);
-      } else if (isDecl && result.status === 0) {
-        declarations.push(input); // only keep it if it actually compiled clean
-      }
-
-      rl.prompt();
-    });
-
-    rl.on("close", () => {
-      try {
-        fs.rmSync(replDir, { recursive: true, force: true });
-      } catch {}
-      process.exit(0);
-    });
+    process.exit(0);
+  });
   }
 
   isDeclaration(line) {
