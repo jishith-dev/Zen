@@ -1368,7 +1368,7 @@ export class Expression {
             base.isMapValue ||
             base.fromParam ||
             base?.isDirectCall ||
-            base?.isListLiteral
+            base?.isListLiteral 
           ) {
             listTemp = base.ptr;
           } else {
@@ -1411,10 +1411,19 @@ export class Expression {
         }
 
         // string index access
-        if (base.type === "string") {
-          local.push(
-            `${ptr} = getelementptr i8, ptr ${base.ptr ?? base.addr}, i32 ${index.ptr}`,
-          );
+        
+if (base.type === "string") {
+  let strPtr = base.ptr ?? base.addr;
+
+  if (base.needsLoad) {
+    const loaded = this.IRB.newTemp();
+    local.push(`${loaded} = load ptr, ptr ${strPtr}`);
+    strPtr = loaded;
+  }
+
+  local.push(
+    `${ptr} = getelementptr i8, ptr ${strPtr}, i32 ${index.ptr}`,
+  );
 
           const t = this.IRB.newTemp();
           local.push(`${t} = load i8, ptr ${ptr}`);

@@ -277,7 +277,7 @@ export class ZenList {
       this.IRB.emitExpr(expr);
 
       let t;
-      if (expr.isVarRef) {
+      if (expr.isVarRef && expr.needsLoad) {
         t = this.IRB.newTemp();
         this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
       }

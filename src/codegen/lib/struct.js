@@ -98,10 +98,12 @@ export class Struct {
         name: f.name,
         type: type,
         isList: f.type === "List",
-        generic: {
-          type: "List",
-          generic: f?.generic,
-        },
+        generic: f.type === "List"
+  ? {
+      type: "List",
+      generic: f.generic,
+    }
+  : null,
         llvmType,
         index: i,
         dimensions: f.dimensions || [],

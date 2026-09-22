@@ -2788,6 +2788,7 @@ end:
           name,
           returnType: isListReturn ? "List" : this.revertType(fn.ret),
           params,
+          generic: {type: "List", generic: {type: "string"}},
           retGeneric: isListReturn ? "string" : this.revertType(fn.ret), // temp for minimal check now. coz 'split' is the only list return. can be extend later
         },
         node,
