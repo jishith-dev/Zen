@@ -51,7 +51,7 @@ export class IRBuilder {
     this.hadError = false;
 
     this.sourceName = path.basename(this.moduleName, ".zen").replace(/[^A-Za-z0-9_]/g, "_");
-
+    
     this.threadTrampolines = new Set();
     this.threadCtxCounter = 0;
 

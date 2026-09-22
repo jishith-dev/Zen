@@ -42,7 +42,12 @@ export class Module {
       this.IRB.emitError("ImportError", "import requires source", node);
     }
 
-    if (this.loadingStack.has(source) || this.moduleFiles.isCompiling(source)) {
+    const symbolName = path
+  .relative(this.moduleFiles.projectRoot || process.cwd(), source)
+  .replace(/\.zen$/, "")
+  .replace(/[^A-Za-z0-9_]/g, "_");
+
+    if (this.loadingStack.has(source) || this.moduleFiles.isCompiling(symbolName)) {
       this.IRB.emitError(
         "ImportError",
         `Circular import detected '${source}'`,
@@ -71,7 +76,8 @@ export class Module {
     const file = this.IRB.loadFile(source, node);
     const moduleName = path.basename(source, ".zen");
     
-    this.moduleFiles.startCompiling(moduleName, file);
+    
+    this.moduleFiles.startCompiling(symbolName, file);
 
     const moduleDir = this.IRB.getModuleNativeDir(source);
 
@@ -95,11 +101,13 @@ export class Module {
 
     
 
- this.curruntModuleName = moduleName;
+ this.curruntModuleName = symbolName;
 
  const prevModule = this.IRB.moduleName;
+const prevSourc = this.IRB.source;
 
-this.IRB.reset();
+this.IRB.reset(moduleName);
+  //  this.IRB.sourceName = symbolName;
 
     const prevBase = this.moduleFiles.baseDir;
 if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
@@ -141,7 +149,7 @@ if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
     this.collectExports(exports, moduleName, tables, node);
 
     this.modules.set(source, {
-  moduleName,
+  moduleName: symbolName,
   functions: this.extract(functionTable),
   variables: this.extract(symbolTable[0]),
   structs: this.extract(structTable),
@@ -150,7 +158,8 @@ if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
 });
 
     this.IRB.moduleName = prevModule;
-
+    this.IRB.source = prevSourc;
+    
     this.resolveImports(imports, source, tables, node);
 
     this.generatedModules.set(source, ir);
@@ -158,7 +167,7 @@ if (source.endsWith(".zen")) this.moduleFiles.baseDir = path.dirname(source);
     this.moduleFiles.add(llPath);
 
     this.loadingStack.delete(source);
-    this.moduleFiles.finishCompiling(source);
+    this.moduleFiles.finishCompiling(symbolName);
   }
 
 collectExports(exports, moduleName, tables, node) {

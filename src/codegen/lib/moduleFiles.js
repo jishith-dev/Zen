@@ -11,6 +11,7 @@ export class ModuleFiles {
     this.baseDir = null;
     this.source = "";
     this.currentModuleName = "";
+    this.projectRoot = null;
   }
 
   add(file) {
@@ -29,10 +30,10 @@ export class ModuleFiles {
     this.nativeFiles.add(file);
   }
 
-  startCompiling(source, fileContent) {
-    this.inProgress.add(source);
-    this.source = fileContent;
-    this.currentModuleName = source;
+  startCompiling(sourceName, source) {
+    this.inProgress.add(sourceName);
+    this.source = source;
+    this.currentModuleName = sourceName;
   }
 
   finishCompiling(source) {
