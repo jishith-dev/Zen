@@ -246,7 +246,7 @@ export (fourth)
   }
 
   const child = spawn(
-    ["zen run",
+    ["zen", "run",
      tempFile],
     {
       stdio: "inherit"
