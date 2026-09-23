@@ -245,13 +245,9 @@ export (fourth)
     }
   }
 
-  const child = spawn(
-    ["zen", "run",
-     tempFile],
-    {
-      stdio: "inherit"
-    }
-  );
+  const child = spawn("zen", ["run", tempFile], {
+  stdio: "inherit"
+});
 
   await new Promise((resolve) => {
     child.on("close", (code) => {
