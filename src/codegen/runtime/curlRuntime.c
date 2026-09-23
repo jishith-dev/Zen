@@ -1,9 +1,7 @@
-
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
-#ifdef _WIN32
 #include <string.h>
 #ifdef _WIN32
 #define strncasecmp _strnicmp
