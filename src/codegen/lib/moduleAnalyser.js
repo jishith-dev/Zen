@@ -191,6 +191,16 @@ collectExports(exports, moduleName, tables, node) {
       );
     }
 
+    const isPrivateFn = tables.functionTable.has(name) && tables.functionTable.get(name)?.isPrivate;
+
+    if (isPrivateFn) {
+      this.IRB.emitError(
+    "ExportError",
+    `'${name}' is a private function and cannot be exported`,
+    node,
+  );
+    }
+
     const ok =
       tables.functionTable.has(name) ||
       tables.symbolTable.has(name) ||
@@ -309,7 +319,11 @@ collectExports(exports, moduleName, tables, node) {
           if (!fn?.isMethod) continue;
           if (fnName === name) continue;
           if (!fnName.startsWith(`${name}_`)) continue;
-
+          if (fn?.isPrivate) {
+            this.IRB.setFunction(fnName, fn);
+            continue;
+          }
+          
           fn.isImported = true;
           fn.importedModuleName = this.curruntModuleName;
 

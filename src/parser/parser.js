@@ -210,12 +210,15 @@ export class Parser {
       this.matchKeyword("fn") ||
       this.matchKeyword("async") ||
       this.matchKeyword("thread") ||
-      this.matchKeyword("extern")
+      this.matchKeyword("extern") || 
+      this.matchKeyword("private")
     ) {
+      
       let isAsync = false; // default mode
       let isThread = false;
       const insideMethod = false;
       let isExtern = false;
+      let isPrivate = false;
 
       if (this.matchKeyword("async")) {
         isAsync = true;
@@ -223,10 +226,12 @@ export class Parser {
         isThread = true;
       } else if (this.matchKeyword("extern")) {
         isExtern = true;
+      } else if (this.matchKeyword("private")) {
+        isPrivate = true;
       }
 
       return this.node(
-        this.parseFunction(insideMethod, isAsync, isThread, isExtern),
+        this.parseFunction(insideMethod, isAsync, isThread, isExtern, isPrivate)
       );
     }
 
@@ -517,6 +522,8 @@ export class Parser {
 
       let isAsyncMethod = false;
       let isThreadfn = false;
+      const isExtern = false; // method can' be extern
+      let isPrivate = false;
 
       if (this.matchKeyword("async")) {
         isAsyncMethod = true;
@@ -524,7 +531,11 @@ export class Parser {
       } else if (this.matchKeyword("thread")) {
         isThreadfn = true;
         this.advance();
-      } else if (this.matchKeyword("fn")) {
+      } else if (this.matchKeyword("private")) {
+        isPrivate = true;
+        this.advance();
+      }
+      else if (this.matchKeyword("fn")) {
         this.IRB.emitError(
           "SyntaxError",
           "method should be declared without 'fn' keyword",
@@ -536,7 +547,7 @@ export class Parser {
       if (this.match("IDENTIFIER") && this.peek("LEFT_PARENTHESIS")) {
         const nameToken = this.advance();
 
-        const method = this.parseFunction(true, isAsyncMethod, isThreadfn);
+        const method = this.parseFunction(true, isAsyncMethod, isThreadfn, isExtern, isPrivate);
 
         method.name = nameToken.value;
         method.isMethod = true;
@@ -553,6 +564,7 @@ export class Parser {
         this.node({
           name: nameToken.value,
           ...typeNode,
+          isPrivate
         }),
       );
 
@@ -961,13 +973,18 @@ export class Parser {
     isAsyncFn = false,
     isThread = false,
     isExtern = false,
+    isPrivate = false
   ) {
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
         this.advance();
       } else if (this.matchKeyword("thread")) {
         this.advance();
-      } else if (this.matchKeyword("extern")) this.advance();
+      } else if (this.matchKeyword("extern")) {
+        this.advance();
+      } else if (this.matchKeyword("private")) {
+        this.advance();
+      } 
 
       this.expectKeyword("fn");
     }
@@ -1120,6 +1137,7 @@ export class Parser {
       name,
       isAsync: isAsyncFn,
       isThread,
+      isPrivate,
       isDeclaration,
       isExtern,
       params,

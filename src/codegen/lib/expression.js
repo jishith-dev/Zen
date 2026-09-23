@@ -564,6 +564,7 @@ export class Expression {
           global: [],
           isStruct: true,
           isVarRef: false,
+          isTHIS: true
         };
       } else {
         object = this.handleExpression(base);
@@ -735,6 +736,16 @@ export class Expression {
             }
 
             const fn = this.IRB.getFunction(possibleMethod);
+
+if (fn?.isPrivate && !object?.isTHIS) {
+
+    this.IRB.emitError(
+        "SemanticError",
+        `Cannot access private method '${currentField}' in struct '${structName}'`,
+        node,
+    );
+
+}
 
             const args = [];
             const callArgs = [];
@@ -1100,6 +1111,15 @@ export class Expression {
           }
 
           fieldInfo = structInfo.layout[fieldIndex];
+
+          if (fieldInfo?.isPrivate && !object?.isTHIS) {
+  this.IRB.emitError(
+    "SemanticError",
+    `Cannot access private field '${currentField}' in struct '${structName}'`,
+    node,
+  );
+}
+          
           const isList = fieldInfo.isList;
           const ptr = this.IRB.newTemp();
 

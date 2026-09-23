@@ -43,6 +43,7 @@ export class Struct {
         struct: structName,
         isAsync: method.isAsync,
         isThread: method.isThread,
+        isPrivate: method.isPrivate
       });
     }
   }
@@ -106,6 +107,7 @@ export class Struct {
   : null,
         llvmType,
         index: i,
+        isPrivate: f.isPrivate,
         dimensions: f.dimensions || [],
       });
 

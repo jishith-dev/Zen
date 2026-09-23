@@ -223,8 +223,7 @@ export class Lexer {
         ) {
           this.angleDepth++;
         }
-        // don't return/continue — let it still fall through and be tokenized
-        // as a normal COMPARISON '<' below (or add it directly here, your choice)
+        
       }
 
       // force '>' to close one generic level at a time instead of greedily
