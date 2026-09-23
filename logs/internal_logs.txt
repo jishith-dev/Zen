@@ -189,5 +189,25 @@ added builtin native language spec reference system in command line:
   finalize rest of the pkg roadmap - done
 
   now length() takes list also for length calculation, besides list.length works also for backward compatibility.
+
+  List Methods Added
+
+Added:
+
+- remove(value) — removes the first matching value; does nothing if not found. Supports byte, int, long, double, bool, and string.
+- reverse() — reverses the outer List only; supports nested Lists (any element type).
+- sort() — ascending sort. Supports byte, int, long, double, and string; nested Lists are not supported.
+- sum() — sums byte, int, long, or double Lists; empty List returns 0 / 0.0.
+- avg() — averages byte, int, long, or double Lists; always returns double; empty List causes a runtime error.
+
+Rules:
+
+- Keep these methods focused and type-safe.
+- No map, filter, reduce, or similar JS-style List API for now.
+- remove() removes only the first occurrence.
+- reverse() changes only outer List order.
+- sort(), sum(), and avg() operate only on supported flat element types.
+
+add constructor() in struct method for automatic calling.
   
-  upgrade and test existing pkges and its docs
+upgrade and test existing pkges and its docs

@@ -1207,15 +1207,17 @@ export class Parser {
 
     // loop (init, condition, update)
 
-    let first;
+    let first = null;
 
     if (this.match("TYPE") || this.matchKeyword("auto")) {
       first = this.node(this.parseVariableDeclaration());
-    } else {
+    } /*else {
       first = this.node(this.parseExpression());
-    }
+    }*/
 
+    if (first) {
     this.expect("COMMA");
+    }
 
     let second = this.parseExpression();
 

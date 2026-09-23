@@ -3575,6 +3575,264 @@ end:
         };
       }
 
+      // new 
+
+        case "remove": {
+  const expType = object.generic?.generic?.type;
+
+  const allowed =
+    expType === "byte" ||
+    expType === "int" ||
+    expType === "long" ||
+    expType === "double" ||
+    expType === "bool" ||
+    expType === "string";
+
+  if (!allowed) {
+    this.emitError(
+      "TypeError",
+      `'remove' is currently only supported for List<byte>, List<int>, List<long>, List<double>, List<bool>, and List<string>. Got List<${expType}>`,
+      node.args[0],
+    );
+  }
+
+  const fnName =
+    expType === "byte"
+      ? "_zen_list_remove_byte"
+      : expType === "int"
+        ? "_zen_list_remove_int"
+        : expType === "long"
+          ? "_zen_list_remove_long"
+          : expType === "double"
+            ? "_zen_list_remove_double"
+            : expType === "bool"
+              ? "_zen_list_remove_bool"
+              : "_zen_list_remove_string";
+
+  const llvmType =
+    expType === "byte"
+      ? "i8"
+      : expType === "int"
+        ? "i32"
+        : expType === "long"
+          ? "i64"
+          : expType === "double"
+            ? "double"
+            : expType === "bool"
+              ? "i1"
+              : "ptr";
+
+  this.declareOneTime(
+    fnName,
+    `declare void @${fnName}(ptr, ${llvmType})`,
+  );
+
+  const arg = this.expr.handleExpression(node.args[0]);
+
+  const argType = arg?.isList === true
+    ? "List"
+    : arg?.type;
+
+  if (argType !== expType) {
+    this.emitError(
+      "TypeError",
+      `'${node.object.name}.remove' expects type '${expType}', got '${argType}'`,
+      node.args[0],
+    );
+  }
+
+  this.emitExpr(arg);
+
+  let value = arg.ptr;
+
+  if (arg.needsLoad) {
+    const loaded = this.newTemp();
+
+    this.emit(
+      `${loaded} = load ${llvmType}, ptr ${arg.ptr}`,
+    );
+
+    value = loaded;
+  }
+
+  this.emit(
+    `call void @${fnName}(ptr ${listPtr}, ${llvmType} ${value})`,
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+  };
+}
+
+case "reverse": {
+  this.declareOneTime(
+    "zen_list_reverse",
+    "declare void @_zen_list_reverse(ptr)",
+  );
+
+  this.emit(
+    `call void @_zen_list_reverse(ptr ${listPtr})`,
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+  };
+}
+
+case "sort": {
+  const expType = object.generic?.generic?.type;
+
+  if (
+    expType !== "byte" &&
+    expType !== "int" &&
+    expType !== "long" &&
+    expType !== "double" &&
+    expType !== "string"
+  ) {
+    this.emitError(
+      "TypeError",
+      `'sort' is only supported for List<byte>, List<int>, List<long>, List<double>, and List<string>. Got List<${expType}>`,
+      node,
+    );
+  }
+
+  const fnName =
+    expType === "byte"
+      ? "_zen_list_sort_byte"
+      : expType === "int"
+        ? "_zen_list_sort_int"
+        : expType === "long"
+          ? "_zen_list_sort_long"
+          : expType === "double"
+            ? "_zen_list_sort_double"
+            : "_zen_list_sort_string";
+
+  this.declareOneTime(
+    fnName,
+    `declare void @${fnName}(ptr)`,
+  );
+
+  this.emit(
+    `call void @${fnName}(ptr ${listPtr})`,
+  );
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+  };
+}
+
+case "sum": {
+  const expType = object.generic?.generic?.type;
+
+  if (
+    expType !== "byte" &&
+    expType !== "int" &&
+    expType !== "long" &&
+    expType !== "double"
+  ) {
+    this.emitError(
+      "TypeError",
+      `'sum' is only supported for List<byte>, List<int>, List<long>, and List<double>. Got List<${expType}>`,
+      node,
+    );
+  }
+
+  const fnName =
+    expType === "byte"
+      ? "_zen_list_sum_byte"
+      : expType === "int"
+        ? "_zen_list_sum_int"
+        : expType === "long"
+          ? "_zen_list_sum_long"
+          : "_zen_list_sum_double";
+
+  const llvmType =
+    expType === "byte"
+      ? "i8"
+      : expType === "int"
+        ? "i32"
+        : expType === "long"
+          ? "i64"
+          : "double";
+
+  this.declareOneTime(
+    fnName,
+    `declare ${llvmType} @${fnName}(ptr)`,
+  );
+
+  const val = this.newTemp();
+
+  this.emit(
+    `${val} = call ${llvmType} @${fnName}(ptr ${listPtr})`,
+  );
+
+  return {
+    ptr: val,
+    type: expType,
+    llvmType,
+    local: [],
+    global: [],
+  };
+}
+
+case "avg": {
+  const expType = object.generic?.generic?.type;
+
+  if (
+    expType !== "byte" &&
+    expType !== "int" &&
+    expType !== "long" &&
+    expType !== "double"
+  ) {
+    this.emitError(
+      "TypeError",
+      `'avg' is only supported for List<byte>, List<int>, List<long>, and List<double>. Got List<${expType}>`,
+      node,
+    );
+  }
+
+  const fnName =
+    expType === "byte"
+      ? "_zen_list_avg_byte"
+      : expType === "int"
+        ? "_zen_list_avg_int"
+        : expType === "long"
+          ? "_zen_list_avg_long"
+          : "_zen_list_avg_double";
+
+  this.declareOneTime(
+    fnName,
+    `declare double @${fnName}(ptr)`,
+  );
+
+  const val = this.newTemp();
+
+  this.emit(
+    `${val} = call double @${fnName}(ptr ${listPtr})`,
+  );
+
+  return {
+    ptr: val,
+    type: "double",
+    llvmType: "double",
+    local: [],
+    global: [],
+  };
+}
+
+        
       default:
         this.emitError("TypeError", `List has no property .${field}`, node);
     }

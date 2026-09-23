@@ -1109,3 +1109,436 @@ char *_zen_bytesToStr(ZenList *list) {
 
     return str;
 }
+
+// new
+
+
+// list remove
+
+static void _zen_list_remove_at_noerror(ZenList *list, int index) {
+  if (!list || !list->data)
+    return;
+
+  if (index < 0 || index >= list->size)
+    return;
+
+  char *base = (char *)list->data;
+
+  if (list->depth > 1) {
+    ZenList *old =
+        ((ZenList **)list->data)[index];
+
+    if (old)
+      _zen_list_free(old);
+  } else {
+    _zen_list_free_leaf(list, index);
+  }
+
+  size_t offset = (size_t)index * list->element_size;
+  size_t move_count =
+      (size_t)(list->size - index - 1) * list->element_size;
+
+  if (move_count > 0) {
+    memmove(
+        base + offset,
+        base + offset + list->element_size,
+        move_count
+    );
+  }
+
+  list->size--;
+}
+
+void _zen_list_remove_byte(ZenList *list, uint8_t value) {
+  if (!list || !list->data)
+    return;
+
+  uint8_t *base = (uint8_t *)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+void _zen_list_remove_int(ZenList *list, int value) {
+  if (!list || !list->data)
+    return;
+
+  int *base = (int *)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+void _zen_list_remove_long(ZenList *list, int64_t value) {
+  if (!list || !list->data)
+    return;
+
+  int64_t *base = (int64_t *)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+void _zen_list_remove_double(ZenList *list, double value) {
+  if (!list || !list->data)
+    return;
+
+  double *base = (double *)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+void _zen_list_remove_bool(ZenList *list, bool value) {
+  if (!list || !list->data)
+    return;
+
+  bool *base = (bool *)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+void _zen_list_remove_string(
+    ZenList *list,
+    const char *value
+) {
+  if (!list || !list->data)
+    return;
+
+  char **base = (char **)list->data;
+
+  for (int i = 0; i < list->size; i++) {
+    if (base[i] == value ||
+        (base[i] && value && strcmp(base[i], value) == 0)) {
+      _zen_list_remove_at_noerror(list, i);
+      return;
+    }
+  }
+}
+
+
+// list reverse
+
+void _zen_list_reverse(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  char *base = (char *)list->data;
+
+  for (int i = 0, j = list->size - 1; i < j; i++, j--) {
+    char *left =
+        base + ((size_t)i * list->element_size);
+
+    char *right =
+        base + ((size_t)j * list->element_size);
+
+    for (size_t k = 0; k < list->element_size; k++) {
+      char temp = left[k];
+      left[k] = right[k];
+      right[k] = temp;
+    }
+  }
+}
+
+
+// list sort
+
+static int _zen_list_compare_byte(
+    const void *a,
+    const void *b
+) {
+  uint8_t x = *(const uint8_t *)a;
+  uint8_t y = *(const uint8_t *)b;
+
+  if (x < y)
+    return -1;
+
+  if (x > y)
+    return 1;
+
+  return 0;
+}
+
+static int _zen_list_compare_int(
+    const void *a,
+    const void *b
+) {
+  int x = *(const int *)a;
+  int y = *(const int *)b;
+
+  if (x < y)
+    return -1;
+
+  if (x > y)
+    return 1;
+
+  return 0;
+}
+
+static int _zen_list_compare_long(
+    const void *a,
+    const void *b
+) {
+  int64_t x = *(const int64_t *)a;
+  int64_t y = *(const int64_t *)b;
+
+  if (x < y)
+    return -1;
+
+  if (x > y)
+    return 1;
+
+  return 0;
+}
+
+static int _zen_list_compare_double(
+    const void *a,
+    const void *b
+) {
+  double x = *(const double *)a;
+  double y = *(const double *)b;
+
+  if (x < y)
+    return -1;
+
+  if (x > y)
+    return 1;
+
+  return 0;
+}
+
+static int _zen_list_compare_string(
+    const void *a,
+    const void *b
+) {
+  const char *x = *(const char *const *)a;
+  const char *y = *(const char *const *)b;
+
+  if (x == y)
+    return 0;
+
+  if (!x)
+    return -1;
+
+  if (!y)
+    return 1;
+
+  return strcmp(x, y);
+}
+
+void _zen_list_sort_byte(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  qsort(
+      list->data,
+      (size_t)list->size,
+      list->element_size,
+      _zen_list_compare_byte
+  );
+}
+
+void _zen_list_sort_int(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  qsort(
+      list->data,
+      (size_t)list->size,
+      list->element_size,
+      _zen_list_compare_int
+  );
+}
+
+void _zen_list_sort_long(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  qsort(
+      list->data,
+      (size_t)list->size,
+      list->element_size,
+      _zen_list_compare_long
+  );
+}
+
+void _zen_list_sort_double(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  qsort(
+      list->data,
+      (size_t)list->size,
+      list->element_size,
+      _zen_list_compare_double
+  );
+}
+
+void _zen_list_sort_string(ZenList *list) {
+  if (!list || !list->data || list->size <= 1)
+    return;
+
+  qsort(
+      list->data,
+      (size_t)list->size,
+      list->element_size,
+      _zen_list_compare_string
+  );
+}
+
+
+// list sum
+
+int8_t _zen_list_sum_byte(ZenList *list) {
+  if (!list || !list->data)
+    return 0;
+
+  uint8_t *base = (uint8_t *)list->data;
+  int8_t total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return total;
+}
+
+int _zen_list_sum_int(ZenList *list) {
+  if (!list || !list->data)
+    return 0;
+
+  int *base = (int *)list->data;
+  int total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return total;
+}
+
+int64_t _zen_list_sum_long(ZenList *list) {
+  if (!list || !list->data)
+    return 0;
+
+  int64_t *base = (int64_t *)list->data;
+  int64_t total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return total;
+}
+
+double _zen_list_sum_double(ZenList *list) {
+  if (!list || !list->data)
+    return 0.0;
+
+  double *base = (double *)list->data;
+  double total = 0.0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return total;
+}
+
+
+// list average
+
+static void _zen_list_avg_empty_error(void) {
+  fprintf(
+      stderr,
+      "[Zen RuntimeError]\n"
+      "  └── Cannot calculate average of an empty List\n"
+  );
+
+  exit(1);
+}
+
+double _zen_list_avg_byte(ZenList *list) {
+  if (!list || !list->data || list->size == 0)
+    _zen_list_avg_empty_error();
+
+  uint8_t *base = (uint8_t *)list->data;
+
+  int64_t total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return (double)total / (double)list->size;
+}
+
+double _zen_list_avg_int(ZenList *list) {
+  if (!list || !list->data || list->size == 0)
+    _zen_list_avg_empty_error();
+
+  int *base = (int *)list->data;
+
+  int64_t total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return (double)total / (double)list->size;
+}
+
+double _zen_list_avg_long(ZenList *list) {
+  if (!list || !list->data || list->size == 0)
+    _zen_list_avg_empty_error();
+
+  int64_t *base = (int64_t *)list->data;
+
+  /*
+   * The accumulator is also int64_t because Zen long is i64.
+   * Overflow follows normal signed integer arithmetic semantics.
+   */
+  int64_t total = 0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return (double)total / (double)list->size;
+}
+
+double _zen_list_avg_double(ZenList *list) {
+  if (!list || !list->data || list->size == 0)
+    _zen_list_avg_empty_error();
+
+  double *base = (double *)list->data;
+
+  double total = 0.0;
+
+  for (int i = 0; i < list->size; i++) {
+    total += base[i];
+  }
+
+  return total / (double)list->size;
+}
