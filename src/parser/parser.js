@@ -731,33 +731,45 @@ export class Parser {
   }
 
   parseImport() {
-    this.expectKeyword("import");
-    this.expect("LEFT_PARENTHESIS");
+  this.expectKeyword("import");
+  this.expect("LEFT_PARENTHESIS");
 
-    const names = [];
+  const names = [];
+  const aliases = new Map();
 
-    while (!this.match("RIGHT_PARENTHESIS")) {
-      this.skipNewlines();
+  while (!this.match("RIGHT_PARENTHESIS")) {
+    this.skipNewlines();
 
-      names.push(this.expect("IDENTIFIER").value);
+    const originalName = this.expect("IDENTIFIER").value;
+    names.push(originalName);
 
-      this.skipNewlines();
+    this.skipNewlines();
 
-      if (this.match("COMMA")) {
-        this.advance();
-      }
+    if (this.matchKeyword("as")) {
+      this.advance();
+
+      const localName = this.expect("IDENTIFIER").value;
+      aliases.set(originalName, localName);
     }
 
-    this.expect("RIGHT_PARENTHESIS");
-    this.expectKeyword("from");
+    this.skipNewlines();
 
-    const source = this.expect("string").value;
+    if (this.match("COMMA")) {
+      this.advance();
+    }
+  }
 
-    return this.node({
-      type: ParserTypes.IMPORT,
-      names,
-      source,
-    });
+  this.expect("RIGHT_PARENTHESIS");
+  this.expectKeyword("from");
+
+  const source = this.expect("string").value;
+
+  return this.node({
+    type: ParserTypes.IMPORT,
+    names,
+    aliases: Object.fromEntries(aliases),
+    source,
+  });
   }
 
   parseExport() {

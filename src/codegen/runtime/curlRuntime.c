@@ -5,6 +5,7 @@
 #include <ctype.h>
 #ifdef _WIN32
 #include <string.h>
+#ifdef _WIN32
 #define strncasecmp _strnicmp
 #else
 #include <strings.h>

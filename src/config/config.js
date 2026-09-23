@@ -120,7 +120,8 @@ const KEYWORDS = [
   "enum",
   "thread",
   "extern",
-  "private"
+  "private",
+  "as"
 ];
 
 // lexer tokens
