@@ -477,14 +477,32 @@ export class IRBuilder {
     };
   }
 
-  getFunction(name, node) {
+ /* getFunction(name, node) {
     if (this.functions.has(name)) {
       return this.functions.get(name);
     }
 
     this.emitError("ReferenceError", `Function '${name}' is not defined`, node);
   }
+*/
 
+getFunction(name, node) {
+  if (this.functions.has(name)) {
+    const fn = this.functions.get(name);
+
+    if (fn.aliasName) {
+      return {
+        ...fn,
+        name: fn.name,
+      };
+    }
+
+    return fn;
+  }
+
+  this.emitError("ReferenceError", `Function '${name}' is not defined`, node);
+}
+  
   getParamFunction(name, node) {
     if (this.functionParamTable.has(name)) {
       return this.functionParamTable.get(name);

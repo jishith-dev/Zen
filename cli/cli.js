@@ -37,7 +37,8 @@ const VALID_COMMANDS = new Set([
   "installed",
   "read",
   "info",
-  "tests"
+  "tests",
+  "upgrade"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -61,6 +62,7 @@ const PACKAGE_COMMANDS = {
   deps: "deps",
   installed: "installed",
   read: "read",
+  upgrade: "upgrade"
 };
 
 const COMPILE_COMMANDS = new Set([
@@ -108,12 +110,15 @@ Tooling:
 Packages:
   zen install <package>
   zen uninstall <package>
+  zen upgrade <package>
   zen search <package>
   zen kind <package>
   zen mine
   zen list
   zen publish
   zen unpublish 
+  zen deps
+  zen installed
 
 Account:
   zen signup

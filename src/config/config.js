@@ -54,6 +54,18 @@ const hints = {
       hint: "Check the import syntax and verify that the imported names exist.",
     },
   ],
+
+  TypeError: [
+    {
+      match: /'string' has no property or method 'length'/,
+      hint: "Use the global 'length()' function for strings. String methods are not supported.",
+    },
+    {
+      match: /Function debug\.pretty\(\) expects a List<T> or struct, but got string/,
+      hint: "Use 'screen()' for normal values. 'debug.pretty()' is for printing Lists and Maps.",
+    },
+  ],
+
   SemanticError: [
     {
       match: /can only be used after 'Json\.parse\(\)'/,

@@ -5,64 +5,86 @@ export class ZenString {
   }
 
   length(node) {
-    const args = node.args;
+  const args = node.args;
 
-    if (!args) {
-      this.IRB.emitError(
-        "SyntaxError",
-        `'length()' must be called as a function — did you forget '()'?`,
-        node,
-      );
-    }
-
-    if (args[0].length > 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function type() accept exactly 1 argument",
-        node,
-      );
-    }
-
-    const expr = this.expr.handleExpression(args[0]);
-
-    const isArray = expr.llvmType.startsWith("[");
-    const isString = expr.type === "string";
-    const isList = expr?.isList;
-
-    if ((!isString && !isArray) || isList || expr?.isStruct) {
-      this.IRB.emitError(
-        "TypeError",
-        "The length() function expects a string or array argument.",
-        node,
-      );
-    }
-
-    this.IRB.emitExpr(expr);
-
-    this.IRB.declareOneTime("strlen", "declare i32 @strlen(ptr)");
-
-    let finalPtr;
-
-    if (!isArray) {
-      const t = this.IRB.newTemp();
-      this.IRB.emit(`${t} = call i32 @strlen(ptr ${expr.ptr})`);
-
-      finalPtr = t;
-    } else {
-      finalPtr = expr.length;
-    }
-
-    return {
-      ptr: finalPtr,
-      type: "int",
-      llvmType: "i32",
-      local: [],
-      global: [],
-      isConstant: true,
-      postOrPrefix: false,
-    };
+  if (!args) {
+    this.IRB.emitError(
+      "SyntaxError",
+      `'length()' must be called as a function — did you forget '()'?`,
+      node,
+    );
   }
 
+  if (args.length !== 1) {
+    this.IRB.emitError(
+      "ArgumentError",
+      "Function length() accepts exactly 1 argument",
+      node,
+    );
+  }
+
+  const expr = this.expr.handleExpression(args[0]);
+
+  const isArray = expr.llvmType.startsWith("[");
+  const isString = expr.type === "string";
+  const isList = expr?.isList;
+
+  if ((!isString && !isArray && !isList) || expr?.isStruct) {
+    this.IRB.emitError(
+      "TypeError",
+      "The length() function expects a string, array, or List argument.",
+      node,
+    );
+  }
+
+  this.IRB.emitExpr(expr);
+
+  let finalPtr;
+
+  if (isList) {
+    const gep = this.IRB.newTemp();
+
+    let t = this.IRB.newTemp();
+    if (expr.needsLoad) {
+      this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+    } else {
+      t = expr.ptr;
+    }
+
+    this.IRB.emit(
+      `${gep} = getelementptr inbounds %ZenList, ptr ${t}, i32 0, i32 1`,
+    );
+
+    const val = this.IRB.newTemp();
+
+    this.IRB.emit(`${val} = load i32, ptr ${gep}`);
+
+    finalPtr = val;
+  } else if (isArray) {
+    finalPtr = expr.length;
+  } else {
+    this.IRB.declareOneTime("strlen", "declare i32 @strlen(ptr)");
+
+    const t = this.IRB.newTemp();
+
+    this.IRB.emit(
+      `${t} = call i32 @strlen(ptr ${expr.ptr})`,
+    );
+
+    finalPtr = t;
+  }
+
+  return {
+    ptr: finalPtr,
+    type: "int",
+    llvmType: "i32",
+    local: [],
+    global: [],
+    isConstant: true,
+    postOrPrefix: false,
+  };
+  }
+  
   matchRegex(node) {
     const args = node.args;
 

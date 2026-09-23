@@ -1,3 +1,0 @@
-fn add() { screen("hi") }
-
-export (add)

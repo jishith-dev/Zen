@@ -164,7 +164,7 @@ export class Call {
         mangledName = `_zen_std_${name}`;
         break;
       case isImportedFn:
-        mangledName = `zen_${importedModuleName}_${name}`;
+        mangledName = `zen_${importedModuleName}_${fn.name}`;
         break;
       default:
         mangledName = `zen_${this.sourceName}_${name}`;

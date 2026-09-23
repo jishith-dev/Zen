@@ -26,7 +26,7 @@ export class Compiler {
     output: process.stdout,
     prompt: ">>> ",
   });
-
+  let exitingWithCommand = false;
   const declarations = []; // persisted forever — decls only, no side effects on replay
   const replDir = path.join(process.cwd(), ".zen", "repl");
   const replFile = path.join(replDir, "repl.zen");
@@ -42,6 +42,7 @@ export class Compiler {
     const input = line.trim();
 
     if (input === "exit()") {
+      exitingWithCommand = true;
       rl.close();
       return;
     }
@@ -72,6 +73,8 @@ export class Compiler {
   });
 
   rl.on("close", () => {
+    if (!exitingWithCommand) console.log();
+    console.log("Bye!");
     try {
       fs.rmSync(replDir, { recursive: true, force: true });
     } catch {}

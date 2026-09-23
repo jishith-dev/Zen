@@ -225,23 +225,49 @@ collectExports(exports, moduleName, tables, node) {
     this.moduleImports.set(source, imported);
 
     const seen = new Set();
+    const aliases = node.aliases || {};
 
     // register all struct first so avoid dependency bug
 
-    for (const name of imports) {
+/*    for (const name of imports) {
+      const localName = aliases[name] || name;
       if (tables.structTable.has(name)) {
         const s = tables.structTable.get(name);
 
-        this.IRB.setStruct(name, s);
+        this.IRB.setStruct(localName, s);
 
         this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
         const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
         this.IRB.globals.push(`%${name} = type { ${fields} }`);
       }
+    }*/
+
+    for (const name of imports) {
+  const localName = aliases[name] || name;
+
+  if (tables.structTable.has(name)) {
+    if (localName !== name) {
+      this.IRB.emitError(
+        "ImportError",
+        `Struct '${name}' cannot be imported with an alias`,
+        node,
+      );
+    }
+
+    const s = tables.structTable.get(name);
+
+    this.IRB.setStruct(localName, s);
+
+    this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
+    const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
+    this.IRB.globals.push(`%${name} = type { ${fields} }`);
+  }
     }
 
     for (const name of imports) {
 
+      const localName = aliases[name] || name;
+      
       const kind = this.builtinKind(name, tables);
 
       if (kind) {
@@ -260,23 +286,30 @@ collectExports(exports, moduleName, tables, node) {
         );
       }
 
-      if (seen.has(name)) {
-        this.IRB.emitError("ImportError", `Duplicate import '${name}'`, node);
-      }
-      seen.add(name);
+      if (seen.has(localName)) {
+  this.IRB.emitError(
+    "ImportError",
+    `Duplicate import '${localName}'`,
+    node,
+  );
+}
+seen.add(localName);
 
-      if (imported.has(name)) {
-        this.IRB.emitError(
-          "ImportError",
-          `'${name}' already imported from ${source}`,
-          node,
-        );
-      }
+if (imported.has(localName)) {
+  this.IRB.emitError(
+    "ImportError",
+    `'${localName}' already imported from ${source}`,
+    node,
+  );
+}
 
-      imported.add(name);
+imported.add(localName);
 
       if (tables.functionTable.has(name)) {
-        const fn = tables.functionTable.get(name);
+        const fn = {
+    ...tables.functionTable.get(name),
+    aliasName: localName === name ? null : localName,
+  };
 
         // add imported fn flag
         fn.isImported = true;
@@ -307,7 +340,7 @@ collectExports(exports, moduleName, tables, node) {
           );
         }
 
-        this.IRB.setFunction(name, fn);
+        this.IRB.setFunction(localName, fn);
         continue;
       }
 
@@ -354,7 +387,7 @@ collectExports(exports, moduleName, tables, node) {
 
         this.IRB.globals.push(`${v.ptr} = external global ${v.llvmType}`);
 
-        this.IRB.setVar(name, v);
+        this.IRB.setVar(localName, v);
         continue;
       }
 

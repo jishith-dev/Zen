@@ -177,14 +177,17 @@ added builtin native language spec reference system in command line:
   for methods it cant be called outside ita struct. only inside via this.call()
   for field it can be only used inside struct like methods - done
 
-  introduce import aliasing for functions and variables and structs.
+  introduce import aliasing for functions and variables. Not supported in structs now. - done
 
-  improve hint in diagnostics
+  improve hint in diagnostics - done
 
-  add bye text to zen repl after exit()
+  add bye text to zen repl after exit() - done
 
-  add zen upgrade pkgName to updage latest version.
-  also debug current zen install pkg@semver 
+  add zen upgrade pkgName to updage latest version. - done
+  also debug current zen install pkg@semver - done
 
-  finalize rest of the pkg roadmap 
+  finalize rest of the pkg roadmap - done
+
+  now length() takes list also for length calculation, besides list.length works also for backward compatibility.
+  
   upgrade and test existing pkges and its docs
