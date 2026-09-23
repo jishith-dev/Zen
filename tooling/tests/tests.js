@@ -246,8 +246,8 @@ export (fourth)
   }
 
   const child = spawn(
-    "node",
-    ["/sdcard/zen/bin/zen.js", "run", tempFile],
+    ["zen run",
+     tempFile],
     {
       stdio: "inherit"
     }
