@@ -170,8 +170,6 @@ added builtin native language spec reference system in command line:
 
   added zen update --dev so it can install dev version
 
-  -- future upgrades planned for tommorow
-
   introduce private keyword for functions and methods and fields.
   for functions only restriction is it cannot exported.
   for methods it cant be called outside ita struct. only inside via this.call()
@@ -207,6 +205,8 @@ Rules:
 - remove() removes only the first occurrence.
 - reverse() changes only outer List order.
 - sort(), sum(), and avg() operate only on supported flat element types.
+
+-- tommorow
 
 add constructor() in struct method for automatic calling.
   

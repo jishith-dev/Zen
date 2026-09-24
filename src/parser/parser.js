@@ -557,19 +557,55 @@ export class Parser {
       }
 
       // FIELD
-      const typeNode = this.parseType();
-      const nameToken = this.expect("IDENTIFIER");
+const typeNode = this.parseType();
+const nameToken = this.expect("IDENTIFIER");
 
-      fields.push(
-        this.node({
-          name: nameToken.value,
-          ...typeNode,
-          isPrivate
-        }),
-      );
+const dimensions = [];
 
-      if (this.match("NEWLINE")) this.advance();
-      if (this.match("COMMA")) this.advance();
+while (this.match("LBRACKET")) {
+  this.advance();
+
+  const dim = this.parseExpression();
+
+  if (
+    dim.type !== ParserTypes.INT &&
+    dim.type !== ParserTypes.BINARY_EXPRESSION &&
+    dim.type !== "variable"
+  ) {
+    this.IRB.emitError(
+      "TypeError",
+      "array dimension must be int or constant expression",
+      this.lineAndColumn(),
+    );
+  }
+
+  dimensions.push(dim);
+
+  this.expect("RBRACKET");
+}
+
+let value = null;
+
+if (this.match("ASSIGNMENT")) {
+  this.advance();
+  value = this.parseExpression();
+}
+
+fields.push(
+  this.node({
+    name: nameToken.value,
+    ...typeNode,
+    isPrivate,
+    dimensions,
+    isArray: dimensions.length > 0,
+    value,
+  }),
+);
+
+if (this.match("NEWLINE")) this.advance();
+if (this.match("COMMA")) this.advance();
+
+      
     }
 
     this.expect("BLOCK_END");
@@ -1211,9 +1247,7 @@ export class Parser {
 
     if (this.match("TYPE") || this.matchKeyword("auto")) {
       first = this.node(this.parseVariableDeclaration());
-    } /*else {
-      first = this.node(this.parseExpression());
-    }*/
+    } 
 
     if (first) {
     this.expect("COMMA");

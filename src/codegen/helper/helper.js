@@ -4015,7 +4015,7 @@ case "avg": {
     );
   }
 
-  emitStructLiteral(structName, mapLiteralNode, globalScope = false) {
+  emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr = null) {
     if (structName === "Map") {
       return this.emitMapLiteral(mapLiteralNode, globalScope);
     }
@@ -4030,7 +4030,10 @@ case "avg": {
       "declare ptr @_zen_list_push(ptr, ptr)",
     );
 
-    if (globalScope) {
+    if (existingPtr) {
+      structPtr = existingPtr;
+    }
+    else if (globalScope) {
       structPtr = this.newGlobalTemp();
       this.globals.push(`${structPtr} = global ${llvmType} zeroinitializer`);
     } else {
@@ -4104,27 +4107,15 @@ case "avg": {
         continue;
       }
 
-      // NESTED STRUCT FIELD (literal)
       if (prop.value.type === "STRUCT_LITERAL") {
-        const nestedPtr = this.emitStructLiteral(
-          field.type,
-          prop.value,
-          globalScope,
-        );
+  this.emitStructLiteral(
+    field.type,
+    prop.value,
+    false,
+    fieldPtr,
+  );
 
-        if (nestedPtr.needsLoad) {
-          const t = this.newTemp();
-          this.emit(`${t} = load ptr, ptr ${nestedPtr.ptr}`);
-          nestedPtr.ptr = t;
-        }
-        this.declareOneTime(
-          "memcpy",
-          "declare void @llvm.memcpy(ptr, ptr, i64, i1)",
-        );
-        this.emit(
-          `call void @llvm.memcpy(ptr ${fieldPtr}, ptr ${nestedPtr.ptr}, i64 ${this.sizeOf(field.type)}, i1 false)`,
-        );
-        continue;
+  continue;
       }
 
       if (!field.isList && field.type !== "Ptr" && this.hasStruct(field.type)) {
@@ -4388,6 +4379,8 @@ case "avg": {
     this.emitAlloca(ptr, llvmType);
     if (isOpaque) {
       this.emit(`store ptr null, ptr ${ptr}`);
+    } else {
+  this.emit(`store ${llvmType} zeroinitializer, ptr ${ptr}`);
     }
     return ptr;
   }
@@ -5147,47 +5140,6 @@ case "avg": {
     }
   }
 
-  generateStructInitializer(name, layout) {
-    const lines = [];
-
-    lines.push(`define void @_zen_init_${name}(ptr %this) {`);
-
-    for (const field of layout) {
-      if (!field.isList) continue;
-
-      const deepest = this.getDeepestGeneric(field.generic);
-      const depth = this.getListDepth(field.generic);
-
-      const elementSize = depth > 1 ? 8 : this.sizeOf(deepest);
-
-      const list = this.newTemp();
-
-      lines.push(`${list} = call ptr @_zen_list_new(i64 ${elementSize})`);
-
-      lines.push(
-        `call void @_zen_list_set_meta(ptr ${list}, i32 ${depth}, i32 ${this.getListTypeCode(deepest)})`,
-      );
-
-      const fieldPtr = this.newTemp();
-
-      lines.push(
-        `${fieldPtr} = getelementptr %${name}, ptr %this, i32 0, i32 ${field.index}`,
-      );
-
-      lines.push(`store ptr ${list}, ptr ${fieldPtr}`);
-    }
-
-    lines.push("ret void");
-    lines.push("}");
-
-    this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
-    this.declareOneTime(
-      "zen_list_set_meta",
-      "declare void @_zen_list_set_meta(ptr, i32, i32)",
-    );
-    this.functionBuff.push(lines.join("\n"));
-  }
-
   getActiveFunction() {
     return this.anonymCurrentFunction ?? this.currentFunction;
   }
@@ -5317,4 +5269,312 @@ case "avg": {
 
   return { ctx, trampolineName };
   }
+/*
+  applyFieldInitializers(ptr, structName, structInfo) {
+  for (const field of structInfo.layout) {
+
+    // NESTED STRUCT
+    if (field.value === null && !field.isList && this.hasStruct(field.type)) {
+      const fieldPtr = this.newTemp();
+
+      this.emit(
+        `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
+      );
+
+      const nestedStructInfo = this.getStruct(field.type);
+
+      this.applyFieldInitializers(
+        fieldPtr,
+        field.type,
+        nestedStructInfo,
+      );
+
+      continue;
+    }
+
+    // LIST DEFAULT
+    if (field.value === null && field.isList) {
+      const fieldPtr = this.newTemp();
+
+      this.emit(
+        `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
+      );
+
+      const elementSize = this.sizeOf(
+        this.getDeepestGeneric(field.generic),
+      );
+
+      const listPtr = this.newTemp();
+
+      this.emit(
+        `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`,
+      );
+
+      this.emit(
+        `store ptr ${listPtr}, ptr ${fieldPtr}`,
+      );
+
+      continue;
+    }
+
+    // FIELD INITIALIZER
+    if (field.value === null) continue;
+
+    const fieldValue = this.expr.handleExpression(field.value);
+    this.emitExpr(fieldValue);
+
+    const fieldPtr = this.newTemp();
+
+    this.emit(
+      `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
+    );
+
+    const llvmType = this.getLLVMType(field.type);
+
+    this.emit(
+      `store ${llvmType} ${fieldValue.ptr}, ptr ${fieldPtr}`,
+    );
+  }
+  }
+  */
+
+  applyFieldInitializers(ptr, structName, structInfo) {
+  for (const field of structInfo.layout) {
+    const fieldPtr = this.newTemp();
+
+    this.emit(
+      `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
+    );
+
+    if (field.value === null) {
+      if (!field.isList && this.hasStruct(field.type)) {
+        const nestedStructInfo = this.getStruct(field.type);
+
+        this.applyFieldInitializers(
+          fieldPtr,
+          field.type,
+          nestedStructInfo,
+        );
+
+        continue;
+      }
+
+      if (field.isList) {
+        this.declareOneTime(
+          "ZenList",
+          "%ZenList = type { ptr, i32, i32, i64 }",
+        );
+
+        this.declareOneTime(
+          "zen_list_new",
+          "declare ptr @_zen_list_new(i64)",
+        );
+
+        const elementType = this.getDeepestGeneric(field.generic);
+        const elementSize =
+          field.generic?.generic?.type === "List"
+            ? 8
+            : this.sizeOf(elementType);
+
+        const listPtr = this.newTemp();
+
+        this.emit(
+          `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`,
+        );
+
+        this.emit(
+          `store ptr ${listPtr}, ptr ${fieldPtr}`,
+        );
+
+        continue;
+      }
+
+      if (field.type === "string") {
+        const empty = this.newGlobalString("");
+
+        this.emit(
+          `store ptr ${empty.name}, ptr ${fieldPtr}`,
+        );
+
+        continue;
+      }
+
+      continue;
+    }
+
+    if (field.isList && field.value.type === "ARRAY") {
+      this.declareOneTime(
+        "ZenList",
+        "%ZenList = type { ptr, i32, i32, i64 }",
+      );
+
+      this.declareOneTime(
+        "zen_list_new",
+        "declare ptr @_zen_list_new(i64)",
+      );
+
+      this.declareOneTime(
+        "zen_list_push",
+        "declare void @_zen_list_push(ptr, ptr)",
+      );
+
+      const isNestedList =
+        field.generic?.generic?.type === "List";
+
+      const elementSize = isNestedList
+        ? 8
+        : this.sizeOf(
+            this.getDeepestGeneric(field.generic),
+          );
+
+      const listPtr = this.newTemp();
+
+      this.emit(
+        `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`,
+      );
+
+      for (const el of field.value.elements) {
+        if (el.type === "ARRAY") {
+          const innerListPtr = this.emitNestedListLiteral(
+            el,
+            field.generic.generic,
+          );
+
+          const tmp = this.newTemp();
+
+          this.emitAlloca(tmp, "ptr");
+
+          this.emit(
+            `store ptr ${innerListPtr}, ptr ${tmp}`,
+          );
+
+          this.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+          );
+
+          continue;
+        }
+
+        if (el.type === "STRUCT_LITERAL") {
+          const innerStructName =
+            this.getDeepestGeneric(field.generic);
+
+          const innerPtr = this.emitStructLiteral(
+            innerStructName,
+            el,
+          );
+
+          let valuePtr = innerPtr.ptr;
+
+          if (innerPtr.needsLoad) {
+            const loaded = this.newTemp();
+
+            this.emit(
+              `${loaded} = load ptr, ptr ${valuePtr}`,
+            );
+
+            valuePtr = loaded;
+          }
+
+          this.emit(
+            `call void @_zen_list_push(ptr ${listPtr}, ptr ${valuePtr})`,
+          );
+
+          continue;
+        }
+
+        const expr = this.expr.handleExpression(el);
+
+        this.emitExpr(expr);
+
+        const tmp = this.newTemp();
+
+        this.emitAlloca(tmp, expr.llvmType);
+
+        this.emit(
+          `store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`,
+        );
+
+        this.emit(
+          `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+        );
+      }
+
+      this.emit(
+        `store ptr ${listPtr}, ptr ${fieldPtr}`,
+      );
+
+      continue;
+    }
+
+    if (field.value.type === "STRUCT_LITERAL") {
+      const nestedPtr = this.emitStructLiteral(
+        field.type,
+        field.value,
+      );
+
+      let nestedValuePtr = nestedPtr.ptr;
+
+      if (nestedPtr.needsLoad) {
+        const loaded = this.newTemp();
+
+        this.emit(
+          `${loaded} = load ptr, ptr ${nestedValuePtr}`,
+        );
+
+        nestedValuePtr = loaded;
+      }
+
+      this.declareOneTime(
+        "llvm.memcpy.p0.p0.i64",
+        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+      );
+
+      this.emit(
+        `call void @llvm.memcpy.p0.p0.i64(` +
+          `ptr ${fieldPtr}, ` +
+          `ptr ${nestedValuePtr}, ` +
+          `i64 ${this.sizeOf(field.type)}, ` +
+          `i1 false)`,
+      );
+
+      continue;
+    }
+
+    const expr = this.expr.handleExpression(
+      field.value,
+      false,
+      structName,
+    );
+
+    this.emitExpr(expr);
+
+    if (
+      !field.isList &&
+      field.type !== "Ptr" &&
+      this.hasStruct(field.type)
+    ) {
+      this.declareOneTime(
+        "llvm.memcpy.p0.p0.i64",
+        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+      );
+
+      const size = this.sizeOf(field.type);
+
+      this.emit(
+        `call void @llvm.memcpy.p0.p0.i64(` +
+          `ptr ${fieldPtr}, ` +
+          `ptr ${expr.ptr}, ` +
+          `i64 ${size}, ` +
+          `i1 false)`,
+      );
+
+      continue;
+    }
+
+    this.emit(
+      `store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`,
+    );
+  }
+}
 }

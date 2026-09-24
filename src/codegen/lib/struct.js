@@ -109,19 +109,12 @@ export class Struct {
         index: i,
         isPrivate: f.isPrivate,
         dimensions: f.dimensions || [],
+        value: f.value
       });
 
       fieldMap[f.name] = i;
       llvmFields.push(llvmType);
     }
-
-    const needsInit = layout.some((field) => field?.isList);
-
-    if (needsInit) {
-      this.IRB.structInitializers.set(name, layout);
-    }
-
-    this.IRB.generateStructInitializer(name, layout);
 
     this.IRB.globals.push(`%${name} = type { ${llvmFields.join(", ")} }`);
 
@@ -172,16 +165,15 @@ export class Struct {
 
     if (value?.type === "STRUCT_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
+      
+      ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+  this.IRB.applyFieldInitializers(ptr, structName, structInfo);
 
-      let t = this.IRB.emitStructLiteral(structName, value, globalScope);
-
-      ptr = t.ptr;
+  this.IRB.emitStructLiteral(structName, value, globalScope, ptr); 
+      
     } else if (value === null) {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
-
-      if (this.IRB.structInitializers.has(structName)) {
-        this.IRB.emit(`call void @_zen_init_${structName}(ptr ${ptr})`);
-      }
+      this.IRB.applyFieldInitializers(ptr, structName, structInfo);
     } else {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       const expr = this.expr.handleExpression(value);
@@ -198,6 +190,8 @@ export class Struct {
         globalScope,
         needAllocate,
       );
+
+      this.IRB.applyFieldInitializers(ptr, structName, structInfo);
 
       if (isOpaque) {
         let valuePtr = expr.ptr;
