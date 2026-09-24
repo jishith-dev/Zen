@@ -2196,7 +2196,46 @@ parseLogical() {
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
 
-      if (this.matchKeyword("fn")) {
+      // sizeOf(int) support bare type in argument
+    /*  if (name === "sizeOf" && this.current().type === "TYPE") {
+  args.push(
+    this.node({
+      type: "SIZEOF_TYPE",
+      value: this.current().value,
+    })
+  );
+  this.advance();
+      } */
+      if (
+  name === "sizeOf" &&
+  (
+    this.current().type === "TYPE" ||
+    this.current().value === "List"
+  )
+) {
+  if (this.current().value === "List") {
+    const generic = this.parseListGeneric();
+
+    args.push(
+      this.node({
+        type: "SIZEOF_TYPE",
+        value: "List",
+        generic,
+      })
+    );
+  } else {
+    args.push(
+      this.node({
+        type: "SIZEOF_TYPE",
+        value: this.current().value,
+        generic: null,
+      })
+    );
+
+    this.advance();
+  }
+      }
+     else if (this.matchKeyword("fn")) {
         args.push(this.node(this.parseInlineCallback()));
       } else {
         args.push(this.node(this.parseExpression()));

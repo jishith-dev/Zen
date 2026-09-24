@@ -219,5 +219,9 @@ changed builtin toString and toInt to :
 asciiToInt("ABC")  // 198
 intToAscii(65)     // "A"
 for meaningful name
+
+added sizeOf() now support bare types , eg:
+sizeOf(int) or long or anything, also support expressions, also bare list type is supoorted.
+not supoorted is bare struct name. should be instantiated then pass ref.
   
 upgrade and test existing pkges and its docs

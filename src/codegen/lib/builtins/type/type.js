@@ -314,26 +314,34 @@ export class Type {
   }
 
   sizeOf(node) {
-    if (node.args.length !== 1) {
-      this.IRB.emitError(
-        "ArgumentError",
-        "Function sizeOf() accepts exactly 1 argument",
-        node,
-      );
-    }
+  if (node.args.length !== 1) {
+    this.IRB.emitError(
+      "ArgumentError",
+      "Function sizeOf() accepts exactly 1 argument",
+      node,
+    );
+  }
 
-    const type = this.infer.infer(node.args[0]);
-    const size = this.IRB.sizeOf(type);
+  const arg = node.args[0];
 
-    return {
-      ptr: `${size}`,
-      type: "int",
-      llvmType: "i32",
-      local: [],
-      global: [],
-      isConstant: true,
-      needsLoad: false,
-    };
+  let type;
+
+  if (arg.type === "SIZEOF_TYPE") {
+    type = arg.value;
+  } else {
+    type = this.infer.infer(arg);
+  }
+
+  const size = this.IRB.sizeOf(type);
+
+  return {
+    ptr: `${size}`,
+    type: "int",
+    llvmType: "i32",
+    local: [],
+    global: [],
+    isConstant: true
+  };
   }
 
   Byte(node) {

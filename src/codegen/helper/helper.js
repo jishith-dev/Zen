@@ -10,6 +10,7 @@ import {
   BUILTIN_STRUCT_ABI,
   hints,
   NAMESPACE_REG,
+  HOST_ARCH_BITS
 } from "../../config/config.js";
 
 import { InferType } from "../infer/infer.js";
@@ -72,23 +73,20 @@ export class IRBuilder {
     this.exportNames = new Set();
     this.source = "";
 
-    this.is64 = [
-      "x64",
-      "arm64",
-      "mips64",
-      "mips64el",
-      "ppc64",
-      "ppc64le",
-      "s390x",
-      "loong64",
-      "riscv64",
-    ];
+    const hostBits = HOST_ARCH_BITS[process.arch];
 
-    this.target = {
-      arch: process.arch,
-      platform: process.platform,
-      ptrSize: this.is64.includes(process.arch) ? 8 : 4,
-    };
+if (!hostBits) {
+  this.emitError(
+    `Unsupported host architecture: ${process.arch}`,
+  );
+}
+
+this.target = {
+  arch: process.arch,
+  platform: process.platform,
+  bits: hostBits,
+  ptrSize: hostBits / 8,
+};
 
     this.loopStack = [];
     this.loopBlockTerminated = false;
@@ -5269,74 +5267,6 @@ case "avg": {
 
   return { ctx, trampolineName };
   }
-/*
-  applyFieldInitializers(ptr, structName, structInfo) {
-  for (const field of structInfo.layout) {
-
-    // NESTED STRUCT
-    if (field.value === null && !field.isList && this.hasStruct(field.type)) {
-      const fieldPtr = this.newTemp();
-
-      this.emit(
-        `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
-      );
-
-      const nestedStructInfo = this.getStruct(field.type);
-
-      this.applyFieldInitializers(
-        fieldPtr,
-        field.type,
-        nestedStructInfo,
-      );
-
-      continue;
-    }
-
-    // LIST DEFAULT
-    if (field.value === null && field.isList) {
-      const fieldPtr = this.newTemp();
-
-      this.emit(
-        `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
-      );
-
-      const elementSize = this.sizeOf(
-        this.getDeepestGeneric(field.generic),
-      );
-
-      const listPtr = this.newTemp();
-
-      this.emit(
-        `${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`,
-      );
-
-      this.emit(
-        `store ptr ${listPtr}, ptr ${fieldPtr}`,
-      );
-
-      continue;
-    }
-
-    // FIELD INITIALIZER
-    if (field.value === null) continue;
-
-    const fieldValue = this.expr.handleExpression(field.value);
-    this.emitExpr(fieldValue);
-
-    const fieldPtr = this.newTemp();
-
-    this.emit(
-      `${fieldPtr} = getelementptr %${structName}, %${structName}* ${ptr}, i32 0, i32 ${field.index}`,
-    );
-
-    const llvmType = this.getLLVMType(field.type);
-
-    this.emit(
-      `store ${llvmType} ${fieldValue.ptr}, ptr ${fieldPtr}`,
-    );
-  }
-  }
-  */
 
   applyFieldInitializers(ptr, structName, structInfo) {
   for (const field of structInfo.layout) {

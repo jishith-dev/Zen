@@ -472,50 +472,108 @@ export class InferType {
   }
 
   inferMemberAccess(node, context) {
-    const { base, fields } = this.IRB.resolveMemberChain(node);
+  const { base, fields } = this.IRB.resolveMemberChain(node);
 
-    if (!base) {
-      this.IRB.emitError("ReferenceError", "Cannot resolve member base", node);
+  if (!base) {
+    this.IRB.emitError(
+      "ReferenceError",
+      "Cannot resolve member base",
+      node,
+    );
+  }
+
+  // Namespace function
+  if (base.type === "variable") {
+    const namespace = this.IRB.getVar(base.name, node);
+
+    if (namespace && namespace.type === "namespace") {
+      const entry = this.resolveNamespaceFunction(
+        namespace,
+        fields,
+        node,
+      );
+
+      const returnType = this.normalizeReturnType(entry[1]);
+
+      this.checkFnRetType(returnType, context, node);
+
+      node.inferredType = returnType;
+
+      return returnType;
     }
+  }
 
-    if (base.type === "variable") {
-      const namespace = this.IRB.getVar(base.name, node);
+  let currentType = this.infer(base, context);
+  let currentGeneric = null;
 
-      if (namespace && namespace.type === "namespace") {
-        const entry = this.resolveNamespaceFunction(namespace, fields, node);
+  for (const fieldName of fields) {
+    const structInfo = this.IRB.getStruct(currentType);
 
-        const returnType = this.normalizeReturnType(entry[1]);
-
-        this.checkFnRetType(returnType, context, node);
-
-        node.inferredType = returnType;
-        return returnType;
-      }
-    }
-
-    const objectType = this.infer(node.object);
-
-    const methodName = node.field;
-
-    const fullMethodName = `${objectType}_${methodName}`;
-
-    const fn = this.IRB.getFunction(fullMethodName);
-
-    if (!fn) {
+    if (!structInfo) {
       this.IRB.emitError(
         "ReferenceError",
-        `Unknown member '${methodName}' for type '${objectType}'`,
+        `Cannot access field '${fieldName}' on non-struct type '${currentType}'`,
         node,
       );
     }
 
-    const returnType = this.normalizeReturnType(fn.returnType);
+    
+    const fieldIndex = structInfo.fieldMap[fieldName];
 
-    this.checkFnRetType(returnType, context, node);
+    if (fieldIndex === undefined) {
+      const methodName = `${currentType}_${fieldName}`;
+      const fn = this.IRB.getFunction(methodName);
 
-    node.inferredType = returnType;
+      if (!fn) {
+        this.IRB.emitError(
+          "ReferenceError",
+          `Unknown field '${fieldName}' in struct '${currentType}'`,
+          node,
+        );
+      }
 
-    return returnType;
+      const returnType = this.normalizeReturnType(fn.returnType);
+
+      currentType = returnType;
+      currentGeneric = fn.generic || null;
+
+      continue;
+    }
+
+    
+    const fieldInfo = structInfo.layout[fieldIndex];
+
+    if (!fieldInfo) {
+      this.IRB.emitError(
+        "InternalError",
+        `Unknown field index '${fieldIndex}' in struct '${currentType}'`,
+        node,
+      );
+    }
+
+    
+    if (fieldInfo.isList) {
+      currentType = "List";
+      currentGeneric = fieldInfo.generic || null;
+    } else {
+      currentType = fieldInfo.type;
+      currentGeneric = null;
+    }
+  }
+
+  this.checkFnRetType(currentType, context, node);
+
+  node.inferredType = currentType;
+
+  /*
+   * Keep generic information on the AST because callers such as
+   * sizeOf() may need it when the result is a List.
+   */
+  if (currentGeneric) {
+    node.inferredGeneric = currentGeneric;
+  }
+
+  return currentType;
   }
 
   resolveNamespaceFunction(namespace, fields, node) {

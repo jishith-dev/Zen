@@ -29,6 +29,29 @@ const TYPE_MAP = {
   byte: 8,
 };
 
+const HOST_ARCH_BITS = {
+  arm: 32,
+  arm64: 64,
+
+  ia32: 32,
+  x64: 64,
+
+  mips: 32,
+  mipsel: 32,
+  mips64: 64,
+  mips64el: 64,
+
+  ppc: 32,
+  ppc64: 64,
+  ppc64le: 64,
+
+  s390: 32,
+  s390x: 64,
+
+  riscv64: 64,
+  loong64: 64,
+};
+
 // hints map
 
 const hints = {
@@ -2790,4 +2813,5 @@ export {
   PRIMITIVE_TYPES,
   hints,
   NAMESPACE_REG,
+  HOST_ARCH_BITS
 };
