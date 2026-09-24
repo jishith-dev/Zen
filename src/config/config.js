@@ -154,7 +154,6 @@ const KEYWORDS = [
   "List",
   "this",
   "do",
-  "in",
   "of",
   "async",
   "await",
@@ -268,6 +267,7 @@ const RESERVED_FUNCTIONS = [
   // STRING
   "reverse",
   "indexOf",
+  "lastIndexOf",
   "slice",
   "charAt",
   "replace",
@@ -376,6 +376,7 @@ const BUILTIN_FUNCTIONS = [
   // STRING
   "reverse",
   "indexOf",
+  "lastIndexOf",
   "slice",
   "replace",
   "replaceAll",
@@ -618,6 +619,7 @@ const STD_FUNCTIONS = [
   // STRING
   "reverse",
   "indexOf",
+  "lastIndexOf",
   "slice",
   "replace",
   "replaceAll",
@@ -2409,6 +2411,7 @@ const STD_FUNCTIONS_SCHEMA = {
 
   reverse: { ret: "ptr", params: ["ptr"] },
   indexOf: { ret: "i32", params: ["ptr", "ptr"] },
+  lastIndexOf: {ret: "i32", params: ["ptr", "ptr"]},
   slice: { ret: "ptr", params: ["ptr", "i32", "i32"] },
   charAt: { ret: "ptr", params: ["ptr", "i32"] },
   replace: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },

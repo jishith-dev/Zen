@@ -243,6 +243,32 @@ fn indexOf(string s, string target) int {
     return -1
 }
 
+fn lastIndexOf(string s, string target) int {
+    int len = length(s)
+    int tlen = length(target)
+    if (tlen == 0) return len
+
+    int i = len - tlen
+
+    while (i >= 0) {
+        bool match = true
+        int j = 0
+
+        while (j < tlen) {
+            if (s[i + j] != target[j]) {
+                match = false
+            }
+            j = j + 1
+        }
+
+        if (match) return i
+
+        i = i - 1
+    }
+
+    return -1
+}
+
 fn slice(string s, int start, int end) string {
     int len = length(s)
     if (start < 0) {
@@ -377,10 +403,10 @@ fn upperCase(string s) string {
     while (i < len) {
 
         string c = s[i]
-        int code = toInt(c)
+        int code = asciiToInt(c)
 
-        if (code >= toInt("a") && code <= toInt("z")) {
-            string converted = toString(code - 32)
+        if (code >= asciiToInt("a") && code <= asciiToInt("z")) {
+            string converted = intToAscii(code - 32)
             out = out + converted
             converted.free()
         } else {
@@ -403,10 +429,10 @@ fn lowerCase(string s) string {
     while (i < len) {
 
         string c = s[i]
-        int code = toInt(c)
+        int code = asciiToInt(c)
 
-        if (code >= toInt("A") && code <= toInt("Z")) {
-            string converted = toString(code + 32)
+        if (code >= asciiToInt("A") && code <= asciiToInt("Z")) {
+            string converted = intToAscii(code + 32)
             out = out + converted
             converted.free()
         } else {
@@ -671,13 +697,13 @@ fn capitalize(string s) string {
     }
 
     string first = s[0]
-    int code = toInt(first)
+    int code = asciiToInt(first)
 
     string out = ""
 
     // first character: A-Z
-    if (code >= toInt("a") && code <= toInt("z")) {
-        out = out + toString(code - 32)
+    if (code >= asciiToInt("a") && code <= asciiToInt("z")) {
+        out = out + intToAscii(code - 32)
     } else {
         out = out + first
     }
@@ -1185,7 +1211,7 @@ fn _json_parseInt(string s) int {
     int i = 0
     while (i < length(s)) {
         // get digit value: ASCII of char minus ASCII of '0' (48)
-        int digit = toInt(charAt(s, i)) - 48
+        int digit = asciiToInt(charAt(s, i)) - 48
         result = result * 10 + digit
         i = i + 1
     }

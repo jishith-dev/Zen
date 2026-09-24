@@ -1198,7 +1198,7 @@ if (this.match("COMMA")) this.advance();
     this.expectKeyword("loop");
     this.expect("LEFT_PARENTHESIS");
 
-    // LOOP OF / LOOP IN DETECTION
+    // LOOP OF / NORMAL LOOP DETECTION
 
     const next1 = this.tokens[this.pos];
     const next2 = this.tokens[this.pos + 1];
@@ -1207,19 +1207,6 @@ if (this.match("COMMA")) this.advance();
       next1?.type === "IDENTIFIER" &&
       next2?.type === "KEYWORD" &&
       next2.value === "of";
-
-    const isLoopIn =
-      next1?.type === "IDENTIFIER" &&
-      next2?.type === "KEYWORD" &&
-      next2.value === "in";
-
-    if (isLoopIn) {
-      this.IRB.emitError(
-        "SemanticError",
-        "loop (v in map) is not supported. Use explicit field access or supported iteration APIs.",
-        this.lineAndColumn(),
-      );
-    }
 
     if (isLoopOf) {
       const varName = this.expect("IDENTIFIER").value;
@@ -1242,49 +1229,30 @@ if (this.match("COMMA")) this.advance();
     }
 
     // loop (init, condition, update)
+    
+    const init = this.parseVariableDeclaration();
 
-    let first = null;
+   this.expect("COMMA");
+   
+  const condition = this.parseExpression();
 
-    if (this.match("TYPE") || this.matchKeyword("auto")) {
-      first = this.node(this.parseVariableDeclaration());
-    } 
+  this.expect("COMMA");
 
-    if (first) {
-    this.expect("COMMA");
-    }
+  const update = this.parseExpression();
 
-    let second = this.parseExpression();
+  this.expect("RIGHT_PARENTHESIS");
 
-    let init = null;
-    let condition;
-    let update;
+  const body = this.match("BLOCK_START")
+    ? this.parseBlock()
+    : this.parseStatement();
 
-    if (this.match("COMMA")) {
-      this.advance();
-
-      let third = this.parseExpression();
-
-      init = first;
-      condition = second;
-      update = third;
-    } else {
-      condition = first;
-      update = second;
-    }
-
-    this.expect("RIGHT_PARENTHESIS");
-
-    const body = this.match("BLOCK_START")
-      ? this.parseBlock()
-      : this.parseStatement();
-
-    return this.node({
-      type: ParserTypes.LOOP,
-      init,
-      condition,
-      update,
-      body,
-    });
+  return this.node({
+    type: ParserTypes.LOOP,
+    init: this.node(init),
+    condition,
+    update,
+    body,
+  });
   }
 
   parseConditional() {

@@ -976,7 +976,6 @@ if (requestedVersion) {
   update() {
   const dev = this.args.includes("--dev");
   const branch = dev ? "dev" : "main";
-  const script = dev ? "install-dev.sh" : "install.sh";
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const stampFile = path.join(root, ".commit");
 
@@ -1004,8 +1003,9 @@ if (requestedVersion) {
   try {
     console.log(`Updating Zen${dev ? " (dev)" : ""}...`);
 
+    const installArgs = dev ? "--branch dev -y" : "-y";
     execSync(
-      `curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/${branch}/${script} | bash`,
+      `curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/${branch}/install.sh | bash -s -- ${installArgs}`,
       { stdio: "inherit", shell: true },
     );
 

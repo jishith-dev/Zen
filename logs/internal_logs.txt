@@ -1,268 +1,69 @@
-v2:
-
-v2.1.0
-
-added version control for package system
-added dependency system
-
-added new namespace crypto.
-
-crypto.sha256(data)
-crypto.sha512(data)
-
-crypto.hmacSha256(key, data)
-crypto.hmacSha512(key, data)
-
-crypto.randomBytes(length)
-crypto.randomInt(min, max)
-
-crypto.base64Encode(data)
-crypto.base64Decode(data)
-
-crypto.base64UrlEncode(data)
-crypto.base64UrlDecode(data)
-
-added new primitives: byte (i8), long(i64)
-last L is long type and last B is byte.
-using hexadecimal literal ...saying byte or list type using last B or L. if hex itself need last alphabet such as B put actual suffix B always.
-
-changed toByte() to Byte()
-
-added setT or getT new peimitives support for long and byte
-
-concantination coirce byte
-
-added Map.json()
-added Json.map()
-
-added Long() cast global
-
-changed certain int to long for buitin
-
-OS
-_os_totalMemory: int → long
-_os_freeMemory: int → long
-_os_usedMemory: int → long
-_os_processMemory: int → long
-_os_pid: int → long
-_os_parentPid: int → long
-
-TIME
-_time_millis: int → long
-_time_now: int → long
-_time_format argument: int → long
-_time_sleep argument: int → long
-
-v2.2.0
-
-added HttpRequest.getHeader 
-
-Json integer numbers become Long when converted via .map().
-After .map(), use getLong() for all JSON integer values.
-Normal Map int/long behavior remains unchanged.
-
-List fields are automatically initialized when a new struct instance is declared without an initializer. Struct literals only initialize/assign the fields explicitly specified in the literal.
-
-"extName()" returns the extension without ".", while "path.extname()" returns it with ".".
-
-v2.2.0
-
-added --link a.o b.o 
-
-supported compile time constant
-  eg: int N = 10
-      int arr[N]
-
-added cli improvement: now zen can install muktiple packages at once: zen install stack heap mime, also zen uninstall stack heap mime
-
-added zen installed (to know how many packages are installed)
-
-added better diagnostics hints and source text (only for compile time now)
-
-added more bitwise operators: & | >> << ~ 
-
-Zen supports anonymous functions inline as callback arguments.
-Inline functions are compiled as separate function definitions, not closures.
-Capturing variables from an enclosing function is prohibited.
-
-Type Promotion & Boolean Operations
-
-1. Zen's numeric widening order is "byte → int → long → double".
-2. Arithmetic between two "byte" values preserves "byte".
-3. Arithmetic involving "byte" and "int" produces "int".
-4. Arithmetic involving "int" and "long" produces "long".
-5. Arithmetic involving "long" and "double" produces "double".
-6. "bool" participates in binary arithmetic and is treated as "1" for "true" and "0" for "false".
-7. "bool" also participates in binary bitwise operators ("&", "|", "^", "<<", ">>") using its "0"/"1" value.
-8. Bitwise operations promote "byte" to "int"; "int" remains "int" and "long" remains "long".
-9. Bitwise NOT ("~") does not accept "bool"; numeric "~" promotes "byte" to "int".
-10. Logical and comparison operators produce "bool"; "!" operates on "bool" and returns "bool".
-
-added + unary
-
-infer only infer int bool double string long byte. should throw error for list and struct and other.
-
-Implemented automatic native dependency handling for packages.
-"zen deps" now detects and records "native/*.o" files.
-Imported packages automatically discover their native objects.
-Native objects are collected and passed to the final linker.
-Native library functions now link and execute automatically.
-
-implimented `zen` command so it can be used REPL like interactive line by line for educational purpose.
-
-sep 12 
-
-added Map new methods such as keys() ans entries()
-
-added .c also as native dependency
-also zen.json support flags: [] so module level linling can supoort and also standalone 
---flags -lmariadb  also supported
-
-added zen read pkgname --raw?
-it reads installed pkges README.md and render in terminal
-
-TCP networking is built into Zen.
-
-Structs:
-- Tcp
-- TcpServer
-
-Namespace functions:
-- net.online() -> bool
-- net.connect(string host, int port) -> Tcp
-- net.listen(int port) -> TcpServer
-
-Tcp methods:
-- send(List<byte> data) -> long
-- receive(int maxBytes) -> List<byte>
-- close() -> void
-- isOpen() -> bool
-
-TcpServer methods:
-- accept() -> Tcp
-- close() -> void
-- isOpen() -> bool
-
-Native implementation: tcp.c
-
-added stringToBytes and bytesToString globals
-
-thread fn now catch compile time capture error
-
-added real concurrency behavior and thread fn now accept parameters.
-added threads namespace new methods: 
-   threads.count() and 
-   threads.currentId()
-
-added net.listen() and net.connect() for tcp
-
-added builtin native language spec reference system in command line:
-  zen info namespace <name> 
-  zen info namespace <name> [--methodName]
-  zen info global <name>
-  zen info
-  zen info global <struct> 
-  zen info global <struct> --[--methodName]
-
-  added zen tests
-
-  now supported multiple export in same file as well as multiple imports
-
-  added zen update --dev so it can install dev version
-
-  introduce private keyword for functions and methods and fields.
-  for functions only restriction is it cannot exported.
-  for methods it cant be called outside ita struct. only inside via this.call()
-  for field it can be only used inside struct like methods - done
-
-  introduce import aliasing for functions and variables. Not supported in structs now. - done
-
-  improve hint in diagnostics - done
-
-  add bye text to zen repl after exit() - done
-
-  add zen upgrade pkgName to updage latest version. - done
-  also debug current zen install pkg@semver - done
-
-  finalize rest of the pkg roadmap - done
-
-  now length() takes list also for length calculation, besides list.length works also for backward compatibility.
-
-  List Methods Added
-
-Added:
-
-- remove(value) — removes the first matching value; does nothing if not found. Supports byte, int, long, double, bool, and string.
-- reverse() — reverses the outer List only; supports nested Lists (any element type).
-- sort() — ascending sort. Supports byte, int, long, double, and string; nested Lists are not supported.
-- sum() — sums byte, int, long, or double Lists; empty List returns 0 / 0.0.
-- avg() — averages byte, int, long, or double Lists; always returns double; empty List causes a runtime error.
-
-Rules:
-
-- Keep these methods focused and type-safe.
-- No map, filter, reduce, or similar JS-style List API for now.
-- remove() removes only the first occurrence.
-- reverse() changes only outer List order.
-- sort(), sum(), and avg() operate only on supported flat element types.
-
--- tommorow
-
-add struct field initializer, eg: 
-struct Foo {
-  int a = 10
-  int b
-}
-all fields are zero initialized and for strings its "" bool 0 int 0 long 0 byte 0 list empty list etc...
-
-changed builtin toString and toInt to :
-asciiToInt("ABC")  // 198
-intToAscii(65)     // "A"
-for meaningful name
-
-added sizeOf() now support bare types , eg:
-sizeOf(int) or long or anything, also support expressions, also bare list type is supoorted.
-not supoorted is bare struct name. should be instantiated then pass ref.
-
-Zen Installer - Behavior Notes 
-
-REF TYPES
-  --tag <t>       (default: latest tag) requires VERSION file in repo,
-                  verifies tag signature if possible.
-  --branch <name> no VERSION required, uses short commit hash as version,
-                  always latest commit (unpinned).
-
-VERSION RESOLUTION
-  Tag install    -> version = contents of VERSION file. Fails if missing/empty.
-  Branch install -> version = first 7 chars of commit hash (e.g. a8ff85d).
-                    Any VERSION file present is logged but ignored.
-
-FILE LOCATIONS (nothing written to current working dir)
-  Log                  : $TMPDIR or /tmp
-  Staging clone        : $TMPDIR/zen-clone-XXXXXX (temp, deleted after move)
-  Final install        : $HOME/.zen (or $ZEN_INSTALL_DIR)
-  Binary symlink       : $HOME/.local/bin/zen (or --prefix)
-  State / idempotency  : $HOME/.zen/.install-state
-
-IDEMPOTENCY
-  Re-running with the same tag skips reinstall unless --force.
-  Branch installs always reinstall (commit may have changed).
-
-EXAMPLES
-
-  Local script, tag install:
-    bash install.sh
-
-  Local script, dev branch, non-interactive:
-    bash install.sh --branch dev -y
-
-  Curl one-liner, tag install:
-    curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y
-
-  Curl one-liner, dev branch:
-    curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
-
-  Force reinstall, custom prefix:
-    bash install.sh --branch dev --force --prefix /usr/local -y
-  
-upgrade and test existing pkges and its docs
+Zen v3.0.0 - Internal Changelog Note
+
+BREAKING
+  - Renamed toString/toInt -> asciiToInt/intToAscii for ASCII conversion.
+  - JSON integers decoded via .map() are now Long, not Int.
+    -> use getLong() for all JSON integer values post-map.
+  - "private" is now a reserved keyword (functions, methods, fields).
+    -> collides with any existing identifier named "private".
+
+LANGUAGE / TYPE SYSTEM
+  - Formalized numeric widening: byte -> int -> long -> double.
+  - bool participates in arithmetic (true=1, false=0) and bitwise ops.
+  - New bitwise operators: & | >> << ~
+  - Unary + added.
+  - infer supports: int, bool, double, string, long, byte
+    (errors on list/struct/other).
+  - Compile-time constants supported (e.g. int N = 10; int arr[N]).
+  - sizeOf() supports bare types and expressions; bare struct names
+    still unsupported (must instantiate first).
+  - Struct field initializers with defaults; uninitialized structs get
+    zero-value fields (0, "", false, empty list, etc).
+    Struct literals only set the fields explicitly given.
+  - Anonymous/inline functions as callback args; compiled as separate
+    functions, no closures (no variable capture).
+
+STDLIB / RUNTIME
+  - HttpRequest.getHeader added.
+  - extName() (no dot) vs path.extname() (with dot) - naming clarified.
+  - length() now accepts List directly, alongside list.length.
+  - List methods added: remove(), reverse(), sort(), sum(), avg().
+  - Map methods added: keys(), entries().
+  - stringToBytes / bytesToString globals added.
+  - TCP networking built in:
+      structs: Tcp, TcpServer
+      net.online(), net.connect(host, port), net.listen(port)
+      Tcp: send(), receive(), close(), isOpen()
+      TcpServer: accept(), close(), isOpen()
+      (native impl: tcp.c)
+  - Real concurrency: thread fn now accepts parameters, catches
+    compile-time capture errors.
+    threads.count(), threads.currentId() added.
+
+PACKAGES / CLI
+  - zen install / uninstall accept multiple package names at once.
+  - zen installed (lists installed package count).
+  - zen deps auto-detects/records native/*.o; native objects auto-link.
+  - .c files supported as native dependencies.
+  - zen.json flags: [] supported at module + standalone level
+    (e.g. --flags -lmariadb).
+  - zen read pkgname [--raw] renders package README in terminal.
+  - zen update --dev installs dev version.
+  - zen upgrade pkgName; zen install pkg@semver support.
+  - --link a.o b.o supported.
+  - Multiple exports/imports per file supported.
+  - Import aliasing for functions/variables (not yet for structs).
+  - zen tests, zen info (namespace/global, with --methodName) added.
+  - Interactive REPL (zen with no args), prints "Bye!" on exit().
+  - Better compile-time diagnostics: hints + source text.
+
+INSTALLER (install.sh)
+  - --tag / --branch install modes; branch installs skip VERSION
+    check and version off short commit hash.
+  - Verified end-to-end on Termux (Android) and reviewed for
+    apt/pacman/dnf/zypper Linux paths; Windows unsupported for now
+    (documented, not auto-installed).
+
+  - added new global built-in -- lastIndexOf
+  - removed keyword 'in'
+  - enforce classic loop always loop (init, cond, update)

@@ -427,6 +427,7 @@ const DOCS = {
     // string
     reverse: ["text", "Returns text reversed."],
     indexOf: ["text search", "Returns the index of the first occurrence of search in text."],
+    lastIndexOf: ["text search", "Returns the index of the last occurrence of search in text."],
     slice: ["text start end", "Returns the part of text from start to end."],
     charAt: ["text index", "Returns the character at index."],
     replace: ["text search replacement", "Replaces the first occurrence of search in text."],
