@@ -223,5 +223,46 @@ for meaningful name
 added sizeOf() now support bare types , eg:
 sizeOf(int) or long or anything, also support expressions, also bare list type is supoorted.
 not supoorted is bare struct name. should be instantiated then pass ref.
+
+Zen Installer - Behavior Notes 
+
+REF TYPES
+  --tag <t>       (default: latest tag) requires VERSION file in repo,
+                  verifies tag signature if possible.
+  --branch <name> no VERSION required, uses short commit hash as version,
+                  always latest commit (unpinned).
+
+VERSION RESOLUTION
+  Tag install    -> version = contents of VERSION file. Fails if missing/empty.
+  Branch install -> version = first 7 chars of commit hash (e.g. a8ff85d).
+                    Any VERSION file present is logged but ignored.
+
+FILE LOCATIONS (nothing written to current working dir)
+  Log                  : $TMPDIR or /tmp
+  Staging clone        : $TMPDIR/zen-clone-XXXXXX (temp, deleted after move)
+  Final install        : $HOME/.zen (or $ZEN_INSTALL_DIR)
+  Binary symlink       : $HOME/.local/bin/zen (or --prefix)
+  State / idempotency  : $HOME/.zen/.install-state
+
+IDEMPOTENCY
+  Re-running with the same tag skips reinstall unless --force.
+  Branch installs always reinstall (commit may have changed).
+
+EXAMPLES
+
+  Local script, tag install:
+    bash install.sh
+
+  Local script, dev branch, non-interactive:
+    bash install.sh --branch dev -y
+
+  Curl one-liner, tag install:
+    curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y
+
+  Curl one-liner, dev branch:
+    curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
+
+  Force reinstall, custom prefix:
+    bash install.sh --branch dev --force --prefix /usr/local -y
   
 upgrade and test existing pkges and its docs

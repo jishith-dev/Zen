@@ -983,7 +983,7 @@ if (requestedVersion) {
   let latest;
   try {
     latest = execSync(
-      `curl -fsSL -H "Accept: application/vnd.github.sha" https://api.github.com/repos/jishith-dev/Zen/commits/${branch}`,
+      `curl -fsSL -H "Accept: application/vnd.github.sha" https://api.github.com/repos/Jishith-dev/Zen/commits/${branch}`,
       { encoding: "utf8" },
     ).trim();
   } catch {
@@ -1005,7 +1005,7 @@ if (requestedVersion) {
     console.log(`Updating Zen${dev ? " (dev)" : ""}...`);
 
     execSync(
-      `curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/${branch}/${script} | bash`,
+      `curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/${branch}/${script} | bash`,
       { stdio: "inherit", shell: true },
     );
 
