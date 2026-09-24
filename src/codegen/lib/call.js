@@ -833,11 +833,11 @@ export class Call {
       case "String":
         return this.type.StringCast(node, globalScope);
 
-      case "toString":
-        return this.type.toString(node, globalScope);
+      case "intToAscii":
+        return this.type.intToAscii(node, globalScope);
 
-      case "toInt":
-        return this.type.toInt(node, globalScope);
+      case "asciiToInt":
+        return this.type.asciiToInt(node, globalScope);
 
       case "length":
         return this.string.length(node, globalScope);

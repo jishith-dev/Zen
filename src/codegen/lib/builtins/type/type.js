@@ -127,13 +127,13 @@ export class Type {
     };
   }
 
-  toInt(node) {
+  asciiToInt(node) {
     const args = node.args;
 
     if (args[0].length > 1) {
       this.IRB.emitError(
         "ArgumentError",
-        "Function Int() accept exactly 1 argument",
+        "Function asciiToInt() accept exactly 1 argument",
         node,
       );
     }
@@ -145,11 +145,11 @@ export class Type {
     if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
-        `toInt() cannot cast array or Map or List to int`,
+        `asciiToInt() cannot cast array or Map or List to int`,
         node,
       );
     }
-    const cast = this.IRB.castExpression(expr, "int", "toInt", node);
+    const cast = this.IRB.castExpression(expr, "int", "asciiToInt", node);
 
     this.IRB.cleanupBuiltinStringTemps([expr]);
 
@@ -276,13 +276,13 @@ export class Type {
     };
   }
 
-  toString(node) {
+  intToAscii(node) {
     const args = node.args;
 
     if (args[0].length > 1) {
       this.IRB.emitError(
         "ArgumentError",
-        "Function Bool() accept exactly 1 argument",
+        "Function intToAscii() accept exactly 1 argument",
         node,
       );
     }
@@ -291,13 +291,13 @@ export class Type {
     if (expr.llvmType.startsWith("[") || expr?.isList || expr?.isStruct) {
       this.IRB.emitError(
         "TypeError",
-        `toString() cannot cast array or Map or List to string`,
+        `intToAscii() cannot cast array or Map or List to string`,
         node,
       );
     }
     this.IRB.emitExpr(expr);
 
-    const cast = this.IRB.castExpression(expr, "string", "toString", node);
+    const cast = this.IRB.castExpression(expr, "string", "intToAscii", node);
     this.IRB.emit(cast?.local.join("\n"));
 
     this.IRB.cleanupBuiltinStringTemps([expr]);

@@ -64,6 +64,14 @@ const hints = {
       match: /Function debug\.pretty\(\) expects a List<T> or struct, but got string/,
       hint: "Use 'screen()' for normal values. 'debug.pretty()' is for printing Lists and Maps.",
     },
+    {
+  match: /Cannot assign 'int' to variable '.*' of type 'long'/,
+  hint: "Use the 'L' suffix for long literals, e.g. 66L.",
+},
+{
+  match: /Cannot assign 'int' to variable '.*' of type 'byte'/,
+  hint: "Use the 'B' suffix for byte literals, e.g. 66B.",
+}
   ],
 
   SemanticError: [
@@ -188,8 +196,8 @@ const RESERVED_FUNCTIONS = [
   "Double",
   "Bool",
   "String",
-  "toString",
-  "toInt",
+  "intToAscii",
+  "asciiToInt",
   "length",
   "sizeOf",
   "Byte",
@@ -296,8 +304,8 @@ const BUILTIN_FUNCTIONS = [
   "Double",
   "Bool",
   "String",
-  "toString",
-  "toInt",
+  "intToAscii",
+  "asciiToInt",
   "length",
   "sizeOf",
   "Byte",
@@ -1446,14 +1454,14 @@ const BUILTIN_MAP = {
     llvmName: "String",
   },
 
-  toString: {
+  intToAscii: {
     returnType: "string",
-    llvmName: "toString",
+    llvmName: "intToAscii",
   },
 
-  toInt: {
+  asciiToInt: {
     returnType: "int",
-    llvmName: "toInt",
+    llvmName: "asciiToInt",
   },
 
   length: {

@@ -208,6 +208,16 @@ Rules:
 
 -- tommorow
 
-add constructor() in struct method for automatic calling.
+add struct field initializer, eg: 
+struct Foo {
+  int a = 10
+  int b
+}
+all fields are zero initialized and for strings its "" bool 0 int 0 long 0 byte 0 list empty list etc...
+
+changed builtin toString and toInt to :
+asciiToInt("ABC")  // 198
+intToAscii(65)     // "A"
+for meaningful name
   
 upgrade and test existing pkges and its docs

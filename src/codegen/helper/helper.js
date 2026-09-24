@@ -2231,7 +2231,7 @@ end:
       };
     }
 
-    if (fnName === "toInt") {
+    if (fnName === "asciiToInt") {
       if (expr.type === "string" && targetType === "int") {
         this.declareOneTime(
           "string_to_int_ascii",
@@ -2249,7 +2249,7 @@ end:
         };
       }
     }
-    if (fnName === "toString")
+    if (fnName === "intToAscii")
       if (expr.type === "int" && targetType === "string") {
         this.declareOneTime(
           "int_to_string_ascii",
