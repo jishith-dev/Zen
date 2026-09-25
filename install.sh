@@ -110,7 +110,7 @@ confirm() {
     warn "Non-interactive shell and no -y given; assuming 'no' for: $prompt"
     return 1
   fi
-  read -r -p "$prompt [y/N] " answer
+  read -r -p "$prompt [y/N] " answer < /dev/tty
   case "$answer" in
     y|Y|yes|YES|Yes) return 0 ;;
     *) return 1 ;;
