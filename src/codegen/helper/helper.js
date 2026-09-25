@@ -96,7 +96,7 @@ this.target = {
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
-    this.stdlibMode = true; // stdlib mode toggler
+    this.stdlibMode = false; // stdlib mode toggler
 
     this.formatMap = this.formatMap || new Map(); // format for screen()
 
