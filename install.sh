@@ -12,7 +12,9 @@
 #   --prefix <dir>    Install prefix for the `zen` symlink (default: $HOME/.local/bin
 #                      or $PREFIX/bin if $PREFIX is set)
 #   --force           Reinstall even if the target ref is already installed
-#   -y, --yes         Assume "yes" to all prompts (non-interactive / CI mode)
+#   -y, --yes         Assume "yes" to all prompts (non-interactive / CI mode).
+#                      All necessary dependencies (including a correct LLVM) are
+#                      installed automatically with no further prompts.
 #   --no-rc-edit      Don't attempt to modify shell rc files to add PATH
 #   -h, --help        Show this help text
 #
@@ -30,7 +32,9 @@ Options:
   --branch <name>   Install from a branch instead of a tag (uses latest commit, no VERSION check)
   --prefix <dir>    Install prefix for the zen symlink (default: \$HOME/.local/bin or \$PREFIX/bin)
   --force           Reinstall even if the target ref is already installed
-  -y, --yes         Assume yes to all prompts (non-interactive / CI mode)
+  -y, --yes         Assume yes to all prompts (non-interactive / CI mode).
+                     All necessary dependencies (including a correct LLVM) are
+                     installed automatically with no further prompts.
   --no-rc-edit      Don't attempt to modify shell rc files to add PATH
   -h, --help        Show this help text
 
@@ -48,7 +52,8 @@ REF="${ZEN_REF:-}"
 FORCE=0
 ASSUME_YES=0
 EDIT_RC=1
-MIN_LLVM_MAJOR=20
+MIN_LLVM_MAJOR=20        # minimum LLVM major version Zen will accept
+AUTO_LLVM_VERSION=21     # version we auto-install / set as default when we control the choice
 
 : "${HOME:?HOME is not set; refusing to continue}"
 
@@ -69,6 +74,27 @@ warn()    { _log_raw "${YELLOW}[zen]${RESET} $*"; }
 error()   { _log_raw "${RED}[zen] error:${RESET} $*"; }
 die()     { error "$*"; exit 1; }
 
+# retry <max_attempts> <command...>
+# Runs a command, retrying with exponential backoff on failure.
+# Never triggers `set -e` itself -- callers combine it with `|| die "..."`.
+retry() {
+  local max_attempts="$1"; shift
+  local attempt=1
+  local delay=2
+  local ec=0
+  until "$@"; do
+    ec=$?
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      return "$ec"
+    fi
+    warn "Command failed (attempt $attempt/$max_attempts, exit $ec): $* -- retrying in ${delay}s..."
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+  return 0
+}
+
 info "Log file: $LOG_FILE"
 
 TMP_CLONE_DIR=""
@@ -88,7 +114,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-trap 'error "Command failed at line $LINENO."' ERR
+trap 'error "Command failed at line $LINENO. Re-run this script to retry -- it is safe to run multiple times. Full log: $LOG_FILE"' ERR
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -136,20 +162,35 @@ TARGET_OS="$(detect_os)"
 info "Detected OS: $TARGET_OS"
 
 [ "$TARGET_OS" = "unknown" ] && die "Unsupported operating system: $(uname -s)"
-[ "$TARGET_OS" = "windows" ] && die "Automatic installation is not supported on Windows yet. Install git, Node.js, LLVM 20+, Clang and libcurl dev headers manually, then run this under WSL/MSYS."
+
+if [ "$TARGET_OS" = "windows" ]; then
+  warn "Running on native Windows. Automatic dependency installation here is best-effort (via winget/choco if available)."
+  warn "Required either way: git, Node.js, LLVM $MIN_LLVM_MAJOR+ (clang, llc, opt on PATH), pkg-config, libcurl dev headers."
+  warn "For a fully automatic, well-tested install, consider running this script under WSL instead."
+fi
 
 check_dep() { command -v "$1" >/dev/null 2>&1; }
 
 install_llvm_apt() {
   local ver="$1"
   info "Installing LLVM $ver via apt.llvm.org..."
-  wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh \
-    || die "Failed to download apt.llvm.org install script."
+  retry 3 wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh \
+    || die "Failed to download the apt.llvm.org install script after multiple attempts. Check your network connection and re-run this script (it is safe to re-run)."
   chmod +x /tmp/llvm.sh
-  sudo /tmp/llvm.sh "$ver" || die "Failed to install LLVM $ver via apt.llvm.org."
-  sudo update-alternatives --install /usr/bin/clang clang "/usr/bin/clang-$ver" 100
-  sudo update-alternatives --install /usr/bin/llc llc "/usr/bin/llc-$ver" 100
+  retry 2 sudo /tmp/llvm.sh "$ver" all \
+    || die "Failed to install LLVM $ver via apt.llvm.org after multiple attempts. See log: $LOG_FILE -- you can re-run this script to retry."
+  local tool
+  for tool in clang llc opt llvm-config; do
+    if [ -x "/usr/bin/${tool}-${ver}" ]; then
+      sudo update-alternatives --install "/usr/bin/${tool}" "$tool" "/usr/bin/${tool}-${ver}" 100
+      sudo update-alternatives --set "$tool" "/usr/bin/${tool}-${ver}"
+    else
+      warn "/usr/bin/${tool}-${ver} not found after install; ${tool} may be unavailable."
+    fi
+  done
   rm -f /tmp/llvm.sh
+  export PATH="/usr/lib/llvm-${ver}/bin:$PATH"
+  success "LLVM $ver installed and set as the default clang/llc/opt."
 }
 
 install_deps() {
@@ -157,31 +198,53 @@ install_deps() {
     linux)
       if command -v apt-get >/dev/null 2>&1; then
         info "Using APT."
-        sudo apt-get update
-        sudo apt-get install -y git nodejs clang pkg-config libcurl4-openssl-dev gnupg wget
-        install_llvm_apt "$MIN_LLVM_MAJOR"
+        retry 3 sudo apt-get update \
+          || die "apt-get update failed after multiple attempts. Check your network/proxy settings and re-run this script."
+        retry 3 sudo apt-get install -y git nodejs pkg-config libcurl4-openssl-dev gnupg wget \
+          || die "apt-get install failed after multiple attempts. See log: $LOG_FILE -- re-run this script to retry."
+        install_llvm_apt "$AUTO_LLVM_VERSION"
       elif command -v pacman >/dev/null 2>&1; then
         info "Using Pacman."
-        sudo pacman -Sy --needed git nodejs clang llvm pkgconf curl gnupg
+        retry 3 sudo pacman -Sy --needed git nodejs clang llvm pkgconf curl gnupg \
+          || die "pacman install failed after multiple attempts. Re-run this script to retry."
       elif command -v dnf >/dev/null 2>&1; then
         info "Using DNF."
-        sudo dnf install -y git nodejs clang llvm pkgconf-pkg-config libcurl-devel gnupg2
+        retry 3 sudo dnf install -y git nodejs clang llvm pkgconf-pkg-config libcurl-devel gnupg2 \
+          || die "dnf install failed after multiple attempts. Re-run this script to retry."
       elif command -v zypper >/dev/null 2>&1; then
         info "Using Zypper."
-        sudo zypper install -y git nodejs clang llvm pkg-config libcurl-devel gpg2
+        retry 3 sudo zypper install -y git nodejs clang llvm pkg-config libcurl-devel gpg2 \
+          || die "zypper install failed after multiple attempts. Re-run this script to retry."
       else
         die "No supported Linux package manager found. Install manually: git nodejs clang llvm pkg-config libcurl-dev gnupg"
       fi
       ;;
     android)
       info "Using Termux (pkg)."
-      pkg update
-      pkg install -y git nodejs clang llvm pkg-config libcurl gnupg
+      retry 3 pkg update \
+        || die "pkg update failed after multiple attempts. Check your network connection and re-run this script."
+      retry 3 pkg install -y git nodejs clang llvm pkg-config libcurl gnupg \
+        || die "pkg install failed after multiple attempts. Re-run this script to retry."
       ;;
     macos)
-      check_dep brew || die "Homebrew is not installed. Install it from https://brew.sh, then re-run."
+      check_dep brew || die "Homebrew is not installed. Install it from https://brew.sh, then re-run this script."
       info "Using Homebrew."
-      brew install git node llvm curl pkg-config gnupg
+      retry 3 brew install git node llvm curl pkg-config gnupg \
+        || die "brew install failed after multiple attempts. Re-run this script to retry."
+      ;;
+    windows)
+      if command -v choco >/dev/null 2>&1; then
+        info "Using Chocolatey (best-effort)."
+        retry 2 choco install -y git nodejs llvm \
+          || warn "Chocolatey install reported errors. Verify git/node/clang/llc/opt manually before continuing."
+      elif command -v winget >/dev/null 2>&1; then
+        info "Using winget (best-effort)."
+        winget install --id Git.Git -e --silent || warn "winget could not install Git; install it manually."
+        winget install --id OpenJS.NodeJS -e --silent || warn "winget could not install Node.js; install it manually."
+        winget install --id LLVM.LLVM -e --silent || warn "winget could not install LLVM; install it manually."
+      else
+        die "No supported package manager found (choco/winget). Install git, Node.js, LLVM $MIN_LLVM_MAJOR+, and libcurl dev headers manually, or run this script under WSL for full automatic support."
+      fi
       ;;
   esac
 }
@@ -195,6 +258,11 @@ if [ ${#missing[@]} -ne 0 ]; then
   warn "Missing dependencies: ${missing[*]}"
   if confirm "Install the required dependencies automatically?"; then
     install_deps
+    missing=()
+    for dep in "${REQUIRED_DEPS[@]}" clang llc; do
+      check_dep "$dep" || missing+=("$dep")
+    done
+    [ ${#missing[@]} -eq 0 ] || die "Still missing after automatic install: ${missing[*]}. Install them manually and re-run this script."
   else
     die "Cannot continue without: ${missing[*]}. Install them and re-run."
   fi
@@ -203,7 +271,7 @@ fi
 info "Checking LLVM version..."
 
 LLC_VERSION_RAW="$(llc --version 2>/dev/null | grep -m1 -oE 'LLVM version [0-9]+\.[0-9]+\.[0-9]+' || true)"
-[ -n "$LLC_VERSION_RAW" ] || die "Unable to determine LLVM version from 'llc --version'. Ensure LLVM $MIN_LLVM_MAJOR+ is installed and on PATH."
+[ -n "$LLC_VERSION_RAW" ] || die "Unable to determine LLVM version from 'llc --version'. Ensure LLVM $MIN_LLVM_MAJOR+ is installed and on PATH, then re-run this script."
 
 LLC_VERSION_FULL="${LLC_VERSION_RAW##* }"
 LLC_MAJOR="${LLC_VERSION_FULL%%.*}"
@@ -214,34 +282,34 @@ esac
 
 if [ "$LLC_MAJOR" -lt "$MIN_LLVM_MAJOR" ] || [ "$LLC_MAJOR" -gt 30 ]; then
   warn "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30)."
-  if [ "$TARGET_OS" = "linux" ] && command -v apt-get >/dev/null 2>&1 && confirm "Install LLVM $MIN_LLVM_MAJOR via apt.llvm.org?"; then
-    install_llvm_apt "$MIN_LLVM_MAJOR"
+  if [ "$TARGET_OS" = "linux" ] && command -v apt-get >/dev/null 2>&1 && confirm "Install LLVM $AUTO_LLVM_VERSION via apt.llvm.org and set it as default?"; then
+    install_llvm_apt "$AUTO_LLVM_VERSION"
     LLC_VERSION_RAW="$(llc --version 2>/dev/null | grep -m1 -oE 'LLVM version [0-9]+\.[0-9]+\.[0-9]+' || true)"
-    [ -n "$LLC_VERSION_RAW" ] || die "Unable to determine LLVM version after install."
+    [ -n "$LLC_VERSION_RAW" ] || die "Unable to determine LLVM version after install. Re-run this script to retry."
     LLC_VERSION_FULL="${LLC_VERSION_RAW##* }"
     LLC_MAJOR="${LLC_VERSION_FULL%%.*}"
-    [ "$LLC_MAJOR" -ge "$MIN_LLVM_MAJOR" ] || die "LLVM install did not produce a supported version (got $LLC_VERSION_FULL)."
+    [ "$LLC_MAJOR" -ge "$MIN_LLVM_MAJOR" ] || die "LLVM install did not produce a supported version (got $LLC_VERSION_FULL). Re-run this script to retry, or install LLVM $MIN_LLVM_MAJOR+ manually."
   else
-    die "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30). Install a supported version and re-run."
+    die "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30). Install a supported version (LLVM $AUTO_LLVM_VERSION recommended) and re-run."
   fi
 fi
 
 success "LLVM $LLC_VERSION_FULL detected (compatible)."
 
 info "Checking for libcurl..."
-pkg-config --exists libcurl 2>/dev/null || die "libcurl development files not found. Install them (e.g. libcurl4-openssl-dev / libcurl-devel) and re-run."
+pkg-config --exists libcurl 2>/dev/null || die "libcurl development files not found. Install them (e.g. libcurl4-openssl-dev / libcurl-devel) and re-run this script."
 CURL_CFLAGS="$(pkg-config --cflags libcurl)"
 success "libcurl found."
 
 if [ -z "$REF" ] && [ "$REF_KIND" = "tag" ]; then
   info "Resolving latest release tag..."
-  LATEST_TAG="$(git ls-remote --tags --refs "$REPO" \
+  LATEST_TAG="$(retry 3 git ls-remote --tags --refs "$REPO" \
     | awk '{print $2}' \
     | sed 's#refs/tags/##' \
     | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
     | sort -V \
     | tail -n1 || true)"
-  [ -n "$LATEST_TAG" ] || die "Could not resolve a release tag from $REPO. Pass --tag <tag> or --branch <name> explicitly."
+  [ -n "$LATEST_TAG" ] || die "Could not resolve a release tag from $REPO. Check your network connection, or pass --tag <tag> / --branch <name> explicitly."
   REF="$LATEST_TAG"
 fi
 
@@ -264,8 +332,8 @@ fi
 TMP_CLONE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zen-clone-XXXXXX")"
 
 info "Cloning $REPO @ $REF into a staging directory..."
-git clone --quiet --branch "$REF" --depth 1 "$REPO" "$TMP_CLONE_DIR" \
-  || die "Failed to clone $REPO at ref '$REF'. Check that the ref exists."
+retry 3 git clone --quiet --branch "$REF" --depth 1 "$REPO" "$TMP_CLONE_DIR" \
+  || die "Failed to clone $REPO at ref '$REF' after multiple attempts. Check that the ref exists and your network connection, then re-run this script."
 
 cd "$TMP_CLONE_DIR"
 RESOLVED_COMMIT="$(git rev-parse HEAD)"
