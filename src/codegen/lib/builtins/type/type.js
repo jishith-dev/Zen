@@ -151,9 +151,9 @@ export class Type {
     }
     const cast = this.IRB.castExpression(expr, "int", "asciiToInt", node);
 
-    this.IRB.cleanupBuiltinStringTemps([expr]);
-
     this.IRB.emit(cast?.local.join("\n"));
+
+    this.IRB.cleanupBuiltinStringTemps([expr]);
     return {
       ptr: cast.ptr,
       type: "int",
