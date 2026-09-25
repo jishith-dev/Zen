@@ -140,13 +140,26 @@ info "Detected OS: $TARGET_OS"
 
 check_dep() { command -v "$1" >/dev/null 2>&1; }
 
+install_llvm_apt() {
+  local ver="$1"
+  info "Installing LLVM $ver via apt.llvm.org..."
+  wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh \
+    || die "Failed to download apt.llvm.org install script."
+  chmod +x /tmp/llvm.sh
+  sudo /tmp/llvm.sh "$ver" || die "Failed to install LLVM $ver via apt.llvm.org."
+  sudo update-alternatives --install /usr/bin/clang clang "/usr/bin/clang-$ver" 100
+  sudo update-alternatives --install /usr/bin/llc llc "/usr/bin/llc-$ver" 100
+  rm -f /tmp/llvm.sh
+}
+
 install_deps() {
   case "$TARGET_OS" in
     linux)
       if command -v apt-get >/dev/null 2>&1; then
         info "Using APT."
         sudo apt-get update
-        sudo apt-get install -y git nodejs clang llvm pkg-config libcurl4-openssl-dev gnupg
+        sudo apt-get install -y git nodejs clang pkg-config libcurl4-openssl-dev gnupg wget
+        install_llvm_apt "$MIN_LLVM_MAJOR"
       elif command -v pacman >/dev/null 2>&1; then
         info "Using Pacman."
         sudo pacman -Sy --needed git nodejs clang llvm pkgconf curl gnupg
@@ -200,7 +213,17 @@ case "$LLC_MAJOR" in
 esac
 
 if [ "$LLC_MAJOR" -lt "$MIN_LLVM_MAJOR" ] || [ "$LLC_MAJOR" -gt 30 ]; then
-  die "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30). Install a supported version and re-run."
+  warn "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30)."
+  if [ "$TARGET_OS" = "linux" ] && command -v apt-get >/dev/null 2>&1 && confirm "Install LLVM $MIN_LLVM_MAJOR via apt.llvm.org?"; then
+    install_llvm_apt "$MIN_LLVM_MAJOR"
+    LLC_VERSION_RAW="$(llc --version 2>/dev/null | grep -m1 -oE 'LLVM version [0-9]+\.[0-9]+\.[0-9]+' || true)"
+    [ -n "$LLC_VERSION_RAW" ] || die "Unable to determine LLVM version after install."
+    LLC_VERSION_FULL="${LLC_VERSION_RAW##* }"
+    LLC_MAJOR="${LLC_VERSION_FULL%%.*}"
+    [ "$LLC_MAJOR" -ge "$MIN_LLVM_MAJOR" ] || die "LLVM install did not produce a supported version (got $LLC_VERSION_FULL)."
+  else
+    die "LLVM $LLC_VERSION_FULL detected; Zen requires LLVM >= $MIN_LLVM_MAJOR (tested up to 30). Install a supported version and re-run."
+  fi
 fi
 
 success "LLVM $LLC_VERSION_FULL detected (compatible)."
