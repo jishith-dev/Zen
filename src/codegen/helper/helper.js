@@ -4974,6 +4974,7 @@ case "avg": {
   }
 
   getTargetInfo() {
+    if (this.stdlibMode) return null;
     try {
       const ir = execSync("clang -emit-llvm -S -x c /dev/null -o -").toString();
 
