@@ -1130,7 +1130,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
           structName = fieldInfo.type;
 
-          if (!isList && this.IRB.hasStruct(structName)) {
+          if (!isList && this.IRB.hasStruct(structName) && i !== fields.length - 1) {
             const nextStructInfo = this.IRB.getStruct(structName);
             if (
               nextStructInfo?.isBuiltin &&
@@ -1207,6 +1207,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
             isStruct: true,
             global: [],
             isVarRef: false,
+            needsLoad: false
           };
         }
 

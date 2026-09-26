@@ -166,10 +166,15 @@ export class Struct {
     if (value?.type === "STRUCT_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       
-      ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
-  this.IRB.applyFieldInitializers(ptr, structName, structInfo);
-
-  this.IRB.emitStructLiteral(structName, value, globalScope, ptr); 
+      if (structName === "Map") {
+    // Map manages its own storage — don't pre-allocate/init, just take the returned ptr
+    const result = this.IRB.emitStructLiteral(structName, value, globalScope);
+    ptr = result.ptr;
+  } else {
+    ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+    this.IRB.applyFieldInitializers(ptr, structName, structInfo);
+    this.IRB.emitStructLiteral(structName, value, globalScope, ptr);
+      }
       
     } else if (value === null) {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
