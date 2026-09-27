@@ -156,8 +156,8 @@ export class Struct {
     const value = node.value;
 
     const structInfo = this.IRB.getStruct(structName);
-    const llvmType = `%${structName}`;
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
+    const llvmType = isOpaque ? "ptr" : `%${structName}`;
 
     let ptr;
     let isRet = false;

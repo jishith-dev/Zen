@@ -35,7 +35,7 @@ export class ZenSys {
     if (funcName === "_sys_argv") {
       this.IRB.declareOneTime(
         "ZenList",
-        "%ZenList = type { ptr, i32, i32, i64 }",
+        "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
       );
       this.IRB.declareOneTime("_sys_argv", "declare ptr @_sys_argv(i32, ptr)");
       const tmp = this.IRB.newTemp();

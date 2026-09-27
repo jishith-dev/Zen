@@ -236,7 +236,7 @@ export class Expression {
       );
       this.IRB.declareOneTime(
         "ZenList",
-        `%ZenList = type { ptr, i32, i32, i64 }`,
+        `%ZenList = type { ptr, i32, i32, i64, i32, i32 }`,
       );
 
       if (
@@ -634,7 +634,7 @@ export class Expression {
 
             this.IRB.declareOneTime(
               "ZenList",
-              "%ZenList = type { ptr, i32, i32, i64 }",
+              "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
             );
 
             const fakeObject = {
@@ -888,7 +888,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
               this.IRB.declareOneTime(
                 "ZenList",
-                `%ZenList = type { ptr, i32, i32, i64 }`,
+                `%ZenList = type { ptr, i32, i32, i64, i32, i32 }`,
               );
 
               // args contains implicit `this` at index 0,
@@ -1153,7 +1153,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
         if (isList) {
           this.IRB.declareOneTime(
             "ZenList",
-            "%ZenList = type { ptr, i32, i32, i64 }",
+            "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
           );
 
           return {
@@ -1909,7 +1909,6 @@ const isDouble = val.type === "double";
       }
 
       // NEGATION (-)
-      // byte -> int
 
       if (node.operator === "-") {
         // Literal
@@ -1919,8 +1918,8 @@ const isDouble = val.type === "double";
           if (val.type === "byte") {
             return {
               ptr: `-${v}`,
-              type: "int",
-              llvmType: "i32",
+              type: "byte",
+              llvmType: "i8",
               local,
               global,
               postOrPrefix: false,
@@ -1969,28 +1968,23 @@ const isDouble = val.type === "double";
           }
         }
 
-        // byte variable -> int
 
         if (val.type === "byte") {
-          const promoted = this.IRB.newTemp();
+  const tm = this.IRB.newTemp();
 
-          local.push(`${promoted} = sext i8 ${v} to i32`);
+  local.push(`${tm} = sub i8 0, ${v}`);
 
-          const tm = this.IRB.newTemp();
-
-          local.push(`${tm} = sub i32 0, ${promoted}`);
-
-          return {
-            ptr: tm,
-            type: "int",
-            llvmType: "i32",
-            local,
-            global,
-            postOrPrefix: false,
-            endLabel: null,
-            isVarRef: false,
-          };
-        }
+  return {
+    ptr: tm,
+    type: "byte",
+    llvmType: "i8",
+    local,
+    global,
+    postOrPrefix: false,
+    endLabel: null,
+    isVarRef: false,
+  };
+}
 
         // int
 

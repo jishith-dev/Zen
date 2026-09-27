@@ -883,14 +883,14 @@ bool _string_to_bool(char* str) {
     return (str != NULL && strlen(str) > 0);
 }
 
-uint8_t _string_to_byte(const char *str) {
+int8_t _string_to_byte(const char *str) {
     if (!str || str[0] == '\0')
         return 0;
 
-    return (uint8_t)(unsigned char)str[0];
+    return (int8_t)(unsigned char)str[0];
 }
 
-char *_byte_to_string(uint8_t value) {
+char *_byte_to_string(int8_t value) {
     char *str = malloc(2);
 
     if (!str)

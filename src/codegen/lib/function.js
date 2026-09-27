@@ -514,7 +514,7 @@ export class HandleFunction {
 
         this.IRB.declareOneTime(
           "ZenList",
-          `%ZenList = type { ptr, i32, i32, i64 }`,
+          `%ZenList = type { ptr, i32, i32, i64, i32, i32 }`,
         );
 
         const deepestType = this.IRB.getDeepestGeneric(p.generic);
@@ -618,7 +618,7 @@ export class HandleFunction {
       } else if (p.isRest) {
         this.IRB.declareOneTime(
           "ZenList",
-          "%ZenList = type { ptr, i32, i32, i64 }",
+          "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
         );
         // update symbol table
         this.IRB.setVar(

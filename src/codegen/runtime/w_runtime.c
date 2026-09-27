@@ -1254,6 +1254,25 @@ void _zen_ptr_copyTo(void *src, void *dst, int bytes) {
     memcpy(dst, src, (size_t)bytes);
 }
 
+int8_t _string_to_byte(const char *str) {
+    if (!str || str[0] == '\0')
+        return 0;
+
+    return (int8_t)(unsigned char)str[0];
+}
+
+char *_byte_to_string(int8_t value) {
+    char *str = malloc(2);
+
+    if (!str)
+        return NULL;
+
+    str[0] = (char)value;
+    str[1] = '\0';
+
+    return str;
+}
+
 void _zen_ptr_fill(void *p, int value, int bytes) {
     memset(p, value, (size_t)bytes);
 }

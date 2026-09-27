@@ -375,12 +375,17 @@ export class InferType {
         }
 
         if (node.operator === "+" || node.operator === "-") {
-          this.ensureNumeric(valueType, node.operator, node);
+  this.ensureNumeric(valueType, node.operator, node);
 
-          const result = valueType === "byte" ? "int" : valueType;
+  const result =
+    node.operator === "-" && valueType === "byte"
+      ? "byte"
+      : valueType === "byte"
+        ? "int"
+        : valueType;
 
-          node.inferredType = result;
-          return result;
+  node.inferredType = result;
+  return result;
         }
 
         if (node.operator === "~") {

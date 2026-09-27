@@ -398,7 +398,7 @@ export class Lexer {
     }
     return result;
   }
-
+  /*
   number() {
     let result = "";
     let hasDot = false;
@@ -462,7 +462,7 @@ export class Lexer {
       };
     }
 
-    // DECIMAL / DOUBLE
+    // DOUBLE
     while (
       this.currentChar !== null &&
       (/\d/.test(this.currentChar) || this.currentChar === ".")
@@ -481,6 +481,38 @@ export class Lexer {
 
     if (result.startsWith(".")) {
       result = "0" + result;
+    }
+
+    // SCIENTIFIC NOTATION: 1e300, 1.5e-10, 2E+5, 6.022e23
+    if (this.currentChar === "e" || this.currentChar === "E") {
+      const savedPos = this.pos;
+      const savedLine = this.line;
+      const savedColumn = this.column;
+      const savedChar = this.currentChar;
+
+      let expStr = this.currentChar;
+      this.advance(); // consume 'e' / 'E'
+
+      if (this.currentChar === "+" || this.currentChar === "-") {
+        expStr += this.currentChar;
+        this.advance();
+      }
+
+      if (this.currentChar !== null && /\d/.test(this.currentChar)) {
+        while (this.currentChar !== null && /\d/.test(this.currentChar)) {
+          expStr += this.currentChar;
+          this.advance();
+        }
+
+        result += expStr;
+        hasDot = true; 
+      } else {
+        // not a real exponent (e.g. 'e' starts an identifier) — back out
+        this.pos = savedPos;
+        this.line = savedLine;
+        this.column = savedColumn;
+        this.currentChar = savedChar;
+      }
     }
 
     // DOUBLE
@@ -514,7 +546,6 @@ export class Lexer {
       this.advance();
     }
 
-    // Reject anything else attached to the number
     if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
       this.IRB.emitError(
         "SyntaxError",
@@ -528,7 +559,171 @@ export class Lexer {
       type,
     };
   }
+  */
 
+number() {
+    let result = "";
+    let hasDot = false;
+
+    // HEX
+    if (this.currentChar === "0" && this.peek() === "x") {
+      this.advance(); // 0
+      this.advance(); // x
+
+      let hex = "";
+
+      while (
+        this.currentChar !== null &&
+        /[0-9a-fA-F]/.test(this.currentChar)
+      ) {
+        hex += this.currentChar;
+        this.advance();
+      }
+
+      if (hex.length === 0) {
+        this.IRB.emitError(
+          "SyntaxError",
+          "Invalid hex literal",
+          this.lineAndColumn(),
+        );
+      }
+
+      let type = "int";
+
+      if (this.currentChar === "_") {
+        this.advance(); // consume '_'
+
+        if (this.currentChar === "L") {
+          type = "long";
+          this.advance();
+        } else if (this.currentChar === "B") {
+          type = "byte";
+          this.advance();
+        } else {
+          this.IRB.emitError(
+            "SyntaxError",
+            `Invalid hex literal suffix after '_'`,
+            this.lineAndColumn(),
+          );
+        }
+      }
+
+      // Anything alphabetic (or another underscore) left over is invalid
+      if (
+        this.currentChar !== null &&
+        /[a-zA-Z_]/.test(this.currentChar)
+      ) {
+        this.IRB.emitError(
+          "SyntaxError",
+          `Invalid numeric literal`,
+          this.lineAndColumn(),
+        );
+      }
+
+      return {
+        value: parseInt(hex, 16),
+        type,
+      };
+    }
+
+    // DOUBLE
+    while (
+      this.currentChar !== null &&
+      (/\d/.test(this.currentChar) || this.currentChar === ".")
+    ) {
+      if (this.currentChar === ".") {
+        if (hasDot) {
+          break;
+        }
+
+        hasDot = true;
+      }
+
+      result += this.currentChar;
+      this.advance();
+    }
+
+    if (result.startsWith(".")) {
+      result = "0" + result;
+    }
+
+    // SCIENTIFIC NOTATION: 1e300, 1.5e-10, 2E+5, 6.022e23
+    if (this.currentChar === "e" || this.currentChar === "E") {
+      const savedPos = this.pos;
+      const savedLine = this.line;
+      const savedColumn = this.column;
+      const savedChar = this.currentChar;
+
+      let expStr = this.currentChar;
+      this.advance(); // consume 'e' / 'E'
+
+      if (this.currentChar === "+" || this.currentChar === "-") {
+        expStr += this.currentChar;
+        this.advance();
+      }
+
+      if (this.currentChar !== null && /\d/.test(this.currentChar)) {
+        while (this.currentChar !== null && /\d/.test(this.currentChar)) {
+          expStr += this.currentChar;
+          this.advance();
+        }
+
+        result += expStr;
+        hasDot = true;
+      } else {
+        // not a real exponent (e.g. 'e' starts an identifier) — back out
+        this.pos = savedPos;
+        this.line = savedLine;
+        this.column = savedColumn;
+        this.currentChar = savedChar;
+      }
+    }
+
+    // DOUBLE
+    if (hasDot) {
+      if (
+        this.currentChar === "L" ||
+        this.currentChar === "B" ||
+        /[a-zA-Z_]/.test(this.currentChar || "")
+      ) {
+        this.IRB.emitError(
+          "SyntaxError",
+          `Invalid floating-point literal: '${result}${this.currentChar}'`,
+          this.lineAndColumn(),
+        );
+      }
+
+      return {
+        value: result,
+        type: "double",
+      };
+    }
+
+    // INTEGER SUFFIX
+    let type = "int";
+
+    if (this.currentChar === "L") {
+      type = "long";
+      this.advance();
+    } else if (this.currentChar === "B") {
+      type = "byte";
+      this.advance();
+    }
+
+    if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
+      this.IRB.emitError(
+        "SyntaxError",
+        `Invalid numeric literal: '${result}${this.currentChar}'`,
+        this.lineAndColumn(),
+      );
+    }
+
+    return {
+      value: result,
+      type,
+    };
+}
+  
   string() {
     let result = "";
     const quoteType = this.currentChar;

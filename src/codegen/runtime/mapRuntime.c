@@ -1,5 +1,6 @@
 
 #include <stdint.h>
+#include <limits.h>   
 
 #ifdef _WIN32
 #define strdup _strdup
@@ -267,8 +268,8 @@ void zen_map_set_long(ZenMap *map, char *key, long value) {
   _zen_map_set(map, key, v, ZEN_LONG, 0, 0);
 }
 
-void zen_map_set_byte(ZenMap *map, char *key, unsigned char value) {
-  unsigned char *v = malloc(sizeof(unsigned char));
+void zen_map_set_byte(ZenMap *map, char *key, signed char value) {
+  signed char *v = malloc(sizeof(signed char));
   if (!v)
     zen_error("MemoryError", "Failed to allocate memory for Byte value");
 
@@ -317,10 +318,31 @@ long zen_map_get_long(ZenMap *map, char *key) {
   return *(long *)e->value;
 }
 
-unsigned char zen_map_get_byte(ZenMap *map, char *key) {
+signed char zen_map_get_byte(ZenMap *map, char *key) {
   MapEntry *e = _zen_map_get_entry(map, key);
+
+  if (e->type == ZEN_LONG) {
+    long v = *(long *)e->value;
+    if (v < -128 || v > 127) {
+      zen_errorf("TypeError",
+          "Key '%s' overflows Byte (value must be -128 to 127) — use getLong() instead",
+          key);
+    }
+    return (signed char)v;
+  }
+
+  if (e->type == ZEN_INT) {
+    int v = *(int *)e->value;
+    if (v < -128 || v > 127) {
+      zen_errorf("TypeError",
+          "Key '%s' overflows Byte (value must be -128 to 127) — use getInt() instead",
+          key);
+    }
+    return (signed char)v;
+  }
+
   _zen_map_expect_type(key, e, ZEN_BYTE);
-  return *(unsigned char *)e->value;
+  return *(signed char *)e->value;
 }
 
 void zen_map_set_map(ZenMap *map, char *key, ZenMap *value) {
@@ -335,6 +357,17 @@ void zen_map_set_map(ZenMap *map, char *key, ZenMap *value) {
 
 int zen_map_get_int(ZenMap *map, char *key) {
   MapEntry *e = _zen_map_get_entry(map, key);
+
+  if (e->type == ZEN_LONG) {
+    long v = *(long *)e->value;
+    if (v < INT_MIN || v > INT_MAX) {
+      zen_errorf("TypeError",
+    "Key '%s' overflows Int (value exceeds 32-bit range) — use getLong() instead",
+    key);
+    }
+    return (int)v;
+  }
+
   _zen_map_expect_type(key, e, ZEN_INT);
   return *(int *)e->value;
 }
@@ -394,8 +427,8 @@ void _debug_pretty_map(ZenMap *map, int indent) {
         break;
 
       case ZEN_DOUBLE:
-        printf("%g", *(double *)e->value);
-        break;
+  printf("%.17g", *(double *)e->value);
+  break;
 
       case ZEN_STRING:
         printf("\"%s\"", (char *)e->value);
@@ -406,7 +439,7 @@ void _debug_pretty_map(ZenMap *map, int indent) {
   break;
 
 case ZEN_BYTE:
-  printf("%u", (unsigned int)*(unsigned char *)e->value);
+  printf("%d", (int)*(signed char *)e->value);
   break;
 
       case ZEN_LIST:
@@ -462,16 +495,16 @@ static void _zen_map_value_to_json(JsonBuf *jb, int type, void *value, int depth
             jbuf_append(jb, numBuf);
             break;
         case ZEN_BYTE:
-            snprintf(numBuf, sizeof(numBuf), "%u", (unsigned int)*(unsigned char *)value);
-            jbuf_append(jb, numBuf);
-            break;
+    snprintf(numBuf, sizeof(numBuf), "%d", (int)*(signed char *)value);
+    jbuf_append(jb, numBuf);
+    break;
         case ZEN_BOOL:
             jbuf_append(jb, *(bool *)value ? "true" : "false");
             break;
         case ZEN_DOUBLE:
-            snprintf(numBuf, sizeof(numBuf), "%g", *(double *)value);
-            jbuf_append(jb, numBuf);
-            break;
+    snprintf(numBuf, sizeof(numBuf), "%.17g", *(double *)value);
+    jbuf_append(jb, numBuf);
+    break;
         case ZEN_STRING:
             jbuf_append_json_string(jb, (char *)value);
             break;
@@ -517,8 +550,6 @@ char *zen_map_json(ZenMap *map) {
 }
 
 
-
-
 ZenList *_zen_list_new(size_t element_size);
 void _zen_list_push(ZenList *list, void *value);
 void _zen_list_set_meta(ZenList *list, int depth, int deepestType);
@@ -540,15 +571,15 @@ static char *_zen_map_value_to_string(int type, void *value, int depth, int deep
       return strdup(numBuf);
 
     case ZEN_BYTE:
-      snprintf(numBuf, sizeof(numBuf), "%u", (unsigned int)*(unsigned char *)value);
-      return strdup(numBuf);
-
+  snprintf(numBuf, sizeof(numBuf), "%d", (int)*(signed char *)value);
+  return strdup(numBuf);
+    
     case ZEN_BOOL:
       return strdup(*(bool *)value ? "true" : "false");
 
     case ZEN_DOUBLE:
-      snprintf(numBuf, sizeof(numBuf), "%g", *(double *)value);
-      return strdup(numBuf);
+  snprintf(numBuf, sizeof(numBuf), "%.17g", *(double *)value);
+  return strdup(numBuf);
 
     case ZEN_STRING:
       return strdup((char *)value);

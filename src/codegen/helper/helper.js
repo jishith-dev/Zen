@@ -92,7 +92,7 @@ this.target = {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -681,7 +681,16 @@ getFunction(name, node) {
     const num = Number(value);
 
     // ensure decimal format
-    return Number.isInteger(num) ? num.toFixed(1) : num.toString();
+    let str = Number.isInteger(num) ? num.toFixed(1) : num.toString();
+
+    // Number.toString()/toFixed() can produce scientific notation
+    // (e.g. "1e-9", "1e+21") for very small/large magnitudes.
+  
+    if (/e/i.test(str) && !str.includes(".")) {
+      str = str.replace(/e/i, ".0e");
+    }
+
+    return str;
   }
 
   createData({
@@ -1207,7 +1216,7 @@ const location =
           name: p.name,
           type: p.type.generic.type,
           generic: { generic: p.type.generic },
-          llvmType: "%ZenList*",
+          llvmType: "ptr",
           isList: true,
           isConstant: p.isConstant,
           pIndex: i,
@@ -2294,7 +2303,7 @@ end:
     // BYTE -> INT
 
     if (expr.type === "byte" && targetType === "int") {
-      local.push(`${t} = zext i8 ${expr.ptr} to i32`);
+      local.push(`${t} = sext i8 ${expr.ptr} to i32`);
 
       return {
         ptr: t,
@@ -2848,6 +2857,12 @@ end:
       "zen_map_set_string",
       "declare void @zen_map_set_string(ptr, ptr, ptr)",
     );
+    this.declareOneTime("zen_map_set_byte",
+  "declare void @zen_map_set_byte(ptr, ptr, i8)",
+);
+    this.declareOneTime("zen_map_set_long",
+  "declare void @zen_map_set_long(ptr, ptr, i64)",
+);
     this.declareOneTime(
       "zen_map_set_list",
       "declare void @zen_map_set_list(ptr, ptr, ptr, i32, i32)",
@@ -2878,6 +2893,7 @@ end:
 
       let raw;
       if (value?.needsLoad) {
+        
         const t = this.newTemp();
         this.emit(`${t} = load ${value.llvmType ?? "ptr"}, ptr ${value.ptr}`);
         raw = t;
@@ -2892,14 +2908,14 @@ end:
         const deepestType = TYPE_MAP[deepest];
 
         this.emit(
-          `call void @zen_map_set_list(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${this.castToPtr(value)}, i32 ${depth}, i32 ${deepestType})`,
+          `call void @zen_map_set_list(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${raw}, i32 ${depth}, i32 ${deepestType})`,
         );
         continue;
       }
 
       if (value?.isStruct && value.type === "Map") {
         this.emit(
-          `call void @zen_map_set_map(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${this.castToPtr(value)})`,
+          `call void @zen_map_set_map(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${raw})`,
         );
         continue;
       }
@@ -2929,6 +2945,18 @@ end:
             `call void @zen_map_set_string(ptr ${parentMapPtr}, ptr ${keyPtr.name}, ptr ${raw})`,
           );
           break;
+
+        case "long":
+  this.emit(
+    `call void @zen_map_set_long(ptr ${parentMapPtr}, ptr ${keyPtr.name}, i64 ${raw})`,
+  );
+  break;
+
+        case "byte":
+  this.emit(
+    `call void @zen_map_set_byte(ptr ${parentMapPtr}, ptr ${keyPtr.name}, i8 ${raw})`,
+  );
+  break;
 
         default:
           this.emitError(
@@ -4021,7 +4049,7 @@ case "avg": {
     const llvmType = `%${structName}`;
     let structPtr = this.newTemp();
 
-    this.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64 }");
+    this.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64, i32, i32 }");
     this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
     this.declareOneTime(
       "zen_list_push",
@@ -4437,6 +4465,7 @@ case "avg": {
 
     const llvmArgs = [];
     const llvmArgTypes = [];
+    const argExprs = [];
 
     // Deferred instructions
     const local = [];
@@ -4459,6 +4488,7 @@ case "avg": {
       }
 
       const expr = this.expr.handleExpression(args[i]);
+      argExprs.push(expr);
 
       /*   if (expr.isList) {
       if (method.args[i] !== "List") {
@@ -4576,7 +4606,7 @@ case "avg": {
 
     const fnName = method.llvmName ?? `_zen_${structName}_${methodName}`;
 
-    const callArgs = [];
+/*    const callArgs = [];
 
     if (method.hasReceiver !== false) {
       callArgs.push(`ptr ${basePtr}`);
@@ -4590,7 +4620,36 @@ case "avg": {
         callArgs.length ? callArgs.map((a) => a.split(" ")[0]).join(", ") : ""
       })`,
     );
+*/
 
+
+const callArgs = [];
+
+if (method.hasReceiver !== false) {
+  callArgs.push(`ptr ${basePtr}`);
+}
+
+callArgs.push(...llvmArgs);
+
+if (structName === "Map" && methodName === "setList") {
+  const listExpr = argExprs[1];
+
+  const depth = this.getListDepth(listExpr.generic);
+  const deepestType = this.getDeepestGeneric(listExpr.generic);
+  const deepestTypeCode = this.getListTypeCode(deepestType);
+
+  callArgs.push(`i32 ${depth}`);
+  callArgs.push(`i32 ${deepestTypeCode}`);
+}
+
+this.declareOneTime(
+  fnName,
+  `declare ${llvmReturn} @${fnName}(${
+    callArgs.length ? callArgs.map((a) => a.split(" ")[0]).join(", ") : ""
+  })`,
+);
+    
+    
     // Methods that return a pointer to be stored into the object
     if (method.storeResult) {
       const temp = this.newTemp();
@@ -4690,7 +4749,7 @@ case "avg": {
       global,
       isVarRef: false,
       isStruct,
-      ownerId,
+      ownerId: method.returnsOwned ? this.genOwnerId() : ownerId
     };
   }
 
@@ -5000,6 +5059,7 @@ case "avg": {
   }
 
   inferDepthAndTypeFromElement(el) {
+    
     // nested list literal: recurse, since infer.infer() doesn't walk into these
     if (el.type === "ARRAY" || el.type === "LIST_LITERAL") {
       if (!el.elements || el.elements.length === 0) {
@@ -5293,7 +5353,7 @@ case "avg": {
       if (field.isList) {
         this.declareOneTime(
           "ZenList",
-          "%ZenList = type { ptr, i32, i32, i64 }",
+          "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
         );
 
         this.declareOneTime(
@@ -5336,7 +5396,7 @@ case "avg": {
     if (field.isList && field.value.type === "ARRAY") {
       this.declareOneTime(
         "ZenList",
-        "%ZenList = type { ptr, i32, i32, i64 }",
+        "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
       );
 
       this.declareOneTime(

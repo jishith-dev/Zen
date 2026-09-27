@@ -372,7 +372,7 @@ export class Call {
 
       this.IRB.declareOneTime(
         "ZenList",
-        `%ZenList = type { ptr, i32, i32, i64 }`,
+        `%ZenList = type { ptr, i32, i32, i64, i32, i32 }`,
       );
 
       const fixedArgs = args.slice(0, restIndex);
@@ -599,7 +599,7 @@ export class Call {
       if (isList) {
         this.IRB.declareOneTime(
           "ZenList",
-          "%ZenList = type { ptr, i32, i32, i64 }",
+          "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
         );
       }
 
@@ -779,7 +779,7 @@ export class Call {
     if (isList) {
       this.IRB.declareOneTime(
         "ZenList",
-        "%ZenList = type { ptr, i32, i32, i64 }",
+        "%ZenList = type { ptr, i32, i32, i64, i32, i32 }",
       );
     }
 

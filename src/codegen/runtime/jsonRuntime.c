@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <limits.h>
 
 typedef enum {
   ZEN_JSON_NULL,
@@ -45,6 +46,53 @@ struct ZenJson {
 static void zen_error(const char *type, const char *msg) {
   fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
   exit(1);
+}
+
+static bool json_token_boundary(char c) {
+    return c == '\0' ||
+           c == ' ' ||
+           c == '\n' ||
+           c == '\r' ||
+           c == '\t' ||
+           c == ',' ||
+           c == ']' ||
+           c == '}';
+}
+
+static void append_utf8(char **buf, size_t *len, size_t *cap, int code) {
+  unsigned char bytes[4];
+  int count;
+
+  if (code <= 0x7F) {
+    bytes[0] = (unsigned char)code;
+    count = 1;
+  } else if (code <= 0x7FF) {
+    bytes[0] = 0xC0 | (code >> 6);
+    bytes[1] = 0x80 | (code & 0x3F);
+    count = 2;
+  } else if (code <= 0xFFFF) {
+    bytes[0] = 0xE0 | (code >> 12);
+    bytes[1] = 0x80 | ((code >> 6) & 0x3F);
+    bytes[2] = 0x80 | (code & 0x3F);
+    count = 3;
+  } else {
+    bytes[0] = 0xF0 | (code >> 18);
+    bytes[1] = 0x80 | ((code >> 12) & 0x3F);
+    bytes[2] = 0x80 | ((code >> 6) & 0x3F);
+    bytes[3] = 0x80 | (code & 0x3F);
+    count = 4;
+  }
+
+  while (*len + count + 1 >= *cap) {
+    *cap *= 2;
+    char *tmp = realloc(*buf, *cap);
+    if (!tmp)
+      zen_error("MemoryError", "Failed to allocate memory for Json string");
+    *buf = tmp;
+  }
+
+  memcpy(*buf + *len, bytes, count);
+  *len += count;
 }
 
 static void json_check_alive(ZenJson *j) {
@@ -134,14 +182,24 @@ static char *parse_raw_string(JsonParser *p) {
         out = '\f';
         break;
       case 'u': {
-        if (p->pos + 4 >= p->len)
-          parse_fail(p, "unicode escape");
-        char hex[5] = {p->src[p->pos + 1], p->src[p->pos + 2],
-                       p->src[p->pos + 3], p->src[p->pos + 4], 0};
-        int code = (int)strtol(hex, NULL, 16);
-        p->pos += 4;
-        out = (code < 128) ? (char)code : '?';
-        break;
+  if (p->pos + 4 >= p->len)
+    parse_fail(p, "unicode escape");
+
+  char hex[5] = {
+    p->src[p->pos + 1],
+    p->src[p->pos + 2],
+    p->src[p->pos + 3],
+    p->src[p->pos + 4],
+    0
+  };
+
+  int code = (int)strtol(hex, NULL, 16);
+  p->pos += 4;
+
+  append_utf8(&buf, &len, &cap, code);
+
+  p->pos++;
+  continue;
       }
       default:
         parse_fail(p, "valid escape character");
@@ -186,38 +244,65 @@ static ZenJson *parse_string(JsonParser *p) {
 }
 
 static ZenJson *parse_number(JsonParser *p) {
-  size_t start = p->pos;
-  int is_double = 0;
+  int start = p->pos;
 
   if (p->src[p->pos] == '-')
     p->pos++;
-  while (p->pos < p->len && isdigit((unsigned char)p->src[p->pos]))
+
+  // Integer part
+  if (p->src[p->pos] == '0') {
     p->pos++;
 
-  if (p->pos < p->len && p->src[p->pos] == '.') {
-    is_double = 1;
-    p->pos++;
-    while (p->pos < p->len && isdigit((unsigned char)p->src[p->pos]))
+    if (isdigit((unsigned char)p->src[p->pos]))
+      parse_fail(p, "valid JSON number");
+  } else {
+    if (!isdigit((unsigned char)p->src[p->pos]))
+      parse_fail(p, "valid JSON number");
+
+    while (isdigit((unsigned char)p->src[p->pos]))
       p->pos++;
   }
 
-  if (p->pos < p->len && (p->src[p->pos] == 'e' || p->src[p->pos] == 'E')) {
-    is_double = 1;
+  bool is_double = false;
+
+  // Fraction
+  if (p->src[p->pos] == '.') {
+    is_double = true;
     p->pos++;
-    if (p->pos < p->len && (p->src[p->pos] == '+' || p->src[p->pos] == '-'))
-      p->pos++;
-    while (p->pos < p->len && isdigit((unsigned char)p->src[p->pos]))
+
+    if (!isdigit((unsigned char)p->src[p->pos]))
+      parse_fail(p, "valid JSON number");
+
+    while (isdigit((unsigned char)p->src[p->pos]))
       p->pos++;
   }
 
-  size_t numlen = p->pos - start;
-  char *numbuf = malloc(numlen + 1);
+  // Exponent
+  if (p->src[p->pos] == 'e' || p->src[p->pos] == 'E') {
+    is_double = true;
+    p->pos++;
+
+    if (p->src[p->pos] == '+' || p->src[p->pos] == '-')
+      p->pos++;
+
+    if (!isdigit((unsigned char)p->src[p->pos]))
+      parse_fail(p, "valid JSON number");
+
+    while (isdigit((unsigned char)p->src[p->pos]))
+      p->pos++;
+  }
+
+  int len = p->pos - start;
+  char *numbuf = malloc(len + 1);
+
   if (!numbuf)
     zen_error("MemoryError", "Failed to allocate memory for Json number");
-  memcpy(numbuf, p->src + start, numlen);
-  numbuf[numlen] = '\0';
+
+  memcpy(numbuf, p->src + start, len);
+  numbuf[len] = '\0';
 
   ZenJson *j;
+
   if (is_double) {
     j = json_new(ZEN_JSON_DOUBLE);
     j->as.d = strtod(numbuf, NULL);
@@ -351,19 +436,22 @@ static ZenJson *parse_value(JsonParser *p) {
   if (c == '-' || isdigit((unsigned char)c))
     return parse_number(p);
 
-  if (strncmp(p->src + p->pos, "true", 4) == 0) {
+  if (strncmp(p->src + p->pos, "true", 4) == 0 &&
+    json_token_boundary(p->src[p->pos + 4])) {
     p->pos += 4;
     ZenJson *j = json_new(ZEN_JSON_BOOL);
     j->as.b = 1;
     return j;
   }
-  if (strncmp(p->src + p->pos, "false", 5) == 0) {
+  if (strncmp(p->src + p->pos, "false", 5) == 0 &&
+    json_token_boundary(p->src[p->pos + 5])) {
     p->pos += 5;
     ZenJson *j = json_new(ZEN_JSON_BOOL);
     j->as.b = 0;
     return j;
   }
-  if (strncmp(p->src + p->pos, "null", 4) == 0) {
+  if (strncmp(p->src + p->pos, "null", 4) == 0 &&
+    json_token_boundary(p->src[p->pos + 4])) {
     p->pos += 4;
     return json_new(ZEN_JSON_NULL);
   }
@@ -373,6 +461,7 @@ static ZenJson *parse_value(JsonParser *p) {
 }
 
 ZenJson *_zen_json_parse(const char *str) {
+  
   if (!str)
     zen_error("JsonError", "Cannot parse null string as Json");
 
@@ -419,7 +508,28 @@ int _zen_json_getInt(ZenJson *obj, const char *key) {
   json_check_alive(obj);
   ZenJson *v = json_lookup(obj, key);
   expect_type(v, ZEN_JSON_INT, key, "int");
-  return v->as.i;
+  if (v->as.i < INT_MIN || v->as.i > INT_MAX) {
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "Key '%s' overflows Int (value exceeds 32-bit range) — use getLong() instead",
+        key);
+    zen_error("JsonError", buf);
+  }
+  return (int)v->as.i;
+}
+
+signed char _zen_json_getByte(ZenJson *obj, const char *key) {
+  json_check_alive(obj);
+  ZenJson *v = json_lookup(obj, key);
+  expect_type(v, ZEN_JSON_INT, key, "byte");
+  if (v->as.i < -128 || v->as.i > 127) {
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "Key '%s' overflows Byte (value must be -128 to 127) — use getInt() instead",
+        key);
+    zen_error("JsonError", buf);
+  }
+  return (signed char)v->as.i;
 }
 
 long _zen_json_getLong(ZenJson *obj, const char *key) {
@@ -427,13 +537,6 @@ long _zen_json_getLong(ZenJson *obj, const char *key) {
   ZenJson *v = json_lookup(obj, key);
   expect_type(v, ZEN_JSON_INT, key, "long");
   return (long)v->as.i;
-}
-
-unsigned char _zen_json_getByte(ZenJson *obj, const char *key) {
-  json_check_alive(obj);
-  ZenJson *v = json_lookup(obj, key);
-  expect_type(v, ZEN_JSON_INT, key, "byte");
-  return (unsigned char)v->as.i;
 }
 
 double _zen_json_getDouble(ZenJson *obj, const char *key) {
@@ -514,7 +617,14 @@ int _zen_json_arrayGetInt(ZenJson *arr, int index) {
   ZenJson *v = array_at(arr, index);
   if (v->type != ZEN_JSON_INT)
     zen_error("JsonError", "Expected int in Json array");
-  return v->as.i;
+  if (v->as.i < INT_MIN || v->as.i > INT_MAX) {
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "Index %d overflows Int (value exceeds 32-bit range) — use arrayGetLong() instead",
+        index);
+    zen_error("JsonError", buf);
+  }
+  return (int)v->as.i;
 }
 
 long _zen_json_arrayGetLong(ZenJson *arr, int index) {
@@ -525,12 +635,19 @@ long _zen_json_arrayGetLong(ZenJson *arr, int index) {
   return (long)v->as.i;
 }
 
-unsigned char _zen_json_arrayGetByte(ZenJson *arr, int index) {
+signed char _zen_json_arrayGetByte(ZenJson *arr, int index) {
   json_check_alive(arr);
   ZenJson *v = array_at(arr, index);
   if (v->type != ZEN_JSON_INT)
     zen_error("JsonError", "Expected byte in Json array");
-  return (unsigned char)v->as.i;
+  if (v->as.i < -128 || v->as.i > 127) {
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "Index %d overflows Byte (value must be -128 to 127) — use arrayGetInt() instead",
+        index);
+    zen_error("JsonError", buf);
+  }
+  return (signed char)v->as.i;
 }
 
 double _zen_json_arrayGetDouble(ZenJson *arr, int index) {
@@ -674,8 +791,11 @@ static ZenMap *_zen_json_object_to_map(ZenJson *json) {
         zen_error("JsonError", "Cannot convert Json null to Map value");
 
       case ZEN_JSON_ARRAY:
-        zen_error("JsonError", "Cannot convert Json array to Map value yet");
-
+        zen_error(
+    "JsonError",
+    "Cannot convert Json array to Map yet.\n"
+    "     Hint: Map reconstruction currently supports only non-array values."
+);
       default:
         zen_error("JsonError", "Unsupported Json value");
     }

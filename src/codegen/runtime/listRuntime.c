@@ -122,13 +122,19 @@ void *_zen_list_get(ZenList *list, int index) {
     exit(1);
   }
 
-  if (list->size < 0) {
-    fprintf(stderr,
-            "\033[1;31m[Zen RuntimeError]\n"
-            "  └── List metadata is corrupted (length=%d)\033[0m\n",
-            list->size);
-    exit(1);
-  }
+  
+    // Guard: corrupted/garbage list struct
+    if (list->size < 0 ||
+        list->capacity < 0 ||
+        list->size > list->capacity ||
+        list->element_size == 0 ||
+        list->element_size > 4096) {
+        fprintf(stderr,
+            "[Zen RuntimeError]\n"
+            "  └── List metadata is corrupted (size=%d capacity=%d element_size=%zu)\n",
+            list->size, list->capacity, list->element_size);
+        exit(1);
+    }
 
   if (index < 0 || index >= list->size) {
     fprintf(stderr,
@@ -367,18 +373,18 @@ ZenList *_fs_readFileBytes(const char *path) {
 
   FILE *f = fopen(path, "rb");
   if (!f) {
-    return _zen_list_new(sizeof(uint8_t));
+    return _zen_list_new(sizeof(int8_t));
   }
 
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
   rewind(f);
 
-  ZenList *list = _zen_list_new(sizeof(uint8_t));
+  ZenList *list = _zen_list_new(sizeof(int8_t));
 
   for (long i = 0; i < size; i++) {
 
-    uint8_t b;
+    int8_t b;
 
     if (fread(&b, 1, 1, f) != 1) {
       break;
@@ -402,7 +408,7 @@ void _fs_writeFileBytes(const char *path, ZenList *list) {
 
   for (int i = 0; i < list->size; i++) {
 
-    uint8_t b = *(uint8_t *)_zen_list_get(list, i);
+    int8_t b = *(int8_t *)_zen_list_get(list, i);
 
     fwrite(&b, 1, 1, f);
   }
@@ -505,8 +511,8 @@ void _debug_pretty_list_impl(ZenList *list, int depth, int deepestType) {
         break;
 
       case ZEN_BYTE:
-    printf("%u", (unsigned)*(uint8_t *)_zen_list_get(list, i));
-    break;
+    printf("%d", (int)*(int8_t *)_zen_list_get(list, i));
+        break;
 
 case ZEN_LONG:
     printf("%lld", (long long)*(int64_t *)_zen_list_get(list, i));
@@ -598,10 +604,10 @@ static void _crypto_error(const char *msg) {
 }
 
 static ZenList *_crypto_bytes_to_list(const unsigned char *data, size_t len) {
-    ZenList *list = _zen_list_new(sizeof(uint8_t));
+    ZenList *list = _zen_list_new(sizeof(int8_t));
 
     for (size_t i = 0; i < len; i++) {
-        uint8_t byte = data[i];
+        int8_t byte = data[i];
         _zen_list_push(list, &byte);
     }
 
@@ -610,14 +616,14 @@ static ZenList *_crypto_bytes_to_list(const unsigned char *data, size_t len) {
 
 ZenList *_crypto_randomBytes(int length) {
     if (length < 0)
-        return _zen_list_new(sizeof(uint8_t));
+        return _zen_list_new(sizeof(int8_t));
 
-    ZenList *list = _zen_list_new(sizeof(uint8_t));
+    ZenList *list = _zen_list_new(sizeof(int8_t));
 
     for (int i = 0; i < length; i++) {
-        uint8_t byte;
+        int8_t byte;
 
-        if (RAND_bytes(&byte, 1) != 1) {
+        if (RAND_bytes((unsigned char *)&byte, 1) != 1) {
             fprintf(stderr,
                     "[Zen CryptoError]\n"
                     "  └── Failed to generate random bytes\n");
@@ -768,7 +774,7 @@ static ZenList *_crypto_base64_decode(
 
     size_t len = strlen(data);
 
-    ZenList *list = _zen_list_new(sizeof(uint8_t));
+    ZenList *list = _zen_list_new(sizeof(int8_t));
 
     if (len == 0)
         return list;
@@ -807,13 +813,13 @@ static ZenList *_crypto_base64_decode(
             exit(1);
         }
 
-        uint32_t triple =
-            ((uint32_t)a << 18) |
-            ((uint32_t)b << 12) |
-            ((uint32_t)c << 6) |
-            (uint32_t)d;
+        int32_t triple =
+            ((int32_t)a << 18) |
+            ((int32_t)b << 12) |
+            ((int32_t)c << 6) |
+            (int32_t)d;
 
-        uint8_t byte = (triple >> 16) & 0xff;
+        int8_t byte = (triple >> 16) & 0xff;
         _zen_list_push(list, &byte);
 
         if (c3 != '=') {
@@ -855,7 +861,7 @@ static char *_crypto_base64_encode(
         exit(1);
     }
 
-    if (list->element_size != sizeof(uint8_t)) {
+    if (list->element_size != sizeof(int8_t)) {
         fprintf(stderr,
                 "[Zen CryptoError]\n"
                 "  └── Base64 encoding expects List<byte>\n");
@@ -874,8 +880,8 @@ static char *_crypto_base64_encode(
         exit(1);
     }
 
-    const uint8_t *data =
-        (const uint8_t *)list->data;
+    const int8_t *data =
+        (const int8_t *)list->data;
 
     size_t i = 0;
     size_t j = 0;
@@ -883,17 +889,17 @@ static char *_crypto_base64_encode(
     while (i < len) {
         size_t remaining = len - i;
 
-        uint32_t a = data[i++];
+        int32_t a = (uint8_t)data[i++];
 
-        uint32_t b = remaining > 1
-            ? data[i++]
+        int32_t b = remaining > 1
+            ? (uint8_t)data[i++]
             : 0;
 
-        uint32_t c = remaining > 2
-            ? data[i++]
+        int32_t c = remaining > 2
+            ? (uint8_t)data[i++]
             : 0;
 
-        uint32_t triple =
+        int32_t triple =
             (a << 16) |
             (b << 8) |
             c;
@@ -1012,6 +1018,8 @@ void jbuf_append_json_string(JsonBuf *jb, const char *s) {
     jbuf_append_char(jb, '"');
 }
 
+extern char *zen_map_json(void *map);  
+
 void _zen_list_append_json(JsonBuf *jb, ZenList *list, int depth, int deepestType) {
     jbuf_append_char(jb, '[');
 
@@ -1036,13 +1044,19 @@ void _zen_list_append_json(JsonBuf *jb, ZenList *list, int depth, int deepestTyp
                     snprintf(numBuf, sizeof(numBuf), "%g", *(double *)_zen_list_get(list, i));
                     jbuf_append(jb, numBuf);
                     break;
+              case ZEN_MAP: {
+    void *mapHandle = *(void **)_zen_list_get(list, i);
+    char *mapJson = zen_map_json(mapHandle);
+    jbuf_append(jb, mapJson);
+    break;
+              }
                 case ZEN_STRING:
                     jbuf_append_json_string(jb, *(char **)_zen_list_get(list, i));
                     break;
                 case ZEN_BYTE:
-                    snprintf(numBuf, sizeof(numBuf), "%u", (unsigned)*(uint8_t *)_zen_list_get(list, i));
-                    jbuf_append(jb, numBuf);
-                    break;
+    snprintf(numBuf, sizeof(numBuf), "%d", (int)*(int8_t *)_zen_list_get(list, i));
+    jbuf_append(jb, numBuf);
+    break;
                 case ZEN_LONG:
                     snprintf(numBuf, sizeof(numBuf), "%" PRId64, *(int64_t *)_zen_list_get(list, i));
                     jbuf_append(jb, numBuf);
@@ -1068,15 +1082,15 @@ int _zen_list_get_deepest_type(ZenList *list) {
 
 ZenList *_zen_strToBytes(const char *str) {
     if (str == NULL) {
-        return _zen_list_new(sizeof(uint8_t));
+        return _zen_list_new(sizeof(int8_t));
     }
 
     size_t length = strlen(str);
 
-    ZenList *list = _zen_list_new(sizeof(uint8_t));
+    ZenList *list = _zen_list_new(sizeof(int8_t));
 
     for (size_t i = 0; i < length; i++) {
-        uint8_t byte = (uint8_t)(unsigned char)str[i];
+        int8_t byte = (int8_t)(unsigned char)str[i];
         _zen_list_push(list, &byte);
     }
 
@@ -1101,7 +1115,7 @@ char *_zen_bytesToStr(ZenList *list) {
     }
 
     for (int i = 0; i < list->size; i++) {
-        uint8_t byte = *(uint8_t *)_zen_list_get(list, i);
+        int8_t byte = *(int8_t *)_zen_list_get(list, i);
         str[i] = (char)byte;
     }
 
@@ -1149,11 +1163,11 @@ static void _zen_list_remove_at_noerror(ZenList *list, int index) {
   list->size--;
 }
 
-void _zen_list_remove_byte(ZenList *list, uint8_t value) {
+void _zen_list_remove_byte(ZenList *list, int8_t value) {
   if (!list || !list->data)
     return;
 
-  uint8_t *base = (uint8_t *)list->data;
+  int8_t *base = (int8_t *)list->data;
 
   for (int i = 0; i < list->size; i++) {
     if (base[i] == value) {
@@ -1264,19 +1278,11 @@ void _zen_list_reverse(ZenList *list) {
 
 // list sort
 
-static int _zen_list_compare_byte(
-    const void *a,
-    const void *b
-) {
-  uint8_t x = *(const uint8_t *)a;
-  uint8_t y = *(const uint8_t *)b;
-
-  if (x < y)
-    return -1;
-
-  if (x > y)
-    return 1;
-
+static int _zen_list_compare_byte(const void *a, const void *b) {
+  int8_t x = *(const int8_t *)a;
+  int8_t y = *(const int8_t *)b;
+  if (x < y) return -1;
+  if (x > y) return 1;
   return 0;
 }
 
@@ -1411,16 +1417,10 @@ void _zen_list_sort_string(ZenList *list) {
 // list sum
 
 int8_t _zen_list_sum_byte(ZenList *list) {
-  if (!list || !list->data)
-    return 0;
-
-  uint8_t *base = (uint8_t *)list->data;
+  if (!list || !list->data) return 0;
+  int8_t *base = (int8_t *)list->data;
   int8_t total = 0;
-
-  for (int i = 0; i < list->size; i++) {
-    total += base[i];
-  }
-
+  for (int i = 0; i < list->size; i++) total += base[i];
   return total;
 }
 
@@ -1482,15 +1482,9 @@ static void _zen_list_avg_empty_error(void) {
 double _zen_list_avg_byte(ZenList *list) {
   if (!list || !list->data || list->size == 0)
     _zen_list_avg_empty_error();
-
-  uint8_t *base = (uint8_t *)list->data;
-
+  int8_t *base = (int8_t *)list->data;
   int64_t total = 0;
-
-  for (int i = 0; i < list->size; i++) {
-    total += base[i];
-  }
-
+  for (int i = 0; i < list->size; i++) total += base[i];
   return (double)total / (double)list->size;
 }
 

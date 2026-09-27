@@ -17,7 +17,7 @@ export class ZenList {
 
     this.IRB.declareOneTime(
       "ZenList",
-      `%ZenList = type { ptr, i32, i32, i64 }`,
+      `%ZenList = type { ptr, i32, i32, i64, i32, i32 }`,
     );
 
     const name = node.name;

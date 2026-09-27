@@ -24,7 +24,7 @@ const TYPE_MAP = {
   double: 3,
   string: 4,
   List: 5,
-  map: 6,
+  Map: 6,
   long: 7,
   byte: 8,
 };
@@ -872,6 +872,7 @@ const BUILTIN_STRUCT_METHODS = {
       returnType: "Map",
       args: [],
       llvmName: "_zen_json_map",
+      returnsOwned: true,
     },
 
     getLong: {
