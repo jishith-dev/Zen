@@ -502,6 +502,7 @@ const BUILTIN_FUNCTIONS = [
   "_http_setHeader",
   "_http_clearHeaders",
   "_http_lastStatus",
+  "_http_getProgress",
 
   "_crypto_sha256",
   "_crypto_sha512",
@@ -756,6 +757,7 @@ const NAMESPACE_MAP = {
     "setHeader",
     "clearHeaders",
     "lastStatus",
+    "getProgress"
   ],
 
   net: ["online", "connect", "listen"],
@@ -1921,6 +1923,11 @@ const BUILTIN_MAP = {
     llvmName: "_http_delete",
   },
 
+  getProgress: {
+    returnType: "string",
+    llvmName: "_http_getProgress"
+  },
+
   urlEncode: {
     returnType: "string",
     llvmName: "_http_urlEncode",
@@ -2661,6 +2668,8 @@ const HTTP_MAP = {
   _http_clearHeaders: ["_http_clearHeaders", "void", 0, []],
 
   _http_lastStatus: ["_http_lastStatus", "int", 0, []],
+
+  _http_getProgress: ["_http_getProgress", "string", 2, ["string", "fn cb(long downloaded, long total) void"]],
 };
 
 const FFI_MAP = {

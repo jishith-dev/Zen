@@ -86,6 +86,11 @@ typedef struct {
     size_t cap;
 } HttpBuffer;
 
+typedef struct {
+    void (*callback)(long downloaded, long total);
+    long last;
+} HttpProgress;
+
 static size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata) {
     HttpBuffer *buf = (HttpBuffer *)userdata;
     size_t total = size * nmemb;
@@ -106,6 +111,25 @@ static size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdat
     buf->data[buf->len] = '\0';
 
     return total;
+}
+
+static int progress_callback(void *clientp,
+                             curl_off_t dltotal,
+                             curl_off_t dlnow,
+                             curl_off_t ultotal,
+                             curl_off_t ulnow) {
+    (void)ultotal;
+    (void)ulnow;
+
+    HttpProgress *progress = (HttpProgress *)clientp;
+    if (!progress || !progress->callback) return 0;
+
+    long now = dlnow > 0 ? (long)dlnow : 0;
+    if (now == progress->last) return 0;
+
+    progress->last = now;
+    progress->callback(now, dltotal > 0 ? (long)dltotal : 0);
+    return 0;
 }
 
 static struct curl_slist *custom_headers = NULL;
@@ -141,7 +165,7 @@ static int has_content_type(void) {
     return 0;
 }
 
-static char *zen_request(const char *method, const char *url, const char *body) {
+static char *zen_request(const char *method, const char *url, const char *body, HttpProgress *progress) {
     CURL *curl = curl_easy_init();
     if (!curl) http_error("NetworkError", "Failed to initialize curl");
 
@@ -164,6 +188,12 @@ static char *zen_request(const char *method, const char *url, const char *body) 
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
+    if (progress && progress->callback) {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void *)progress);
+    }
 
     if (strcmp(method, "POST") == 0) {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -192,21 +222,26 @@ static char *zen_request(const char *method, const char *url, const char *body) 
 }
 
 const char *_http_get(const char *url) {
-    return zen_request("GET", url, NULL);
+    return zen_request("GET", url, NULL, NULL);
+}
+
+const char *_http_getProgress(const char *url, void (*callback)(long, long)) {
+    HttpProgress progress = { callback, -1 };
+    return zen_request("GET", url, NULL, &progress);
 }
 
 const char *_http_post(const char *url, const char *body) {
-    return zen_request("POST", url, body);
+    return zen_request("POST", url, body, NULL);
 }
 
 const char *_http_put(const char *url, const char *body) {
-    return zen_request("PUT", url, body);
+    return zen_request("PUT", url, body, NULL);
 }
 
 const char *_http_patch(const char *url, const char *body) {
-    return zen_request("PATCH", url, body);
+    return zen_request("PATCH", url, body, NULL);
 }
 
 const char *_http_delete(const char *url) {
-    return zen_request("DELETE", url, NULL);
+    return zen_request("DELETE", url, NULL, NULL);
 }

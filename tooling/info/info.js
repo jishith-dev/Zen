@@ -193,7 +193,8 @@ const DOCS = {
       urlDecode: ["text", "Decodes a percent-encoded string."],
       setHeader: ["name value", "Sets a header sent with following requests."],
       clearHeaders: "Removes all headers set with setHeader.",
-      lastStatus: "Returns the status code of the last request."
+      lastStatus: "Returns the status code of the last request.",
+      getProgress: "Downloads a URL while reporting downloaded and total bytes through a callback."
     },
 
     ffi: {
@@ -606,6 +607,7 @@ export class Info {
 
 
   namespaceCallable(namespaceName, key, value) {
+    
     const name = this.memberName(namespaceName, key);
     const [, returnType, paramCount, types] = value;
     const doc = this.doc(DOCS.namespace[namespaceName]?.[name]);
@@ -614,8 +616,10 @@ export class Info {
       name,
       ret: RETURN_ALIAS[`${namespaceName}.${name}`] ?? returnType,
       types: (types ?? []).map(type =>
-        String(type).includes(",") ? "any" : type
-      ),
+  String(type).startsWith("fn") || !String(type).includes(",")
+    ? type
+    : "any"
+),
       names: doc.names,
       desc: doc.text,
       variadic: paramCount === "INF"

@@ -81,3 +81,5 @@ Byte is signed, -128 to 127; hex/decimal values outside that range wrap via two'
 Added \e and \xHH string escapes (via a new readEscape() in the lexer), plus ESC handling in toLLVMString, so ANSI escape codes like "\e[31m" work in Zen strings.
 
 added new http namespace method http.getProgress(url, callback) void return, params - percentage (int) - pending
+
+function names passing can take outer variables (allowed closure) but for direct Anonymous inlime functions cant take outside variables (closure applies)

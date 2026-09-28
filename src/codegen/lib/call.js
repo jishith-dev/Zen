@@ -800,6 +800,27 @@ export class Call {
     };
   }
 
+  lowerInlineCallback(arg) {
+    const returnType = arg.returnType.type;
+
+    this.IRB.anonymFunctions.set(arg.name, {
+      name: arg.name,
+      returnType,
+      params: arg.params,
+      retGeneric: returnType,
+      generic: null,
+      isInline: true,
+      hasVarArgs: false,
+      nativeReturnABI: false,
+      isThread: false,
+      isDeclaration: false,
+      isExtern: false,
+      freedPindex: new Set(),
+    });
+
+    return this.func.handleFunction(arg, true);
+  }
+
   // built in function routing
 
   handleBuiltInCall(node, globalScope) {
@@ -923,6 +944,7 @@ export class Call {
             HTTP[2],
             HTTP[3],
             name,
+            this
           );
         } else if (SYS) {
           return this.sys.zenNativeSYSCall(
