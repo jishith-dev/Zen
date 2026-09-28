@@ -81,5 +81,22 @@ Byte is signed, -128 to 127; hex/decimal values outside that range wrap via two'
 Added \e and \xHH string escapes (via a new readEscape() in the lexer), plus ESC handling in toLLVMString, so ANSI escape codes like "\e[31m" work in Zen strings.
 
 added new http namespace method http.getProgress(url, callback) void return, params - percentage (int) - pending
+it return list of bytes for low level controlling
+
+HTTP timeout behaviour (curlRuntime.c, zen_request)
+
+- Connect timeout: 10 s for every request. Fails if the server can't be reached.
+- Requests WITHOUT a progress callback (get/post/put/patch/delete):
+  hard total cap of 30 s.
+- Requests WITH a progress callback (getProgress, i.e. downloads):
+  no total cap. Aborts only if speed stays below 1 KB/s for 30 s
+  (CURLOPT_LOW_SPEED_LIMIT / LOW_SPEED_TIME), so large, slow downloads
+  finish and dead connections fail fast.
+- On any curl error (including timeout or "Operation too slow"),
+  http_error() prints a NetworkError and exits the program.
+- Tested: 3.4 MB PDF (gcc.pdf) downloads correctly with the new settings.
+
+Not implemented yet: user-configurable timeouts, retry/resume.
 
 function names passing can take outer variables (allowed closure) but for direct Anonymous inlime functions cant take outside variables (closure applies)
+

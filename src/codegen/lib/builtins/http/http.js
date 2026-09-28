@@ -122,7 +122,8 @@ export class ZenHttp {
 
     const callArgs = exprs.map((e, i) => `${argTypes[i]} ${e.ptr}`).join(", ");
 
-    const llvmRet = this.IRB.getLLVMType(returnType);
+    const isListRet = ["_http_getProgress"].includes(funcName);
+    const llvmRet = isListRet ? "ptr" : this.IRB.getLLVMType(returnType);
 
     this.IRB.declareOneTime(
       funcName,
@@ -141,13 +142,17 @@ export class ZenHttp {
     this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
-      ptr: t,
-      type: returnType,
-      llvmType: llvmRet,
-      local: [],
-      global: [],
-      postOrPrefix: false,
-    };
+  ptr: t,
+  type: isListRet ? "byte" : returnType,
+  llvmType: llvmRet,
+  local: [],
+  global: [],
+  postOrPrefix: false,
+  isList: isListRet,
+  internalType: isListRet ? "List" : undefined,
+  retGeneric: isListRet ? "byte" : undefined,
+  generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
+};
   }
 
   parseCallbackSpec(spec) {

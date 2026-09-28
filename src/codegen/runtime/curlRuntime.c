@@ -134,6 +134,7 @@ static int progress_callback(void *clientp,
 
 static struct curl_slist *custom_headers = NULL;
 static long last_status = 0;
+static size_t last_body_len = 0;
 
 void _http_setHeader(const char *key, const char *value) {
     if (!key || !value) return;
@@ -187,7 +188,15 @@ static char *zen_request(const char *method, const char *url, const char *body, 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+
+if (progress && progress->callback) {
+    /* download: no total cap, abort only if the transfer stalls */
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);  /* bytes/sec */
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);     /* for 30 s */
+} else {
+    /* normal API call: hard total cap */
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+}
 
     if (progress && progress->callback) {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
@@ -218,6 +227,7 @@ static char *zen_request(const char *method, const char *url, const char *body, 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
+    last_body_len = buf.len;
     return buf.data;
 }
 
@@ -225,9 +235,22 @@ const char *_http_get(const char *url) {
     return zen_request("GET", url, NULL, NULL);
 }
 
-const char *_http_getProgress(const char *url, void (*callback)(long, long)) {
+extern void *_zen_list_new(size_t element_size);
+extern void _zen_list_push(void *list, void *value);
+
+void *_http_getProgress(const char *url, void (*callback)(long, long)) {
     HttpProgress progress = { callback, -1 };
-    return zen_request("GET", url, NULL, &progress);
+    char *body = zen_request("GET", url, NULL, &progress);
+    size_t len = last_body_len;
+
+    void *list = _zen_list_new(sizeof(int8_t));
+    for (size_t i = 0; i < len; i++) {
+        int8_t b = (int8_t)(unsigned char)body[i];
+        _zen_list_push(list, &b);
+    }
+
+    free(body);
+    return list;
 }
 
 const char *_http_post(const char *url, const char *body) {

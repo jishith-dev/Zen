@@ -1924,7 +1924,7 @@ const BUILTIN_MAP = {
   },
 
   getProgress: {
-    returnType: "string",
+    returnType: "List<byte>",
     llvmName: "_http_getProgress"
   },
 
@@ -2669,7 +2669,7 @@ const HTTP_MAP = {
 
   _http_lastStatus: ["_http_lastStatus", "int", 0, []],
 
-  _http_getProgress: ["_http_getProgress", "string", 2, ["string", "fn cb(long downloaded, long total) void"]],
+  _http_getProgress: ["_http_getProgress", "List<byte>", 2, ["string", "fn cb(long downloaded, long total) void"]],
 };
 
 const FFI_MAP = {
