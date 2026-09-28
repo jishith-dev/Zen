@@ -68,7 +68,6 @@ INSTALLER (install.sh)
   - removed keyword 'in'
   - enforce classic loop always loop (init, cond, update)
 
-  Zen internal notes
 Json.map() should pick getInt()/getLong()/getByte() based on usage, with overflow checks for each (int overflow check, byte overflow check, etc.) — not just default to one rule for all numeric values.
 Byte is signed (-128 to 127) — document this explicitly.
 Scientific notation (1e300, 1.5e-10) is now supported in numeric literals.
@@ -78,3 +77,7 @@ Hex + type suffix requires an underscore before the suffix letter, since B is a 
 Decimal literal suffixes (20B, 42L) are unaffected — no ambiguity there, unchanged behavior.
 Scientific notation (1e300, 1.5e-10, 2E+5) now supported for double literals, both in source parsing and in formatDouble's LLVM-output formatting (fixes invalid 1e-9-style constants that lack a required decimal point).
 Byte is signed, -128 to 127; hex/decimal values outside that range wrap via two's complement when suffixed as byte.
+
+Added \e and \xHH string escapes (via a new readEscape() in the lexer), plus ESC handling in toLLVMString, so ANSI escape codes like "\e[31m" work in Zen strings.
+
+added new http namespace method http.getProgress(url, callback) void return, params - percentage (int) - pending

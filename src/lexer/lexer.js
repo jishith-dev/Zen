@@ -58,6 +58,24 @@ export class Lexer {
     });
   }
 
+  readEscape() {
+  const c = this.currentChar;
+  switch (c) {
+    case "n": return "\n";
+    case "t": return "\t";
+    case "r": return "\r";
+    case "e": return "\x1b";
+    case "x": {
+      const hex = this.source.substr(this.pos + 1, 2);
+      if (!/^[0-9a-fA-F]{2}$/.test(hex)) return "x";
+      this.advance();
+      this.advance();
+      return String.fromCharCode(parseInt(hex, 16));
+    }
+    default: return c;
+  }
+  }
+
   tokenize() {
     while (this.currentChar !== null) {
       // newline
@@ -398,168 +416,6 @@ export class Lexer {
     }
     return result;
   }
-  /*
-  number() {
-    let result = "";
-    let hasDot = false;
-
-    // HEX
-    if (this.currentChar === "0" && this.peek() === "x") {
-      this.advance(); // 0
-      this.advance(); // x
-
-      let hex = "";
-
-      while (
-        this.currentChar !== null &&
-        /[0-9a-fA-F]/.test(this.currentChar)
-      ) {
-        hex += this.currentChar;
-        this.advance();
-      }
-
-      if (hex.length === 0) {
-        this.IRB.emitError(
-          "SyntaxError",
-          "Invalid hex literal",
-          this.lineAndColumn(),
-        );
-      }
-
-      let type = "int";
-
-      // L is not a valid hex digit, so it is already outside `hex`
-      if (this.currentChar === "L") {
-        type = "long";
-        this.advance();
-      }
-      // B IS a valid hex digit, so check the final hex character
-      else if (hex.endsWith("B")) {
-        type = "byte";
-        hex = hex.slice(0, -1);
-
-        if (hex.length === 0) {
-          this.IRB.emitError(
-            "SyntaxError",
-            "Invalid hex literal",
-            this.lineAndColumn(),
-          );
-        }
-      }
-
-      // Anything alphabetic after the suffix is invalid
-      if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
-        this.IRB.emitError(
-          "SyntaxError",
-          `Invalid numeric literal`,
-          this.lineAndColumn(),
-        );
-      }
-
-      return {
-        value: parseInt(hex, 16),
-        type,
-      };
-    }
-
-    // DOUBLE
-    while (
-      this.currentChar !== null &&
-      (/\d/.test(this.currentChar) || this.currentChar === ".")
-    ) {
-      if (this.currentChar === ".") {
-        if (hasDot) {
-          break;
-        }
-
-        hasDot = true;
-      }
-
-      result += this.currentChar;
-      this.advance();
-    }
-
-    if (result.startsWith(".")) {
-      result = "0" + result;
-    }
-
-    // SCIENTIFIC NOTATION: 1e300, 1.5e-10, 2E+5, 6.022e23
-    if (this.currentChar === "e" || this.currentChar === "E") {
-      const savedPos = this.pos;
-      const savedLine = this.line;
-      const savedColumn = this.column;
-      const savedChar = this.currentChar;
-
-      let expStr = this.currentChar;
-      this.advance(); // consume 'e' / 'E'
-
-      if (this.currentChar === "+" || this.currentChar === "-") {
-        expStr += this.currentChar;
-        this.advance();
-      }
-
-      if (this.currentChar !== null && /\d/.test(this.currentChar)) {
-        while (this.currentChar !== null && /\d/.test(this.currentChar)) {
-          expStr += this.currentChar;
-          this.advance();
-        }
-
-        result += expStr;
-        hasDot = true; 
-      } else {
-        // not a real exponent (e.g. 'e' starts an identifier) — back out
-        this.pos = savedPos;
-        this.line = savedLine;
-        this.column = savedColumn;
-        this.currentChar = savedChar;
-      }
-    }
-
-    // DOUBLE
-    if (hasDot) {
-      if (
-        this.currentChar === "L" ||
-        this.currentChar === "B" ||
-        /[a-zA-Z_]/.test(this.currentChar || "")
-      ) {
-        this.IRB.emitError(
-          "SyntaxError",
-          `Invalid floating-point literal: '${result}${this.currentChar}'`,
-          this.lineAndColumn(),
-        );
-      }
-
-      return {
-        value: result,
-        type: "double",
-      };
-    }
-
-    // INTEGER SUFFIX
-    let type = "int";
-
-    if (this.currentChar === "L") {
-      type = "long";
-      this.advance();
-    } else if (this.currentChar === "B") {
-      type = "byte";
-      this.advance();
-    }
-
-    if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
-      this.IRB.emitError(
-        "SyntaxError",
-        `Invalid numeric literal: '${result}${this.currentChar}'`,
-        this.lineAndColumn(),
-      );
-    }
-
-    return {
-      value: result,
-      type,
-    };
-  }
-  */
 
 number() {
     let result = "";
@@ -732,13 +588,7 @@ number() {
     while (this.currentChar !== null && this.currentChar !== quoteType) {
       if (this.currentChar === "\\") {
         this.advance();
-        if (this.currentChar === "n") result += "\n";
-        else if (this.currentChar === "t") result += "\t";
-        else if (this.currentChar === "\\") result += "\\";
-        else if (this.currentChar === "r") result += "\r";
-        else if (this.currentChar === '"') result += '"';
-        else if (this.currentChar === "'") result += "'";
-        else result += this.currentChar;
+        result += this.readEscape();
       } else {
         result += this.currentChar;
       }

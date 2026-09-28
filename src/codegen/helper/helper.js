@@ -1418,7 +1418,7 @@ const location =
           if (expected.params.length !== actual.params.length) {
             this.emitError(
               "TypeError",
-              `Callback '${actual.name}' does not match parameter '${params[i].name}': expected ${expected.params.length} parameter(s), got ${actual.params.length}`,
+              `Callback '${actual.name ?? actual.functionName}' does not match parameter '${params[i].name}': expected ${expected.params.length} parameter(s), got ${actual.params.length}`,
               node,
             );
           }
@@ -1433,7 +1433,7 @@ const location =
             if (expectedType !== actualType) {
               this.emitError(
                 "TypeError",
-                `Callback '${actual.name}' does not match parameter '${params[i].name}': parameter ${j + 1} expects '${expectedType}', got '${actualType}'`,
+                `Callback '${actual.name ?? actual.functionName}' does not match parameter '${params[i].name}': parameter ${j + 1} expects '${expectedType}', got '${actualType}'`,
                 node,
               );
             }
@@ -1445,7 +1445,7 @@ const location =
           if (expectedReturn !== actualReturn) {
             this.emitError(
               "TypeError",
-              `Callback '${actual.name}' does not match parameter '${params[i].name}': expected return type '${expectedReturn}', got '${actualReturn}'`,
+              `Callback '${actual.name ?? actual.functionName}' does not match parameter '${params[i].name}': expected return type '${expectedReturn}', got '${actualReturn}'`,
               node,
             );
           }
@@ -1709,6 +1709,10 @@ entry:
 
         case "\\":
           result += "\\5C";
+          break;
+
+        case "\x1b":
+          result += "\\1B";
           break;
 
         default:
