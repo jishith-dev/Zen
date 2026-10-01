@@ -1040,8 +1040,13 @@ getFunction(name, node) {
       this.hadError = true;
       this.printError(this.errors);
     } else {
+
+      const mName = this.moduleName.includes(".zen") ? this.moduleName : `${this.moduleName}.zen`
+    
+    const name = this.isPkg ? this.moduleName : mName;
+      
       throw new Error(
-        `[Zen Error] ${type}: ${finalMessage} at ${this.moduleName}.zen:line ${loc.line}:${loc.column}\n \n Hint: ${hint}\n \n ${lineConstruct?.text}\n`,
+        `[Zen Error] ${type}: ${finalMessage} at ${name}:line ${loc.line}:${loc.column}\n \n Hint: ${hint}\n \n ${lineConstruct?.text}\n`,
       );
     }
   }
@@ -4045,183 +4050,237 @@ case "avg": {
     );
   }
 
-  emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr = null) {
-    if (structName === "Map") {
-      return this.emitMapLiteral(mapLiteralNode, globalScope);
+getGenericTypeName(generic) {
+  if (!generic) return "?";
+  if (generic.type === "List") {
+    return `List<${this.getGenericTypeName(generic.generic)}>`;
+  }
+  return generic.type;
+}
+
+emitNestedListLiteral(arrayNode, elementGeneric, fullGeneric, ctx = null) {
+  this.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64, i32, i32 }");
+  this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
+  this.declareOneTime("zen_list_push", "declare ptr @_zen_list_push(ptr, ptr)");
+
+  const typeName = this.getGenericTypeName(fullGeneric);
+  const where = ctx
+    ? `field '${ctx.fieldName}' of type '${typeName}' in struct '${ctx.structName}'`
+    : `list of type '${typeName}'`;
+
+  const elemType = elementGeneric?.generic;
+  if (!elemType) {
+    this.emitError("TypeError", `Invalid list type for ${where}`, arrayNode);
+  }
+
+  const isNestedList = elemType.type === "List";
+  const elementSize = isNestedList || elemType.type === "Map" ? 8 : this.sizeOf(elemType.type);
+  
+  const listPtr = this.newTemp();
+  this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
+
+  const pushPtrValue = (valuePtr) => {
+    const tmp = this.newTemp();
+    this.emitAlloca(tmp, "ptr");
+    this.emit(`store ptr ${valuePtr}, ptr ${tmp}`);
+    this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+  };
+
+  for (const el of arrayNode.elements) {
+    // ---- inner list ----
+    if (el.type === "ARRAY") {
+      if (!isNestedList) {
+        this.emitError("TypeError", `Cannot assign list to ${where}`, el);
+      }
+      const innerListPtr = this.emitNestedListLiteral(
+        el,
+        elemType,
+        fullGeneric,
+        ctx,
+      );
+      pushPtrValue(innerListPtr);
+      continue;
     }
 
-    const llvmType = `%${structName}`;
-    let structPtr = this.newTemp();
+    // ---- struct literal ----
+    if (el.type === "STRUCT_LITERAL") {
+      if (isNestedList || !this.hasStruct(elemType.type)) {
+        this.emitError("TypeError", `Cannot assign struct to ${where}`, el);
+      }
+      const inner = this.emitStructLiteral(elemType.type, el);
+      let innerPtr = inner.ptr;
+      if (inner.needsLoad) {
+        const t = this.newTemp();
+        this.emit(`${t} = load ptr, ptr ${innerPtr}`);
+        innerPtr = t;
+      }
+      this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr})`);
+      continue;
+    }
 
-    this.declareOneTime("ZenList", "%ZenList = type { ptr, i32, i32, i64, i32, i32 }");
-    this.declareOneTime("zen_list_new", "declare ptr @_zen_list_new(i64)");
-    this.declareOneTime(
-      "zen_list_push",
-      "declare ptr @_zen_list_push(ptr, ptr)",
+    //  scalar or exp
+    const expr = this.expr.handleExpression(el);
+    if (isNestedList || expr.type !== elemType.type) {
+      this.emitError(
+        "TypeError",
+        `Cannot assign list element of type '${expr.type}' to ${where}`,
+        el,
+      );
+    }
+    this.emitExpr(expr);
+    const tmp = this.newTemp();
+    this.emitAlloca(tmp, expr.llvmType);
+    this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
+    this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+  }
+
+  return listPtr;
+}
+
+emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr = null) {
+  if (structName === "Map") {
+    return this.emitMapLiteral(mapLiteralNode, globalScope);
+  }
+
+  const llvmType = `%${structName}`;
+  const structInfo = this.getStruct(structName, mapLiteralNode); 
+
+  
+  let structPtr;
+  if (existingPtr) {
+    structPtr = existingPtr;
+  } else if (globalScope) {
+    structPtr = this.newGlobalTemp();
+    this.globals.push(`${structPtr} = global ${llvmType} zeroinitializer`);
+  } else {
+    structPtr = this.newTemp();
+    this.emitAlloca(structPtr, llvmType);
+  }
+
+  const seen = new Set();
+
+  for (const prop of mapLiteralNode.properties) {
+    const field = structInfo.layout.find((f) => f.name === prop.key);
+
+    if (!field) {
+      this.emitError(
+        "ReferenceError",
+        `Unknown field '${prop.key}' in struct '${structName}'`,
+        mapLiteralNode,
+      );
+    }
+
+    if (seen.has(prop.key)) {
+      this.emitError(
+        "ReferenceError",
+        `Duplicate field '${prop.key}' in struct literal '${structName}'`,
+        prop.value,
+      );
+    }
+    seen.add(prop.key);
+
+    const value = prop.value;
+    const isListField = !!field.isList || field.generic?.type === "List";
+    const fieldTypeName = isListField
+      ? this.getGenericTypeName(field.generic)
+      : field.type;
+    const where = `field '${prop.key}' of type '${fieldTypeName}' in struct '${structName}'`;
+
+    const fieldPtr = this.newTemp();
+    this.emit(
+      `${fieldPtr} = getelementptr inbounds ${llvmType}, ptr ${structPtr}, i32 0, i32 ${field.index}`,
     );
 
-    if (existingPtr) {
-      structPtr = existingPtr;
-    }
-    else if (globalScope) {
-      structPtr = this.newGlobalTemp();
-      this.globals.push(`${structPtr} = global ${llvmType} zeroinitializer`);
-    } else {
-      structPtr = this.newTemp();
-      this.emitAlloca(structPtr, llvmType);
-    }
-
-    const structInfo = this.getStruct(structName);
-
-    for (const prop of mapLiteralNode.properties) {
-      const field = structInfo.layout.find((f) => f.name === prop.key);
-
-      if (!field) {
-        this.emitError(
-          "ReferenceError",
-          `Unknown field '${prop.key}' in struct '${structName}'`,
-          mapLiteralNode,
-        );
+    // [ ... ] 
+    if (value.type === "ARRAY") {
+      if (!isListField) {
+        this.emitError("TypeError", `Cannot assign list to ${where}`, value);
       }
-
-      const fieldPtr = this.newTemp();
-
-      this.emit(
-        `${fieldPtr} = getelementptr inbounds ${llvmType}, ptr ${structPtr}, i32 0, i32 ${field.index}`,
+      const listPtr = this.emitNestedListLiteral(
+        value,
+        field.generic,
+        field.generic,
+        { structName, fieldName: prop.key },
       );
-
-      // NESTED LIST FIELD
-      if (prop.value.type === "ARRAY") {
-        const isNestedList = field.generic?.generic?.type === "List";
-
-        const elementSize = isNestedList
-          ? 8
-          : this.sizeOf(this.getDeepestGeneric(field.generic));
-
-        const listPtr = this.newTemp();
-        this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
-
-        for (const el of prop.value.elements) {
-          if (el.type === "ARRAY") {
-            const innerListPtr = this.emitNestedListLiteral(
-              el,
-              field.generic.generic,
-            );
-            const tmp = this.newTemp();
-            this.emitAlloca(tmp, "ptr");
-            this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
-            this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-          } else if (el.type === "STRUCT_LITERAL") {
-            const innerStructName = this.getDeepestGeneric(field.generic);
-            const innerPtr = this.emitStructLiteral(innerStructName, el);
-
-            if (innerPtr.needsLoad) {
-              const t = this.newTemp();
-              this.emit(`${t} = load ptr, ptr ${innerPtr.ptr}`);
-              innerPtr.ptr = t;
-            }
-            this.emit(
-              `call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr.ptr})`,
-            );
-          } else {
-            const expr = this.expr.handleExpression(el);
-            this.emitExpr(expr);
-            const tmp = this.newTemp();
-            this.emitAlloca(tmp, expr.llvmType);
-            this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
-            this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-          }
-        }
-
-        this.emit(`store ptr ${listPtr}, ptr ${fieldPtr}`);
-        continue;
-      }
-
-      if (prop.value.type === "STRUCT_LITERAL") {
-  this.emitStructLiteral(
-    field.type,
-    prop.value,
-    false,
-    fieldPtr,
-  );
-
-  continue;
-      }
-
-      if (!field.isList && field.type !== "Ptr" && this.hasStruct(field.type)) {
-        const expr = this.expr.handleExpression(prop.value, false, structName);
-        this.emitExpr(expr);
-        this.declareOneTime(
-          "llvm.memcpy.p0.p0.i64",
-          "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
-        );
-        const size = this.sizeOf(field.type);
-        this.emit(
-          `call void @llvm.memcpy.p0.p0.i64(ptr ${fieldPtr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`,
-        );
-        continue;
-      }
-
-      // NORMAL FIELD
-      const expr = this.expr.handleExpression(prop.value, false, structName);
-      this.emitExpr(expr);
-      this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
+      this.emit(`store ptr ${listPtr}, ptr ${fieldPtr}`);
+      continue;
     }
 
-    return {
-      ptr: structPtr,
-      needsLoad: false,
-    };
-  }
+    // { ... } 
+    if (value.type === "STRUCT_LITERAL") {
+      if (isListField) {
+        this.emitError("TypeError", `Cannot assign struct to ${where}`, value);
+      }
 
-  emitNestedListLiteral(arrayNode, elementGeneric) {
-    const isNestedList = elementGeneric?.type === "List";
-
-    const elementSize = isNestedList
-      ? 8 // pointer to inner list
-      : this.sizeOf(
-          elementGeneric?.type ??
-            this.getDeepestGeneric({ generic: elementGeneric }),
-        );
-
-    const listPtr = this.newTemp();
-    this.emit(`${listPtr} = call ptr @_zen_list_new(i64 ${elementSize})`);
-
-    for (const el of arrayNode.elements) {
-      if (el.type === "ARRAY") {
-        // recurse another level deeper
-        const innerListPtr = this.emitNestedListLiteral(
-          el,
-          elementGeneric.generic,
-        );
-        const tmp = this.newTemp();
-        this.emitAlloca(tmp, "ptr");
-        this.emit(`store ptr ${innerListPtr}, ptr ${tmp}`);
-        this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
-      } else if (el.type === "STRUCT_LITERAL") {
-        const structName = elementGeneric?.type;
-        const innerPtr = this.emitStructLiteral(structName, el);
-
-        if (innerPtr.needsLoad) {
+      // Map field will always go through emitMapLiteral
+      if (field.type === "Map") {
+        const res = this.emitMapLiteral(value, false);
+        let mapPtr = typeof res === "string" ? res : res.ptr;
+        if (res && res.needsLoad) {
           const t = this.newTemp();
-          this.emit(`${t} = load ptr, ptr ${innerPtr.ptr}`);
-          innerPtr.ptr = t;
+          this.emit(`${t} = load ptr, ptr ${mapPtr}`);
+          mapPtr = t;
         }
-        this.emit(
-          `call void @_zen_list_push(ptr ${listPtr}, ptr ${innerPtr.ptr})`,
-        );
-      } else {
-        const expr = this.expr.handleExpression(el);
-        this.emitExpr(expr);
-        const tmp = this.newTemp();
-        this.emitAlloca(tmp, expr.llvmType);
-        this.emit(`store ${expr.llvmType} ${expr.ptr}, ptr ${tmp}`);
-        this.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`);
+        this.emit(`store ptr ${mapPtr}, ptr ${fieldPtr}`);
+        continue;
       }
+
+      if (!this.hasStruct(field.type)) {
+        this.emitError("TypeError", `Cannot assign struct to ${where}`, value);
+      }
+
+      // build nested struct in place
+      this.emitStructLiteral(field.type, value, false, fieldPtr);
+      continue;
     }
 
-    return listPtr;
+    const expr = this.expr.handleExpression(value, false, structName);
+
+    if (isListField && !expr.isList) {
+      this.emitError(
+        "TypeError",
+        `Cannot assign type '${expr.type}' to ${where}`,
+        value,
+      );
+    }
+
+    if (!isListField && field.type !== "Ptr" && expr.isList) {
+      this.emitError(
+        "TypeError",
+        `Cannot assign list to ${where}`,
+        value,
+      );
+    }
+
+    if (expr.type !== field.type) {
+      this.emitError(
+        "TypeError",
+        `Cannot assign type '${expr.type}' to ${where}`,
+        value,
+      );
+    }
+
+    this.emitExpr(expr);
+
+    if (!isListField && field.type !== "Ptr" && this.hasStruct(field.type)) {
+      this.declareOneTime(
+        "llvm.memcpy.p0.p0.i64",
+        "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)",
+      );
+      const size = this.sizeOf(field.type);
+      this.emit(
+        `call void @llvm.memcpy.p0.p0.i64(ptr ${fieldPtr}, ptr ${expr.ptr}, i64 ${size}, i1 false)`,
+      );
+      continue;
+    }
+
+    // scalar or ptr
+    this.emit(`store ${field.llvmType} ${expr.ptr}, ptr ${fieldPtr}`);
   }
+
+  return { ptr: structPtr, needsLoad: false };
+}
+
 
   loadFile(source, node) {
     if (!source) {
@@ -4755,6 +4814,7 @@ this.declareOneTime(
       isStruct,
       ownerId: method.returnsOwned ? this.genOwnerId() : ownerId
     };
+      
   }
 
   handleBuiltinStructProp(structName, propName, object, basePtr, node) {
@@ -4862,149 +4922,201 @@ this.declareOneTime(
 
   // debug.pretty() helper
 
-  newGlobalStringInto(buffer, str) {
-    this.declareOneTime("_str_dup", "declare ptr @_str_dup(ptr)");
+  globalStringPtr(str) {
+  let globalName;
 
-    let globalName, len;
-
-    if (this.cachedStrings.has(str)) {
-      ({ globalName, len } = this.cachedStrings.get(str));
-    } else {
-      const escaped = this.escapeLLVMString(str);
-      globalName = this.strTemp();
-      len = this.utf8LenWithNull(str);
-      this.globals.push(
-        `${globalName} = private unnamed_addr constant [${len} x i8] c"${escaped}\\00"`,
-      );
-      this.cachedStrings.set(str, { globalName, len });
-    }
-
-    const tmp = this.newTemp();
-    const value = this.newTemp();
-
-    buffer.push(
-      `${tmp} = getelementptr inbounds [${len} x i8], ptr ${globalName}, i64 0, i64 0`,
+  if (this.cachedStrings.has(str)) {
+    ({ globalName } = this.cachedStrings.get(str));
+  } else {
+    const escaped = this.escapeLLVMString(str);
+    globalName = this.strTemp();
+    const len = this.utf8LenWithNull(str);
+    this.globals.push(
+      `${globalName} = private unnamed_addr constant [${len} x i8] c"${escaped}\\00"`,
     );
+    this.cachedStrings.set(str, { globalName, len });
+  }
 
-    this.emit(`${value} = call ptr @_str_dup(ptr ${tmp})`);
-    return value;
+  return globalName; 
   }
 
   getOrBuildStructPrinter(structName) {
     this._structPrinters ??= {};
-    if (this._structPrinters[structName]) {
-      return this._structPrinters[structName];
-    }
+    this._structBodies ??= {};
+    if (this._structPrinters[structName]) return this._structPrinters[structName];
 
-    const fnName = `_debug_pretty_struct_${structName}`;
-    this._structPrinters[structName] = fnName;
+    const fnName = `_debug_pretty_struct_${structName}`; 
+    const bodyName = `${fnName}_body`; 
+    this._structPrinters[structName] = fnName; 
+    this._structBodies[structName] = bodyName;
 
     this.declareOneTime("printf", "declare i32 @printf(ptr, ...)");
-    this.declareOneTime(
-      "_debug_print_indent",
-      "declare void @_debug_print_indent(i32)",
-    );
+    this.declareOneTime("_debug_print_indent", "declare void @_debug_print_indent(i32)");
 
     const { layout } = this.getStruct(structName);
-    const fmtOf = { int: "%d", bool: "%s", double: "%g", string: '"%s"' };
-
+    const g = (s) => this.globalStringPtr(s);
     const buf = [];
-    buf.push(`define void @${fnName}(ptr %s, i32 %indent) {`);
+    const pf = (fmt, ...args) =>
+      buf.push(
+        `  call i32 (ptr, ...) @printf(ptr ${g(fmt)}${args.map((a) => `, ${a}`).join("")})`,
+      );
+
+    const guarded = (i, ptrVal, body) => {
+      buf.push(`  %n${i} = icmp eq ptr ${ptrVal}, null`);
+      buf.push(`  br i1 %n${i}, label %f${i}_null, label %f${i}_ok`);
+      buf.push(`f${i}_null:`);
+      pf("null");
+      buf.push(`  br label %f${i}_end`);
+      buf.push(`f${i}_ok:`);
+      body();
+      buf.push(`  br label %f${i}_end`);
+      buf.push(`f${i}_end:`);
+    };
+
+    buf.push(`define void @${bodyName}(ptr %s, i32 %indent) {`);
     buf.push(`entry:`);
     buf.push(`  %fieldIndent = add i32 %indent, 2`);
 
-    const openStr = this.newGlobalStringInto(buf, "{\n");
-    buf.push(`  call i32 (ptr, ...) @printf(ptr ${openStr})`);
+    if (layout.length === 0) {
+      pf("{}");
+    } else {
+      pf("{\n");
 
-    layout.forEach((field, i) => {
-      const fieldPtr = `%f${i}`;
-      buf.push(
-        `  ${fieldPtr} = getelementptr inbounds %${structName}, ptr %s, i32 0, i32 ${field.index}`,
-      );
-      buf.push(`  call void @_debug_print_indent(i32 %fieldIndent)`);
+      layout.forEach((field, i) => {
+        const fp = `%f${i}`;
+        buf.push(
+          `  ${fp} = getelementptr inbounds %${structName}, ptr %s, i32 0, i32 ${field.index}`,
+        );
+        buf.push(`  call void @_debug_print_indent(i32 %fieldIndent)`);
+        pf(`${field.name}: `);
 
-      const labelStr = this.newGlobalStringInto(buf, `${field.name}: `);
-      buf.push(`  call i32 (ptr, ...) @printf(ptr ${labelStr})`);
+        if (field.isList) {
+          const depth = this.getListDepth(field.generic);
+          const deepest = this.getDeepestGeneric(field.generic);
+          buf.push(`  %l${i} = load ptr, ptr ${fp}`);
 
-      let isNestedStruct = false;
-
-      if (this.hasStruct(field.type)) {
-        isNestedStruct = true;
-        const nested = this.getOrBuildStructPrinter(field.type);
-        buf.push(`  call void @${nested}(ptr ${fieldPtr}, i32 %fieldIndent)`);
-      } else if (field.isList) {
-        const depth = this.getListDepth(field.generic);
-        const deepestType = this.getDeepestGeneric(field.generic);
-        const loaded = `%l${i}`;
-        buf.push(`  ${loaded} = load ptr, ptr ${fieldPtr}`);
-
-        if (this.hasStruct(deepestType)) {
-          const nested = this.getOrBuildStructPrinter(deepestType);
+          guarded(i, `%l${i}`, () => {
+            if (deepest === "Map") {
+  this.emitError(
+    "TypeError",
+    `debug.pretty() does not support List<Map> in field '${field.name}' of struct '${structName}'`, 
+  );
+            }
+            else if (this.hasStruct(deepest)) {
+              const si = this.getStruct(deepest);
+              if (si?.isBuiltin && si?.isOpaque) {
+                this.emitError(
+                  "TypeError",
+                  `debug.pretty() does not support List<${deepest}> in field '${field.name}'`,
+                );
+              }
+              const nested = this.getOrBuildStructPrinter(deepest);
+              this.declareOneTime(
+                "_debug_pretty_list_struct_impl",
+                "declare void @_debug_pretty_list_struct_impl(ptr, i32, ptr)",
+              );
+              buf.push(
+                `  call void @_debug_pretty_list_struct_impl(ptr %l${i}, i32 ${depth}, ptr @${nested})`,
+              );
+            } else {
+              this.declareOneTime(
+                "_debug_pretty_list_impl",
+                "declare void @_debug_pretty_list_impl(ptr, i32, i32)",
+              );
+              buf.push(
+                `  call void @_debug_pretty_list_impl(ptr %l${i}, i32 ${depth}, i32 ${this.getListTypeCode(deepest)})`,
+              );
+            }
+          });
+        }
+        // ---- MAP ----
+        else if (field.type === "Map") {
           this.declareOneTime(
-            "_debug_pretty_list_struct_impl",
-            "declare void @_debug_pretty_list_struct_impl(ptr, i32, ptr)",
+            "_debug_pretty_map",
+            "declare void @_debug_pretty_map(ptr, i32)",
           );
-          buf.push(
-            `  call void @_debug_pretty_list_struct_impl(ptr ${loaded}, i32 ${depth}, ptr @${nested})`,
-          );
-        } else {
-          this.declareOneTime(
-            "_debug_pretty_list_impl",
-            "declare void @_debug_pretty_list_impl(ptr, i32, i32)",
-          );
-          buf.push(
-            `  call void @_debug_pretty_list_impl(ptr ${loaded}, i32 ${depth}, i32 ${TYPE_MAP[deepestType]})`,
-          );
+          buf.push(`  %m${i} = load ptr, ptr ${fp}`);
+          guarded(i, `%m${i}`, () => {
+            buf.push(
+              `  call void @_debug_pretty_map(ptr %m${i}, i32 %fieldIndent)`,
+            );
+          });
         }
-      } else {
-        const loaded = `%v${i}`;
-        buf.push(`  ${loaded} = load ${field.llvmType}, ptr ${fieldPtr}`);
-
-        if (field.type === "string") {
-          const fmtStr = this.newGlobalStringInto(buf, '"%s"');
-          buf.push(
-            `  call i32 (ptr, ...) @printf(ptr ${fmtStr}, ptr ${loaded})`,
-          );
-        } else if (field.type === "bool") {
-          const trueStr = this.newGlobalStringInto(buf, "true");
-          const falseStr = this.newGlobalStringInto(buf, "false");
-          const sel = `%b${i}`;
-          buf.push(
-            `  ${sel} = select i1 ${loaded}, ptr ${trueStr}, ptr ${falseStr}`,
-          );
-          const fmtStr = this.newGlobalStringInto(buf, "%s");
-          buf.push(`  call i32 (ptr, ...) @printf(ptr ${fmtStr}, ptr ${sel})`);
-        } else {
-          const fmtStr = this.newGlobalStringInto(buf, fmtOf[field.type]);
-          buf.push(
-            `  call i32 (ptr, ...) @printf(ptr ${fmtStr}, ${field.llvmType} ${loaded})`,
-          );
+        // ---- raw pointer ----
+        else if (field.type === "Ptr") {
+          buf.push(`  %v${i} = load ptr, ptr ${fp}`);
+          pf("%p", `ptr %v${i}`);
         }
-      }
-
-      if (isNestedStruct) {
-        if (i !== layout.length - 1) {
-          const commaStr = this.newGlobalStringInto(buf, ",\n");
-          buf.push(`  call i32 (ptr, ...) @printf(ptr ${commaStr})`);
+        // ---- struct fields ----
+        else if (this.hasStruct(field.type)) {
+          const si = this.getStruct(field.type);
+          if (si?.isBuiltin && si?.isOpaque) {
+            pf(`<${field.type}>`); // Json, Tcp, HttpServer, ...
+          } else {
+            this.getOrBuildStructPrinter(field.type);
+            buf.push(
+              `  call void @${this._structBodies[field.type]}(ptr ${fp}, i32 %fieldIndent)`,
+            );
+          }
         }
-      } else {
-        const suffix = i === layout.length - 1 ? "\n" : ",\n";
-        const suffixStr = this.newGlobalStringInto(buf, suffix);
-        buf.push(`  call i32 (ptr, ...) @printf(ptr ${suffixStr})`);
-      }
-    });
+        // scalars 
+        else {
+          const v = `%v${i}`;
+          buf.push(`  ${v} = load ${field.llvmType}, ptr ${fp}`);
 
-    buf.push(`  call void @_debug_print_indent(i32 %indent)`);
-    const closeStr = this.newGlobalStringInto(buf, "}\n");
-    buf.push(`  call i32 (ptr, ...) @printf(ptr ${closeStr})`);
+          switch (field.type) {
+            case "string":
+              pf('"%s"', `ptr ${v}`);
+              break;
+            case "bool":
+              buf.push(
+                `  %b${i} = select i1 ${v}, ptr ${g("true")}, ptr ${g("false")}`,
+              );
+              pf("%s", `ptr %b${i}`);
+              break;
+            case "int":
+              pf("%d", `i32 ${v}`);
+              break;
+            case "long":
+              pf("%lld", `i64 ${v}`);
+              break;
+            case "byte":
+              buf.push(`  %z${i} = zext i8 ${v} to i32`);
+              pf("%d", `i32 %z${i}`);
+              break;
+            case "double":
+              pf("%g", `double ${v}`);
+              break;
+            default:
+              this.emitError(
+                "TypeError",
+                `debug.pretty() cannot print field '${field.name}' of type '${field.type}'`,
+              );
+          }
+        }
+
+        pf(i === layout.length - 1 ? "\n" : ",\n");
+      });
+
+      buf.push(`  call void @_debug_print_indent(i32 %indent)`);
+      pf("}");
+    }
+
+    buf.push(`  ret void`);
+    buf.push(`}`);
+
+    buf.push(`define void @${fnName}(ptr %s, i32 %indent) {`);
+    buf.push(`entry:`);
+    buf.push(`  call void @${bodyName}(ptr %s, i32 %indent)`);
+    buf.push(`  call i32 (ptr, ...) @printf(ptr ${g("\n")})`);
     buf.push(`  ret void`);
     buf.push(`}`);
 
     this.functionBuff.push(buf.join("\n"));
-
     return fnName;
   }
 
+  
   emitMapLiteral(mapLiteral, globalScope) {
     this.declareOneTime("zen_map_new", "declare ptr @_zen_map_new()");
 

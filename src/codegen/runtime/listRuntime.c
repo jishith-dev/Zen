@@ -398,22 +398,25 @@ ZenList *_fs_readFileBytes(const char *path) {
   return list;
 }
 
-void _fs_writeFileBytes(const char *path, ZenList *list) {
+int _fs_writeFileBytes(const char *path, ZenList *list) {
+    FILE *f = fopen(path, "wb");
 
-  FILE *f = fopen(path, "wb");
+    if (!f) {
+        return 1;
+    }
 
-  if (!f) {
-    return;
-  }
+    for (int i = 0; i < list->size; i++) {
+        int8_t b = *(int8_t *)_zen_list_get(list, i);
 
-  for (int i = 0; i < list->size; i++) {
+        if (fwrite(&b, 1, 1, f) != 1) {
+            fclose(f);
+            return 1;
+        }
+    }
 
-    int8_t b = *(int8_t *)_zen_list_get(list, i);
+    fclose(f);
 
-    fwrite(&b, 1, 1, f);
-  }
-
-  fclose(f);
+    return 0;
 }
 
 bool _zen_list_contains_primitive(ZenList *list, void *value) {

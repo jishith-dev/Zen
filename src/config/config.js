@@ -1477,6 +1477,11 @@ const BUILTIN_MAP = {
     llvmName: "Bool",
   },
 
+  matchRegex: {
+    returnType: "bool",
+    llvmName: "matchRegex"
+  },
+
   String: {
     returnType: "string",
     llvmName: "String",
@@ -1608,7 +1613,7 @@ const BUILTIN_MAP = {
   },
 
   writeFileBytes: {
-    returnType: "void",
+    returnType: "int",
     llvmName: "_fs_writeFileBytes",
   },
 
@@ -2574,7 +2579,7 @@ const FILE_MAP = {
 
   _fs_writeFileBytes: [
     "_fs_writeFileBytes",
-    "void",
+    "int",
     2,
     ["string", "List<byte>"],
   ],

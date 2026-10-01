@@ -100,3 +100,8 @@ Not implemented yet: user-configurable timeouts, retry/resume.
 
 function names passing can take outer variables (allowed closure) but for direct Anonymous inlime functions cant take outside variables (closure applies)
 
+changed fs.writeFileBytes return void to int (success code)
+
+any one operand is string with + will make non string operand string and perform concat
+
+debug.pretty() need rewrite of printer - pending

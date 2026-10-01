@@ -127,8 +127,7 @@ export class DEBUG {
     }
 
     this.IRB.emitExpr(expr);
-
-    // Struct
+    
     // Struct
     if (expr.isStruct) {
       const structInfo = this.IRB.getStruct(expr.type);

@@ -687,14 +687,18 @@ int _fs_writeFile(const char* path, const char* content) {
     FILE* f = fopen(path, "wb");
 
     if (!f) {
-        return 0;
+        return 1;
     }
 
-    size_t written = fwrite(content, 1, strlen(content), f);
+    size_t length = strlen(content);
+
+    if (fwrite(content, 1, length, f) != length) {
+        fclose(f);
+        return 1;
+    }
 
     fclose(f);
-
-    return written > 0 ? 0 : 1;
+    return 0;
 }
 
 int _fs_appendFile(const char *path, const char *content) {
