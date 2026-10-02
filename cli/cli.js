@@ -2,6 +2,9 @@ import { Package } from "../pkg/package.js";
 import { Compiler } from "../tooling/tooling.js";
 import { Info } from "../tooling/info/info.js";
 import { Tests } from "../tooling/tests/tests.js";
+import os from "os";
+import path from "path";
+import fs from "fs";
 
 const VALID_COMMANDS = new Set([
   "run",
@@ -28,7 +31,7 @@ const VALID_COMMANDS = new Set([
   "-h",
   "help",
   "--version",
-  "-v",
+  "--v",
   "version",
   "update",
   "fmt",
@@ -37,7 +40,7 @@ const VALID_COMMANDS = new Set([
   "installed",
   "read",
   "info",
-  "tests",
+  "test",
   "upgrade"
 ]);
 
@@ -82,7 +85,7 @@ const INFO_COMMANDS = new Set([
 ]);
 
 const TEST_COMMANDS = new Set([
-  "tests"
+  "test"
 ]);
 
 function help() {
@@ -135,7 +138,7 @@ Other:
   zen info namespace <name> --<methodName>
   zen info global <name> 
   zen info global <struct> --<methodName>
-  zen tests
+  zen test
 
 Optimization Levels:
   -O0    No optimization
@@ -170,11 +173,39 @@ export class CLI {
       process.exit(0);
     }
 
-    if (command === "--version" || command === "-v" || command === "version") {
-      console.log("Zen v2.1.1 (latest)");
-      process.exit(0);
+    if (command === "--version" || command === "--v" || command === "version") {
+
+  // pkg version
+  if (this.args[1] !== undefined) {
+    const pkgName = this.args[1];
+    const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
+    const zenJsonPath = path.join(pkgDir, "zen.json");
+
+    if (!fs.existsSync(pkgDir)) {
+      console.log(`Package '${pkgName}' not installed!`);
+      process.exit(1);
     }
 
+    if (!fs.existsSync(zenJsonPath)) {
+      console.log(`Package '${pkgName}' has no zen.json!`);
+      process.exit(1);
+    }
+
+    const zenJson = JSON.parse(fs.readFileSync(zenJsonPath, "utf8"));
+
+    if (zenJson.version === undefined) {
+      console.log(`Package '${pkgName}' has no version in zen.json!`);
+      process.exit(1);
+    }
+
+    console.log(`${pkgName}@${zenJson.version}`);
+    process.exit(0);
+  }
+
+  console.log("Zen v2.1.1 (latest)");
+  process.exit(0);
+    }
+    
     if (!VALID_COMMANDS.has(command)) {
       console.error(`error: unknown command '${command}'`);
       help();

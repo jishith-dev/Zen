@@ -33,7 +33,7 @@ export class Struct {
           method,
         );
 
-      this.IRB.functions.set(fnName, {
+      this.IRB.setFunction(fnName, {
         name: fnName,
         params: method.params,
         returnType: method.returnType,

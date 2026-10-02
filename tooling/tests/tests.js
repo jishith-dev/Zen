@@ -4,6 +4,7 @@ import readline from "readline";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import highlightCode from "../highlight.js";
+import os from "os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +74,70 @@ export class Tests {
   }
 
   async run() {
+
+    
+    // package test runner
+if (this.args[1] !== undefined) {
+  const pkgName = this.args[1];
+  const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
+
+  if (!fs.existsSync(pkgDir)) {
+    console.log(`Package '${pkgName}' not installed!`);
+    return;
+  }
+
+  const pkgTestPath = path.join(pkgDir, "test.zen");
+
+  if (!fs.existsSync(pkgTestPath)) {
+    console.log(`There is no test.zen in package '${pkgName}'!`);
+    return;
+  }
+
+  const testSource = fs.readFileSync(pkgTestPath, "utf8");
+
+  console.log("");
+  console.log(`Zen Test: ${pkgName}`);
+  console.log("─".repeat(50));
+  console.log("");
+  console.log(highlightCode(testSource));
+  console.log("─".repeat(50));
+  console.log("");
+
+  const answer = await this.question("Run this test? [y/N] ");
+
+  if (answer.toLowerCase() !== "y") {
+    console.log("Test not run.");
+    return;
+  }
+
+  console.log("");
+console.log("Running test...");
+console.log("─".repeat(50));
+console.log("");
+
+const child = spawn("zen", ["run", pkgTestPath], {
+  stdio: "inherit",
+  cwd: pkgDir
+});
+
+await new Promise((resolve) => {
+  child.on("close", (code) => {
+    console.log("");
+    console.log("─".repeat(50));
+
+    if (code === 0) {
+      console.log("✓ Test completed successfully.");
+    } else {
+      console.log(`✗ Test failed with exit code ${code}.`);
+    }
+
+    resolve();
+  });
+});
+
+return;
+}
+    
     console.log("");
     console.log("Zen Tests");
     console.log("─".repeat(50));
@@ -160,7 +225,7 @@ export class Tests {
   console.log("");
 
   const tempDir = path.join(
-    process.env.HOME,
+    os.homedir(),
     ".zen_test"
   );
 

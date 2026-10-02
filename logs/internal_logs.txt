@@ -104,4 +104,11 @@ changed fs.writeFileBytes return void to int (success code)
 
 any one operand is string with + will make non string operand string and perform concat
 
-debug.pretty() need rewrite of printer - pending
+debug.pretty() now does't support user defined struct field as list<Map> yet.
+
+renamed zen tests command to zen test and ,
+zen test pkg-name run the zen package test.zen
+
+changed zen -v to zen --v and zen --v pkgName or zen --version pkgName zen version pkgName can get installed package name
+
+importing a struct in module it cannot import the depennding structs, they need explicit export and import

@@ -248,11 +248,19 @@ this.target = {
       return;
     }
 
-    this.emitError(
-      "DeclarationError",
-      `Function '${name}' is already defined`,
-      node,
-    );
+    const isMethod = data?.isMethod;
+const sep = name.indexOf("_");
+
+const structName = isMethod ? name.slice(0, sep) : null;
+const displayName = isMethod ? name.slice(sep + 1) : name;
+
+this.emitError(
+  "DeclarationError",
+  isMethod
+    ? `Method '${displayName}' is already defined in struct '${structName}'`
+    : `Function '${displayName}' is already defined`,
+  node,
+);
   }
 
   guardGlobal(name, node) {

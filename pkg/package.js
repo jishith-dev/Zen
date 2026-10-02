@@ -76,7 +76,7 @@ export class Package {
   async installed() {
     try {
       const packagesDir = path.join(
-        process.env.HOME || process.env.USERPROFILE,
+        os.homedir(),
         ".zen_packages",
       );
 
@@ -641,7 +641,7 @@ if (requestedVersion) {
       installDir = path.join(process.cwd(), packageName);
     } else if (isLibrary) {
       installDir = path.join(
-        process.env.HOME || process.env.USERPROFILE,
+        os.homedir(),
         ".zen_packages",
         packageName,
       );
@@ -750,7 +750,7 @@ if (requestedVersion) {
 
       if (!fs.existsSync(installDir)) {
         installDir = path.join(
-          process.env.HOME || process.env.USERPROFILE,
+          os.homedir(),
           ".zen_packages",
           packageName,
         );
@@ -779,7 +779,7 @@ if (requestedVersion) {
 
   try {
     const packagesDir = path.join(
-      process.env.HOME || process.env.USERPROFILE,
+      os.homedir(),
       ".zen_packages",
     );
 
@@ -1113,8 +1113,7 @@ if (requestedVersion) {
             continue;
           }
 
-          const packageDir = path.join(
-            process.env.HOME || process.env.USERPROFILE,
+          const packageDir = path.join(os.homedir(),
             ".zen_packages",
             importPath,
           );
