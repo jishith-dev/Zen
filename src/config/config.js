@@ -157,7 +157,6 @@ const KEYWORDS = [
   "of",
   "async",
   "await",
-  "auto",
   "reactive",
   "enum",
   "thread",
@@ -426,6 +425,10 @@ const BUILTIN_FUNCTIONS = [
   "_sys_clipboard_get",
   "_sys_clipboard_clear",
   "_sys_clipboard_hasText",
+  "_sys_spawn",
+  "_sys_kill",
+  "_sys_wait",
+  "_sys_isRunning",
 
   // HTTP server
   "_httpServer_create",
@@ -449,6 +452,9 @@ const BUILTIN_FUNCTIONS = [
   "_fs_renameFile",
   "_fs_writeFileBytes",
   "_fs_readFileBytes",
+  "_fs_listDir",
+  "_fs_isDir",
+  "_fs_isFile",
 
   // OS
   "_os_cpuCount",
@@ -715,6 +721,9 @@ const NAMESPACE_MAP = {
     "changeDir",
     "readFileBytes",
     "writeFileBytes",
+    "listDir",
+    "isDir",
+    "isFile",
   ],
 
   sys: [
@@ -732,6 +741,10 @@ const NAMESPACE_MAP = {
     "clipboard_set",
     "clipboard_clear",
     "clipboard_hasText",
+    "spawn",
+  "kill",
+  "wait",
+  "isRunning",
   ],
 
   time: [
@@ -1592,6 +1605,28 @@ const BUILTIN_MAP = {
     llvmName: "_sys_clipboard_hasText",
   },
 
+  spawn: {
+    returnType: "long",
+    llvmName: "_sys_spawn",
+  },
+
+  kill: {
+    returnType: "int",
+    llvmName: "_sys_kill",
+  },
+
+  wait: {
+    returnType: "int",
+    llvmName: "_sys_wait",
+  },
+
+  isRunning: {
+    returnType: "bool",
+    llvmName: "_sys_isRunning",
+  },
+
+  // httpServer
+
   create: {
     returnType: "struct",
     llvmName: "_httpServer_create",
@@ -1651,6 +1686,23 @@ const BUILTIN_MAP = {
     returnType: "int",
     llvmName: "_fs_changeDir",
   },
+
+  listDir: {
+    returnType: "List<string>",
+    llvmName: "_fs_listDir",
+  },
+
+  isDir: {
+    returnType: "bool",
+    llvmName: "_fs_isDir",
+  },
+
+  isFile: {
+    returnType: "bool",
+    llvmName: "_fs_isFile",
+  },
+
+  // threads
 
   waitAll: {
     returnType: "void",
@@ -2595,9 +2647,23 @@ const FILE_MAP = {
   _fs_changeDir: ["_fs_changeDir", "int", 1, ["string"]],
 
   _fs_renameFile: ["_fs_renameFile", "int", 2, ["string", "string"]],
+
+  _fs_listDir: ["_fs_listDir", "List<string>", 1, ["string"]],
+
+  _fs_isDir: ["_fs_isDir", "bool", 1, ["string"]],
+
+  _fs_isFile: ["_fs_isFile", "bool", 1, ["string"]],
 };
 
 const SYS_MAP = {
+  _sys_spawn: ["_sys_spawn", "long", 1, ["string"]],
+
+  _sys_kill: ["_sys_kill", "int", 2, ["long", "int"]],
+
+  _sys_wait: ["_sys_wait", "int", 1, ["long"]],
+
+  _sys_isRunning: ["_sys_isRunning", "bool", 1, ["long"]],
+  
   _sys_exec: ["_sys_exec", "int", 1, ["string"]],
 
   _sys_panic: ["_sys_panic", "void", 1, ["string"]],

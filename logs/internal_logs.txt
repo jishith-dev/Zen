@@ -112,3 +112,17 @@ zen test pkg-name run the zen package test.zen
 changed zen -v to zen --v and zen --v pkgName or zen --version pkgName zen version pkgName can get installed package name
 
 importing a struct in module it cannot import the depennding structs, they need explicit export and import
+
+added new methods in namespaces:
+    fs: listDir, isFile, isDir
+    sys: spawn, kill, isRunning, wait
+
+added new List method : flat() it convert any depth list to depth 1
+
+windows support is tenporarly stopped in this version.
+
+enhanced lsp server..and command is zen lsp (used by editors) 
+
+enhanced formatter and fixed bugs
+
+need inspection of what types of functions can export and catch extern unsupported fn types -- pending

@@ -14,16 +14,7 @@ export class Fmt {
   }
 
   visitTopLevel(list) {
-    let first = true;
-    for (const stmt of list) {
-      if (!stmt) continue;
-      if (!first) {
-        this.newline();
-        this.newline();
-      }
-      first = false;
-      this.visit(stmt);
-    }
+    this.visitStatements(list);
   }
 
   write(text) {
@@ -56,19 +47,68 @@ export class Fmt {
     return result;
   }
 
+  isComment(node) {
+    return !!node && node.type === ParserTypes.COMMENT;
+  }
+
+  // statements that always get a blank line around them
+  isBig(node) {
+    if (!node) return false;
+    if (this.isBlockLike(node)) return true;
+    switch (node.type) {
+      case ParserTypes.STRUCT:
+      case ParserTypes.ENUM:
+      case ParserTypes.FUNCTION_DECLARATION:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   visitStatements(list) {
-    let first = true;
-    let prevBlockLike = false;
+    let prev = null;
+    let prevText = "";
     for (const stmt of list) {
       if (!stmt) continue;
-      const blockLike = this.isBlockLike(stmt);
-      if (!first) {
-        this.newline();
-        if (blockLike || prevBlockLike) this.newline();
+
+      const text = this.capture(() => this.visit(stmt));
+      const multiline = text.includes("\n");
+      const big = this.isBig(stmt) || multiline;
+      const hasLines =
+        prev && Number.isFinite(prev.line) && Number.isFinite(stmt.line);
+
+      if (prev) {
+        const trailing =
+          this.isComment(stmt) &&
+          !this.isComment(prev) &&
+          hasLines &&
+          (stmt.startLine ?? stmt.line) === prev.line;
+
+        if (trailing) {
+          // `int x = 1 // note` stays on the same line
+          this.write(" ");
+        } else {
+          this.newline();
+          const gap = hasLines ? (stmt.startLine ?? stmt.line) - prev.line : 1;
+          let blank;
+          if (this.isComment(prev) && !this.isComment(stmt)) {
+            // hug the statement below, unless the author left a blank line
+            // (only trustworthy for single-line statements)
+            blank = !big && gap > 1;
+          } else if (this.isComment(stmt) && this.isComment(prev)) {
+            blank = gap > 1;
+          } else if (this.isBig(prev) || prevText.includes("\n") || big) {
+            blank = true;
+          } else {
+            blank = gap > 1; // keep one blank line the author wrote
+          }
+          if (blank) this.newline();
+        }
       }
-      first = false;
-      prevBlockLike = blockLike;
-      this.visit(stmt);
+
+      this.write(text);
+      prev = stmt;
+      prevText = text;
     }
   }
 
@@ -93,7 +133,13 @@ export class Fmt {
       .replace(/\\/g, "\\\\")
       .replace(/"/g, '\\"')
       .replace(/\n/g, "\\n")
-      .replace(/\t/g, "\\t");
+      .replace(/\t/g, "\\t")
+      .replace(/\r/g, "\\r")
+      .replace(/\x1b/g, "\\e")
+      .replace(
+        /[\x00-\x08\x0b\x0c\x0e-\x1a\x1c-\x1f\x7f]/g,
+        (c) => "\\x" + c.charCodeAt(0).toString(16).padStart(2, "0"),
+      );
     return `"${escaped}"`;
   }
 
@@ -129,7 +175,8 @@ export class Fmt {
   }
 
   formatParam(p) {
-    let s =
+    let s = p.isConstant ? "const " : "";
+    s +=
       p.type && p.type.type === "Function"
         ? this.formatType(p.type)
         : this.formatType(p.type) + " " + p.name;
@@ -238,8 +285,19 @@ export class Fmt {
 
       // literals
       case ParserTypes.INT:
+        this.write(node.raw ?? String(node.value));
+        break;
+
       case ParserTypes.DOUBLE:
         this.write(String(node.value));
+        break;
+
+      case ParserTypes.LONG:
+        this.write(node.raw ? node.raw + "_L" : String(node.value) + "L");
+        break;
+
+      case ParserTypes.BYTE:
+        this.write(node.raw ? node.raw + "_B" : String(node.value) + "B");
         break;
 
       case ParserTypes.STRING:
@@ -303,7 +361,7 @@ export class Fmt {
   }
 
   visitVariable(node) {
-    if (node.isConstant) this.write("const");
+    if (node.isConstant) this.write("const ");
     // `StructName instance = value` (IDENTIFIER IDENTIFIER declaration)
     if (node.struct_ref) {
       this.write(node.struct_ref);
@@ -336,7 +394,7 @@ export class Fmt {
       }
     }
 
-    if (node.value) {
+    if (node.value && !node.implicitInit) {
       this.write(" = ");
       this.visit(node.value);
     }
@@ -434,7 +492,12 @@ export class Fmt {
 
   visitImport(node) {
     this.write("import (");
-    this.write(node.names.join(", "));
+    const aliases = node.aliases || {};
+    this.write(
+      node.names
+        .map((n) => (aliases[n] ? `${n} as ${aliases[n]}` : n))
+        .join(", "),
+    );
     this.write(") from ");
     this.write(this.quoteString(node.source));
   }
@@ -515,6 +578,7 @@ export class Fmt {
   }
 
   visitFunction(node) {
+    if (node.isPrivate) this.write("private ");
     if (node.isAsync) this.write("async ");
     if (node.isThread) this.write("thread ");
     if (node.isExtern) this.write("extern ");
@@ -548,14 +612,22 @@ export class Fmt {
 
     for (const field of node.fields) {
       this.newline();
-      this.write(this.formatType(field));
+      if (field.isPrivate) this.write("private ");
+      this.write(this.formatType({ ...field, dimensions: [] }));
       this.space();
       this.write(field.name);
+      for (const dim of field.dimensions || []) {
+        this.write("[");
+        if (dim != null) this.visit(dim);
+        this.write("]");
+      }
+      if (field.value) { this.write(" = "); this.visit(field.value); }
     }
 
     for (const method of node.methods) {
       this.newline();
       this.visit(method);
+      this.newline();
     }
 
     this.dedent();
@@ -582,23 +654,23 @@ export class Fmt {
 
   static BINARY_PRECEDENCE = {
     "||": 1,
-    "&&": 1,
-    "==": 2,
-    "!=": 2,
-    "<": 3,
-    ">": 3,
-    "<=": 3,
-    ">=": 3,
-    "&": 4,
-    "|": 4,
-    "^": 4,
-    "<<": 4,
-    ">>": 4,
-    "+": 5,
-    "-": 5,
-    "*": 6,
-    "/": 6,
-    "%": 6,
+    "&&": 2,
+    "==": 3,
+    "!=": 3,
+    "<": 4,
+    ">": 4,
+    "<=": 4,
+    ">=": 4,
+    "|": 5,
+    "^": 6,
+    "&": 7,
+    "<<": 8,
+    ">>": 8,
+    "+": 9,
+    "-": 9,
+    "*": 10,
+    "/": 10,
+    "%": 10,
   };
 
   nodePrecedence(node) {
@@ -610,9 +682,9 @@ export class Fmt {
       case ParserTypes.TERNARY:
         return 0;
       case ParserTypes.BINARY_EXPRESSION:
-        return Fmt.BINARY_PRECEDENCE[node.operator] ?? 4;
+        return Fmt.BINARY_PRECEDENCE[node.operator] ?? 5;
       case ParserTypes.UNARY_EXPRESSION:
-        return 7;
+        return 11;
       default:
         return Infinity;
     }
@@ -649,7 +721,7 @@ export class Fmt {
   }
 
   visitBinary(node) {
-    const prec = Fmt.BINARY_PRECEDENCE[node.operator] ?? 4;
+    const prec = Fmt.BINARY_PRECEDENCE[node.operator] ?? 5;
     this.writeOperand(node.left, prec, false);
     this.space();
     this.write(node.operator);
@@ -659,11 +731,24 @@ export class Fmt {
 
   visitUnary(node) {
     if (node.isPostfix) {
-      this.writeOperand(node.argument, 7, false);
+      this.writeOperand(node.argument, 11, false);
       this.write(node.operator);
     } else {
       this.write(node.operator);
-      this.writeOperand(node.argument, 7, false);
+      const arg = node.argument;
+      const clash =
+        arg &&
+        arg.type === ParserTypes.UNARY_EXPRESSION &&
+        !arg.isPostfix &&
+        (node.operator === "-" || node.operator === "+") &&
+        arg.operator[0] === node.operator;
+      if (clash) {
+        this.write("(");
+        this.visit(arg);
+        this.write(")");
+      } else {
+        this.writeOperand(arg, 11, false);
+      }
     }
   }
 
@@ -699,7 +784,7 @@ export class Fmt {
   }
 
   visitTernary(node) {
-    this.visit(node.condition);
+    this.writeOperand(node.condition, 0, true);
     this.write(" ? ");
     this.visit(node.trueExpr);
     this.write(" : ");

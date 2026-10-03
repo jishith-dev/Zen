@@ -41,7 +41,8 @@ const VALID_COMMANDS = new Set([
   "read",
   "info",
   "test",
-  "upgrade"
+  "upgrade",
+  "lsp"
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -109,6 +110,7 @@ Project:
 Tooling:
   zen fmt <file> *? or **?
   zen lint <file>
+  zen lsp              (language server, used by editors)
 
 Packages:
   zen install <package>
@@ -210,6 +212,12 @@ export class CLI {
       console.error(`error: unknown command '${command}'`);
       help();
       process.exit(1);
+    }
+
+    if (command === "lsp") {
+      // stdio language server; the editor launches this, nothing else may print to stdout
+      await import("../bin/lsp.js");
+      return;
     }
 
     if (command in PACKAGE_COMMANDS) {

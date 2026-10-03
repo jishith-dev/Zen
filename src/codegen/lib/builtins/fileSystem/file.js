@@ -89,7 +89,7 @@ export class ZenFileSystem {
       })
       .join(", ");
 
-    const isListRet = ["_fs_readFileBytes"].includes(funcName);
+    const isListRet = ["_fs_readFileBytes", "_fs_listDir"].includes(funcName);
     const llvmRet = isListRet ? "ptr" : this.IRB.getLLVMType(returnType);
 
     this.IRB.declareOneTime(
@@ -110,17 +110,21 @@ export class ZenFileSystem {
 
     this.IRB.cleanupBuiltinStringTemps(exprs);
 
+    const elemType = funcName === "_fs_listDir" ? "string" : "byte";
+
     return {
       ptr: isVoidFn ? null : t,
-      type: isVoidFn ? "void" : isListRet ? "byte" : returnType,
+      type: isVoidFn ? "void" : isListRet ? elemType : returnType,
       llvmType: llvmRet,
       local: [],
       global: [],
       postOrPrefix: false,
       isList: isListRet,
       internalType: isListRet ? "List" : undefined,
-      retGeneric: isListRet ? "byte" : undefined,
-      generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
+      retGeneric: isListRet ? elemType : undefined,
+      generic: isListRet
+        ? { type: "List", generic: { type: elemType } }
+        : null,
     };
   }
 }

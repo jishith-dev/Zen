@@ -192,6 +192,8 @@ export class Lexer {
           column,
         );
 
+        if (num.raw) this.tokens[this.tokens.length - 1].raw = num.raw;
+
         continue;
       }
 
@@ -380,6 +382,7 @@ export class Lexer {
     let value = "";
 
     if (this.options.preserveComments) value += this.currentChar; // "/"
+    const startLine = this.line;
     this.advance();
     if (this.options.preserveComments) value += this.currentChar; // "*"
     this.advance();
@@ -391,7 +394,8 @@ export class Lexer {
         this.advance();
 
         if (this.options.preserveComments) {
-          this.addTokenAt(TokenTypes.COMMENT, value);
+           this.addTokenAt(TokenTypes.COMMENT, value, this.line, this.column);
+           this.tokens[this.tokens.length - 1].startLine = startLine;
         }
 
         return;
@@ -479,6 +483,7 @@ number() {
       return {
         value: parseInt(hex, 16),
         type,
+        raw: "0x" + hex
       };
     }
 

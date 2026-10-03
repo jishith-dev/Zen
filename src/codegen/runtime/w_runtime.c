@@ -1299,3 +1299,175 @@ char *_str_dup(const char *s) {
 void _zen_string_free(char* s) {
     free(s);
 }
+
+bool _fs_isDir(const char *path) {
+    if (!path) return false;
+    DWORD a = GetFileAttributesA(path);
+    return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
+bool _fs_isFile(const char *path) {
+    if (!path) return false;
+    DWORD a = GetFileAttributesA(path);
+    return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+typedef struct {
+    DWORD pid;
+    HANDLE handle;
+} ZenProc;
+
+static ZenProc *zen_procs = NULL;
+static int zen_proc_count = 0;
+static int zen_proc_cap = 0;
+static SRWLOCK zen_proc_lock = SRWLOCK_INIT;
+
+static int _zen_proc_find(DWORD pid) {
+    for (int i = 0; i < zen_proc_count; i++) {
+        if (zen_procs[i].pid == pid) return i;
+    }
+    return -1;
+}
+
+static void _zen_proc_add(DWORD pid, HANDLE h) {
+    if (zen_proc_count >= zen_proc_cap) {
+        int newCap = zen_proc_cap == 0 ? 16 : zen_proc_cap * 2;
+        ZenProc *grown = realloc(zen_procs, sizeof(ZenProc) * newCap);
+        if (!grown) {
+            CloseHandle(h);
+            return;
+        }
+        zen_procs = grown;
+        zen_proc_cap = newCap;
+    }
+
+    zen_procs[zen_proc_count].pid = pid;
+    zen_procs[zen_proc_count].handle = h;
+    zen_proc_count++;
+}
+
+static void _zen_proc_remove(int index) {
+    CloseHandle(zen_procs[index].handle);
+    zen_procs[index] = zen_procs[zen_proc_count - 1];
+    zen_proc_count--;
+}
+
+int64_t _sys_spawn(const char *cmd) {
+    if (!cmd) return -1;
+
+    const char *prefix = "cmd.exe /S /C \"";
+    size_t len = strlen(prefix) + strlen(cmd) + 2;
+    char *cmdline = (char *)malloc(len);
+    if (!cmdline) return -1;
+
+    snprintf(cmdline, len, "%s%s\"", prefix, cmd);
+
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    ZeroMemory(&pi, sizeof(pi));
+    si.cb = sizeof(si);
+
+    BOOL ok = CreateProcessA(NULL, cmdline, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    free(cmdline);
+
+    if (!ok) return -1;
+
+    CloseHandle(pi.hThread);
+
+    AcquireSRWLockExclusive(&zen_proc_lock);
+    _zen_proc_add(pi.dwProcessId, pi.hProcess);
+    ReleaseSRWLockExclusive(&zen_proc_lock);
+
+    return (int64_t)pi.dwProcessId;
+}
+
+int _sys_kill(int64_t pid, int sig) {
+    if (pid <= 0) return -1;
+
+    HANDLE h = NULL;
+    int owned = 0;
+
+    AcquireSRWLockShared(&zen_proc_lock);
+    int i = _zen_proc_find((DWORD)pid);
+    if (i >= 0) h = zen_procs[i].handle;
+    ReleaseSRWLockShared(&zen_proc_lock);
+
+    if (!h) {
+        h = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+        if (!h) return -1;
+        owned = 1;
+    }
+
+    int result = -1;
+
+    if (sig == 0) {
+        DWORD code = 0;
+        if (GetExitCodeProcess(h, &code) && code == STILL_ACTIVE) result = 0;
+    } else {
+        if (TerminateProcess(h, 1)) result = 0;
+    }
+
+    if (owned) CloseHandle(h);
+    return result;
+}
+
+int _sys_wait(int64_t pid) {
+    if (pid <= 0) return -1;
+
+    HANDLE h = NULL;
+    int owned = 0;
+
+    AcquireSRWLockShared(&zen_proc_lock);
+    int i = _zen_proc_find((DWORD)pid);
+    if (i >= 0) h = zen_procs[i].handle;
+    ReleaseSRWLockShared(&zen_proc_lock);
+
+    if (!h) {
+        h = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+        if (!h) return -1;
+        owned = 1;
+    }
+
+    int result = -1;
+    DWORD code = 0;
+
+    if (WaitForSingleObject(h, INFINITE) == WAIT_OBJECT_0 && GetExitCodeProcess(h, &code)) {
+        result = (int)code;
+    }
+
+    if (owned) {
+        CloseHandle(h);
+    } else {
+        AcquireSRWLockExclusive(&zen_proc_lock);
+        int j = _zen_proc_find((DWORD)pid);
+        if (j >= 0) _zen_proc_remove(j);
+        ReleaseSRWLockExclusive(&zen_proc_lock);
+    }
+
+    return result;
+}
+
+bool _sys_isRunning(int64_t pid) {
+    if (pid <= 0) return false;
+
+    HANDLE h = NULL;
+    int owned = 0;
+
+    AcquireSRWLockShared(&zen_proc_lock);
+    int i = _zen_proc_find((DWORD)pid);
+    if (i >= 0) h = zen_procs[i].handle;
+    ReleaseSRWLockShared(&zen_proc_lock);
+
+    if (!h) {
+        h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+        if (!h) return false;
+        owned = 1;
+    }
+
+    DWORD code = 0;
+    bool running = GetExitCodeProcess(h, &code) && code == STILL_ACTIVE;
+
+    if (owned) CloseHandle(h);
+    return running;
+}

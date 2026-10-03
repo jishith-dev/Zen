@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #define strdup _strdup
+#include <windows.h>
 #endif
 #include <stdarg.h>
 #include <stdbool.h>
@@ -12,7 +13,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-
+#include <dirent.h>
 
 void **zen_args_new(int count) {
   return (void **)malloc(sizeof(void *) * count);
@@ -1538,4 +1539,92 @@ double _zen_list_avg_double(ZenList *list) {
   }
 
   return total / (double)list->size;
+}
+
+ZenList *_fs_listDir(const char *path) {
+    ZenList *list = _zen_list_new(sizeof(char *));
+    list->depth = 1;
+    list->deepestType = ZEN_LIST_STRING;
+
+    if (!path) return list;
+
+#ifdef _WIN32
+    size_t n = strlen(path);
+    char *pattern = (char *)malloc(n + 3);
+    if (!pattern) return list;
+
+    memcpy(pattern, path, n);
+    if (n > 0 && path[n - 1] != '\\' && path[n - 1] != '/') {
+        pattern[n++] = '\\';
+    }
+    pattern[n++] = '*';
+    pattern[n] = '\0';
+
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(pattern, &fd);
+    free(pattern);
+
+    if (h == INVALID_HANDLE_VALUE) return list;
+
+    do {
+        if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
+            continue;
+
+        char *name = strdup(fd.cFileName);
+        if (name) _zen_list_push(list, &name);
+    } while (FindNextFileA(h, &fd));
+
+    FindClose(h);
+#else
+    DIR *d = opendir(path);
+    if (!d) return list;
+
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
+            continue;
+
+        char *name = strdup(e->d_name);
+        if (name) _zen_list_push(list, &name);
+    }
+
+    closedir(d);
+#endif
+
+    if (list->size > 1) {
+        qsort(list->data, (size_t)list->size, list->element_size,
+              _zen_list_compare_string);
+    }
+
+    return list;
+}
+
+
+static void _zen_list_flat_into(ZenList *out, ZenList *list, int depth, int isString) {
+  if (!list || !list->data)
+    return;
+
+  for (int i = 0; i < list->size; i++) {
+    if (depth > 1) {
+      ZenList *child = ((ZenList **)list->data)[i];
+      _zen_list_flat_into(out, child, depth - 1, isString);
+    } else if (isString) {
+      char *s = ((char **)list->data)[i];
+      char *copy = s ? strdup(s) : NULL;
+      _zen_list_push(out, &copy);
+    } else {
+      _zen_list_push(out, (char *)list->data + (size_t)i * list->element_size);
+    }
+  }
+}
+
+ZenList *_zen_list_flat(ZenList *list, int64_t elemSize, int depth, int isString) {
+  ZenList *out = _zen_list_new((size_t)elemSize);
+
+  out->depth = 1;
+  out->deepestType = isString ? ZEN_LIST_STRING : (list ? list->deepestType : 0);
+
+  _zen_list_flat_into(out, list, depth, isString);
+
+  return out;
 }

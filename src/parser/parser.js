@@ -337,7 +337,8 @@ export class Parser {
     return {
       type: ParserTypes.COMMENT,
       value: token.value,
-    };
+      startLine: token.startLine,
+   };
   }
 
   parseStructLiteral() {
@@ -1400,6 +1401,8 @@ if (this.match("COMMA")) this.advance();
     let value = null;
     let inferredType = null;
 
+    const hadInit = this.match("ASSIGNMENT");
+
     // EXPLICIT INITIALIZER
 
     if (this.match("ASSIGNMENT")) {
@@ -1487,6 +1490,7 @@ if (this.match("COMMA")) this.advance();
       isArray: dimensions.length > 0,
       isConstant: isConst,
       name,
+      implicitInit: !hadInit && value !== null,
       dimensions,
       value,
     });
@@ -1975,6 +1979,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.INT,
         value: token.value,
+        raw: token.raw
       });
     }
 
@@ -2011,6 +2016,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.BYTE,
         value: token.value,
+        raw: token.raw
       });
     }
 
@@ -2020,6 +2026,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.LONG,
         value: token.value,
+        raw: token.raw
       });
     }
 

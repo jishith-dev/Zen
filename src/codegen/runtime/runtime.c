@@ -13,10 +13,15 @@
 #include <termios.h>
 #include <fcntl.h>
 
-
-
 #include <pthread.h>
 #include <stdatomic.h>
+
+#include <signal.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <paths.h>
+#include <stdint.h>
+
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
@@ -1453,3 +1458,145 @@ void _zen_string_free(char* s) {
     free(s);
 }
 
+bool _fs_isDir(const char *path) {
+    struct stat st;
+    if (!path || stat(path, &st) != 0) return false;
+    return S_ISDIR(st.st_mode);
+}
+
+bool _fs_isFile(const char *path) {
+    struct stat st;
+    if (!path || stat(path, &st) != 0) return false;
+    return S_ISREG(st.st_mode);
+}
+
+typedef struct {
+    int64_t pid;
+    int code;
+} ZenExited;
+
+static ZenExited *zen_exited = NULL;
+static int zen_exited_count = 0;
+static int zen_exited_cap = 0;
+static pthread_mutex_t zen_proc_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static int _zen_status_to_code(int st) {
+    if (WIFEXITED(st)) return WEXITSTATUS(st);
+    if (WIFSIGNALED(st)) return 128 + WTERMSIG(st);
+    return -1;
+}
+
+static int _zen_exited_find(int64_t pid) {
+    for (int i = 0; i < zen_exited_count; i++) {
+        if (zen_exited[i].pid == pid) return i;
+    }
+    return -1;
+}
+
+static void _zen_exited_store(int64_t pid, int code) {
+    if (_zen_exited_find(pid) >= 0) return;
+
+    if (zen_exited_count >= zen_exited_cap) {
+        int newCap = zen_exited_cap == 0 ? 16 : zen_exited_cap * 2;
+        ZenExited *grown = realloc(zen_exited, sizeof(ZenExited) * newCap);
+        if (!grown) return;
+        zen_exited = grown;
+        zen_exited_cap = newCap;
+    }
+
+    zen_exited[zen_exited_count].pid = pid;
+    zen_exited[zen_exited_count].code = code;
+    zen_exited_count++;
+}
+
+static int _zen_exited_take(int64_t pid, int *code) {
+    int i = _zen_exited_find(pid);
+    if (i < 0) return 0;
+
+    *code = zen_exited[i].code;
+    zen_exited[i] = zen_exited[zen_exited_count - 1];
+    zen_exited_count--;
+    return 1;
+}
+
+int64_t _sys_spawn(const char *cmd) {
+    if (!cmd) return -1;
+
+    fflush(stdout);
+    fflush(stderr);
+
+    pid_t pid = fork();
+
+    if (pid < 0) return -1;
+
+    if (pid == 0) {
+        setpgid(0, 0);
+        execl(_PATH_BSHELL, "sh", "-c", cmd, (char *)NULL);
+        execlp("sh", "sh", "-c", cmd, (char *)NULL);
+        _exit(127);
+    }
+
+    return (int64_t)pid;
+}
+
+int _sys_kill(int64_t pid, int sig) {
+    if (pid <= 0) return -1;
+
+    if (killpg((pid_t)pid, sig) == 0) return 0;
+    if (kill((pid_t)pid, sig) == 0) return 0;
+
+    return -1;
+}
+
+int _sys_wait(int64_t pid) {
+    if (pid <= 0) return -1;
+
+    int code = 0;
+
+    pthread_mutex_lock(&zen_proc_lock);
+    int found = _zen_exited_take(pid, &code);
+    pthread_mutex_unlock(&zen_proc_lock);
+
+    if (found) return code;
+
+    int st = 0;
+    pid_t r;
+
+    do {
+        r = waitpid((pid_t)pid, &st, 0);
+    } while (r < 0 && errno == EINTR);
+
+    if (r < 0) {
+        pthread_mutex_lock(&zen_proc_lock);
+        found = _zen_exited_take(pid, &code);
+        pthread_mutex_unlock(&zen_proc_lock);
+        return found ? code : -1;
+    }
+
+    return _zen_status_to_code(st);
+}
+
+bool _sys_isRunning(int64_t pid) {
+    if (pid <= 0) return false;
+
+    pthread_mutex_lock(&zen_proc_lock);
+    int done = _zen_exited_find(pid) >= 0;
+    pthread_mutex_unlock(&zen_proc_lock);
+
+    if (done) return false;
+
+    int st = 0;
+    pid_t r = waitpid((pid_t)pid, &st, WNOHANG);
+
+    if (r == 0) return true;
+
+    if (r > 0) {
+        pthread_mutex_lock(&zen_proc_lock);
+        _zen_exited_store(pid, _zen_status_to_code(st));
+        pthread_mutex_unlock(&zen_proc_lock);
+        return false;
+    }
+
+    if (kill((pid_t)pid, 0) == 0) return true;
+    return errno == EPERM;
+}

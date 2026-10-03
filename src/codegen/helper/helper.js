@@ -3875,6 +3875,63 @@ case "avg": {
   };
 }
 
+        case "flat": {
+        if (node.args && node.args.length > 0) {
+          this.emitError(
+            "ArgumentError",
+            `'flat' takes no arguments`,
+            node,
+          );
+        }
+
+        if (object.generic?.generic?.type !== "List") {
+          this.emitError(
+            "TypeError",
+            `'flat' is only supported for nested lists like List<List<T>>`,
+            node,
+          );
+        }
+
+        let depth = 0;
+        let g = object.generic;
+        while (g && g.type === "List") {
+          depth++;
+          g = g.generic;
+        }
+
+        const leaf = this.getDeepestGeneric(object.generic);
+        const isString = leaf === "string" ? 1 : 0;
+
+        let elemSize = 8;
+        if (this.hasStruct(leaf)) {
+          elemSize = this.sizeOf(leaf);
+        } else if (leaf === "byte" || leaf === "bool") {
+          elemSize = 1;
+        } else if (leaf === "int") {
+          elemSize = 4;
+        }
+
+        this.declareOneTime(
+          "zen_list_flat",
+          "declare ptr @_zen_list_flat(ptr, i64, i32, i32)",
+        );
+
+        const val = this.newTemp();
+        this.emit(
+          `${val} = call ptr @_zen_list_flat(ptr ${listPtr}, i64 ${elemSize}, i32 ${depth}, i32 ${isString})`,
+        );
+
+        return {
+          ptr: val,
+          type: leaf,
+          llvmType: "ptr",
+          local: [],
+          global: [],
+          isList: true,
+          generic: { type: "List", generic: { type: leaf } },
+          needsLoad: false,
+        };
+        }
         
       default:
         this.emitError("TypeError", `List has no property .${field}`, node);
