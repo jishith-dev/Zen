@@ -268,10 +268,18 @@ export class Parser {
       this.match("IDENTIFIER") &&
       (this.peek("LEFT_PARENTHESIS") || this.isGenericStart(this.pos + 1))
     ) {
+      const start = this.pos;
       const name = this.current().value;
 
       this.advance();
-      return this.node(this.parseCall(name, false));
+      const call = this.node(this.parseCall(name, false));
+
+      if (this.match("DOT") || this.match("LBRACKET")) {
+        this.pos = start;
+        return this.node(this.parseExpression());
+      }
+
+      return call;
     }
 
     if (this.matchKeyword("continue")) {
@@ -2172,15 +2180,7 @@ parseLogical() {
       this.skipNewlines();
 
       // sizeOf(int) support bare type in argument
-    /*  if (name === "sizeOf" && this.current().type === "TYPE") {
-  args.push(
-    this.node({
-      type: "SIZEOF_TYPE",
-      value: this.current().value,
-    })
-  );
-  this.advance();
-      } */
+    
       if (
   name === "sizeOf" &&
   (

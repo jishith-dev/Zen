@@ -345,12 +345,6 @@ export class HandleFunction {
     const isExtern = node.isExtern;
     const isThread = node.isThread;
 
-    if (isThread) {
-      this.IRB.currentThreadFunction = {
-        name: node.name,
-      };
-    }
-
     if (node.body !== null) this.globalState.defFunctions.set(node.name, true);
     if (isDecl && !isExtern)
       this.globalState.declFunctions.set(node.name, true);
@@ -389,6 +383,14 @@ export class HandleFunction {
       } else {
         mangledName = `zen_${this.sourceName}_${name}`;
       }
+    }
+
+    if (isThread) {
+      let name = node.name;
+      if (isMethod) name = `${node.structName}_${node.name}`;
+      this.IRB.currentThreadFunction = {
+        name: name,
+      };
     }
 
     let returnType = node.returnType === "void" ? "void" : node.returnType.type; // exclude auto infer for now

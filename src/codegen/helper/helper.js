@@ -5480,6 +5480,9 @@ this.declareOneTime(
       return `${p.type} ${loaded}`;
     });
 
+    this.declareOneTime("free", "declare void @free(ptr)");
+    tLines.push(`  call void @free(ptr %ctx)`);
+
     tLines.push(`  call void @${mangledName}(${callArgs.join(", ")})`);
     tLines.push(`  ret void`);
     tLines.push(`}`);

@@ -659,6 +659,7 @@ export class Expression {
           }
 
           if (!this.IRB.hasStruct(structName)) {
+            
             if (node?.args && i === fields.length - 1) {
               this.IRB.emitError(
                 "TypeError",
@@ -992,7 +993,28 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
             // void method
             if (fn.returnType.type === "void") {
-              local.push(`call void @${possibleMethod}(${args.join(", ")})`);
+
+              if (fn.isThread) {
+    this.IRB.declareOneTime(
+      "_zen_thread",
+      "declare void @_zen_thread(ptr, ptr)",
+    );
+
+    const { ctx, trampolineName } = this.IRB.createThreadArgContext(
+      possibleMethod,
+      fn,
+      callArgs,
+      args,
+      local
+    );
+
+    local.push(
+      `call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`,
+    );
+  } else {
+    local.push(`call void @${possibleMethod}(${args.join(", ")})`);
+              }
+
 
               return {
                 ptr: null,

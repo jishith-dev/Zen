@@ -229,20 +229,7 @@ collectExports(exports, moduleName, tables, node) {
 
     // register all struct first so avoid dependency bug
 
-/*    for (const name of imports) {
-      const localName = aliases[name] || name;
-      if (tables.structTable.has(name)) {
-        const s = tables.structTable.get(name);
-
-        this.IRB.setStruct(localName, s);
-
-        this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
-        const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
-        this.IRB.globals.push(`%${name} = type { ${fields} }`);
-      }
-    }*/
-
-    for (const name of imports) {
+ /*   for (const name of imports) {
   const localName = aliases[name] || name;
 
   if (tables.structTable.has(name)) {
@@ -262,7 +249,28 @@ collectExports(exports, moduleName, tables, node) {
     const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
     this.IRB.globals.push(`%${name} = type { ${fields} }`);
   }
-    }
+    } */
+
+for (const name of imports) {
+  const localName = aliases[name] || name;
+  if (!tables.structTable.has(name)) continue;
+
+  if (localName !== name) {
+    this.IRB.emitError(
+      "ImportError",
+      `Struct '${name}' cannot be imported with an alias`,
+      node,
+    );
+  }
+
+  this.registerImportedStruct(name, tables, node, false, null);
+
+  for (const dep of tables.structTable.get(name).deps || []) {
+    this.registerImportedStruct(dep, tables, node, true, name);
+  }
+}
+
+    
 
     for (const name of imports) {
 
@@ -316,6 +324,23 @@ imported.add(localName);
 
         fn.importedModuleName = this.curruntModuleName;
 
+        const typeNames = [fn.retGeneric ?? (fn.returnType?.type ?? fn.returnType)];
+
+  for (const p of fn.params || []) {
+    const t = p.type?.type ?? p.type;
+    typeNames.push(
+      t === "List" ? this.IRB.getDeepestGeneric(p.type.generic) : t,
+    );
+  }
+
+  for (const tn of typeNames) {
+    if (!tables.structTable.has(tn)) continue;
+    this.registerImportedStruct(tn, tables, node, true, name);
+    for (const d of tables.structTable.get(tn).deps || []) {
+      this.registerImportedStruct(d, tables, node, true, name);
+    }
+  }
+
         const { types } = this.IRB.buildParams(
           fn.params,
           false,
@@ -349,6 +374,7 @@ imported.add(localName);
 
         // methods
         for (const [fnName, fn] of tables.functionTable) {
+          if (tables.structTable.has(name)) continue; // already registered above
           if (!fn?.isMethod) continue;
           if (fnName === name) continue;
           if (!fnName.startsWith(`${name}_`)) continue;
@@ -408,6 +434,67 @@ imported.add(localName);
     }
 
     return map;
+  }
+
+  registerImportedStruct(name, tables, node, hidden, via) {
+  const s = tables.structTable.get(name);
+  if (!s) return;
+
+  const existing = this.IRB.hasStruct(name) ? this.IRB.getStruct(name) : null;
+
+  if (existing) {
+    const same = existing === s || existing.origin === s;
+    if (!same) {
+      this.IRB.emitError(
+        "ImportError",
+        hidden
+          ? `struct '${name}' (needed by imported '${via}') conflicts with struct '${name}' already defined here`
+          : `Struct '${name}' conflicts with struct '${name}' already defined here`,
+        node,
+      );
+    }
+    // explicit import of a previously hidden struct: promote it
+    if (existing.hidden && !hidden) {
+      existing.hidden = false;
+      existing.via = null;
+    }
+    return;
+  }
+
+  this.IRB.setStruct(name, hidden ? { ...s, hidden: true, origin: s, via } : s);
+
+  this.IRB.emittedTypes ??= new Set();
+  if (!this.IRB.emittedTypes.has(name)) {
+    this.IRB.emittedTypes.add(name);
+    this.IRB.globals.push(`declare void @_zen_init_${name}(ptr)`);
+    const fields = (s.layout || []).map((f) => f.llvmType).join(", ");
+    this.IRB.globals.push(`%${name} = type { ${fields} }`);
+  }
+
+  this.IRB.emittedMethods ??= new Set();
+  for (const [fnName, fn] of tables.functionTable) {
+    if (!fn?.isMethod) continue;
+    if (!fnName.startsWith(`${name}_`)) continue;
+    if (this.IRB.emittedMethods.has(fnName)) continue;
+    this.IRB.emittedMethods.add(fnName);
+
+    if (fn.isPrivate) {
+      this.IRB.setFunction(fnName, fn);
+      continue;
+    }
+
+    fn.isImported = true;
+    fn.importedModuleName = this.curruntModuleName;
+
+    const rt = fn.returnType?.type ?? fn.returnType;
+    const { types } = this.IRB.buildParams(fn.params, true, rt);
+    const isStructRet = tables.structTable.has(rt);
+    if (isStructRet) fn.isStructReturn = true;
+    const retType = isStructRet ? "void" : this.IRB.getLLVMType(rt);
+
+    this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
+    this.IRB.setFunction(fnName, fn);
+  }
   }
 
   writeLLFile(source, ir) {

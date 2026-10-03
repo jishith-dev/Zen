@@ -90,6 +90,10 @@ export class Call {
 
       const valExpr = this.expr.handleExpression(fakeNode);
 
+      if (asStatement) {
+  this.IRB.emitExpr(valExpr);
+      }
+
       return {
         ptr: valExpr.ptr,
         type: valExpr.type,

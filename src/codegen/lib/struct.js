@@ -5,9 +5,10 @@ export class Struct {
     this.fn = fn;
   }
 
-  registerStructMethods(structNode) {
+  registerStructMethods(structNode, deps) {
     const structName = structNode.name;
     this.IRB.currentStruct = structName;
+    
     for (const method of structNode.methods) {
       const fnName = `${structName}_${method.name}`;
 
@@ -25,6 +26,21 @@ export class Struct {
           ? this.IRB.getDeepestGeneric(method.returnType.generic)
           : returnType;
       const generic = returnType === "List" ? method.returnType : null;
+
+      this.collectDep(
+  returnType === "List" ? retGeneric : returnType,
+  structName,
+  deps,
+);
+
+for (const p of method.params || []) {
+  const t = p.type?.type ?? p.type;
+  this.collectDep(
+    t === "List" ? this.IRB.getDeepestGeneric(p.type.generic) : t,
+    structName,
+    deps,
+  );
+}
 
       if (isArrayRet)
         this.IRB.emitError(
@@ -57,14 +73,34 @@ export class Struct {
     }
   }
 
+  collectDep(typeName, selfName, deps) {
+  if (!typeName || typeName === selfName) return;
+  if (!this.IRB.hasStruct(typeName)) return;
+  const dep = this.IRB.getStruct(typeName);
+  if (dep.isBuiltin) return;
+  deps.add(typeName);
+  (dep.deps || []).forEach((d) => deps.add(d));
+  }
+
   struct(node, globalScope) {
+   
     const name = node.name;
     const fields = node.fields;
     const isMethod = node?.methods?.length > 0;
 
+    const prev = this.IRB.hasStruct(name) ? this.IRB.getStruct(name) : null;
+if (prev?.hidden) {
+  this.IRB.emitError(
+    "NameError",
+    `struct '${name}' conflicts with '${name}' used by imported struct '${prev.via}'`,
+    node,
+  );
+}
+
     const layout = [];
     const fieldMap = {};
     const llvmFields = [];
+    const deps = new Set();
 
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
@@ -94,6 +130,8 @@ export class Struct {
       } else {
         type = f.type;
       }
+
+      this.collectDep(type, name, deps);
 
       layout.push({
         name: f.name,
@@ -125,13 +163,13 @@ export class Struct {
       isOpaque: false,
       fieldMap,
       size: fields.length,
-    });
+    }, node);
 
     this.IRB.getStruct(name).byteSize = this.IRB.sizeOf(name);
     this.IRB.getStruct(name).align = this.IRB.alignOf(name);
 
     if (isMethod) {
-      this.registerStructMethods(node);
+      this.registerStructMethods(node, deps);
       if (!this.IRB.hasVar("this")) {
         this.IRB.setVar(
           "this",
@@ -147,6 +185,8 @@ export class Struct {
       this.generateMethods(node);
     }
 
+    this.IRB.getStruct(name).deps = [...deps];
+
     return;
   }
 
@@ -156,6 +196,16 @@ export class Struct {
     const value = node.value;
 
     const structInfo = this.IRB.getStruct(structName);
+
+    // anonymous dep structs imported implicitly in module analyser
+if (structInfo?.hidden) {
+  this.IRB.emitError(
+    "ReferenceError",
+    `struct '${structName}' is only reachable through '${structInfo.via}'; import it to use it by name`,
+    node,
+  );
+}
+    
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
     const llvmType = isOpaque ? "ptr" : `%${structName}`;
 

@@ -125,4 +125,152 @@ enhanced lsp server..and command is zen lsp (used by editors)
 
 enhanced formatter and fixed bugs
 
-need inspection of what types of functions can export and catch extern unsupported fn types -- pending
+enhanced linter and fixed bugs
+
+21 errors
+
+26 warnings
+
+34 unique diagnostic types overall (some warnings/errors are repeated in different situations)
+
+
+The supported checks shown by this test include:
+
+Errors
+
+1. Undefined variable
+
+
+2. Duplicate variable declaration
+
+
+3. Duplicate parameter declaration
+
+
+4. Duplicate function declaration
+
+
+5. Duplicate struct declaration
+
+
+6. Duplicate enum declaration
+
+
+7. Duplicate enum member
+
+
+8. Duplicate struct field
+
+
+9. Duplicate method declaration
+
+
+10. Duplicate map key
+
+
+11. break inside switch
+
+
+12. return outside function
+
+
+13. Returning value from void function
+
+
+14. Missing return value
+
+
+15. Missing return on all paths
+
+
+16. Wrong function argument count — too few
+
+
+17. Wrong function argument count — too many
+
+
+18. Assignment to constant
+
+
+19. Modification of constant
+
+
+20. Division by zero
+
+
+21. Undefined type
+
+
+22. this outside method
+
+
+23. Method/field name conflict
+
+
+
+Warnings
+
+1. Shadowing outer declaration
+
+
+2. Empty function
+
+
+3. Unused parameter
+
+
+4. Unused function
+
+
+5. Unused struct
+
+
+6. Unused enum
+
+
+7. Self assignment
+
+
+8. Expression has no effect
+
+
+9. Unused variable
+
+
+10. Undefined function
+
+
+11. Duplicate switch case
+
+
+12. Unreachable code
+
+
+13. Constant condition in if
+
+
+14. Empty block
+
+
+15. Constant condition in while
+
+
+16. Empty loop
+
+
+17. Constant condition in ternary
+
+So, counting unique lint rules visible in this test: 40 (23 error types + 17 warning types).
+
+ thread methods, struct dependency tracking, chained calls
+
+- thread methods in structs now spawn via _zen_thread (method call path in expression.js)
+- free thread ctx in trampoline; dup and free string args per thread
+- structs record transitive deps (fields, List<T>, method params/returns)
+- importing a struct or fn implicitly registers its deps as hidden structs
+  (usable through the export, not nameable); clear errors on naming or clash
+- promote hidden struct when explicitly imported; dedupe emitted types/methods
+- unify unknown-struct error in member chain walk
+- parser: allow chained access after statement-level call (make().show())
+- call.js: emit method-call expression when used as a statement
+- pass node to setStruct so redefinition errors show line info
