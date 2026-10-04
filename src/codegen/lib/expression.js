@@ -1609,7 +1609,7 @@ if (base.type === "string") {
         } else if (val.type === "double") {
           const t = this.IRB.newTemp();
 
-          local.push(`${t} = fcmp one double ${v}, 0.0`);
+          local.push(`${t} = fcmp une double ${v}, 0.0`);
 
           boolVal = t;
         } else if (val.type === "bool") {
@@ -2290,7 +2290,7 @@ if (base.type === "string") {
         } else if (type === "long") {
           local.push(`${t} = icmp ne i64 ${val}, 0`);
         } else if (type === "double") {
-          local.push(`${t} = fcmp one double ${val}, 0.0`);
+          local.push(`${t} = fcmp une double ${val}, 0.0`);
         } else if (type === "byte") {
           local.push(`${t} = icmp ne i8 ${val}, 0`);
         } else if (type === "string") {

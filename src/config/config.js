@@ -2332,7 +2332,7 @@ const cmpMap = {
 
 const fcmpMap = {
   "==": "oeq",
-  "!=": "one",
+  "!=": "une",
   ">": "ogt",
   "<": "olt",
   ">=": "oge",
@@ -2423,13 +2423,24 @@ const GLOBAL_EXTERNAL = {
   E: { type: "double", mutable: false },
   PHI: { type: "double", mutable: false },
   SQRT2: { type: "double", mutable: false },
+  SQRT1_2: { type: "double", mutable: false },
+  SQRT3: { type: "double", mutable: false },
+
   LN2: { type: "double", mutable: false },
   LN10: { type: "double", mutable: false },
+  LOG2E: { type: "double", mutable: false },
+  LOG10E: { type: "double", mutable: false },
 
   SEED: { type: "i64", mutable: true },
 
+  BYTE_MAX: { type: "i8", mutable: false },
+  BYTE_MIN: { type: "i8", mutable: false },
+
   I32_MAX: { type: "i32", mutable: false },
   I32_MIN: { type: "i32", mutable: false },
+
+  I64_MAX: { type: "i64", mutable: false },
+  I64_MIN: { type: "i64", mutable: false },
 
   F64_MAX: { type: "double", mutable: false },
   F64_MIN: { type: "double", mutable: false },

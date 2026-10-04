@@ -11,8 +11,8 @@ screen(I32_MIN)
 screen(String(42))
 screen(Int("123") + 1)
 
-screen(toString(42)) // toString() is ASCII conversion, for normal string conversion use String()
-screen(toInt("123") + 1) // toInt() is ASCII conversion, for normal string conversion use Int()
+screen(intToAscii(42)) 
+screen(asciiToInt("123") + 1) 
 
 screen(Double(5))
 screen(type(Double(5)))
@@ -307,3 +307,15 @@ debug.pretty(m.keys())
 debug.pretty(m)
 
 j.free()
+
+// map literal
+
+Map details = {
+   name: "Jishith M P",
+   age: 21,
+   hobbies: ["Programming", "Compilers", "Playing"]
+}
+
+screen(details.has("name"))
+screen(details.getInt("age"))
+screen(details.getList<List<string>>("hobbies").join(", "))

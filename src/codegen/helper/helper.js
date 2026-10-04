@@ -2595,215 +2595,22 @@ end:
   }
 
   loadGlobalConstants() {
-    const g = this.symbolTable[0]; // global scope
+  const g = this.symbolTable[0]; // global scope
 
+  for (const [name, { type, mutable }] of Object.entries(GLOBAL_EXTERNAL)) {
     g.set(
-      "PI",
+      name,
       this.createData({
-        ptr: "@PI",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
+        ptr: "@" + name,
+        llvmType: type,
+        type: ZEN_TYPES_MAP[type],
+        isConstant: !mutable,
         isGlobal: true,
         kind: "external",
         needsLoad: true,
       }),
     );
-
-    g.set(
-      "SEED",
-      this.createData({
-        ptr: "@SEED",
-        llvmType: "i32",
-        type: "int",
-        isConstant: false,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "TAU",
-      this.createData({
-        ptr: "@TAU",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "E",
-      this.createData({
-        ptr: "@E",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "PHI",
-      this.createData({
-        ptr: "@PHI",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "SQRT2",
-      this.createData({
-        ptr: "@SQRT2",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "LN2",
-      this.createData({
-        ptr: "@LN2",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "LN10",
-      this.createData({
-        ptr: "@LN10",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "I32_MAX",
-      this.createData({
-        ptr: "@I32_MAX",
-        llvmType: "i32",
-        type: "int",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "I32_MIN",
-      this.createData({
-        ptr: "@I32_MIN",
-        llvmType: "i32",
-        type: "int",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "F64_MAX",
-      this.createData({
-        ptr: "@F64_MAX",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "F64_MIN",
-      this.createData({
-        ptr: "@F64_MIN",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "F64_EPS",
-      this.createData({
-        ptr: "@F64_EPS",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "INF",
-      this.createData({
-        ptr: "@INF",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "NEG_INF",
-      this.createData({
-        ptr: "@NEG_INF",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
-
-    g.set(
-      "NAN",
-      this.createData({
-        ptr: "@NAN",
-        llvmType: "double",
-        type: "double",
-        isConstant: true,
-        isGlobal: true,
-        kind: "external",
-        needsLoad: true,
-      }),
-    );
+  }
   }
 
   setStdlibFunctions(node) {

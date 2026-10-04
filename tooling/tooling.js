@@ -83,6 +83,27 @@ export class Compiler {
   });
   }
 
+  ensureRuntimeArchive(runtimeDir, names) {
+  const lib = path.join(runtimeDir, "libzenrt.a");
+  const srcs = names.map((n) =>
+  path.join(runtimeDir, `${this.isWindows && n === "runtime" ? "w_runtime" : n}.c`),
+);
+
+  const stale =
+    !fs.existsSync(lib) ||
+    srcs.some((s) => fs.statSync(s).mtimeMs > fs.statSync(lib).mtimeMs);
+
+  if (stale) {
+    const objs = names.map((n) => path.join(runtimeDir, `${n}.o`));
+    names.forEach((n, i) => {
+      this.run(`clang -O2 -fPIC -c "${srcs[i]}" -o "${objs[i]}"`);
+    });
+    this.run(`ar rcs "${lib}" ${objs.map((o) => `"${o}"`).join(" ")}`);
+  }
+
+  return lib;
+  }
+
   isDeclaration(line) {
     const DECL_STARTERS = [
       "int",
@@ -700,11 +721,7 @@ export class Compiler {
       "tcp",
     ];
 
-    const runtimeObjs = runtimeFiles.map((name) => {
-      const obj = path.join(runtimeDir, `${name}.o`);
-      const src = path.join(runtimeDir, `${name}.c`);
-      return fs.existsSync(obj) ? obj : src;
-    });
+    const runtimeObjs = [this.ensureRuntimeArchive(runtimeDir, runtimeFiles)];
 
     const stdlibDir = path.join(this.COMPILER_ROOT, "src/zen_stdlib");
 
@@ -754,9 +771,9 @@ const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.${id}.native
         outO,
         ...moduleObjs,
         ...stdlibObjs,
-        ...runtimeObjs,
         ...compiledNativeObjs,
         ...extraLinkObjs,
+        ...runtimeObjs,
         ...packageFlags,
         ...extraFlags,
         this.optFlag,
@@ -775,8 +792,14 @@ const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.${id}.native
       linkArgs.push(`-Wl,-rpath,${rpath}`);
     }
 
-    linkArgs.push("-lcurl");
-    linkArgs.push("-lcrypto");
+    if (process.platform === "darwin") {
+  linkArgs.push("-Wl,-dead_strip_dylibs");
+} else {
+  linkArgs.push("-Wl,--as-needed");
+}
+linkArgs.push("-lcurl");
+linkArgs.push("-lcrypto");
+    
     linkArgs.push("-o");
     linkArgs.push(outputExe);
 

@@ -1,10 +1,33 @@
-
-    byte b = 10B
+byte b = 10B
     int i = 100
     long l = 1000L
     double d = 25.5
     bool active = true
     string name = "Zen"
+
+    // hex literals
+    // hex for bytes needs the _B suffix (0x7F_B), without it the literal is an int
+
+    byte hb = 0x7F_B
+    int hi = 0xFF
+
+    // scientific notation (always double)
+
+    double sci1 = 1.5e3
+    double sci2 = 2.5e-3
+    double sci3 = 1E10
+    double sci4 = -4.2e2
+    auto sci5 = 6.02e23
+
+    // scientific values
+
+    screen(sci1)
+    screen(sci2)
+    screen(sci3)
+    screen(sci4)
+    screen(type(sci5))
+    screen(sci1 + sci2)
+    screen(Int(sci1))
 
     // constants
 
@@ -40,7 +63,7 @@
     }
 
     // print values
-    
+
     screen(b)
     screen(i)
     screen(l)
@@ -48,19 +71,35 @@
     screen(active)
     screen(name)
 
+    // hex values
+
+    screen(type(hb))
+    screen(hb)
+    screen(type(hi))
+    screen(hi)
+
+    // conversions
+
+    screen(Int(d))
+    screen(Int("42"))
+    screen(Double(i))
+    screen(Double("2.5"))
+    screen(String(i) + "!")
+    screen(String(d))
+
     // list access
-    
+
     screen(nums[0])
 
     // of loop
     loop (v of nums) screen(v)
 
     // pretty print
-    
+
     debug.pretty(nums)
 
     // struct access
-    
+
     screen(f.value)
 
     // method call

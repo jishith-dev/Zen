@@ -276,3 +276,16 @@ So, counting unique lint rules visible in this test: 40 (23 error types + 17 war
 - pass node to setStruct so redefinition errors show line info
 
 added architecture documentation
+
+Added new constants:
+
+```
+SQRT1_2: double
+SQRT3: double
+LOG2E: double
+LOG10E: double
+BYTE_MAX: i8
+BYTE_MIN: i8
+I64_MAX: i64
+I64_MIN: i64
+```

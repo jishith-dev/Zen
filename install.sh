@@ -408,6 +408,21 @@ compile_c      src/codegen/runtime/httpRuntime.c           src/codegen/runtime/h
 compile_c_curl src/codegen/runtime/curlRuntime.c           src/codegen/runtime/curlRuntime.o
 compile_c_curl src/codegen/runtime/tcp.c                   src/codegen/runtime/tcp.o
 
+info "Packing runtime archive..."
+AR_BIN="$(command -v llvm-ar || command -v ar || true)"
+[ -n "$AR_BIN" ] || die "Neither llvm-ar nor ar found. Install LLVM or binutils."
+
+rm -f src/codegen/runtime/libzenrt.a
+"$AR_BIN" rcs src/codegen/runtime/libzenrt.a \
+  src/codegen/runtime/runtime.o \
+  src/codegen/runtime/listRuntime.o \
+  src/codegen/runtime/jsonRuntime.o \
+  src/codegen/runtime/mapRuntime.o \
+  src/codegen/runtime/httpRuntime.o \
+  src/codegen/runtime/curlRuntime.o \
+  src/codegen/runtime/tcp.o \
+  || die "Failed to create libzenrt.a"
+
 info "Verifying build artifacts..."
 ARTIFACTS=(
   src/zen_stdlib/constants.o
@@ -419,6 +434,7 @@ ARTIFACTS=(
   src/codegen/runtime/httpRuntime.o
   src/codegen/runtime/jsonRuntime.o
   src/codegen/runtime/tcp.o
+  src/codegen/runtime/libzenrt.a
 )
 for f in "${ARTIFACTS[@]}"; do
   [ -f "$f" ] || die "Missing artifact after build: $f"
