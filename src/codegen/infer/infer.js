@@ -171,9 +171,17 @@ if (builtin) {
   return returnType;
 }
 
+          if (BUILTIN_STRUCT_METHODS[objectType] && !builtin) {
+  this.IRB.emitError(
+    "ReferenceError",
+    `'${objectType}' has no method '${methodName}()'`,
+    node,
+  );
+          }
+
 const fullMethodName = `${objectType}_${methodName}`;
 
-const fn = this.IRB.getFunction(fullMethodName);
+const fn = this.IRB.getFunction(fullMethodName, node);
 
           if (!fn) {
             this.IRB.emitError(

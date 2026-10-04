@@ -274,3 +274,5 @@ So, counting unique lint rules visible in this test: 40 (23 error types + 17 war
 - parser: allow chained access after statement-level call (make().show())
 - call.js: emit method-call expression when used as a statement
 - pass node to setStruct so redefinition errors show line info
+
+added architecture documentation

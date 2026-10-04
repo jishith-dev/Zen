@@ -1,0 +1,3 @@
+Map m = {}
+List<string> l = [m.nope("a")]
+screen(l[0])
