@@ -5,6 +5,8 @@ import {
   STD_FUNCTIONS_SCHEMA,
   ZEN_TYPES_MAP,
   LOOKUP,
+  BUILTIN_STRUCT_METHODS,
+  BUILTIN_STRUCT_PROPS
 } from "../../config/config.js";
 
 export class InferType {
@@ -157,9 +159,21 @@ export class InferType {
 
           const methodName = member.field;
 
-          const fullMethodName = `${objectType}_${methodName}`;
+const builtin = BUILTIN_STRUCT_METHODS[objectType]?.[methodName];
 
-          const fn = this.IRB.getFunction(fullMethodName);
+if (builtin) {
+  const returnType = this.normalizeReturnType(builtin.returnType);
+
+  this.checkFnRetType(returnType, context, node);
+
+  node.inferredType = returnType;
+
+  return returnType;
+}
+
+const fullMethodName = `${objectType}_${methodName}`;
+
+const fn = this.IRB.getFunction(fullMethodName);
 
           if (!fn) {
             this.IRB.emitError(
@@ -512,6 +526,15 @@ export class InferType {
   let currentGeneric = null;
 
   for (const fieldName of fields) {
+
+    const prop = BUILTIN_STRUCT_PROPS[currentType]?.[fieldName];
+
+if (prop) {
+  currentType = this.normalizeReturnType(prop.returnType);
+  currentGeneric = null;
+  continue;
+}
+    
     const structInfo = this.IRB.getStruct(currentType);
 
     if (!structInfo) {
@@ -570,10 +593,6 @@ export class InferType {
 
   node.inferredType = currentType;
 
-  /*
-   * Keep generic information on the AST because callers such as
-   * sizeOf() may need it when the result is a List.
-   */
   if (currentGeneric) {
     node.inferredGeneric = currentGeneric;
   }
@@ -691,15 +710,22 @@ export class InferType {
   }
 
   normalizeReturnType(type) {
+  if (!type) {
+    return "void";
+  }
+
+  if (typeof type === "object") {
+    type = type.type;
     if (!type) {
       return "void";
     }
+  }
 
-    if (ZEN_TYPES_MAP[type]) {
-      return ZEN_TYPES_MAP[type];
-    }
+  if (ZEN_TYPES_MAP[type]) {
+    return ZEN_TYPES_MAP[type];
+  }
 
-    return type;
+  return type;
   }
 
   checkFnRetType(type, context, node) {
