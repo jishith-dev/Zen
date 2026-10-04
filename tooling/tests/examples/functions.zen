@@ -149,3 +149,116 @@ worker(30L)
 # wait for all threads to finish
 
 threads.waitAll()
+
+# private function
+# a private fn is only available inside this module, other modules can't import it
+
+private fn secret(int x) int {
+  return x * 2 + 1
+}
+
+screen(secret(5))
+
+# struct methods
+# methods are declared inside the struct and use this to access fields
+
+struct Rect {
+  int w
+  int h
+
+  area() int {
+    return this.w * this.h
+  }
+
+  perimeter() int {
+    return 2 * (this.w + this.h)
+  }
+
+  scale(int k) void {
+    this.w = this.w * k
+    this.h = this.h * k
+  }
+}
+
+Rect r = {
+  w: 3,
+  h: 4
+}
+
+screen(r.area())
+screen(r.perimeter())
+
+r.scale(2)
+
+screen(r.w)
+screen(r.h)
+screen(r.area())
+
+# user defined structs are value semantics, a copy does not affect the original
+
+Rect r2 = r
+r2.scale(2)
+
+screen(r.area())
+screen(r2.area())
+
+# private fields, private methods and thread methods
+# private fields and private methods are only accessible inside the struct's own methods
+
+struct Counter {
+  string name
+  private int count
+  private int steps
+
+  private bump() void {
+    this.steps = this.steps + 1
+  }
+
+  increment() void {
+    this.count = this.count + 1
+    this.bump()
+  }
+
+  add(int n) bool {
+    if (n <= 0) {
+      return false
+    }
+
+    this.count = this.count + n
+    this.bump()
+    return true
+  }
+
+  get() int {
+    return this.count
+  }
+
+  getSteps() int {
+    return this.steps
+  }
+
+  # thread method, runs on its own thread and does not return a value
+  thread log(long id) void {
+    screen("counter " + this.name + " " + id)
+  }
+}
+
+Counter c = {
+  name: "clicks"
+}
+
+c.increment()
+c.increment()
+
+screen(c.add(5))
+screen(c.add(-1))
+screen(c.get())
+screen(c.getSteps())
+
+# these are compile time errors
+# c.count = 5     // private field
+# c.bump()        // private method
+
+c.log(1L)
+
+threads.waitAll()

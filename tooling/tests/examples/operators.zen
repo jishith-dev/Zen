@@ -107,6 +107,10 @@ screen(preDec)
 
 # increment and decrement with byte
 
+# bitwise operators
+# byte bitwise results promote to int (& | ^ ~ on byte gives int)
+# byte + - * / % and unary minus stay byte
+
 byte byteInc = 10B
 
 screen(byteInc++)
@@ -348,3 +352,140 @@ screen(type(r7))
 screen(type(r8))
 screen(type(autoS))
 screen(autoS)
+
+# integer division and modulo truncate toward zero
+# the result of % takes the sign of the left operand
+
+screen(7 / 2)
+screen(-7 / 2)
+screen(7 % 3)
+screen(-7 % 3)
+screen(7 % -3)
+screen(7.0 / 2.0)
+screen(-7.5 % 2.0)
+
+# left associativity and unary minus precedence
+
+screen(10 - 3 - 2)
+screen(100 / 10 / 5)
+screen(10 % 4 * 2)
+screen(2 * -3)
+screen(-(2 + 3))
+
+# unary minus keeps the type
+
+long negL = 5L
+double negD = 2.5
+byte negB = 7B
+
+screen(-negL)
+screen(type(-negL))
+screen(-negD)
+screen(type(-negD))
+screen(-negB)
+screen(type(-negB))
+
+# signed shifts, >> keeps the sign
+
+int negInt = -16
+byte negByte = -16B
+long shl = 1L
+
+screen(negInt >> 2)
+screen(negInt << 1)
+screen(negByte >> 2)
+screen(shl << 40L)
+
+# compound assignment
+
+int ca = 10
+
+ca += 5
+screen(ca)
+
+ca -= 3
+screen(ca)
+
+ca *= 2
+screen(ca)
+
+ca /= 5
+screen(ca)
+
+ca %= 3
+screen(ca)
+
+double cd = 1.0
+
+cd += 1.5
+screen(cd)
+
+cd *= 2.0
+screen(cd)
+
+long cl = 1L
+
+cl += 9000000000L
+screen(cl)
+
+cl *= 2L
+screen(cl)
+
+# overflow wraps around (two's complement)
+
+byte ovB = 127B
+ovB++
+screen(ovB)
+
+int ovI = 2147483647
+ovI++
+screen(ovI)
+
+long ovL = 9223372036854775807L
+ovL++
+screen(ovL)
+
+byte minB = -128B
+screen(-minB)
+
+screen(100B + 100B)
+screen(type(100B + 100B))
+
+# comparisons across numeric types
+
+screen(b < i)
+screen(i > l)
+screen(l <= d)
+screen(i == 20.0)
+screen(d != l)
+screen(1 == 1.0)
+screen(0.1 + 0.2 == 0.3)
+
+# float special values
+
+double zero = 0.0
+double nn = zero / zero
+
+screen(1.0 / zero)
+screen(-1.0 / zero)
+screen(nn == nn)
+screen(nn != nn)
+screen(nn < 1.0)
+screen(nn > 1.0)
+
+# string concat with numbers
+
+screen("n=" + 5)
+screen("d=" + 2.5)
+screen("l=" + 9000000000L)
+screen("b=" + true)
+
+# increment and decrement on long
+
+long lc = 5L
+
+lc++
+screen(lc)
+
+screen(lc--)
+screen(lc)

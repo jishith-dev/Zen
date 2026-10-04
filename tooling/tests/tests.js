@@ -11,6 +11,10 @@ const __dirname = path.dirname(__filename);
 
 const TEST_DIR = path.join(__dirname, "examples");
 
+const MAGENTA = "\x1b[35m";
+const GREEN = "\x1b[32m";
+const RESET = "\x1b[0m";
+
 const TESTS = [
   {
     name: "Hello World",
@@ -28,7 +32,7 @@ const TESTS = [
   },
 
   {
-    name: "Tests Zen's loop constructs, including iteration, nested loops, while loops, and collection traversal.",
+    name: "loops",
     file: "loops.zen"
   },
 
@@ -126,7 +130,7 @@ await new Promise((resolve) => {
     console.log("─".repeat(50));
 
     if (code === 0) {
-      console.log("✓ Test completed successfully.");
+      console.log(`${GREEN}✓${RESET} Test completed successfully.`);
     } else {
       console.log(`✗ Test failed with exit code ${code}.`);
     }
@@ -168,7 +172,7 @@ return;
     console.log("");
     console.log("Enter test number, or q to quit.");
 
-    const answer = await this.question("> ");
+    const answer = await this.question(`${MAGENTA}>>${RESET} `);
 
     if (answer.toLowerCase() === "q") {
       return null;
@@ -256,6 +260,19 @@ fn getCube(int value) {
   screen(value * value * value)
 }
 
+# Private function: internal to this module, cannot be exported
+private fn helper() {
+  screen("called private helper")
+}
+
+fn callHelper() {
+  helper()
+}
+
+thread fn worker(int id) {
+  screen("worker " + String(id))
+}
+
 const int answer = 42
 
 string message = "Hello from module"
@@ -265,8 +282,13 @@ int numbers[3] = [10, 20, 30]
 export (add)
 export (mul)
 export (getSquare, getCube)
+export (callHelper)
+export (worker)
 export (answer)
 export (message, numbers)
+
+# Private functions cannot be exported (compile-time error):
+# export (helper)
 `,
 
     "module_struct.zen": `
@@ -277,15 +299,71 @@ struct Person {
 
 struct User {
   string name
+  private int secret
 
   greet(string name) void {
      this.name = name
      screen("Hello " + this.name)
   }
+
+  private twice() int {
+    return this.secret * 2
+  }
+
+  setSecret(int value) void {
+    this.secret = value
+  }
+
+  revealSecret() int {
+    return this.twice()
+  }
+
+  thread run(int n) {
+    screen("thread run " + String(n))
+  }
 }
 
 export (Person)
 export (User)
+`,
+
+    "module_deps.zen": `
+struct Address {
+  string city
+
+  show() void {
+    screen("City: " + this.city)
+  }
+}
+
+struct Employee {
+  string name
+}
+
+struct Company {
+  string name
+  Address address
+  List<Employee> employees
+
+  setup(string name, string city) void {
+    this.name = name
+    this.address.city = city
+  }
+
+  addEmployee(string name) void {
+    Employee e = { name: name }
+    this.employees.push(e)
+  }
+
+  show() void {
+    screen(this.name)
+    screen(this.employees.length)
+  }
+}
+
+# Only Company is exported. Address and Employee are imported
+# implicitly as hidden structs.
+export (Company)
 `,
 
     "module_nested.zen": `
@@ -320,7 +398,7 @@ export (fourth)
       console.log("─".repeat(50));
 
       if (code === 0) {
-        console.log("✓ Test completed successfully.");
+        console.log(`${GREEN}✓${RESET} Test completed successfully.`);
       } else {
         console.log(`✗ Test failed with exit code ${code}.`);
       }

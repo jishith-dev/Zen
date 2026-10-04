@@ -92,14 +92,24 @@ fn pow(int base, int exp) double {
 }
 
 
-fn sqrt(int x) int {
-    if (x < 0) return -1   // safe guard
+fn sqrt(double x) double {
+    if (x < 0) return -1.0
+    if (x == 0) return 0.0
 
-    int i = 1
-    while (i * i <= x) {
-        i = i + 1
+    double guess = x
+    double next = 0.0
+
+    loop (int i = 0, i < 50, i = i + 1) {
+        next = (guess + x / guess) / 2.0
+
+        if (next == guess) {
+            return next
+        }
+
+        guess = next
     }
-    return i - 1
+
+    return guess
 }
 
 fn square(int x) int {
@@ -190,7 +200,7 @@ fn isPrime(int n) bool {
     if (n == 2) return true
     if (isEven(n)) return false
     int i = 3
-    while (i <= sqrt(n)) {
+    while (i <= sqrt(Double(n))) {
         if (n % i == 0) return false
         i = i + 2
     }

@@ -358,11 +358,11 @@ imported.add(localName);
         }
 
         if (fn?.isExtern) {
-          this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
-        } else {
-          this.IRB.globals.push(
-            `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`,
-          );
+  this.pushGlobalOnce(`declare ${retType} @${fn.name}${types}`);
+} else {
+  this.pushGlobalOnce(
+    `declare ${retType} @zen_${this.curruntModuleName}_${fn.name}${types}`,
+  );
         }
 
         this.IRB.setFunction(localName, fn);
@@ -400,7 +400,7 @@ imported.add(localName);
             fn.isStructReturn = true;
           }
 
-          this.IRB.globals.push(`declare ${retType} @${fn.name}${types}`);
+          this.pushGlobalOnce(`declare ${retType} @${fn.name}${types}`);
 
           this.IRB.setFunction(fnName, fn);
         }
@@ -411,7 +411,7 @@ imported.add(localName);
       if (tables.symbolTable.has(name)) {
         const v = tables.symbolTable.get(name);
 
-        this.IRB.globals.push(`${v.ptr} = external global ${v.llvmType}`);
+        this.pushGlobalOnce(`${v.ptr} = external global ${v.llvmType}`);
 
         this.IRB.setVar(localName, v);
         continue;
@@ -535,5 +535,9 @@ imported.add(localName);
   }
 
   return null;
+  }
+
+  pushGlobalOnce(line) {
+  if (!this.IRB.globals.includes(line)) this.IRB.globals.push(line);
   }
 }

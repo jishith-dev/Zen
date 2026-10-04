@@ -1,32 +1,11 @@
 # Zen modules
-# 
-# Zen supports importing symbols from another Zen source file or
-# installed package. A module may export functions, global values,
+#
+# A module may export functions, thread functions, global values,
 # fixed-size arrays, and user-defined structs.
 #
-# Multiple import declarations are allowed. The same module can be
-# imported multiple times, and different symbols can be imported
-# from each declaration.
-#
-# Multiple export declarations are also allowed. Export names from
-# all export declarations are combined into the module's public
-# export list.
-#
-# These are both valid:
-#
-# import (add) from "module_basic.zen"
-# import (mul) from "module_basic.zen"
-#
-# export (add)
-# export (mul)
-#
-# A single import or export declaration can also contain multiple
-# names:
-#
-# import (add, mul) from "module_basic.zen"
-# export (add, mul)
-#
-# Only explicitly exported symbols are visible to importing modules.
+# Multiple import and export declarations are allowed. Export names
+# from all declarations are combined. Only explicitly exported
+# symbols are visible to importing modules.
 
 
 # Multiple imports from the same module
@@ -75,6 +54,35 @@ screen(third)
 screen(fourth)
 
 
+# Aliased imports (functions and variables only)
+
+import (add as plus, getSquare as sq) from "module_basic.zen"
+import (answer as theAnswer, message as greeting) from "module_basic.zen"
+
+plus()
+sq(6)
+screen(theAnswer)
+screen(greeting)
+
+
+# Exported function that uses a private function internally
+# (the private function itself is not visible here)
+
+import (callHelper) from "module_basic.zen"
+
+callHelper()
+
+
+# Exported thread function
+
+import (worker) from "module_basic.zen"
+import (worker as w) from "module_basic.zen"
+
+worker(1)
+w(2)
+threads.waitAll()
+
+
 # Exported user-defined struct
 
 import (Person) from "module_struct.zen"
@@ -88,7 +96,7 @@ screen(person.name)
 screen(person.age)
 
 
-# Struct methods from an imported module
+# Struct methods, private fields/methods and thread methods
 
 import (User) from "module_struct.zen"
 
@@ -98,73 +106,112 @@ User user = {
 
 user.greet("Jishith")
 
+# Public method that uses a private field and a private method
+user.setSecret(7)
+screen(user.revealSecret())
+
+# Thread method
+user.run(5)
+threads.waitAll()
+
+
+# Importing a struct implicitly imports its dependency structs
+# (through fields and List<struct> fields). They are usable only
+# through the imported struct and cannot be named.
+
+import (Company) from "module_deps.zen"
+
+Company company
+
+company.setup("Axion Labs", "Kannur")
+company.addEmployee("Achu")
+company.show()
+
+# Access through the field chain works
+screen(company.address.city)
+company.address.show()
+
 
 # Module symbols are isolated
 #
-# A symbol that is not exported by the source module cannot be
-# imported by another module.
+# The following are intentionally disabled because each must produce
+# a compile-time error:
 #
-# The following is intentionally disabled because it must produce
-# a compile-time ImportError:
-#
+# A symbol not exported by the source module cannot be imported:
 # import (privateValue) from "module_basic.zen"
-
-
-# Importing a symbol that does not exist must fail
 #
-# The following is intentionally disabled because it must produce
-# a compile-time ImportError:
-#
+# A symbol that does not exist cannot be imported:
 # import (doesNotExist) from "module_basic.zen"
-
-
-# Builtin namespaces cannot be exported or imported
 #
-# The following are intentionally disabled because they must
-# produce compile-time ImportError / ExportError diagnostics:
+# Private functions cannot be exported or imported. Private
+# functions are internal to their module, so exporting one is a
+# compile-time error (in module_basic.zen):
+# export (helper)
+# import (helper) from "module_basic.zen"
+
+
+# Builtin namespaces and functions cannot be exported or imported
 #
 # import (net) from "module_basic.zen"
 # export (net)
-
-
-# Builtin functions cannot be exported or imported
-#
-# Builtin functions belong to Zen itself and are not module exports.
-#
-# The following is intentionally disabled because it must fail:
-#
 # import (screen) from "module_basic.zen"
 # export (screen)
 
 
 # Duplicate imports of the same symbol must fail
 #
-# Importing the same symbol twice from the same module is invalid.
-#
-# The following is intentionally disabled:
-#
 # import (add) from "module_basic.zen"
 # import (add) from "module_basic.zen"
-
-
-# Multiple import declarations themselves are valid.
-# Only duplicate symbol imports are invalid.
-
-
-# Multiple export declarations themselves are valid.
-# Only duplicate export names are invalid.
 #
-# Example of an invalid module:
-#
+# Duplicate export names must fail (in the exporting module):
 # export (add)
 # export (add)
+
+
+# Struct aliases are not allowed
+#
+# Structs cannot be imported with an alias because the real names
+# of their dependencies would still propagate. Compile-time
+# ImportError: Struct 'Person' cannot be imported with an alias
+#
+# import (Person as P) from "module_struct.zen"
 
 
 # Importing a non-exported struct must fail
 #
-# The following is intentionally disabled:
-#
 # import (PrivateStruct) from "module_struct.zen"
+
+
+# Private fields and methods are only accessible inside the struct
+# through `this.`. Access from outside is a compile-time error.
+#
+# screen(user.secret)
+# user.secret = 1
+# user.twice()
+
+
+# Implicitly imported structs cannot be used by name
+#
+# Importing Company implicitly imports Address and Employee as
+# hidden structs. Using their names is a compile-time ReferenceError.
+#
+# Address a = { city: "Kannur" }
+#
+# Defining a local struct with the same name as a hidden struct is
+# a compile-time NameError.
+#
+# struct Address {
+#   string city
+# }
+
+
+# Importing an already implicitly imported struct must fail
+#
+# Address was already imported implicitly by Company, so importing
+# it explicitly is a compile-time conflict error (in either order).
+#
+# import (Company) from "module_deps.zen"
+# import (Address) from "module_deps.zen"
 
 
 # Module path resolution
@@ -172,9 +219,7 @@ user.greet("Jishith")
 # A .zen source path can be imported directly. Relative paths are
 # resolved from the importing source context.
 #
-# Installed packages can also be imported using a bare package name.
-#
-# Example:
+# Installed packages can be imported using a bare package name.
 #
 # import (WebSocket) from "websocket"
 #
@@ -182,19 +227,14 @@ user.greet("Jishith")
 # make the test depend on an installed external package.
 
 
-# Modules can be imported by different declarations without being
-# compiled repeatedly. Zen caches the compiled module and resolves
-# each requested symbol from the cached module information.
+# Zen caches compiled modules and resolves each requested symbol
+# from the cached module information.
 
 
-screen("Modules test passed")
-
-
-# Reference file
+##--------- Module Files -----------##
 
 /*
-
-module_basic.zen
+# module_basic.zen
 
 fn add() {
   screen("called add")
@@ -212,6 +252,19 @@ fn getCube(int value) {
   screen(value * value * value)
 }
 
+# Private function: internal to this module, cannot be exported
+private fn helper() {
+  screen("called private helper")
+}
+
+fn callHelper() {
+  helper()
+}
+
+thread fn worker(int id) {
+  screen("worker " + String(id))
+}
+
 const int answer = 42
 
 string message = "Hello from module"
@@ -221,14 +274,16 @@ int numbers[3] = [10, 20, 30]
 export (add)
 export (mul)
 export (getSquare, getCube)
+export (callHelper)
+export (worker)
 export (answer)
 export (message, numbers)
 
-*/
+# Private functions cannot be exported (compile-time error):
+# export (helper)
 
-/* 
 
-module_struct.zen
+# module_struct.zen
 
 struct Person {
   string name
@@ -237,21 +292,75 @@ struct Person {
 
 struct User {
   string name
+  private int secret
 
   greet(string name) void {
      this.name = name
      screen("Hello " + this.name)
+  }
+
+  private twice() int {
+    return this.secret * 2
+  }
+
+  setSecret(int value) void {
+    this.secret = value
+  }
+
+  revealSecret() int {
+    return this.twice()
+  }
+
+  thread run(int n) {
+    screen("thread run " + String(n))
   }
 }
 
 export (Person)
 export (User)
 
-*/
 
-/* 
+# module_deps.zen
 
-module_nested.zen
+struct Address {
+  string city
+
+  show() void {
+    screen("City: " + this.city)
+  }
+}
+
+struct Employee {
+  string name
+}
+
+struct Company {
+  string name
+  Address address
+  List<Employee> employees
+
+  setup(string name, string city) void {
+    this.name = name
+    this.address.city = city
+  }
+
+  addEmployee(string name) void {
+    Employee e = { name: name }
+    this.employees.push(e)
+  }
+
+  show() void {
+    screen(this.name)
+    screen(this.employees.length)
+  }
+}
+
+# Only Company is exported. Address and Employee are imported
+# implicitly as hidden structs.
+export (Company)
+
+
+# module_nested.zen
 
 const int first = 10
 const int second = 20
@@ -261,5 +370,6 @@ const int fourth = 40
 export (first, second)
 export (third)
 export (fourth)
-
 */
+
+screen("Modules test passed")

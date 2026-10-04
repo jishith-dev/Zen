@@ -19,6 +19,8 @@ It is not a language tutorial. For the language itself, see the README, or run `
 4. Value model
 6. Adding to the language
 7. Testing and debugging
+8. Internal toggles
+9. Summary
 
 ## Compilation pipeline
 
@@ -314,6 +316,34 @@ By default the compiler reports Zen errors in a readable format. To see the unde
 3. If the compiler produced wrong behavior instead of an error, read `build/<name>.ll` and compare it with what the source should do. A missing `load`, or a wrong pointer passed to a runtime function, shows up directly in the IR.
 4. Check the value model flags (`isStruct`, `isOpaque`, `needsLoad`) at the point where the value is produced.
 5. Keep the repro as a test.
+
+## Internal toggles
+
+Two flags in the `IRBuilder` constructor (`src/codegen/helper/helper.js`) are for compiler development only. They are not CLI flags, and users should never need to change them.
+
+```js
+this.diagnosticMode = false; // compiler debugging
+this.stdlibMode = false;     // compiling stdlib.zen
+```
+
+| Flag | Default | Purpose |
+| --- | --- | --- |
+| `diagnosticMode` | `false` | Controls how compiler errors are reported |
+| `stdlibMode` | `false` | Marks that `stdlib.zen` is being compiled |
+
+### `diagnosticMode`
+
+- `false`: errors are shown as readable Zen errors (`[Zen Error] ImportError: ...` with the line and a hint).
+- `true`: the raw Node.js stack trace of the compiler is shown. Use it to find which compiler stage and function failed (`InferType.infer`, `Parser.expect`, ...).
+
+It must be `false` in any release build, otherwise users see compiler internals instead of Zen errors.
+
+### `stdlibMode`
+
+- Set it to `true` only while compiling `src/zen_stdlib/stdlib.zen`. In this mode function names get the stdlib mangling prefix, so you write plain names such as `isEven` in `stdlib.zen`.
+- It must be `false` for every other compile, including user programs and modules.
+
+If you change either flag while working, set it back before you commit or release.
 
 ## Summary
 

@@ -279,7 +279,6 @@ added architecture documentation
 
 Added new constants:
 
-```
 SQRT1_2: double
 SQRT3: double
 LOG2E: double
@@ -288,4 +287,5 @@ BYTE_MAX: i8
 BYTE_MIN: i8
 I64_MAX: i64
 I64_MIN: i64
-```
+
+changed stdlib function sqrt param int to double and return type int to double 

@@ -862,14 +862,9 @@ int _string_to_int(char* str) {
 }
 
 int _string_to_int_ascii(char *str) {
-    int result = 0;
+    if (!str || !*str) return 0;
 
-    while (*str) {
-        result += (int)(*str);
-        str++;
-    }
-
-    return result;
+    return (int)(unsigned char)str[0];
 }
 
 char* _int_to_string_ascii(int value) {

@@ -66,6 +66,7 @@ int other = 10 < 5 ? 40 : 70
 screen(other)
 
 # switch
+# switch only works on int expressions
 
 int value = 2
 
@@ -143,3 +144,186 @@ fn check(int value) string {
 screen(check(10))
 screen(check(-10))
 screen(check(0))
+
+# boundary value, >= includes the edge
+
+int edge = 90
+
+if (edge >= 90) {
+  screen("edge A")
+} else if (edge >= 80) {
+  screen("edge B")
+}
+
+# operator precedence, && binds tighter than ||
+
+if (true || false && false) {
+  screen("precedence ok")
+}
+
+if ((true || false) && false) {
+  screen("never printed")
+} else {
+  screen("grouped ok")
+}
+
+# short circuit evaluation
+# the right side is skipped when the left side already decides the result
+
+fn t() bool {
+  screen("t called")
+  return true
+}
+
+fn f() bool {
+  screen("f called")
+  return false
+}
+
+if (f() && t()) {
+  screen("never printed")
+} else {
+  screen("and short circuit")
+}
+
+if (t() || f()) {
+  screen("or short circuit")
+}
+
+# truthiness of non bool values
+
+int one = 1
+int zero = 0
+
+if (one) {
+  screen("int truthy")
+}
+
+if (!zero) {
+  screen("zero falsy")
+}
+
+double half = 0.5
+double zd = 0.0
+
+if (half) {
+  screen("double truthy")
+}
+
+if (!zd) {
+  screen("double zero falsy")
+}
+
+# NaN is truthy, same as C
+
+double z = 0.0
+double n = z / z
+
+if (n) {
+  screen("nan truthy")
+}
+
+# nested ternary and ternary with other types
+
+int n1 = 15
+string size = n1 < 10 ? "small" : n1 < 20 ? "medium" : "large"
+
+screen(size)
+
+double d = true ? 1.5 : 2.5
+
+screen(d)
+
+# ternary as a function argument
+
+screen(age >= 18 ? "yes" : "no")
+
+# switch with no matching case runs default
+
+int miss = 99
+
+switch (miss) {
+  case 1:
+    screen("one")
+  case 2:
+    screen("two")
+  default:
+    screen("no match")
+}
+
+# switch case with multiple statements
+
+int multi = 1
+
+switch (multi) {
+  case 1:
+    screen("multi a")
+    screen("multi b")
+  case 2:
+    screen("multi c")
+  default:
+    screen("multi d")
+}
+
+# return from inside switch
+
+fn dayName(int d) string {
+  switch (d) {
+    case 1:
+      return "mon"
+    case 2:
+      return "tue"
+    default:
+      return "other"
+  }
+
+  return "unreachable"
+}
+
+screen(dayName(1))
+screen(dayName(2))
+screen(dayName(9))
+
+# continue inside a switch inside a loop
+
+loop (int i = 0, i < 4, i++) {
+  switch (i) {
+    case 1:
+      continue
+    default:
+      screen("sw loop :" + i)
+  }
+}
+
+# return from inside a loop
+
+fn firstEven(List<int> items) int {
+  loop (v of items) {
+    if (v % 2 == 0) {
+      return v
+    }
+  }
+
+  return -1
+}
+
+screen(firstEven([3, 5, 8, 10]))
+screen(firstEven([1, 3]))
+
+# break and continue in while
+
+int k = 0
+
+while (k < 10) {
+  k++
+
+  if (k % 2 == 0) {
+    continue
+  }
+
+  if (k > 7) {
+    break
+  }
+
+  screen("while bc :" + k)
+}

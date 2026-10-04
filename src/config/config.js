@@ -2464,7 +2464,7 @@ const STD_FUNCTIONS_SCHEMA = {
   sign: { ret: "i32", params: ["i32"] },
 
   pow: { ret: "double", params: ["i32", "i32"] },
-  sqrt: { ret: "i32", params: ["i32"] },
+  sqrt: { ret: "double", params: ["double"] },
   square: { ret: "i32", params: ["i32"] },
   cube: { ret: "i32", params: ["i32"] },
 

@@ -72,11 +72,122 @@ while (count < 5) {
 }
 
 # do while loop
+# always runs at least once
+# (non-interactive here so the test suite doesn't block on input())
 
-int number
+int number = 0
 
 do {
-  number = Int(input("Enter a number greater than 0: "))
-} while (number <= 0)
+  number++
+  screen("do while :" + number)
+} while (number < 3)
 
 screen("Valid number: " + number)
+
+# countdown and step
+
+loop (int i = 5, i > 0, i--) {
+  screen("down :" + i)
+}
+
+loop (int i = 0, i < 10, i += 2) {
+  screen("step :" + i)
+}
+
+# break and continue
+
+loop (int i = 0, i < 10, i++) {
+  if (i == 3) {
+    continue
+  }
+  if (i == 6) {
+    break
+  }
+  screen("bc :" + i)
+}
+
+# nested loops, break only exits the inner loop
+
+loop (int i = 1, i <= 3, i++) {
+  loop (int j = 1, j <= 3, j++) {
+    if (j == 3) {
+      break
+    }
+    screen("nested :" + i + "," + j)
+  }
+}
+
+# nested lists
+
+List<List<int>> grid = [[1, 2], [3, 4], [5, 6]]
+int total
+
+loop (row of grid) {
+  loop (cell of row) {
+    total += cell
+  }
+}
+
+screen("grid total :" + total)
+
+# of loop has reference semantics, changes affect the original list
+
+List<int> refs = [1, 2, 3]
+
+loop (v of refs) {
+  v = v * 10
+}
+
+loop (v of refs) {
+  screen("mutated :" + v)
+}
+
+# same for lists of structs
+
+loop (user of users) {
+  user.age = user.age + 1
+}
+
+screen(users[0].age)
+
+# but copying out of a list is value semantics
+
+User copy = users[0]
+copy.age = 99
+
+screen(users[0].age)
+screen(copy.age)
+
+# empty list never runs the body
+
+List<int> empty = []
+
+loop (v of empty) {
+  screen("never printed")
+}
+
+screen("empty done")
+
+# while with break
+
+int w
+
+while (true) {
+  w++
+  if (w == 4) {
+    break
+  }
+}
+
+screen("w :" + w)
+
+# do while with a false condition still runs once
+
+int once = 10
+
+do {
+  screen("do once")
+  once++
+} while (once < 5)
+
+screen("once :" + once)

@@ -123,3 +123,125 @@ screen(person.getInt("age"))
 person.setString("name", "John")
 
 screen(person.getString("name"))
+
+# fixed array is zero initialized
+
+int zeros[3]
+
+loop (v of zeros) {
+  screen("zero :" + v)
+}
+
+# traverse a multidimensional array
+
+int total
+
+loop (int i = 0, i < 2, i++) {
+  loop (int j = 0, j < 3, j++) {
+    total += matrix[i][j]
+  }
+}
+
+screen("matrix total :" + total)
+
+# lists of every element type
+
+List<string> names = ["Jishith", "Abhinav"]
+
+names.push("Abhishek")
+
+screen(names[1])
+screen(names.length)
+
+List<double> ds = [1.5, 2.5]
+
+screen(ds[0] + ds[1])
+
+List<long> ls = [1L, 9000000000L]
+
+screen(ls[1])
+
+List<byte> bytes = [10B, -128B, 127B]
+
+screen(bytes[1])
+screen(bytes.length)
+
+# empty list
+
+List<int> empty = []
+
+screen(empty.length)
+
+# growing a nested list
+
+List<List<int>> rows = []
+
+rows.push([1, 2])
+rows.push([3])
+
+screen(rows.length)
+screen(rows[0][1])
+screen(rows[1][0])
+
+# copying a struct out of a list is value semantics
+
+User copy = users[1]
+copy.name = "Copy"
+
+screen(users[1].name)
+screen(copy.name)
+
+# looping over a list of structs has reference semantics
+
+loop (u of users) {
+  u.age = u.age + 1
+}
+
+screen(users[0].age)
+screen(users[1].age)
+
+# struct with a list field
+
+struct Team {
+  string name
+  List<string> members
+}
+
+Team team = {
+  name: "core",
+  members: ["a", "b"]
+}
+
+screen(team.members.length)
+
+team.members.push("c")
+
+screen(team.members[2])
+screen(team.members.length)
+
+# Map with every value type
+# L is long, B is byte
+
+Map m = {
+  big: 1420000000L,
+  tiny: -100B,
+  ratio: 2.5,
+  ok: true,
+  tags: [1, 2, 3]
+}
+
+screen(m.getLong("big"))
+screen(m.getByte("tiny"))
+screen(m.getDouble("ratio"))
+screen(m.getBool("ok"))
+screen(m.getList<List<int>>("tags").length)
+
+# building a Map programmatically
+
+Map built
+
+built.setInt("n", 5)
+built.setString("s", "hi")
+
+screen(built.getInt("n"))
+screen(built.getString("s"))

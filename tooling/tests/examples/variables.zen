@@ -1,4 +1,4 @@
-byte b = 10B
+    byte b = 10B
     int i = 100
     long l = 1000L
     double d = 25.5
