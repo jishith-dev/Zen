@@ -37,7 +37,7 @@ screen(pow(2, 10))
 screen(type(pow(2, 10)))
 screen(square(7))
 screen(cube(3))
-screen(sqrt(16))
+screen(sqrt(16.0))
 
 # rounding
 

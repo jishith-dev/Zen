@@ -24,23 +24,86 @@
 
 ## Installation
 
+### Quick install (latest release)
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y
 ```
 
-Installer options (pass after `bash -s --`):
+### Other ways to install
+
+**Specific version**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y --tag 0.1.0
+```
+
+**From a branch** (latest commit, unpinned, no VERSION check)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y --branch main
+```
+
+**Custom install location**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y --prefix /usr/local
+```
+
+**Interactive** (asks before installing deps or editing your shell rc)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash
+```
+
+**Reinstall / upgrade**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y --force
+```
+
+**Skip PATH edit**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y --no-rc-edit
+```
+
+**From a local clone**
+
+```bash
+git clone https://github.com/Jishith-dev/Zen.git
+cd Zen
+./install.sh -y
+```
+
+### Options
+
+Pass these after `bash -s --`:
 
 | Option | What it does |
 |---|---|
 | `--tag <tag>` | Install a specific release tag (default: latest release) |
 | `--branch <name>` | Install from a branch (latest commit, no VERSION check) |
-| `--prefix <dir>` | Where to put the `zen` symlink (default: `~/.local/bin`) |
+| `--prefix <dir>` | Where to put the `zen` symlink (default: `~/.local/bin`, or `$PREFIX/bin` on Termux) |
 | `--force` | Reinstall even if the same ref is already installed |
 | `-y`, `--yes` | Answer yes to all prompts and auto-install dependencies |
 | `--no-rc-edit` | Don't edit shell rc files to add PATH |
-| `--h`, `--help` | Show installer help |
+| `-h`, `--help` | Show installer help |
 
-Requires: `git`, `node`, `pkg-config`, LLVM 20+ (`clang`, `llc`, `opt`) and libcurl headers. The installer sets these up for you with `-y`. Windows is not supported yet (use WSL).
+### Environment variables
+
+| Variable | Effect |
+|---|---|
+| `ZEN_REF` | Same as `--tag` |
+| `ZEN_PREFIX` | Same as `--prefix` |
+| `ZEN_REPO` | Override the git repository URL |
+| `ZEN_INSTALL_DIR` | Override the install directory (default: `~/.zen`) |
+
+### Requirements
+
+`git`, `node`, `pkg-config`, LLVM 20+ (`clang`, `llc`, `opt`) and libcurl headers. With `-y` the installer sets these up for you. Native Windows is not supported yet (use WSL).
+
+---
 
 ## Issues
 
@@ -7157,7 +7220,7 @@ See [errors.md](errors.md) for all error types.
 #### Linux, macOS, and Android (Termux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- -y
 ```
 
 #### Windows
