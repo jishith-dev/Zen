@@ -1,7 +1,0 @@
-struct Box {
-  string name
-}
-
-Box b
-List<string> l = [b.nope()]
-screen(l[0])

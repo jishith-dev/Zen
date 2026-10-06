@@ -240,7 +240,7 @@ const BUILTIN_INFO = {
     clamp: { origin: "stdlib", description: "Limits value to the range min..max.", parameters: [{ name: "value", type: "int" }, { name: "min", type: "int" }, { name: "max", type: "int" }], returnType: "int" },
     sign: { origin: "stdlib", description: "Returns -1, 0 or 1 depending on the sign of n.", parameters: [{ name: "n", type: "int" }], returnType: "int" },
     pow: { origin: "stdlib", description: "Returns base raised to the power exp.", parameters: [{ name: "base", type: "int" }, { name: "exp", type: "int" }], returnType: "double" },
-    sqrt: { origin: "stdlib", description: "Returns the square root of n as an int.", parameters: [{ name: "n", type: "int" }], returnType: "int" },
+    sqrt: { origin: "stdlib", description: "Returns the square root of n as an int.", parameters: [{ name: "n", type: "double" }], returnType: "double"},
     square: { origin: "stdlib", description: "Returns n multiplied by itself.", parameters: [{ name: "n", type: "int" }], returnType: "int" },
     cube: { origin: "stdlib", description: "Returns n multiplied by itself twice.", parameters: [{ name: "n", type: "int" }], returnType: "int" },
     floor: { origin: "stdlib", description: "Rounds x down to an int.", parameters: [{ name: "x", type: "double" }], returnType: "int" },
@@ -398,9 +398,6 @@ const BUILTIN_INFO = {
         sendFile: { description: "Sends a file as the response with the given content type.", parameters: [{ name: "path", type: "string" }, { name: "contentType", type: "string" }], returnType: "void" },
         send: { description: "Sends a text response.", parameters: [{ name: "body", type: "string" }], returnType: "void" },
         status: { description: "Sets the response status code.", parameters: [{ name: "code", type: "int" }], returnType: "void" },
-        method: { description: "HTTP method of the request.", parameters: [], returnType: "string" },
-        path: { description: "Path of the request.", parameters: [], returnType: "string" },
-        body: { description: "Body of the request.", parameters: [], returnType: "string" },
         json: { description: "Sends a JSON response.", parameters: [{ name: "data", type: "string" }], returnType: "void" },
         css: { description: "Sends a CSS response.", parameters: [{ name: "data", type: "string" }], returnType: "void" },
         html: { description: "Sends an HTML response.", parameters: [{ name: "data", type: "string" }], returnType: "void" },
@@ -412,8 +409,13 @@ const BUILTIN_INFO = {
         method: { description: "HTTP method of the request.", type: "string" },
         path: { description: "Path of the request.", type: "string" },
         body: { description: "Body of the request.", type: "string" },
+        method: { description: "HTTP method of the request.", parameters: [], returnType: "string" },
+        path: { description: "Path of the request.", parameters: [], returnType: "string" },
+        body: { description: "Body of the request.", parameters: [], returnType: "string" },
       },
     },
+
+    HttpResponse: {},
 
     Ptr: {
       description: "Raw memory pointer for low-level access.",
@@ -472,23 +474,38 @@ const BUILTIN_INFO = {
   },
 
   constants: {
-    PI: { description: "Ratio of a circle's circumference to its diameter (3.14159265358979).", type: "double", mutable: false },
-    TAU: { description: "Full circle in radians, 2 * PI (6.28318530717959).", type: "double", mutable: false },
-    E: { description: "Euler's number (2.71828182845905).", type: "double", mutable: false },
-    PHI: { description: "The golden ratio (1.61803398874989).", type: "double", mutable: false },
-    SQRT2: { description: "Square root of 2 (1.4142135623731).", type: "double", mutable: false },
-    LN2: { description: "Natural logarithm of 2 (0.693147180559945).", type: "double", mutable: false },
-    LN10: { description: "Natural logarithm of 10 (2.30258509299405).", type: "double", mutable: false },
-    SEED: { description: "Global seed for random number generation. Can be changed.", type: "long", mutable: true },
-    I32_MAX: { description: "Largest int value (2147483647).", type: "int", mutable: false },
-    I32_MIN: { description: "Smallest int value (-2147483648).", type: "int", mutable: false },
-    F64_MAX: { description: "Largest finite double value.", type: "double", mutable: false },
-    F64_MIN: { description: "Minimum double limit.", type: "double", mutable: false },
-    F64_EPS: { description: "Smallest difference between 1.0 and the next double.", type: "double", mutable: false },
-    INF: { description: "Positive infinity.", type: "double", mutable: false },
-    NEG_INF: { description: "Negative infinity.", type: "double", mutable: false },
-    NAN: { description: "Not a number.", type: "double", mutable: false },
-  },
+  PI: { description: "Ratio of a circle's circumference to its diameter (3.14159265358979).", type: "double", mutable: false },
+  TAU: { description: "Full circle in radians, 2 * PI (6.28318530717959).", type: "double", mutable: false },
+  E: { description: "Euler's number (2.71828182845905).", type: "double", mutable: false },
+  PHI: { description: "The golden ratio (1.61803398874989).", type: "double", mutable: false },
+  SQRT2: { description: "Square root of 2 (1.4142135623731).", type: "double", mutable: false },
+  SQRT1_2: { description: "Square root of 1/2 (0.707106781186548).", type: "double", mutable: false },
+  SQRT3: { description: "Square root of 3 (1.73205080756888).", type: "double", mutable: false },
+
+  LN2: { description: "Natural logarithm of 2 (0.693147180559945).", type: "double", mutable: false },
+  LN10: { description: "Natural logarithm of 10 (2.30258509299405).", type: "double", mutable: false },
+  LOG2E: { description: "Base-2 logarithm of e (1.44269504088896).", type: "double", mutable: false },
+  LOG10E: { description: "Base-10 logarithm of e (0.434294481903252).", type: "double", mutable: false },
+
+  SEED: { description: "Global seed for random number generation. Can be changed.", type: "long", mutable: true },
+
+  BYTE_MAX: { description: "Largest byte value (127).", type: "byte", mutable: false },
+  BYTE_MIN: { description: "Smallest byte value (-128).", type: "byte", mutable: false },
+
+  I32_MAX: { description: "Largest int value (2147483647).", type: "int", mutable: false },
+  I32_MIN: { description: "Smallest int value (-2147483648).", type: "int", mutable: false },
+
+  I64_MAX: { description: "Largest long value (9223372036854775807).", type: "long", mutable: false },
+  I64_MIN: { description: "Smallest long value (-9223372036854775808).", type: "long", mutable: false },
+
+  F64_MAX: { description: "Largest finite double value.", type: "double", mutable: false },
+  F64_MIN: { description: "Minimum positive double value.", type: "double", mutable: false },
+  F64_EPS: { description: "Smallest difference between 1.0 and the next double.", type: "double", mutable: false },
+
+  INF: { description: "Positive infinity.", type: "double", mutable: false },
+  NEG_INF: { description: "Negative infinity.", type: "double", mutable: false },
+  NAN: { description: "Not a number.", type: "double", mutable: false },
+},
 };
 
 // helpers (handy for info.js and the LSP)

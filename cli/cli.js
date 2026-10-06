@@ -91,26 +91,28 @@ const TEST_COMMANDS = new Set([
 
 function help() {
   console.log(`
-Zen Programming Language v2.1.1
-
-hint: ? (optional)
+Zen Programming Language v3.0.0
 
 Usage:
-  zen run <file> [-O0|-O1|-O2|-O3]?
-  zen build <file> [-O0|-O1|-O2|-O3]?
+  zen <command> [arguments] [options]
+
+Run & Build:
+  zen run <file> [-O0|-O1|-O2|-O3]
+  zen build <file> [-O0|-O1|-O2|-O3]
   zen ir <file>
   zen ast <file>
   zen tokens <file>
-  zen clean <file>
-  zen update
+  zen clean
 
 Project:
-  zen init <project-name>
-  
+  zen init <project-name> [--bin]
+
 Tooling:
-  zen fmt <file> *? or **?
+  zen fmt <path...> [-r|--recursive] [--no-comments]
   zen lint <file>
-  zen lsp              (language server, used by editors)
+  zen lsp
+  zen test <package-name>
+  zen test (official test runner)
 
 Packages:
   zen install <package>
@@ -121,9 +123,10 @@ Packages:
   zen mine
   zen list
   zen publish
-  zen unpublish 
+  zen unpublish
   zen deps
   zen installed
+  zen read <package>
 
 Account:
   zen signup
@@ -132,22 +135,37 @@ Account:
   zen whoami
   zen recovery
 
-Other:
-  zen --help
-  zen --version
+Information:
   zen info
   zen info namespace <name>
   zen info namespace <name> --<methodName>
-  zen info global <name> 
+  zen info global <name>
   zen info global <struct> --<methodName>
-  zen test
+
+Update:
+  zen update
+  zen update --dev
+
+Version:
+  zen --version
+  zen --v
+  zen version
+  zen version <package>
+
+Other:
+  zen --help
+  zen --h
+  zen help
 
 Optimization Levels:
   -O0    No optimization
   -O1    Basic optimization
   -O2    Recommended (default)
-  -O3    Maximum optimization    
-    `);
+  -O3    Maximum optimization
+
+Zen REPL: 
+   zen
+`);
 }
 
 export class CLI {
@@ -170,7 +188,7 @@ export class CLI {
       return;
     }
 
-    if (command === "--help" || command === "-h" || command === "help") {
+    if (command === "--help" || command === "--h" || command === "help") {
       help();
       process.exit(0);
     }
@@ -204,7 +222,7 @@ export class CLI {
     process.exit(0);
   }
 
-  console.log("Zen v2.1.1 (latest)");
+  console.log("Zen v3.0.0 (latest)");
   process.exit(0);
     }
     
@@ -215,7 +233,7 @@ export class CLI {
     }
 
     if (command === "lsp") {
-      // stdio language server; the editor launches this, nothing else may print to stdout
+      // stdio language server, the editor launches this
       await import("../bin/lsp.js");
       return;
     }

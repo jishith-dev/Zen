@@ -1,291 +1,149 @@
-Zen v3.0.0 - Internal Changelog Note
+Zen v3.0.0 — Internal Changelog
+===============================
 
-BREAKING
-  - Renamed toString/toInt -> asciiToInt/intToAscii for ASCII conversion.
-  - JSON integers decoded via .map() are now Long, not Int.
-    -> use getLong() for all JSON integer values post-map.
-  - "private" is now a reserved keyword (functions, methods, fields).
-    -> collides with any existing identifier named "private".
+Reference for updating the docs. Grouped by area.
 
-LANGUAGE / TYPE SYSTEM
-  - Formalized numeric widening: byte -> int -> long -> double.
-  - bool participates in arithmetic (true=1, false=0) and bitwise ops.
-  - New bitwise operators: & | >> << ~
-  - Unary + added.
-  - infer supports: int, bool, double, string, long, byte
-    (errors on list/struct/other).
-  - Compile-time constants supported (e.g. int N = 10; int arr[N]).
-  - sizeOf() supports bare types and expressions; bare struct names
-    still unsupported (must instantiate first).
-  - Struct field initializers with defaults; uninitialized structs get
-    zero-value fields (0, "", false, empty list, etc).
-    Struct literals only set the fields explicitly given.
-  - Anonymous/inline functions as callback args; compiled as separate
-    functions, no closures (no variable capture).
 
-STDLIB / RUNTIME
-  - HttpRequest.getHeader added.
-  - extName() (no dot) vs path.extname() (with dot) - naming clarified.
-  - length() now accepts List directly, alongside list.length.
-  - List methods added: remove(), reverse(), sort(), sum(), avg().
-  - Map methods added: keys(), entries().
-  - stringToBytes / bytesToString globals added.
-  - TCP networking built in:
-      structs: Tcp, TcpServer
-      net.online(), net.connect(host, port), net.listen(port)
-      Tcp: send(), receive(), close(), isOpen()
-      TcpServer: accept(), close(), isOpen()
-      (native impl: tcp.c)
-  - Real concurrency: thread fn now accepts parameters, catches
-    compile-time capture errors.
-    threads.count(), threads.currentId() added.
+BREAKING CHANGES
+----------------
 
-PACKAGES / CLI
-  - zen install / uninstall accept multiple package names at once.
-  - zen installed (lists installed package count).
-  - zen deps auto-detects/records native/*.o; native objects auto-link.
-  - .c files supported as native dependencies.
-  - zen.json flags: [] supported at module + standalone level
-    (e.g. --flags -lmariadb).
-  - zen read pkgname [--raw] renders package README in terminal.
-  - zen update --dev installs dev version.
-  - zen upgrade pkgName; zen install pkg@semver support.
-  - --link a.o b.o supported.
-  - Multiple exports/imports per file supported.
-  - Import aliasing for functions/variables (not yet for structs).
-  - zen tests, zen info (namespace/global, with --methodName) added.
-  - Interactive REPL (zen with no args), prints "Bye!" on exit().
-  - Better compile-time diagnostics: hints + source text.
+- `toString` / `toInt` renamed to `intToAscii` / `asciiToInt` (ASCII conversion).
+- `private` is now a reserved keyword (functions, methods, fields). Any identifier named `private` collides.
+- Keyword `in` removed.
+- Classic loop must always be `loop (init, cond, update)`.
+- `+` with any string operand converts the other operand to string and concatenates.
+- `fs.writeFileBytes` now returns `int` (success code) instead of `void`.
+- `sqrt` now takes `double` and returns `double` (was `int`).
+- `zen tests` renamed to `zen test`.
+- `zen -v` changed to `zen --v`.
+- Windows support temporarily paused in this version.
 
-INSTALLER (install.sh)
-  - --tag / --branch install modes; branch installs skip VERSION
-    check and version off short commit hash.
-  - Verified end-to-end on Termux (Android) and reviewed for
-    apt/pacman/dnf/zypper Linux paths; Windows unsupported for now
-    (documented, not auto-installed).
 
-  - added new global built-in -- lastIndexOf
-  - removed keyword 'in'
-  - enforce classic loop always loop (init, cond, update)
+LANGUAGE AND TYPE SYSTEM
+------------------------
 
-Json.map() should pick getInt()/getLong()/getByte() based on usage, with overflow checks for each (int overflow check, byte overflow check, etc.) — not just default to one rule for all numeric values.
-Byte is signed (-128 to 127) — document this explicitly.
-Scientific notation (1e300, 1.5e-10) is now supported in numeric literals.
+- Numeric widening formalized: `byte -> int -> long -> double`.
+- `bool` works in arithmetic (`true`=1, `false`=0) and bitwise ops.
+- New bitwise operators: `&  |  >>  <<  ~`. Unary `+` added.
+- `infer` supports: `int`, `bool`, `double`, `string`, `long`, `byte`. Errors on list/struct/other.
+- Compile-time constants: `int N = 10; int arr[N]`.
+- `sizeOf()` supports bare types and expressions. Bare struct names are unsupported (instantiate first).
+- Struct field initializers with defaults. Uninitialized structs get zero-value fields (`0`, `""`, `false`, empty list). Struct literals only set the fields given.
+- Anonymous inline functions as callback args: compiled as separate functions, no closures (cannot capture outer variables).
+- Named functions passed as callbacks can use closure (outer variables allowed).
+- Multiple exports/imports per file. Import aliasing works for functions and variables only (not structs).
+- Thread fns accept parameters and report capture errors at compile time.
+- Thread methods in structs spawn correctly.
+- Chained calls on returned structs work: `make().show()`.
 
-Hex literals with no suffix are always int — even if the hex digits happen to end in a letter like B or F (e.g. 0xFB is int 251, not a byte).
-Hex + type suffix requires an underscore before the suffix letter, since B is a valid hex digit and ambiguous otherwise: 0xFB_B → byte, 0xFF_L → long. No underscore = no suffix, always int.
-Decimal literal suffixes (20B, 42L) are unaffected — no ambiguity there, unchanged behavior.
-Scientific notation (1e300, 1.5e-10, 2E+5) now supported for double literals, both in source parsing and in formatDouble's LLVM-output formatting (fixes invalid 1e-9-style constants that lack a required decimal point).
-Byte is signed, -128 to 127; hex/decimal values outside that range wrap via two's complement when suffixed as byte.
 
-Added \e and \xHH string escapes (via a new readEscape() in the lexer), plus ESC handling in toLLVMString, so ANSI escape codes like "\e[31m" work in Zen strings.
+LITERALS AND ESCAPES
+--------------------
 
-added new http namespace method http.getProgress(url, callback) void return, params - percentage (int) - pending
-it return list of bytes for low level controlling
+- `byte` is signed: -128 to 127. With a byte suffix, out-of-range values wrap (two's complement).
+- Scientific notation for doubles: `1e300`, `1.5e-10`, `2E+5`. Supported in source parsing and in LLVM double formatting (fixes invalid constants like `1e-9` with no decimal point).
+- Hex literals with no suffix are always `int`: `0xFB` is int 251, not a byte.
+- Hex with a type suffix needs an underscore: `0xFB_B` is byte, `0xFF_L` is long.
+- Decimal suffixes unchanged: `20B`, `42L`.
+- New string escapes `\e` and `\xHH` (`readEscape()` in lexer, ESC handling in `toLLVMString`). Example: `"\e[31m"` for ANSI colors.
 
-HTTP timeout behaviour (curlRuntime.c, zen_request)
 
+STDLIB AND RUNTIME
+------------------
+
+Globals
+- `lastIndexOf` added.
+- `stringToBytes` / `bytesToString` added.
+- `length()` accepts a List directly, alongside `list.length`.
+- Naming: `extName()` returns no dot, `path.extname()` returns with dot.
+
+List methods: `remove()`, `reverse()`, `sort()`, `sum()`, `avg()`, `flat()` (any depth to depth 1).
+
+Map methods: `keys()`, `entries()`.
+
+Json.map()
+- Builds a Map from JSON.
+- JSON numbers (JS number type) can be read with `getInt()`, `getByte()` or `getLong()`.
+- Overflow is checked at runtime per getter (int overflow, byte overflow, etc.).
+
+Namespaces
+- `fs`: `listDir`, `isFile`, `isDir`.
+- `sys`: `spawn`, `kill`, `isRunning`, `wait`.
+- `threads`: `count()`, `currentId()`.
+- `HttpRequest.getHeader` added.
+
+TCP (native: `tcp.c`)
+- Structs: `Tcp`, `TcpServer`.
+- `net.online()`, `net.connect(host, port)`, `net.listen(port)`.
+- `Tcp`: `send()`, `receive()`, `close()`, `isOpen()`.
+- `TcpServer`: `accept()`, `close()`, `isOpen()`.
+
+New constants: `SQRT1_2`, `SQRT3`, `LOG2E`, `LOG10E` (double); `BYTE_MAX`, `BYTE_MIN` (i8); `I64_MAX`, `I64_MIN` (i64).
+
+
+HTTP
+----
+
+- `http.getProgress(string url, fn cb(long downloaded, long total) void callback) -> List<byte>`: downloads a URL and reports downloaded and total bytes through the callback. Returns the data as `List<byte>` for low-level control.
 - Connect timeout: 10 s for every request. Fails if the server can't be reached.
-- Requests WITHOUT a progress callback (get/post/put/patch/delete):
-  hard total cap of 30 s.
-- Requests WITH a progress callback (getProgress, i.e. downloads):
-  no total cap. Aborts only if speed stays below 1 KB/s for 30 s
-  (CURLOPT_LOW_SPEED_LIMIT / LOW_SPEED_TIME), so large, slow downloads
-  finish and dead connections fail fast.
-- On any curl error (including timeout or "Operation too slow"),
-  http_error() prints a NetworkError and exits the program.
-- Tested: 3.4 MB PDF (gcc.pdf) downloads correctly with the new settings.
-
-Not implemented yet: user-configurable timeouts, retry/resume.
-
-function names passing can take outer variables (allowed closure) but for direct Anonymous inlime functions cant take outside variables (closure applies)
-
-changed fs.writeFileBytes return void to int (success code)
-
-any one operand is string with + will make non string operand string and perform concat
-
-debug.pretty() now does't support user defined struct field as list<Map> yet.
-
-renamed zen tests command to zen test and ,
-zen test pkg-name run the zen package test.zen
-
-changed zen -v to zen --v and zen --v pkgName or zen --version pkgName zen version pkgName can get installed package name
-
-importing a struct in module it cannot import the depennding structs, they need explicit export and import
-
-added new methods in namespaces:
-    fs: listDir, isFile, isDir
-    sys: spawn, kill, isRunning, wait
-
-added new List method : flat() it convert any depth list to depth 1
-
-windows support is tenporarly stopped in this version.
-
-enhanced lsp server..and command is zen lsp (used by editors) 
-
-enhanced formatter and fixed bugs
-
-enhanced linter and fixed bugs
-
-21 errors
-
-26 warnings
-
-34 unique diagnostic types overall (some warnings/errors are repeated in different situations)
-
-
-The supported checks shown by this test include:
-
-Errors
-
-1. Undefined variable
-
-
-2. Duplicate variable declaration
-
-
-3. Duplicate parameter declaration
-
-
-4. Duplicate function declaration
-
-
-5. Duplicate struct declaration
-
-
-6. Duplicate enum declaration
-
-
-7. Duplicate enum member
-
-
-8. Duplicate struct field
-
-
-9. Duplicate method declaration
-
-
-10. Duplicate map key
-
-
-11. break inside switch
-
-
-12. return outside function
-
-
-13. Returning value from void function
-
-
-14. Missing return value
-
-
-15. Missing return on all paths
-
-
-16. Wrong function argument count — too few
-
-
-17. Wrong function argument count — too many
-
-
-18. Assignment to constant
-
-
-19. Modification of constant
-
-
-20. Division by zero
-
-
-21. Undefined type
-
-
-22. this outside method
-
-
-23. Method/field name conflict
-
-
-
-Warnings
-
-1. Shadowing outer declaration
-
-
-2. Empty function
-
-
-3. Unused parameter
-
-
-4. Unused function
-
-
-5. Unused struct
-
-
-6. Unused enum
-
-
-7. Self assignment
-
-
-8. Expression has no effect
-
-
-9. Unused variable
-
-
-10. Undefined function
-
-
-11. Duplicate switch case
-
-
-12. Unreachable code
-
-
-13. Constant condition in if
-
-
-14. Empty block
-
-
-15. Constant condition in while
-
-
-16. Empty loop
-
-
-17. Constant condition in ternary
-
-So, counting unique lint rules visible in this test: 40 (23 error types + 17 warning types).
-
- thread methods, struct dependency tracking, chained calls
-
-- thread methods in structs now spawn via _zen_thread (method call path in expression.js)
-- free thread ctx in trampoline; dup and free string args per thread
-- structs record transitive deps (fields, List<T>, method params/returns)
-- importing a struct or fn implicitly registers its deps as hidden structs
-  (usable through the export, not nameable); clear errors on naming or clash
-- promote hidden struct when explicitly imported; dedupe emitted types/methods
-- unify unknown-struct error in member chain walk
-- parser: allow chained access after statement-level call (make().show())
-- call.js: emit method-call expression when used as a statement
-- pass node to setStruct so redefinition errors show line info
-
-added architecture documentation
-
-Added new constants:
-
-SQRT1_2: double
-SQRT3: double
-LOG2E: double
-LOG10E: double
-BYTE_MAX: i8
-BYTE_MIN: i8
-I64_MAX: i64
-I64_MIN: i64
-
-changed stdlib function sqrt param int to double and return type int to double 
+- Without a progress callback (get/post/put/patch/delete): hard total cap of 30 s.
+- With a progress callback (`getProgress`): no total cap. Aborts only if speed stays below 1 KB/s for 30 s (`CURLOPT_LOW_SPEED_LIMIT` / `LOW_SPEED_TIME`).
+- On any curl error (including timeout or "Operation too slow"), `http_error()` prints a NetworkError and exits.
+- Tested: 3.4 MB PDF (`gcc.pdf`) downloads correctly.
+
+
+PACKAGES AND CLI
+----------------
+
+- `zen install` / `zen uninstall` accept multiple package names.
+- `zen installed`: lists installed package count.
+- `zen deps` auto-detects/records `native/*.o`. Native objects auto-link. `.c` files supported as native deps.
+- `zen.json` `flags: []` at module + standalone level (e.g. `--flags -lmariadb`).
+- `--link a.o b.o` supported.
+- `zen read pkgName [--raw]`: renders package README in terminal.
+- `zen update --dev`: installs dev version.
+- `zen upgrade pkgName`; `zen install pkg@semver`.
+- `zen test pkg-name`: runs the package's `test.zen`.
+- `zen --v` shows version; `zen --v pkgName` / `zen --version pkgName` shows an installed package's version.
+- `zen info` (namespace/global, with `--methodName`).
+- Interactive REPL (`zen` with no args), prints "Bye!" on `exit()`.
+- `zen version pkgName`: shows the installed version of a package (separate command from `zen --v`).
+
+TOOLING
+-------
+
+- LSP server enhanced: `zen lsp` (used by editors).
+- Formatter enhanced, bugs fixed.
+- Linter fixed.
+- Better compile-time diagnostics: hints + source text.
+
+
+INSTALLER (`INSTALL.SH`)
+------------------------
+
+- `--tag` / `--branch` install modes. Branch installs skip the VERSION check and version off the short commit hash.
+- Verified end-to-end on Termux (Android). Reviewed for apt/pacman/dnf/zypper Linux paths.
+- Windows unsupported for now (documented, not auto-installed).
+
+
+COMPILER INTERNALS
+------------------
+
+- Thread methods spawn via `_zen_thread` (method call path in `expression.js`).
+- Thread ctx freed in trampoline; string args duplicated and freed per thread.
+- Structs record transitive deps (fields, `List<T>`, method params/returns).
+- Importing a struct or fn implicitly registers its deps as hidden structs: usable through the export, not nameable. Clear errors on naming or clash. Hidden struct is promoted when explicitly imported. Emitted types/methods deduped.
+- Unknown-struct error unified in member chain walk.
+- Parser allows chained access after a statement-level call; `call.js` emits the method-call expression when used as a statement.
+- `setStruct` takes the node, so redefinition errors show line info.
+- Architecture documentation added.
+
+
+KNOWN LIMITATIONS
+-----------------
+
+- Structs cannot be imported with an alias (ImportError).
+- `debug.pretty()` does not support user struct fields of type `List<Map>`.
+- `sizeOf()` does not accept bare struct names.
+- HTTP: no user-configurable timeouts, no retry/resume.
+- Windows support paused.

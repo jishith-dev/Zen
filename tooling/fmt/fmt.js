@@ -596,7 +596,7 @@ export class Fmt {
       this.visit(node.body);
     }
   }
-
+/*
   visitStruct(node) {
     this.write("struct ");
     this.write(node.name);
@@ -634,7 +634,48 @@ export class Fmt {
     this.newline();
     this.write("}");
   }
+*/
 
+visitStruct(node) {
+  this.write("struct ");
+  this.write(node.name);
+  this.space();
+
+  if (!node.members.length) {
+    this.write("{}");
+    return;
+  }
+
+  this.write("{");
+  this.indent();
+
+  for (const m of node.members) {
+    this.newline();
+    if (m.kind === "comment") {
+      this.write(m.node.value.trimEnd());
+    } else if (m.kind === "method") {
+      this.visit(m.node);
+      this.newline();
+    } else {
+      const field = m.node;
+      if (field.isPrivate) this.write("private ");
+      this.write(this.formatType({ ...field, dimensions: [] }));
+      this.space();
+      this.write(field.name);
+      for (const dim of field.dimensions || []) {
+        this.write("[");
+        if (dim != null) this.visit(dim);
+        this.write("]");
+      }
+      if (field.value) { this.write(" = "); this.visit(field.value); }
+    }
+  }
+
+  this.dedent();
+  this.newline();
+  this.write("}");
+}
+  
   visitBlock(node) {
     const body = node.body || [];
 

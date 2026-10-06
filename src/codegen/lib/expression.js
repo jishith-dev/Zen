@@ -2017,7 +2017,7 @@ if (base.type === "string") {
       }
 
       if (!LNode || !RNode)
-        this.IRB.emitError(
+        this.IRB.emitError("TypeError",
           "Invalid binary operation: left or right operand is missing or invalid",
           node?.left?.line || node?.right?.line,
         );

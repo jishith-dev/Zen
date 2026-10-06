@@ -1,15 +1,51 @@
+<div align="center" markdown="1">
+
 # ZEN Programming Language
 
-**Version 2.1.1** · Stable · July 2026
+**Statically typed · AOT compiled · LLVM backend**
+<br>
+**Version 3.0.0 · Stable · October 2026**
 
-**GitHub**: https://github.com/Jishith-dev/Zen
+![Version](https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
+![Released](https://img.shields.io/badge/released-October%202026-orange?style=for-the-badge)
+![LLVM](https://img.shields.io/badge/LLVM-20%2B-purple?style=for-the-badge)
 
-**Contact**: jishithmp534@gmail.com
+![Termux](https://img.shields.io/badge/Termux-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-apt%20%7C%20pacman%20%7C%20dnf%20%7C%20zypper-FCC624?style=for-the-badge&logo=linux&logoColor=black)
 
-**Installation**: 
+[![GitHub](https://img.shields.io/badge/GitHub-Jishith--dev%2FZen-181717?style=for-the-badge&logo=github)](https://github.com/Jishith-dev/Zen)
+[![Issues](https://img.shields.io/github/issues/Jishith-dev/Zen?style=for-the-badge&color=red)](https://github.com/Jishith-dev/Zen/issues)
+[![Contact](https://img.shields.io/badge/Contact-jishithmp534%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:jishithmp534@gmail.com)
+
+</div>
+
+---
+
+## Installation
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
 ```
+
+Installer options (pass after `bash -s --`):
+
+| Option | What it does |
+|---|---|
+| `--tag <tag>` | Install a specific release tag (default: latest release) |
+| `--branch <name>` | Install from a branch (latest commit, no VERSION check) |
+| `--prefix <dir>` | Where to put the `zen` symlink (default: `~/.local/bin`) |
+| `--force` | Reinstall even if the same ref is already installed |
+| `-y`, `--yes` | Answer yes to all prompts and auto-install dependencies |
+| `--no-rc-edit` | Don't edit shell rc files to add PATH |
+| `--h`, `--help` | Show installer help |
+
+Requires: `git`, `node`, `pkg-config`, LLVM 20+ (`clang`, `llc`, `opt`) and libcurl headers. The installer sets these up for you with `-y`. Windows is not supported yet (use WSL).
+
+## Issues
+
+Found a bug or have an idea? [Open a GitHub issue](https://github.com/Jishith-dev/Zen/issues).
+
 ---
 
 ## Introduction
@@ -18,13 +54,11 @@ ZEN is a statically compiled, LLVM-based programming language built around one p
 
 ZEN is an open-source programming language, and its development is open to everyone. Whether you are a compiler enthusiast, a language designer, or simply curious about how programming languages work at a fundamental level, you are welcome to explore, contribute, and build with ZEN. The source code, compiler implementation, and this specification are all publicly available. Contributions in any form — bug reports, suggestions, tooling, or improvements to the language itself — are valued and encouraged. ZEN is built in the open, and its future is shaped by everyone who chooses to be part of it.
 
-The result is a language with a minimal syntactic surface, no implicit coercions, no hidden runtime transformations, and no undocumented behavior — a system where the programmer and the compiler always agree on what code means.
-
 ---
 
 ## Origin
 
-ZEN was designed and implemented by **Jishith MP** as an independent programming language project.
+ZEN was designed and implemented by **Jishith** as an independent programming language project.
 
 The language grew out of a practical need: a compiler-oriented system that behaves predictably from source to binary. Early work focused on LLVM IR generation and formal lexical rules; over time this evolved into a complete language definition — with a structured grammar, a well-specified type system, and a compilation pipeline designed for clarity over cleverness.
 
@@ -39,7 +73,6 @@ The name *ZEN* reflects the design philosophy directly. Not as metaphor, but as 
 This constraint drives every decision in ZEN's design:
 
 - **No ambiguous behavior.** Every expression evaluates to exactly one outcome, defined at compile time.
-- **No implicit coercion.** Type conversions are always explicit and visible in source.
 - **No hidden transformations.** The compiler does not silently rewrite code. What you write is what executes.
 - **No syntactic sugar beyond specification.** Convenience constructs are not added unless they can be fully and formally defined.
 
@@ -61,49 +94,50 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v2.1.1
-
-### v2.1.1
-
-- Dynamic GitHub default branch detection for `zen install`
-- Increased package description limit from 50 to 400 characters
-- Added `zen recovery` command
-- Added `zen uninstall` command
-- Migrated package registry from JSON to PostgreSQL
-- Added support for importing and exporting modules in the same file
-- Added circular import handling
-- Added library imports
-- Introduced built-in `HttpServer`, `HttpRequest`, `HttpResponse`, `Json`, `JsonObject`, and `JsonArray` structs
-- Added `httpServer` namespace
-- Added `httpServer.create()`
-- Added `HttpServer.listen()`, `HttpServer.next()`, and `HttpServer.close()`
-- Added `HttpRequest.method`, `HttpRequest.path`, and `HttpRequest.body`
-- Added `HttpRequest.send()`, `json()`, `html()`, `css()`, `sendFile()`, `setHeader()`, `redirect()`, and `status()`
-- Added `Json.parse()`
-- Added `Json.getInt()`, `getDouble()`, `getString()`, `getBool()`, `getObject()`, `getArray()`, `has()`, `isNull()`, `arrayLength()`, `arrayGetInt()`, `arrayGetDouble()`, `arrayGetString()`, `arrayGetBool()`, `arrayGetObject()`, `arrayGetArray()`, and `free()`
-- Added bitwise XOR (`^`) operator
-- Added `sys.key()`
-- Added `sys.clipboard.get()`, `sys.clipboard.set()`, `sys.clipboard.clear()`, and `sys.clipboard.hasText()`
-- Moved `sys.timestamp()` to `time.now()`
-- Added `time.format()`
-- Added support for arbitrary-depth namespace member access
-- Added new system functions: `sys.setEnv()`, `sys.hasEnv()`, `sys.execOutput()`
-- Added new OS functions: `os.exit()`, `os.pid()`, `os.parentPid()`, `os.platform()`, `os.isWindows()`, `os.isLinux()`, `os.isMac()`, `os.isAndroid()`, and `os.homeDir()`
-- Added new package manager commands: `zen search`, `zen my_packages`, and `zen kind`
-- Introduced `enum` with constant integer values
-- Several compiler, CLI, registry, and runtime bug fixes
+Current Version: v3.0.0
 
 ---
 
-### Installation
+### v3.0.0
 
-Zen can be installed depending on the target platform.
-
-#### All Platforms (Linux, macOS, Termux)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
-```
+- Breaking: `toString()` / `toInt()` renamed to `intToAscii()` / `asciiToInt()`
+- Breaking: `private` is now a reserved keyword; keyword `in` removed
+- Breaking: classic loops must use `loop (init, cond, update)`
+- Breaking: `zen tests` renamed to `zen test`, `zen -v` changed to `zen --v`
+- Breaking: `fs.writeFileBytes()` now returns `int`; `sqrt()` takes and returns `double`
+- Formalized numeric widening: `byte` → `int` → `long` → `double`
+- `bool` works in arithmetic and bitwise operations
+- Added bitwise operators `&`, `|`, `>>`, `<<`, `~` and unary `+`
+- Added compile-time constants and `sizeOf()` for types and expressions
+- Struct field default initializers; uninitialized structs get zero-value fields
+- Added `private` fields and methods
+- Added anonymous inline callbacks (no closures); named functions can use closures
+- Thread functions accept parameters; added thread methods in structs
+- Added multiple exports and imports per file, and import aliasing for functions and variables
+- Struct dependency tracking with hidden dependency structs
+- Added scientific notation for `double` literals
+- Signed `byte` (-128 to 127), hex suffix rules (`0xFB_B`, `0xFF_L`)
+- Added `\e` and `\xHH` string escapes
+- Added `Json.map()` with runtime overflow checks for `getInt()`, `getByte()`, `getLong()`
+- Added List methods: `remove()`, `reverse()`, `sort()`, `sum()`, `avg()`, `flat()`
+- Added `Map.keys()` and `Map.entries()`
+- Added `lastIndexOf()`, `stringToBytes()`, `bytesToString()`
+- Added `fs.listDir()`, `fs.isFile()`, `fs.isDir()`
+- Added `sys.spawn()`, `sys.kill()`, `sys.isRunning()`, `sys.wait()`
+- Added `threads.count()` and `threads.currentId()`
+- Added TCP networking: `Tcp`, `TcpServer`, `net.online()`, `net.connect()`, `net.listen()`
+- Added `http.getProgress()` for downloads with progress reporting
+- Added HTTP timeouts and `HttpRequest.getHeader()`
+- Added `zen test`, `zen info`, `zen read`, `zen installed`, `zen upgrade`, `zen update --dev`
+- `zen install` and `zen uninstall` accept multiple packages and `pkg@semver`
+- `zen deps` detects native objects; `.c` files supported as native dependencies
+- Added `zen.json` `flags` and `--link` for native linking
+- Added interactive REPL (`zen` with no arguments)
+- Enhanced LSP (`zen lsp`), formatter and linter
+- Better compile-time diagnostics with hints and source text
+- Installer: added `--tag` and `--branch` modes
+- Windows support temporarily paused
+- Several compiler, CLI, registry, and runtime bug fixes
 
 ---
 
@@ -113,58 +147,63 @@ Zen's compiler is implemented in **JavaScript** and runs on **Node.js**. The com
 
 ### Dependencies
 
-The following dependencies are required before installing Zen:
+The installer (`install.sh`) installs all of these automatically when run with `-y`. Install them manually only if you are building by hand.
 
 | Dependency | Purpose |
 |------------|---------|
+| `git` | Downloads Zen and registry packages |
 | `node` | Runs the Zen compiler |
-| `clang` | Compiles LLVM IR to native binary |
-| `llvm` | Provides `llc` and `opt` tools for optimization and linking |
+| `clang` | Compiles the runtime and links native binaries |
+| `llvm` 20+ | Provides `llc` and `opt` (tested up to LLVM 30) |
+| `pkg-config` | Locates libcurl |
+| libcurl dev headers | Needed to build the HTTP and TCP runtime |
 
 ### Installing Dependencies
 
 #### Termux (Android)
 ```bash
-pkg install llvm clang nodejs
+pkg install git nodejs clang llvm pkg-config libcurl
 ```
 
 #### Ubuntu / Debian
 ```bash
-sudo apt install llvm clang nodejs
+sudo apt install git nodejs pkg-config libcurl4-openssl-dev wget gnupg
+wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
+sudo ./llvm.sh 21 all
 ```
+The default `llvm` package in apt is often older than 20, so install LLVM 21 from apt.llvm.org as shown.
 
 #### Arch Linux
 ```bash
-sudo pacman -S llvm clang nodejs
+sudo pacman -S git nodejs clang llvm pkgconf curl
 ```
 
 #### Fedora
 ```bash
-sudo dnf install llvm clang nodejs
+sudo dnf install git nodejs clang llvm pkgconf-pkg-config libcurl-devel
+```
+
+#### openSUSE
+```bash
+sudo zypper install git nodejs clang llvm pkg-config libcurl-devel
 ```
 
 #### macOS
 ```bash
-brew install llvm node
+brew install git node llvm curl pkg-config
 ```
 
 ---
 
 #### Windows
 
-Download and install the following:
-
-- **Node.js (LTS):** https://nodejs.org/
-- **LLVM:** https://github.com/llvm/llvm-project/releases
-
-After installation, ensure both `node` and LLVM tools (such as `clang`) are available from the command line by adding them to your system `PATH`.
-
+Native Windows is not supported yet. Use WSL and follow the Ubuntu / Debian steps above.
 
 ---
 
 ## CLI Usage
 
-Zen provides a comprehensive command-line interface for compiling, inspecting, running, package management, and project scaffolding.
+Zen provides a comprehensive command-line interface for compiling, inspecting, running, testing, package management, and project scaffolding. Running `zen` with no arguments opens the interactive REPL (type `exit()` to quit).
 
 ### Compilation & Development
 
@@ -174,10 +213,60 @@ zen build <file>           # Build executable binary
 zen ir <file>              # Generate LLVM IR
 zen ast <file>             # Print Abstract Syntax Tree
 zen tokens <file>          # Print lexer tokens
-zen clean <file>           # Remove build artifacts
-zen update                 # update latest zen without original install command.
-zen fmt <file> ## or /* (non-recurse), /** (resursive) select all .zen files
-zen lint <file>            # for getting errors and Warnings.
+zen clean                  # Remove build artifacts
+zen fmt <file> [--r]       # Format code 
+zen lint <file>            # Show errors and warnings
+zen test                   # Run tests
+zen test <package>         # Run an installed package's test.zen
+zen lsp                    # Start the language server (used by editors)
+```
+
+---
+
+## Zen formatter
+
+Formats `.zen` files. Output goes next to the source as `name.formatted.zen`
+(the original is never touched).
+
+### Usage
+
+    zen fmt <path...> [-r | --recursive] [--no-comments]
+
+| Command                  | What it formats                                  |
+|--------------------------|--------------------------------------------------|
+| `zen fmt a.zen`          | one file                                         |
+| `zen fmt a.zen b.zen`    | several files                                    |
+| `zen fmt src`            | `.zen` files directly inside `src`               |
+| `zen fmt src -r`         | everything under `src`, all subfolders           |
+| `zen fmt . -r`           | the whole project                                |
+| `zen fmt *.zen`          | shell glob, works as normal multiple paths       |
+
+### Flags
+
+- `-r`, `--recursive`  descend into subdirectories (flag position doesn't matter)
+- `--no-comments`      drop comments from the output
+
+### Rules
+
+- Skipped always: `*.formatted.*` files (so re-running never formats its own output)
+- Skipped when recursing: `node_modules`, `build`, `.git`, `.zen`
+- Duplicate paths are formatted once
+- Errors: `Path not found: <path>` if an input doesn't exist,
+  `No .zen files found` if nothing matched
+
+### Breaking change
+
+The old `dir/*` and `dir/**` syntax is removed. The shell expanded them
+before zen saw them. Use `dir` and `dir -r` instead.
+
+---
+
+### Built-in Reference
+
+```bash
+zen info global <name>                 # Docs for a global function
+zen info namespace <name>              # Docs for a namespace
+zen info namespace <name> --<method>   # Docs for one method (e.g. zen info namespace http --getProgress)
 ```
 
 ### Project Management
@@ -190,16 +279,26 @@ zen init <name> --bin      # Create a new library Zen package
 ### Package Registry
 
 ```bash
-zen install <package>      # Install a package
-zen install <package>@<semver> # Install a package for specific version
-zen uninstall <package>    # Remove an installed package
-zen search <package>       # Search packages
-zen kind <package>         # Show package kind (main/bin)
-zen mine                   # List your published packages
-zen publish                # Publish/update your package
-zen unpublish              # Remove your package from registry
-zen list                   # Browse all available packages
-zen deps                   # automatically generates Dependencies
+zen install <package> [more...]   # Install one or more packages
+zen install <package>@<semver>    # Install a specific version
+zen uninstall <package> [more...] # Remove one or more installed packages
+zen upgrade <package>             # Upgrade an installed package
+zen installed                     # Show installed package count
+zen read <package> [--raw]        # Render a package README in the terminal
+zen search <package>              # Search packages
+zen kind <package>                # Show package kind (main/bin)
+zen mine                          # List your published packages
+zen publish                       # Publish/update your package
+zen unpublish                     # Remove your package from registry
+zen list                          # Browse all available packages
+zen deps                          # Generate dependencies (also detects native/*.o)
+```
+
+### Updating Zen
+
+```bash
+zen update                 # Update to the latest release without the original install command
+zen update --dev           # Update to the dev version
 ```
 
 ### Authentication
@@ -216,16 +315,19 @@ zen recovery               # Recover forgotten password
 
 ```bash
 zen --help                 # Show help menu
-zen -h                     # Show help menu (short form)
+zen --h                     # Show help menu (short form)
 zen help                   # Show help menu (verbose)
 zen --version              # Show Zen version
-zen -v                     # Show Zen version (short form)
+zen --v                    # Show Zen version (short form)
 zen version                # Show Zen version (verbose)
+zen --v <package>          # Show an installed package's version
+zen --version <package>    # Same as above
+zen version <package>      # Same as above
 ```
 
-### Optimization Flags
+### Compilation Flags
 
-For compilation commands, you can specify optimization level:
+Optimization level (for `run` and `build`):
 
 ```bash
 zen run <file> -O0         # No optimization
@@ -237,6 +339,13 @@ zen build <file> -O0       # No optimization
 zen build <file> -O1       # Basic optimization
 zen build <file> -O2       # Standard optimization (default)
 zen build <file> -O3       # Aggressive optimization
+```
+
+Native linking:
+
+```bash
+zen run <file> --link a.o b.o      # Link extra object files
+zen run <file> --flags -lmariadb   # Pass extra linker flags
 ```
 
 ### Examples
@@ -259,7 +368,7 @@ Create a new project:
 ```bash
 zen init calculator
 cd calculator
-zen run
+zen run main.zen (or entry file)
 ```
 
 Create a library package:
@@ -268,11 +377,12 @@ Create a library package:
 zen init string-utils --bin
 ```
 
-Install and use a package:
+Install and use packages:
 
 ```bash
-zen install banking
-zen install calculator
+zen install banking calculator
+zen install banking@1.2.0
+zen read banking
 ```
 
 Publish your package:
@@ -289,14 +399,13 @@ zen list
 # Shows packages with pagination
 ```
 
-
 ---
 
 ## Notes
 
 - All build artifacts are stored inside the `build/` directory.
 - Zen compiles to native binaries using LLVM.
-- `zen init` creates a project directory containing a starter `main.zen` file and a `zen.json` project configuration.
+- `zen init <name>` creates a project directory containing a starter `main.zen` file and a `zen.json` project configuration.
 - Each command is designed for development, debugging, and compilation workflows.
 
 ---
@@ -306,41 +415,27 @@ zen list
 ### Hello World
 
 ```zen
-  screen("Hello World!")
+screen("Hello World!")
 ```
-
-> ⚠️ **Syntax update:** `const` now appears **before** the type.
->
-> **Old**
-> ```zen
-> int const age = 21
-> string const name = "ZEN"
-> ```
->
-> **New**
-> ```zen
-> const int age = 21
-> const string name = "ZEN"
-> ```
 
 ### Simple Variables
 
 ```zen
-  string name = "Zen"
-  const int age = 21
-  const List<int> a
-  const Person p
+string name = "Zen"
+const int age = 21
+const List<int> a
+const Person p
 
-  screen(name)
-  screen(`Age: ${age}`)
+screen(name)
+screen(`Age: ${age}`)
 ```
 
 ### Loop Example
 
 ```zen
-  loop (int i = 0, i < 10, i++) {
-    screen(i) 
-  }
+loop (int i = 0, i < 10, i++) {
+  screen(i)
+}
 ```
 
 ---
@@ -357,36 +452,11 @@ zen run main.zen        # Compile and run directly
 
 ---
 
-## Error Example
+## Errors
 
-### ReferenceError
-
-```zen
-  screen(x)
-```
-
-```
-[Zen ReferenceError]
-  ├── Variable 'x' is not defined
-  └── at: main.zen:1:8
-```
+See [errors.md](errors.md) for all error types.
 
 ---
-
-### TypeError
-
-```zen
-  int a = 10
-  bool b = a # error
-  screen(a + b)
-```
-
-```
-[Zen TypeError]
-  ├── Cannot assign 'int' to variable 'b' of type 'bool'
-  └── at: main.zen:2:10
-```
-
 
 ## Reactive Variables
 
@@ -478,58 +548,31 @@ base = 20   # doubled → 40, final → 45
 
 ## Threads
 
-Zen supports lightweight threads for running code concurrently.
+Zen supports real concurrent threads: each thread runs in parallel with the rest of the program.
 
 ### Thread Functions
 
-Thread functions are declared using the `thread` keyword.
+Thread functions are declared with the `thread` keyword and are started like a normal function call.
 
 ```zen
-thread fn worker() {
-    screen("Running in background")
+thread fn worker(string name, int count) {
+    screen(`${name} running ${count} times`)
 }
+
+worker("A", 3)
+worker("B", 5)
+
+threads.waitAll()
 ```
 
 #### Rules
 
-- Thread functions cannot accept parameters.
+- Thread functions can accept parameters.
 - Thread functions cannot return a value (only `void` is allowed).
-- They can be started like a normal function call.
+- Struct methods can also be threads: `thread run(int a) {}`.
+- Thread functions and thread methods can be exported and imported.
 
-```zen
-thread fn worker() {
-    screen("Hello")
-}
-
-worker()
-```
-
-> ⚠️ **Race Conditions:** Thread functions can access shared variables. If multiple threads modify the same data simultaneously, race conditions may occur. Use shared state carefully.
-
-### `threads` Namespace
-
-The `threads` namespace provides utilities for working with threads.
-
-##### `threads.waitAll`
-
-Blocks execution until all running threads have finished.
-
-```zen
-threads.waitAll()
-```
-
-Returns `void`.
-
-```zen
-thread fn worker() {
-    screen("Working...")
-}
-
-worker()
-
-threads.waitAll()
-screen("Done")
-```
+> ⚠️ **Race Conditions:** Threads run truly concurrently. If multiple threads modify the same data at the same time, race conditions may occur. Use shared state carefully.
 
 ---
 
@@ -582,38 +625,38 @@ Person a = ...
 Person b = a   # b is an independent copy
 ```
 
-Primitive types (`int`, `double`, `bool`, `byte`, and `string`) also behave as values.
+Primitive types (`int`, `long`, `double`, `bool`, and `byte`) also behave as values.
 
 ### Reference Semantics
 
-The following built-in types use **reference semantics**:
+The following types use **reference semantics**:
 
-- `HttpServer`
-- `HttpRequest`
-- `HttpResponse`
+- `string`
+- `List`
+- `Map`
 - `Json`
 - `JsonObject`
 - `JsonArray`
-- `List`
-- `Map`
+- `HttpServer`
+- `HttpRequest`
+- `HttpResponse`
+- `Tcp`
+- `TcpServer`
 - `Ptr`
 
-Assigning or passing one of these values copies only a reference to the underlying runtime object rather than duplicating the object itself. This is required because these types represent runtime-managed resources or dynamically allocated data.
+Assigning or passing one of these values copies only a reference to the underlying object rather than duplicating the object itself. This is required because these types represent runtime-managed resources or dynamically allocated data.
 
 ### Memory Management
 
-Primitive values (`int`, `double`, `bool`, and `byte`) require no manual memory management. They are stored in local or global storage managed by the compiler.
+Primitive values (`int`, `long`, `double`, `bool`, and `byte`) require no manual memory management. They are stored in local or global storage managed by the compiler.
 
-String literals are emitted as LLVM global constants and likewise require no manual cleanup. Some runtime string operations (such as concatenation) may allocate temporary memory internally, but this is managed by the runtime and does not require the programmer to call `free()`. Future versions may introduce explicit ownership semantics for dynamically created strings if needed.
+Strings and the reference-semantic built-in types allocate heap memory or runtime resources, and therefore provide a `free()` method. Where a built-in type requires explicit cleanup, it is documented alongside that type's API.
 
-Some reference-semantic built-in types allocate runtime resources and therefore provide a `free()` method. Examples include `Json`, `List`, and `Map`, `Ptr` etc.. Where a built-in type requires explicit cleanup, it is documented alongside that type's API.
-
-Attempting to use an object after it has been freed results in undefined behavior and may be diagnosed by the compiler or detected by the runtime where applicable.
-
+Using an object after it has been freed is caught at compile time. If the compiler cannot determine it statically, the runtime detects it and raises a `MemoryError`.
 
 ### Ownership
 
-Reference-semantic built-in types follow **ownership semantics**.
+Reference-semantic types follow **ownership semantics**.
 
 The object that creates or owns a runtime resource is responsible for releasing it by calling `free()`. Child objects, borrowed references, or values obtained from another object must **not** be freed directly.
 
@@ -627,7 +670,7 @@ child.free()    # Illegal
 
 Whenever possible, the compiler diagnoses ownership violations at compile time. If a violation cannot be determined statically, the runtime detects the error and terminates execution.
 
-After an object has been freed, it immediately becomes invalid. Any attempt to access it, modify it, or free it again is illegal and results in either a compile-time diagnostic or a runtime error.
+After an object has been freed, it immediately becomes invalid. Any attempt to access it, modify it, or free it again is illegal.
 
 In short, **the parent owns the lifetime of all of its children**. Only the owner of a runtime resource is permitted to destroy it.
 
@@ -637,16 +680,15 @@ In short, **the parent owns the lifetime of all of its children**. Only the owne
 
 `string` is a reference-semantic type.
 
-**All strings in Zen are heap-allocated.** A string variable holds a reference to heap memory containing the string data. Assigning or passing a string copies the reference rather than duplicating the underlying string.
+**All strings in Zen are heap-allocated** (created with `strdup`), including string literals. A string variable holds a reference to heap memory containing the string data. Assigning or passing a string copies the reference rather than duplicating the underlying data, so aliases refer to the same string.
 
-String literals are heap-managed string values at runtime, and runtime operations such as concatenation also produce heap-allocated strings.
-
-Strings are therefore subject to Zen's ownership and lifetime rules. When a string owns heap memory, it must be released using `free()` when it is no longer needed.
+Temporary strings, such as the intermediate results of concatenation, are freed automatically by the compiler. A string stored in a variable is owned by that variable and can be released with `free()` when it is no longer needed.
 
 ```zen
 string name = "Jishith"
+string alias = name   # alias refers to the same string
 
-name.free()
+name.free()           # alias is now invalid too
 ```
 
 ---
@@ -663,20 +705,22 @@ This provides a consistent and explicit ownership model across Zen's type system
 
 ## Scope of This Specification
 
-Version 2.1.1 defines the **stable core** of the language:
+Version 3.0.0 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
-- Primitive and composite data types
+- Primitive and composite data types (including numeric widening and bitwise operators)
 - Variable, reactive variable, enum, and struct declarations
-- Function definitions
+- Function definitions, callbacks, and threads
 - Module import/export system
 - Control flow constructs
-- Built-in HTTP server API
+- Built-in HTTP client and HTTP server APIs
+- Built-in TCP networking API
 - Built-in JSON API
 - Built-in time, system, and operating system APIs
 - Built-in cryptographic API
 - Built-in filesystem and path APIs
+- Native interop (FFI and native object linking)
 - Compilation and evaluation model
 
 Future versions will continue expanding the standard library, language features, and compiler optimizations.
@@ -738,23 +782,22 @@ The following identifiers are reserved by the language and may not be used as us
 
 | Category | Keywords |
 |---|---|
-| **Types** | `int` `double` `string` `bool` `List` |
-| **Speacial Type** | `Byte` |
-| **reactive** | `reactive` |
-| **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` |
-| **Loop Control flow** | `break` `continue` |
-| **export and import** | `export` `import` |
-| **Functions** | `fn` `return` |
-| **inference** | `auto` |
-| **struct** | `struct` |
-| **Iteration** | `in` `of` |
-| **CONSTANT** | `const` |
-| **Concurrency** | `async` `await` |
+| **Types** | `int` `long` `double` `byte` `string` `bool` `void` `List` |
+| **Control Flow** | `if` `else if` `else` `loop` `while` `do` `switch` `case` `default` |
+| **Loop Control** | `break` `continue` |
+| **Iteration** | `of` |
+| **Functions** | `fn` `return` `extern` |
+| **Concurrency** | `thread` `async` `await` |
+| **Declarations** | `struct` `enum` `const` `reactive` `private` |
+| **Inference** | `auto` |
+| **Modules** | `import` `export` `from` `as` |
 | **Object** | `this` |
 
 Keywords are case-sensitive. `fn` is reserved; `Fn` and `FN` are valid identifiers.
 
-ZEN reserves async and await as keywords in v2, and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Full async/await support, including the concurrency model and runtime semantics, is planned for future versions.
+`async` and `await` are reserved and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Concurrency is currently provided by `thread` functions.
+
+The `in` keyword was removed in v3.0.0 and is no longer reserved. `private` became reserved in v3.0.0, so any existing identifier named `private` must be renamed.
 
 ---
 
@@ -793,7 +836,7 @@ my-var       # hyphens are not allowed
 
 ### 2.6 Literals
 
-A literal is a fixed value written directly in source. ZEN defines five literal types: integer, long, byte, double, string, and boolean.
+A literal is a fixed value written directly in source. ZEN defines six literal types: integer, long, byte, double, string, and boolean.
 
 #### 2.6.1 Integer Literals
 
@@ -805,13 +848,14 @@ A sequence of decimal digits with no prefix, suffix, or separator.
 
 Integer literals are represented by the `int` type.
 
-Hexadecimal literals are supported using the `0x` prefix.
+Hexadecimal literals are supported using the `0x` prefix. A hexadecimal literal with no suffix is always an `int`, even if its digits end in a letter such as `B` or `F`.
 
     0xFF
     0x1A3F
     0x00
+    0xFB      # int 251, not a byte
 
-Binary and octal representations are not supported in v2.
+Binary and octal representations are not supported.
 
 ---
 
@@ -828,10 +872,11 @@ The `L` suffix explicitly marks the literal as a `long`.
     long timestamp = 1787763985L
     long duration = 3600L
 
-Hexadecimal long literals are also supported.
+For hexadecimal literals, an underscore is required before the suffix.
 
-    0xFFFFFFFFL
-    0x100000000L
+    0xFF_L
+    0xFFFFFFFF_L
+    0x100000000_L
 
 ---
 
@@ -842,23 +887,25 @@ A decimal integer followed by the `B` suffix.
     0B
     1B
     42B
-    255B
+    127B
 
 The `B` suffix explicitly marks the literal as a `byte`.
 
-    byte value = 255B
+    byte value = 127B
 
-For hexadecimal literals, an additional `B` is required to distinguish the byte suffix from the hexadecimal notation.
+`byte` is **signed**, with a range of -128 to 127. A suffixed value outside this range wraps using two's complement (for example, `255B` is -1).
 
-    0xFFB
-    0x00B
-    0x7FB
+For hexadecimal literals, an underscore is required before the suffix, because `B` is also a valid hexadecimal digit.
 
-Here, the final `B` is the byte suffix.
+    0xFB_B
+    0x00_B
+    0x7F_B
 
-For example:
+Without the underscore there is no suffix and the literal is an `int`: `0xFB` is `int` 251, while `0xFB_B` is a `byte`.
 
-    byte value = 0xFFB
+    byte value = 0x7F_B
+
+Decimal suffixes (`42L`, `42B`) need no underscore.
 
 ---
 
@@ -870,7 +917,11 @@ A decimal integer part, a dot, and a decimal fractional part. Both parts are req
     0.5
     100.0
 
-Scientific notation is not supported in v2.
+Scientific notation is supported.
+
+    1e300
+    1.5e-10
+    2E+5
 
 A bare integer such as `42` is not a valid `double` literal; `42.0` must be written explicitly.
 
@@ -884,6 +935,13 @@ A sequence of characters enclosed in matching double or single quotes. Both form
 
     "hello, world"
     'hello, world'
+
+**Escape sequences**
+
+Strings support `\e` (the ESC character) and `\xHH` (a byte given as two hex digits). They are useful for ANSI terminal colors.
+
+    screen("\e[31mError\e[0m")
+    screen("\x41")
 
 ---
 
@@ -920,10 +978,10 @@ Multiline and interpolation can be combined freely.
 
 | Form | Type | Multiline | Interpolation |
 |---|---|---|---|
-| `42` | `int` | — | — |
-| `42L` | `long` | — | — |
-| `42B` | `byte` | — | — |
-| `3.14` | `double` | — | — |
+| `42`, `0xFB` | `int` | — | — |
+| `42L`, `0xFF_L` | `long` | — | — |
+| `42B`, `0xFB_B` | `byte` | — | — |
+| `3.14`, `1e300` | `double` | — | — |
 | `"..."` | `string` | No | No |
 | `'...'` | `string` | No | No |
 | `` `...` `` | `string` | Yes | Yes |
@@ -937,11 +995,13 @@ Exactly two values, lowercase:
 
 Any other casing (`True`, `TRUE`) is not a boolean literal and will be interpreted as an identifier.
 
+`bool` can also be used in arithmetic and bitwise operations (`true` = 1, `false` = 0).
+
 ---
 
 ### 2.7 Operators
 
-Operators are fixed-character sequences that form their own token type. ZEN defines five operator categories.
+Operators are fixed-character sequences that form their own token type. ZEN defines six operator categories.
 
 #### Assignment Operators
 
@@ -953,22 +1013,26 @@ Operators are fixed-character sequences that form their own token type. ZEN defi
 | `*=` | Multiply and assign |
 | `/=` | Divide and assign |
 | `%=` | Modulo and assign |
-| `^` | Bitwise XOR |
 
 #### Arithmetic Operators
 
 | Operator | Meaning |
 |---|---|
-| `+` | Addition |
+| `+` | Addition (or string concatenation) |
 | `-` | Subtraction |
 | `*` | Multiplication |
 | `/` | Division |
 | `%` | Modulo |
 
+If either operand of `+` is a string, the other operand is converted to a string and the two are concatenated.
+
+Arithmetic follows numeric widening: `byte` → `int` → `long` → `double`. `bool` can also be used in arithmetic (`true` = 1, `false` = 0).
+
 #### Unary Operators
 
 | Operator | Meaning |
 |---|---|
+| `+` | Unary plus |
 | `++` | Increment |
 | `--` | Decrement |
 | `!` | Logical NOT |
@@ -995,7 +1059,14 @@ Operators are fixed-character sequences that form their own token type. ZEN defi
 
 | Operator | Meaning |
 |---|---|
+| `&` | Bitwise AND |
+| `\|` | Bitwise OR |
 | `^` | Bitwise XOR |
+| `<<` | Shift left |
+| `>>` | Shift right |
+| `~` | Bitwise NOT |
+
+Bitwise operators work on integer types (`byte`, `int`, `long`) and on `bool`.
 
 ---
 
@@ -1008,15 +1079,18 @@ Every unit of source text falls into one of the following token types:
 | `KEYWORD` | `fn`, `if`, `const`, `return` |
 | `IDENTIFIER` | `x`, `myVar`, `_count` |
 | `int` | `0`, `42`, `1000` |
+| `long` | `0L`, `67L`, `2600000000L` |
+| `byte` | `0B`, `120B`, `-4B` |
 | `double` | `3.14`, `0.5`, `100.0` |
 | `string` | `"hello"`, `'world'` |
 | `bool` | `true`, `false` |
 | `OPERATOR` | `+`, `==`, `&&`, `++` |
 
+---
 
 ## 3. Types
 
-ZEN is a statically typed language. Every value has a type known at compile time. This section defines the four primitive types that form the foundation of the type system.
+ZEN is a statically typed language. Every value has a type known at compile time. This section defines the six primitive types that form the foundation of the type system.
 
 Data structure types — `List`, `struct`, and fixed-size arrays — are defined separately in Section 5.
 
@@ -1030,8 +1104,8 @@ ZEN defines six primitive types:
 |---|---|---|
 | `int` | Integer number | `0`, `42`, `1000` |
 | `long` | 64-bit integer number | `0L`, `42L`, `100000L` |
-| `byte` | 8-bit unsigned integer | `0B`, `42B`, `255B` |
-| `double` | Floating-point number | `3.14`, `0.5`, `100.0` |
+| `byte` | 8-bit signed integer (-128 to 127) | `0B`, `42B`, `127B` |
+| `double` | Floating-point number | `3.14`, `0.5`, `1e300` |
 | `bool` | Boolean value | `true`, `false` |
 | `string` | Text value | `"hello"`, `'world'` |
 
@@ -1041,16 +1115,16 @@ These are reserved keywords and cannot be used as identifiers.
 
 #### 3.1.1 `int`
 
-Represents a whole number. Decimal and hexadecimal notation are supported. Negative values are expressed using the unary `-` operator. `+` unary is invalid in ZEN.
+Represents a whole number. Decimal and hexadecimal notation are supported. Negative values are expressed using the unary `-` operator, and unary `+` is also valid.
 
     int x = 42
     int y = 0
     int z = -10
+    int p = +10
 
     int hex = 0xFF
 
-    int p = +10 # invalid
-    int q = 10 # valid
+A hexadecimal literal with no suffix is always an `int`, even if it ends in `B` or `F` (`0xFB` is 251).
 
 ---
 
@@ -1062,37 +1136,41 @@ Represents a 64-bit integer. Long literals use the `L` suffix.
     long timestamp = 1787763985L
     long duration = 3600L
 
-Hexadecimal long literals are also supported.
+Hexadecimal long literals need an underscore before the suffix.
 
-    long value = 0xFFFFFFFFL
+    long value = 0xFFFFFFFF_L
 
 ---
 
 #### 3.1.3 `byte`
 
-Represents an 8-bit unsigned integer. Byte literals use the `B` suffix.
+Represents an 8-bit **signed** integer with a range of -128 to 127. Byte literals use the `B` suffix.
 
     byte x = 0B
     byte y = 42B
-    byte max = 255B
+    byte max = 127B
 
-Hexadecimal byte literals require an additional `B` after the hexadecimal value to distinguish the byte suffix.
+A suffixed value outside the range wraps using two's complement (`255B` is -1).
 
-    byte value = 0xFFB
-    byte zero = 0x00B
-    byte max = 0xFFB
+Hexadecimal byte literals need an underscore before the `B` suffix, because `B` is also a hexadecimal digit.
 
-The final `B` is the byte suffix.
+    byte value = 0x7F_B
+    byte zero = 0x00_B
+    byte neg = 0xFF_B     # -1
+
+Without the underscore the literal is an `int`: `0xFB` is `int` 251, while `0xFB_B` is a `byte`.
 
 ---
 
 #### 3.1.4 `double`
 
-Represents a floating-point number. Both the integer part and the fractional part must be written explicitly — a bare integer is not a valid `double` literal.
+Represents a floating-point number. Both the integer part and the fractional part must be written explicitly — a bare integer is not a valid `double` literal. Scientific notation is supported.
 
     double pi = 3.14
     double zero = 0.0
     double rate = 100.0
+    double big = 1e300
+    double tiny = 1.5e-10
 
 ---
 
@@ -1102,6 +1180,10 @@ Represents a boolean value. Only two values exist: `true` and `false`. Both are 
 
     bool active = true
     bool done = false
+
+`bool` can also be used in arithmetic and bitwise operations, where `true` is 1 and `false` is 0.
+
+    int n = true + true      # 2
 
 ---
 
@@ -1116,6 +1198,8 @@ Backtick strings are also supported for multiline strings and template interpola
 
     string name = "ZEN"
     string message = `Hello, ${name}!`
+
+Strings are heap-allocated and reference-semantic. See Semantics for ownership and `free()`.
 
 ---
 
@@ -1167,8 +1251,8 @@ When one operand of `+` is a `string`, the other operand is implicitly coerced t
 string s = "count: " + 10        # → "count: 10"
 string t = "value: " + 3.14      # → "value: 3.14"
 string u = "active: " + true     # → "active: true"
-string i = "active: " + 10L     # → "active: 10"
-string k = "active: " + 10B     # -> "active: 10"
+string i = "active: " + 10L      # → "active: 10"
+string k = "active: " + 10B      # → "active: 10"
 ```
 
 Coercion is one-directional: a non-string operand is converted to `string`, never the reverse.
@@ -1176,6 +1260,8 @@ Coercion is one-directional: a non-string operand is converted to `string`, neve
 ```zen
 int x = 5 + "3"                  # error: int context, no coercion applies
 ```
+
+---
 
 ## 4. Grammar & Syntax
 
@@ -1274,8 +1360,8 @@ var_decl_default
 |---|---|
 | `int` | `0` |
 | `double` | `0.0` |
-| `long` | `0` |
-| `byte` | `0` | 
+| `long` | `0L` |
+| `byte` | `0B` | 
 | `string` | `""` |
 | `bool` | `false` |
 | `List<T>` | `[]` |
@@ -1291,19 +1377,17 @@ bool flag      # lowered to: bool flag = false
 
 #### Constant Declaration
 
-Constants are declared with the `const` modifier after the type. They cannot be reassigned after declaration.
+Constants are declared with the `const` modifier before the type. They cannot be reassigned after declaration.
 
 ```
 const_decl
-  = type "const" IDENTIFIER "=" expression
+  = "const" type IDENTIFIER "=" expression
 ```
 
 ```zen
 const int MAX = 100
-const string VERSION = "1.0.1"
+const string VERSION = "3.0.0"
 ```
-
----
 
 ### 4.5 Assignment & Reassignment
 
@@ -1327,8 +1411,6 @@ a *= 3
 a /= 4
 a %= 2
 ```
-
----
 
 ### 4.6 Expressions
 
@@ -1466,8 +1548,6 @@ return_type
 - A rest parameter (`type identifier...`) collects remaining arguments into a `List`. It must be the last parameter.
 - Function declarations may not be nested inside another function.
 
----
-
 #### Callback Parameters
 
 Functions can accept other functions as parameters (callbacks).
@@ -1501,46 +1581,51 @@ run(printMessage)
 
 ### Function Declarations
 
-ZEN supports two kinds of function declarations:
+ZEN supports four kinds of function declarations:
 
-- **Normal function declarations** (`fn`) — must be defined in the same module.
-- **External function declarations** (`extern fn`) — declare functions implemented outside of ZEN.
+- **Normal** (`fn`): has a body, can be exported and imported.
+- **External** (`extern fn`): implemented outside of ZEN.
+- **Private** (`private fn`): visible only in the current module.
+- **Thread** (`thread fn`): runs in its own thread.
 
 ---
 
 #### Normal Function Declaration
 
-A normal function declaration includes both its signature and implementation.
-
 ```
 function_decl
-  = "fn" IDENTIFIER "(" param_list? ")" return_type
+  = "fn" IDENTIFIER "(" param_list? ")" return_type? block
 ```
-
-```zen
-fn add(int a, int b) int
-
-- Must be defined in the same module.
-- Contains a function body.
-- May be called anywhere after declaration.
-
-then later 
 
 ```zen
 fn add(int a, int b) int {
     return a + b
 }
+
+fn greet(string name) {
+  # void: no return type specified
+}
+
+fn sum(int values...) List<int> {
+  # A rest parameter needs an explicit return type like List<T>. No auto for List returns.
+  # values is List<int> under the hood
+  return values
+}
 ```
+
+- Contains a function body.
+- May be called anywhere after declaration.
+- `return_type` is omitted for `void` functions.
+- Can be exported. A file can have multiple exports and imports.
+- Exported functions can take or return structs that are not exported.
 
 ---
 
 #### External Function Declaration
 
-An external function declaration defines only the function signature.
-
 ```
 extern_function_decl
-  = "extern" "fn" IDENTIFIER "(" param_list? ")" return_type
+  = "extern" "fn" IDENTIFIER "(" param_list? ")" return_type?
 ```
 
 - Used to call functions implemented outside of ZEN (for example, C libraries).
@@ -1548,12 +1633,13 @@ extern_function_decl
 - The compiler emits the function name exactly as written (no name mangling).
 - Supports all valid parameter and return types.
 - If an external function returns a native pointer, use the built-in `Ptr` struct as the return type.
+- `zen deps` detects and records `native/*.o`, and native objects link automatically.
+- `.c` files are supported as native dependencies.
+- Extra linker flags go in `zen.json` (`flags: []`, for example `-lmariadb`) or via `--link a.o b.o`.
 
 ```zen
 extern fn puts(string text) int
-
 extern fn malloc(int size) Ptr
-
 extern fn free(Ptr memory)
 ```
 
@@ -1561,33 +1647,51 @@ External functions are invoked exactly like normal functions.
 
 ```zen
 Ptr memory = malloc(1024)
-
 puts("Allocated successfully")
-
 free(memory)
 ```
 
 ---
 
+#### Private Function Declaration
+
+```
+private_function_decl
+  = "private" "fn" IDENTIFIER "(" param_list? ")" return_type? block
+```
+
+- Visible only in the current module scope.
+- Cannot be imported by other modules.
+- `private` is a reserved keyword, so no identifier can be named `private`.
+- Also applies to struct fields and methods.
+
 ```zen
-fn greet(string name) {
-  # void — no return type specified
-}
-
-fn add(int a, int b) int {
-  return a + b
-}
-
-fn sum(int values...) List<int> {
-  # for rest parameter explicit return like List<T> is required. no auto for List return.
-  # values is List<int> under the hood
-  return values
-}
-
-fn multiply(int a, int b) int {
-  return a * b
+private fn helper(int a) int {
+    return a * 2
 }
 ```
+
+---
+
+#### Thread Function Declaration
+
+```
+thread_function_decl
+  = "thread" "fn" IDENTIFIER "(" param_list? ")" block
+```
+
+- Accepts parameters.
+- Invalid captures are reported at compile time.
+- Thread methods are also supported inside structs.
+- String arguments are duplicated and freed per thread.
+
+```zen
+thread fn worker(int id) {
+    # runs in its own thread
+}
+```
+
+---
 
 #### Return Statement
 
@@ -1596,13 +1700,15 @@ return_stmt
   = "return" expression?
 ```
 
-`return` is valid only inside a function block. A bare `return` with no expression is valid in `void` functions.
+`return` is valid only inside a function block. A bare `return` is valid in `void` functions.
 
 ```zen
 return
 return 42
 return a + b
 ```
+
+---
 
 #### Function Call
 
@@ -1621,7 +1727,44 @@ argument
 greet("ZEN")
 add(10, 20)
 add(5 + 5, a)
-multiply(a, b)
+```
+
+Calls can be chained on returned structs:
+
+```zen
+make().show()
+```
+
+---
+
+#### Callbacks
+
+- **Named functions** passed as callbacks can use closures (outer variables allowed).
+- **Anonymous inline functions** are written like a normal function declaration, directly in the argument list. They compile as separate functions and cannot capture outer variables.
+
+```zen
+call(fn name(int a) void {
+    # body
+})
+```
+
+Example with a progress callback:
+
+```zen
+List<byte> data = http.getProgress(url, fn cb(long downloaded, long total) void {
+    # report progress here
+})
+```
+
+---
+
+#### Import Aliasing
+
+- Functions and variables can be aliased on import.
+- Structs cannot be aliased (`ImportError`).
+
+```zen
+import (worker as w)
 ```
 
 ---
@@ -1701,16 +1844,15 @@ switch (status) {
 
 ### 4.10 Loop Constructs
 
-ZEN provides five loop forms.
+ZEN provides four loop forms.
 
 #### General Loop
 
-The general loop takes either two or three arguments separated by `,`. When three arguments are provided, the first is the initializer. When two are provided, no initializer is used — the variable must be declared before the loop.
+The general loop takes exactly three arguments separated by `,`
 
 ```
 loop_stmt
   = "loop" "(" var_decl "," expression "," update_expr ")" block
-  | "loop" "(" expression "," update_expr ")" block
 
 update_expr
   = assignment
@@ -1719,12 +1861,7 @@ update_expr
 
 ```zen
 loop (int i = 0, i < 10, i++) {
-  # i declared in loop init
-}
-
-int i = 0
-loop (i < 10, i++) {
-  # i declared outside
+  ...
 }
 ```
 
@@ -1753,11 +1890,6 @@ do {
   # executes at least once
 } while (count < 10)
 ```
-
-#### Loop In — object Iteration
-
-> ⚠️ **Temporarily disabled** — `loop in` is currently unavailable.
-> The `in` keyword remains reserved for future compatibility and will be supported in a future release.
 
 #### Loop Of — Array and List Iteration
 
@@ -1829,7 +1961,7 @@ For cases requiring consistent mutation-safe iteration behavior, use:
 
 - the **general loop construct (Section 4.10)**:
 ```zen
-loop (init; condition; update) {
+loop (init, condition, update) {
   # safe controlled iteration
 }
 ```
@@ -1862,7 +1994,7 @@ list_literal
 
 ```zen
 List<int> nums = [1, 2, 3]
-List<List<int>> matrix = [[1, 2], [3, 4]]
+const List<List<int>> matrix = [[1, 2], [3, 4]]
 List<int> empty                              # lowered to: List<int> empty = []
 ```
 
@@ -1899,11 +2031,11 @@ method_decl
 
 ```zen
 struct Person {
-  string name,
+  private string name, // private field
   int age,
-  List<int> scores,
+  List<int> scores = [] // field init
 
-  greet() void {
+  private greet() void { // private method
     # this is implicitly available
   }
 
@@ -1912,21 +2044,6 @@ struct Person {
   }
 }
 ```
-
-> ⚠️ **Syntax update:** Struct fields now use `type name` order instead of the old `name type` syntax.
->
-> **Old**
-> ```zen
-> name string
-> age int
-> ```
->
-> **New**
-> ```zen
-> string name
-> int age
-> ```
-
 
 #### Struct Instantiation and Access
 
@@ -1956,7 +2073,7 @@ Zen provides several built-in structs that are available without importing any l
 >
 > Built-in structs use **reference semantics**, while user-defined structs use **value semantics**.
 >
-> Built-in structs (such as `HttpServer`, `HttpRequest`, `HttpResponse`, `Json`, `JsonObject`, and `JsonArray`, `Map`, `Ptr`) represent runtime resources managed outside of Zen. Copying them would duplicate only the handle, not the underlying resource, so they are always passed and assigned by reference.
+> Built-in structs (such as `HttpServer`, `HttpRequest`, `HttpResponse`, `Json`, `JsonObject`, `JsonArray`, `Map`, `Ptr`, `Tcp`, and `TcpServer`) represent runtime resources managed outside of Zen. Copying them would duplicate only the handle, not the underlying resource, so they are always passed and assigned by reference.
 >
 > User-defined structs, on the other hand, are ordinary data values and are copied on assignment or when passed to functions, providing predictable value semantics.
 
@@ -2058,7 +2175,7 @@ map.setLong(string key, long value)
 map.getLong(string key) long
 
 map.setByte(string key, byte value)
-map.getLong(string key) byte
+map.getByte(string key) byte
 
 map.setDouble(string key, double value)
 map.getDouble(string key) double
@@ -2078,6 +2195,10 @@ map.getMap(string key) Map
 map.remove(string key) void
 
 map.has(string key) bool
+
+map.keys()
+
+map.entries()
 
 map.json() string
 
@@ -2132,6 +2253,39 @@ req.redirect(...)
 
 Reserved for future releases.
 
+##### Tcp
+
+Represents a TCP connection.
+
+```zen
+Tcp conn = net.connect(host, port)
+```
+
+**Methods**
+
+```zen
+conn.send(...)
+conn.receive(...)
+conn.close()
+conn.isOpen() bool
+```
+
+##### TcpServer
+
+Represents a TCP server listening on a port.
+
+```zen
+TcpServer server = net.listen(port)
+```
+
+**Methods**
+
+```zen
+server.accept(...)
+server.close()
+server.isOpen() bool
+```
+
 ##### Json
 
 Represents a parsed JSON document.
@@ -2175,9 +2329,9 @@ json.free()
 > [!CAUTION]
 > ### JSON Integer Values After `.map()`
 >
-> JSON integer numbers become `long` values when converted via `.map()`.
+> JSON integer numbers converted with `.map()` can be read with `getInt()`, `getByte()` or `getLong()`.
 >
-> After `.map()`, use `getLong()` for all JSON integer values.
+> Overflow is checked at runtime for the getter you use (for example, `getByte()` fails if the value is outside -128 to 127).
 >
 > **Note:** Normal `Map` integer/long behavior remains unchanged.
 
@@ -2207,15 +2361,11 @@ array.arrayGetObject(...)
 array.arrayGetArray(...)
 ```
 
-##### Byte
-
-`Byte` is a built-in struct representing a single byte of binary data. It is primarily intended for use with binary APIs and generic containers such as `List<Byte>`.
-
 ---
 
 ## 5. Data Structures
 
-ZEN provides four built-in data structure types: `List`, fixed-size arrays, and `struct`. Each has distinct memory characteristics, mutability rules, and supported operations.
+ZEN provides three built-in data structure types: `List`, fixed-size arrays, and `struct`. Each has distinct memory characteristics, mutability rules, and supported operations. `Map` is a built-in struct, covered under Built-in Structs.
 
 | Type | Schema | Size | Memory | Heterogeneous |
 |---|---|---|---|---|
@@ -2227,9 +2377,9 @@ ZEN provides four built-in data structure types: `List`, fixed-size arrays, and 
 
 ### 5.1 List
 
-A `List` is a dynamically sized, heap-allocated array. `List` is homogeneous — all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
+A `List` is a dynamically sized, heap-allocated array. `List` is homogeneous: all elements must be of the same declared type. Nesting is supported through `List<List<T>>`.
 
-> **Note:** `Byte` is intended primarily for use with `List<Byte>` and binary-related APIs. Standalone `Byte` values can be created only through the `Byte()` conversion function.
+> **Note:** `byte` is a primitive type. `List<byte>` is used by binary APIs such as `http.getProgress`.
 
 #### Declaration
 
@@ -2256,7 +2406,7 @@ List elements may be of the following types:
 - Struct types
 - Nested `List<T>`
 
-`auto` is not valid as a type parameter — `List<auto>` is a compile-time error.
+`auto` is not valid as a type parameter. `List<auto>` is a compile-time error.
 
 #### Access
 
@@ -2266,6 +2416,16 @@ Elements are accessed by zero-based integer index.
 nums[0]                                # first element
 matrix[0][1]                           # nested access
 people[0].name                         # struct field access inside List<Struct>
+```
+
+#### Properties
+
+`length` and `capacity` are properties, not methods. Writing `nums.length()` is a compile-time `TypeError`.
+
+```zen
+nums.length                            # number of elements (int)
+nums.capacity                          # allocated capacity (int)
+length(nums)                           # same as nums.length, as a global function
 ```
 
 #### Assignment
@@ -2283,10 +2443,16 @@ matrix[1][0] = 10
 |---|---|---|
 | `push` | `push(value)` | Appends a value to the end of the list |
 | `pop` | `pop()` | Removes and returns the last element |
-| `contains` | `contains(value)` | Returns `bool` — checks if value exists |
+| `removeAt` | `removeAt(int index)` | Removes the element at the given index |
+| `remove` | `remove(value)` | Removes the given value from the list |
+| `contains` | `contains(value)` | Returns `bool`: checks if the value exists |
 | `indexOf` | `indexOf(value)` | Returns the index of the first matching element, or `-1` if not found |
-| `join` | `join(separator)` | Joins all elements into a string using the specified separator |
-| `removeAt` | `removeAt(index)` | Removes element at the given index |
+| `join` | `join(string separator)` | Joins all elements into a string using the separator |
+| `reverse` | `reverse()` | Reverses the list in place |
+| `sort` | `sort()` | Sorts the list in place |
+| `sum` | `sum()` | Returns the sum of all elements |
+| `avg` | `avg()` | Returns the average of all elements as `double` |
+| `flat` | `flat()` | Flattens a nested list of any depth into a single-level list |
 | `clear` | `clear()` | Removes all elements; list remains alive |
 | `free` | `free()` | Releases the list from heap memory |
 
@@ -2294,25 +2460,40 @@ matrix[1][0] = 10
 nums.push(30)
 nums.push([10, 20])                     # valid for nested List<List<int>>
 int last = nums.pop()
+nums.removeAt(0)
+nums.remove(30)                         # removes by value
+
 bool found = nums.contains(30)
-bool nested = matrix.contains([1, 2])   # checks for exact sublist match
 int idx = nums.indexOf(30)
 
 List<string> names = ["Zen", "Lang", "LLVM"]
 string joined = names.join(", ")
 
-nums.removeAt(0)
+List<int> values = [3, 1, 2]
+values.sort()                           # [1, 2, 3]
+values.reverse()                        # [3, 2, 1]
+int total = values.sum()                # 6
+double mean = values.avg()              # 2.0
+
 nums.clear()                            # list is now [] but still usable
 nums.free()                             # list is released
 ```
 
-`push` accepts a value matching the declared element type. For a `List<List<int>>`, pushing a `List<int>` literal is valid.
+#### Method Restrictions
 
-`contains` on a nested list checks for an exact sublist match — the argument must be a list literal or reference matching the inner type.
+Element types are checked at compile time. Using a method on an unsupported element type is a `TypeError`.
 
-`indexOf` returns the index of the first matching element, or `-1` if the value is not present.
+| Method | Supported element types |
+|---|---|
+| `push` | Any. The value must match the declared element type. For `List<List<int>>`, push a `List<int>`. |
+| `contains`, `indexOf` | `int`, `double`, `bool`, `string` |
+| `remove` | `byte`, `int`, `long`, `double`, `bool`, `string` |
+| `sort` | `byte`, `int`, `long`, `double`, `string` |
+| `sum` | `byte`, `int`, `long`, `double` (returns the element type) |
+| `avg` | `byte`, `int`, `long`, `double` (returns `double`) |
+| `join` | Flat `List<string>` only |
 
-`join` is available only on `List<string>`. It joins all string elements using the specified separator and returns a single string.
+`removeAt` requires an `int` index.
 
 #### Free and Nested Lists
 
@@ -2326,7 +2507,6 @@ nums.push(1)                            # runtime error: use after free
 For nested lists, freeing an inner list directly is technically permitted but not recommended. ZEN cannot fully track inner list lifetimes after a partial free, and accessing a freed inner list will throw a runtime error.
 
 > **Recommendation:** Do not call `free()` on individual inner lists of a nested `List<List<T>>`. Free the outer list instead.
-```
 
 ---
 
@@ -2341,14 +2521,17 @@ array_decl
   = type IDENTIFIER dimension+ "=" array_literal
 
 dimension
-  = "[" INT_LITERAL "]"
+  = "[" (INT_LITERAL | CONSTANT_IDENTIFIER) "]"
 ```
 
-The dimension must be a positive integer literal. A size of `0` is not permitted.
+The dimension must be a positive integer literal or a compile-time constant. A size of `0` is not permitted.
 
 ```zen
 int arr[3] = [1, 2, 3]
 int matrix[2][2] = [[1, 2], [3, 4]]
+
+int N = 10
+int sized[N]
 ```
 
 #### Zero Initialization
@@ -2381,8 +2564,8 @@ matrix[1][1] = 5
 
 #### Constraints
 
-- Fixed-size arrays cannot be passed as function parameters in v2.
-- Fixed-size arrays cannot be return in functions
+- Fixed-size arrays cannot be passed as function parameters.
+- Fixed-size arrays cannot be returned from functions.
 - Fixed-size arrays have no built-in methods.
 - Resizing is not possible after declaration.
 
@@ -2399,10 +2582,10 @@ struct_decl
   = "struct" IDENTIFIER "{" field_decl* method_decl* "}"
 
 field_decl
-  = IDENTIFIER type ","?
+  = "private"? type IDENTIFIER ("=" expression)? ","?
 
 method_decl
-  = IDENTIFIER "(" param_list? ")" return_type? block
+  = ("private" | "thread")? IDENTIFIER "(" param_list? ")" return_type? block
 ```
 
 By convention, struct names begin with an uppercase letter.
@@ -2423,33 +2606,7 @@ struct Person {
 }
 ```
 
-----
-
-#### List Field Initialization
-
-`List` fields inside structs are automatically initialized when a struct instance is created.
-
-~~~zen
-struct User {
-  List<string> names
-  List<int> scores
-}
-~~~
-
-Creating the struct initializes both lists:
-
-~~~zen
-User user
-
-user.names.push("Alice")
-user.scores.push(100)
-~~~
-
-No manual list initialization is required.
-
-This also applies to structs imported from packages.
-
-----
+---
 
 #### Allowed Field Types
 
@@ -2458,6 +2615,33 @@ Struct fields may be of the following types:
 - `int`, `double`, `string`, `bool`, `long`, `byte`
 - `List<T>`
 - Another `struct` type
+
+#### Default Values
+
+An uninitialized struct gets zero values for its fields: `0`, `""`, `false`, and an empty list. `List` fields are initialized automatically, so no manual setup is needed. This also applies to structs imported from packages.
+
+```zen
+struct User {
+  List<string> names
+  List<int> scores
+}
+
+User user
+
+user.names.push("Alice")
+user.scores.push(100)
+```
+
+Fields can have default initializers:
+
+```zen
+struct Config {
+  string host = "localhost",
+  int port = 8080
+}
+```
+
+Struct literals only set the fields you give them. The rest keep their default or zero value.
 
 #### Instantiation
 
@@ -2593,7 +2777,7 @@ struct Counter {
 }
 ```
 
-Methods may have any return type, including `List<T>`, `auto`, or primitives.
+Methods may have any return type, including `List<T>`, a struct, or primitives. `auto` works only for `int`, `bool`, `double`, `string`, `long`, and `byte`. A `List<T>` return type must be written explicitly.
 
 ```zen
 Counter c
@@ -2601,6 +2785,44 @@ c.value = 0
 c.increment()
 int v = c.get()                        # v = 1
 ```
+
+#### Private Fields and Methods
+
+`private` is a reserved keyword. A private field or method can be accessed only inside the struct's own methods, through `this`. Access from outside the struct is an error.
+
+```zen
+struct Counter {
+  private int value,
+
+  private reset() void {
+    this.value = 0
+  }
+
+  clear() void {
+    this.reset()
+  }
+}
+```
+
+> **Note:** `private fn` (a function declaration) is different. It is visible only in the current module. See Function Declarations.
+
+#### Thread Methods
+
+A method marked `thread` runs in its own thread. Thread methods are declared without `fn`, like other methods.
+
+```zen
+struct Worker {
+  int id,
+
+  thread run(int n) {
+    # runs in its own thread
+  }
+}
+```
+
+- Thread methods accept parameters.
+- Invalid captures are reported at compile time.
+- String arguments are duplicated and freed per thread.
 
 #### Structs in Functions
 
@@ -2654,20 +2876,32 @@ rename(user)
 screen(user.name)   # Jishith
 ```
 
-#### Constraints
+Calls can be chained on a returned struct:
 
-- Methods are user-defined only; no built-in struct methods exist.
-- Struct declarations may not be nested inside functions.
+```zen
+make().show()
+```
+
+Exported functions can take or return structs that are not exported. Importing a struct also registers its dependent structs as hidden: they are usable through the struct but cannot be named directly. Structs cannot be aliased on import.
+
+--- 
 
 ## 6. Functions
 
 A function is a named, reusable block of code that accepts parameters and optionally returns a value. Functions are the primary unit of logic encapsulation in ZEN.
 
----
-
 ### 6.1 Declaration
 
-Functions are declared using the `fn` keyword. The full syntax is:
+ZEN has four kinds of function declarations:
+
+| Kind | Syntax | Description |
+|---|---|---|
+| Normal | `fn` | Has a body. Can be exported and imported. |
+| External | `extern fn` | Implemented outside of ZEN. No body. |
+| Private | `private fn` | Visible only in the current module. |
+| Thread | `thread fn` | Runs in its own thread. |
+
+The full syntax of a normal function is:
 
 ```
 fn IDENTIFIER ( param_list? ) return_type? block
@@ -2675,7 +2909,7 @@ fn IDENTIFIER ( param_list? ) return_type? block
 
 ```zen
 fn greet(string name) {
-  # void — no return type declared
+  # void: no value returned
 }
 
 fn add(int a, int b) int {
@@ -2687,18 +2921,79 @@ fn describe(string label, int value) string {
 }
 ```
 
-- If no return type is specified, the function is implicitly `void`.
+- If no return type is specified, the compiler infers it: `void` when the function returns no value, otherwise the type of the returned expression (see 6.3).
 - `auto` may be used as the return type; the compiler infers it from the `return` statement.
-- Function declarations may not be nested inside another function.
-- Functions are fully hoisted — they may be called anywhere in the program regardless of where they are declared.
+- Function declarations may not be nested inside another function. The only exception is an anonymous inline function passed as a callback argument (see 6.4).
+- `private` is a reserved keyword and cannot be used as a function name.
+
+#### External Functions
+
+```
+extern_function_decl
+  = "extern" "fn" IDENTIFIER "(" param_list? ")" return_type?
+```
+
+- Used to call functions implemented outside of ZEN (for example, C libraries).
+- Does not contain a function body.
+- The compiler emits the function name exactly as written (no name mangling).
+- Supports all valid parameter and return types.
+- If an external function returns a native pointer, use the built-in `Ptr` struct as the return type.
+- `zen deps` detects and records `native/*.o`, and native objects link automatically.
+- `.c` files are supported as native dependencies.
+- Extra linker flags go in `zen.json` (`flags: []`, for example `-lmariadb`) or via `--link a.o b.o`.
+
+```zen
+extern fn puts(string text) int
+extern fn malloc(int size) Ptr
+extern fn free(Ptr memory)
+
+Ptr memory = malloc(1024)
+puts("Allocated successfully")
+free(memory)
+```
+
+#### Private Functions
+
+```
+private_function_decl
+  = "private" "fn" IDENTIFIER "(" param_list? ")" return_type? block
+```
+
+A private function is visible only in the current module scope and cannot be imported by other modules.
+
+```zen
+private fn helper(int a) int {
+  return a * 2
+}
+```
+
+> **Note:** `private` on a struct field or method has a different scope: it is accessible only inside the struct through `this`. See Struct.
+
+#### Thread Functions
+
+```
+thread_function_decl
+  = "thread" "fn" IDENTIFIER "(" param_list? ")" block
+```
+
+- Accepts parameters.
+- Invalid captures are reported at compile time.
+- String arguments are duplicated and freed per thread.
+- Structs can also have thread methods. See Struct.
+
+```zen
+thread fn worker(int id) {
+  # runs in its own thread
+}
+```
 
 ---
 
-## 6.2 Parameters
+### 6.2 Parameters
 
-Parameters are declared as **type-identifier pairs**, separated by commas. Zen is strictly typed — every parameter must carry an explicit type annotation.
+Parameters are declared as **type-identifier pairs**, separated by commas. Zen is strictly typed: every parameter must carry an explicit type annotation.
 
-### Primitive Parameters
+#### Primitive Parameters
 
 ```zen
 fn multiply(int a, int b) int {
@@ -2706,11 +3001,13 @@ fn multiply(int a, int b) int {
 }
 ```
 
-Supported primitive parameter types include `int`, `float`, `bool`, and `string`.
+Supported primitive parameter types are `int`, `double`, `bool`, `string`, `long`, and `byte`.
+
+Fixed-size arrays cannot be used as parameters. Use `List<T>` instead.
 
 ---
 
-### List Parameters
+#### List Parameters
 
 List parameters use the generic syntax `List<T>` and support any level of nesting.
 
@@ -2719,14 +3016,14 @@ fn sum(List<int> nums) int { ... }
 
 fn process(List<string> names) void { ... }
 
-fn matrix(List<List<float>> grid) void { ... }
+fn matrix(List<List<double>> grid) void { ... }
 
 fn deep(List<List<List<int>>> cube) void { ... }
 ```
 
 ---
 
-### Struct Parameters
+#### Struct Parameters
 
 Structs can be used as function parameters.
 
@@ -2749,22 +3046,19 @@ Person user = {
 display(user)
 ```
 
-Struct parameters follow ZEN's value semantics. Passing a struct to a function passes a copy of the struct value.
+User-defined structs follow ZEN's value semantics. Passing a struct to a function passes a copy of the struct value.
 
 ```zen
 fn rename(Person p) void {
   p.name = "Zen"
 }
 
-Person user = {
-  name: "Jishith",
-  age: 21
-}
-
 rename(user)
 
 screen(user.name)  # Jishith
 ```
+
+Built-in structs (such as `Map`, `Ptr`, `Json`, `Tcp`) use reference semantics and are passed by reference.
 
 Functions may also return struct values.
 
@@ -2779,13 +3073,25 @@ fn createPerson() Person {
 Person user = createPerson()
 ```
 
+Exported functions can take or return structs that are not exported.
+
 ---
 
-### Default Parameters
+#### Callback Parameters
 
-Zen supports default values for **primitive** and **List** and **struct** parameters. If a caller omits an argument, the default value is used.
+A parameter can be a function, so callers can pass a named function or an anonymous inline function (see 6.4).
 
-**Primitive defaults:**
+```zen
+fn download(string url, fn cb(long downloaded, long total) void {
+  ...
+})
+```
+
+---
+
+#### Default Parameters
+
+Zen supports default values for primitive, `List`, and struct parameters. If a caller omits an argument, the default value is used.
 
 ```zen
 fn greet(string name = "World") void {
@@ -2795,11 +3101,7 @@ fn greet(string name = "World") void {
 fn power(int base, int exp = 2) int {
   ...
 }
-```
 
-**List defaults:**
-
-```zen
 fn process(List<int> nums = [10, 20]) void {
   ...
 }
@@ -2807,26 +3109,15 @@ fn process(List<int> nums = [10, 20]) void {
 fn configure(List<string> flags = ["verbose", "safe"]) void {
   ...
 }
-```
 
-**struct defaults:**
-
-```zen
-fn process(Person p = {name: "John"}) void {
+fn show(Person p = {name: "John"}) void {
   ...
 }
 ```
 
-```zen
-struct Person {
-  string name,
-  int age
-}
+A struct literal default only sets the fields it names. The other fields keep their default or zero value.
 
-fn display(Person p) void {
-  screen(p.name)
-}
-```
+---
 
 #### Rest Parameters
 
@@ -2842,7 +3133,7 @@ fn sum(int values...) int {
 }
 ```
 
-Under the hood, `values` is a `List<int>`. When returning a rest parameter, the return type must be declared explicitly as the corresponding `List<T>` type. `auto` is not valid as a return type for List — the generic type parameter must be fully preserved.
+Under the hood, `values` is a `List<int>`. When returning a rest parameter, the return type must be declared explicitly as the corresponding `List<T>` type. `auto` is not valid as a return type for `List`: the generic type parameter must be fully preserved.
 
 ```zen
 fn collect(int values...) List<int> {
@@ -2872,7 +3163,8 @@ return "done"
 - `return` is only valid inside a function block.
 - A `void` function may use a bare `return` to exit early.
 - The returned expression must match the declared return type.
-- Functions may omit an explicit return type when the return type can be inferred from the returned expression.
+- Fixed-size arrays cannot be returned.
+- Functions may omit an explicit return type when it can be inferred from the returned expression.
 
 ```zen
 fn add(int a, int b) {
@@ -2882,26 +3174,26 @@ fn add(int a, int b) {
 int result = add(10, 20)
 ```
 
-- Automatic return type inference is supported for primitive types such as `int`, `double`, `string`, and `bool`.
-- Automatic return type inference is **not supported** for `List<T>` or struct return values. These functions must declare their return type explicitly.
+- Return type inference is supported for `int`, `bool`, `double`, `string`, `long`, and `byte`.
+- Return type inference is **not supported** for `List<T>` or struct return values. These functions must declare their return type explicitly.
 
 ```zen
-// Valid
+# Valid
 fn add(int a, int b) {
   return a + b
 }
 
-// Invalid
+# Invalid
 fn getNames() {
   return ["Zen", "Lang"]
 }
 
-// Valid
+# Valid
 fn getNames() List<string> {
   return ["Zen", "Lang"]
 }
 
-// Invalid
+# Invalid
 fn createPerson() {
   return {
     name: "Jishith",
@@ -2909,7 +3201,7 @@ fn createPerson() {
   }
 }
 
-// Valid
+# Valid
 fn createPerson() Person {
   return {
     name: "Jishith",
@@ -2924,30 +3216,30 @@ fn createPerson() Person {
 
 For non-`void` functions, Zen requires a **guaranteed return path**. Every possible execution path through the function must end in a `return` statement. This is enforced at compile time.
 
-A `return` that only exists inside a conditional or loop does **not** satisfy this requirement — the compiler cannot guarantee it will be reached.
+A `return` that only exists inside a conditional or loop does **not** satisfy this requirement: the compiler cannot guarantee it will be reached.
 
 ```zen
-# Error: return is conditional — not all paths return a value
+# Error: return is conditional, not all paths return a value
 fn add(int a, int b) int {
-  if a > 20 {
+  if (a > 20) {
     return 20
   }
-  # missing return — compile-time error
+  # missing return: compile-time error
 }
 
-# Error: return is inside a loop — not guaranteed to execute
+# Error: return is inside a loop, not guaranteed to execute
 fn find(List<int> nums) int {
-  loop (int n in nums) {
+  loop (n of nums) {
     return n
   }
-  # missing return — compile-time error
+  # missing return: compile-time error
 }
 ```
 
 ```zen
 # Valid: all paths return a value
 fn add(int a, int b) int {
-  if a > 20 {
+  if (a > 20) {
     return 20
   }
   return a + b
@@ -2955,19 +3247,35 @@ fn add(int a, int b) int {
 
 # Valid: unconditional return at end
 fn clamp(int val) int {
-  if val < 0  { return 0   }
-  if val > 100 { return 100 }
+  if (val < 0)   { return 0   }
+  if (val > 100) { return 100 }
   return val
 }
 ```
 
-`void` functions are exempt — they may return early with a bare `return` or simply fall off the end of the block.
+`void` functions are exempt: they may return early with a bare `return` or simply fall off the end of the block.
 
 ---
 
 ### 6.4 Function Calls
 
 A function is called by its name followed by a parenthesised argument list.
+
+```zen
+greet("ZEN")
+add(10, 20)
+add(5 + 5, a)
+int result = multiply(a, b)
+string s = describe("score", 99)
+```
+
+Arguments may be literals, variables, or any valid expression.
+
+Calls can be chained when a function returns a struct:
+
+```zen
+make().show()
+```
 
 > 💡 **Generic Function Calls**
 >
@@ -2982,15 +3290,16 @@ A function is called by its name followed by a parenthesised argument list.
 >
 > This syntax is currently required only for APIs that return generic values (such as `Map.getList()`), especially when nested `List` types are involved, ensuring full compile-time type safety.
 
-```zen
-greet("ZEN")
-add(10, 20)
-add(5 + 5, a)
-int result = multiply(a, b)
-string s = describe("score", 99)
-```
+#### Callbacks
 
-Arguments may be literals, variables, or any valid expression.
+- **Named functions** passed as callbacks can use closures (outer variables allowed).
+- **Anonymous inline functions** are written like a normal function declaration, directly in the argument list. They compile as separate functions and cannot capture outer variables.
+
+```zen
+call(fn name(int a) void {
+  # body
+})
+```
 
 ---
 
@@ -3014,11 +3323,28 @@ fn factorial(int n) int {
 All function declarations are hoisted to the top of their scope at compile time. A function may be called before its declaration appears in the source file.
 
 ```zen
-int result = add(3, 4)                 # valid — add is declared below
+int result = add(3, 4)                 # valid: add is declared below
 
 fn add(int a, int b) int {
   return a + b
 }
+```
+
+---
+
+### 6.7 Exports and Imports
+
+- A file can have multiple exports and imports.
+- Functions and variables can be aliased on import.
+- Structs cannot be aliased on import (`ImportError`).
+- Importing a struct also registers its dependent structs as hidden: usable through the struct, but not nameable.
+
+```zen
+import (worker as w)
+```
+
+```zen
+export (add, Foo)
 ```
 
 ---
@@ -3076,7 +3402,7 @@ default_clause
 ```
 
 - The switch expression must evaluate to `int`.
-- Case values must be integer literals or compile-time integer expressions. Variable references are not permitted in case values.
+- Case values must be integer literals, compile-time constants, or compile-time integer expressions. Regular variable references are not permitted in case values.
 - There is no fallthrough. Each case block is implicitly terminated — no `break` is needed or permitted between cases.
 - `default` is optional and executes when no case matches.
 
@@ -3144,7 +3470,7 @@ int result = active ? start() : stop()
 
 ## 9. Loop Constructs
 
-ZEN provides five loop forms. All loops support `break` and `continue`.
+ZEN provides four loop forms. All loops support `break` and `continue`.
 
 - `break` exits the innermost enclosing loop immediately.
 - `continue` skips the remainder of the current iteration and proceeds to the next.
@@ -3164,50 +3490,33 @@ loop (int i = 0, i < 3, i++) {
 
 ### 9.1 General Loop
 
-The general loop is ZEN's primary counted iteration construct. It uses the `loop` keyword with comma-separated clauses.
+The general loop is ZEN's primary counted iteration construct. It uses the `loop` keyword with three comma-separated clauses: initializer, condition, and update. All three are always required.
 
 ```
 loop_stmt
   = "loop" "(" var_decl "," expression "," update_expr ")" block
-  | "loop" "(" expression "," update_expr ")" block
 ```
-
-**Three-clause form** — includes an initializer:
 
 ```zen
 loop (int i = 0, i < 10, i++) {
   # i is scoped to this loop
 }
-```
 
-**Two-clause form** — the loop variable is declared outside:
-
-```zen
-int i = 0
-loop (i < 10, i++) {
-  # i is from the outer scope
-}
-```
-
-The initializer in the three-clause form is scoped to the loop block. The two-clause form is used when the variable needs to persist after the loop or was declared in an outer scope.
-
-```zen
 loop (int i = 0, i < 5, i++) {
-  if (i == 3) { break }
-}
-
-int j = 0
-loop (j < 5, j++) {
-  if (j == 3) { continue }
-  # j is accessible after the loop
+  if (i == 3) { continue }
+  if (i == 4) { break }
 }
 ```
+
+The loop variable declared in the initializer is scoped to the loop block.
+
+> **Breaking change in v3.0.0:** the two-clause form `loop (cond, update)` was removed. Classic loops must always use `loop (init, cond, update)`.
 
 ---
 
 ### 9.2 While Loop
 
-Executes a block repeatedly as long as the condition is `bool` true.
+Executes a block repeatedly as long as the condition is `true`.
 
 ```
 while_stmt
@@ -3248,12 +3557,7 @@ The condition is evaluated after each iteration. `break` exits immediately; `con
 
 ---
 
-### 9.4 Loop In - Object iterarion
-
-> ⚠️ **Temporarily unavailable** — `loop in` is currently disabled.
-> The `in` keyword remains reserved for future compatibility and will be supported in a future release.
-
-### 9.5 Loop Of — List and Array Iteration
+### 9.4 Loop Of: List and Array Iteration
 
 Iterates over the elements of a `List`, fixed-size array, or rest parameter. On each iteration, the loop variable holds the current element.
 
@@ -3300,11 +3604,29 @@ loop (row of matrix) {
 }
 ```
 
+---
+
+## 10. Modules
+
+A module is a single `.zen` file. A file shares declarations with other files using `export` and brings them in using `import`.
+
+---
+
+### 10.1 Export
+
+The `export` keyword makes global declarations available to other files.
+
+```
+export_stmt
+  = "export" "(" identifier_list ")"
+```
+
 #### Rules
 
-- A file may contain exactly one `export` statement. Multiple `export` calls in the same file are a compile-time error.
-- `export` must appear at the bottom of the file, after all declarations. For variables this is required; for functions it is strongly recommended.
+- A file can have multiple `export` statements.
+- `export` statements must appear at the bottom of the file, after all declarations. For variables this is required; for functions it is strongly recommended.
 - Global variables, functions, and struct declarations may be exported.
+- Exported functions can take or return structs that are not exported.
 
 #### Exportable Values
 
@@ -3316,13 +3638,14 @@ Only global symbols may be exported.
 | Double literal | `double pi = 3.14` |
 | String literal | `string name = "ZEN"` |
 | Bool literal | `bool flag = true` |
+| Byte literal | `byte a = 20B` |
+| Long literal | `long b = 10000000000L` |
 | Constant | `const int MAX = 100` |
 | Global function | `fn add(int a, int b) int { ... }` |
 | Struct declaration | `struct Person { ... }` |
 | Global struct instance | `Person p` |
 | Initialized global struct instance | `Person p = { name: "ZEN" }` |
 | Static global array | `int arr[3] = [1, 2, 3]` |
-| enum | `Colors` |
 
 #### Non-Exportable Values
 
@@ -3347,12 +3670,7 @@ fn createPerson() Person {
   return user
 }
 
-enum Colors {
-  green,
-  red
-}
-
-export(Person, user, createPerson, Colors)
+export(Person, user, createPerson)
 ```
 
 ---
@@ -3363,13 +3681,13 @@ Exported modules can also import other modules. Zen automatically resolves depen
 
 ```zen
 # utils.zen
-import(math) from "math.zen"
+import(add) from "math.zen"
 
-fn add(a int, b int) int {
-    return math.add(a, b)
+fn sum(int a, int b) int {
+  return add(a, b)
 }
 
-export(add)
+export(sum)
 ```
 
 **Rules**
@@ -3378,8 +3696,9 @@ export(add)
 - Circular imports are supported and resolved automatically by the compiler.
 - Each module is compiled only once, even if imported multiple times.
 - If a file exports identifiers, it cannot contain top-level executable code.
-- Top-level variable initializers, expressions, loops, conditionals, function calls, and other executable statements are not permitted in exported modules.
-- Exported modules should only contain declarations such as `fn`, `struct`, `enum`, global constants/variables, `import`, and `export`.
+- Top-level expressions, loops, conditionals, function calls, and other executable statements are not permitted in exported modules.
+- Global variables with literal initializers are allowed.
+- Exported modules should only contain declarations such as `fn`, `struct`, global constants/variables, `import`, and `export`.
 - Any executable logic should be placed inside functions and exported as needed.
 
 ---
@@ -3390,7 +3709,10 @@ The `import` keyword brings exported identifiers from another file or an install
 
 ```
 import_stmt
-  = "import" "(" identifier_list ")" "from" STRING_LITERAL
+  = "import" "(" import_item ("," import_item)* ")" "from" STRING_LITERAL
+
+import_item
+  = IDENTIFIER ("as" IDENTIFIER)?
 ```
 
 #### Rules
@@ -3399,7 +3721,9 @@ import_stmt
 - Imported names must exactly match the names declared in the `export` statement of the target module.
 - Local modules must reference a `.zen` file.
 - Installed packages are imported by package name and **must not** include the `.zen` extension.
-- Imported identifiers are used directly by name — no namespace prefix is required.
+- Imported identifiers are used directly by name. No namespace prefix is required.
+- A file can have multiple `import` statements.
+- Importing a struct also registers its dependent structs as hidden: they are usable through the struct but cannot be named directly.
 
 #### Importing a Local Module
 
@@ -3415,6 +3739,16 @@ int total = a + MAX
 ```zen
 import(get, post) from "http"
 import(format) from "colors"
+```
+
+#### Aliasing
+
+Functions and variables can be renamed on import using `as`. Structs cannot be aliased (`ImportError`).
+
+```zen
+import(worker as w) from "utils.zen"
+
+w()
 ```
 
 #### Name Mismatch
@@ -3444,13 +3778,14 @@ greet("ZEN")
 
 | Rule | Detail |
 |---|---|
-| One `export` per file | Multiple export statements are a compile-time error |
+| Multiple `export` allowed | A file can have more than one `export` statement |
 | Export at bottom | Required for variables; recommended for functions |
 | Exported modules may import | Exporting files are allowed to import other modules and packages |
 | No top-level executable code | Exported modules cannot contain expressions, loops, conditionals, function calls, or other executable statements outside functions |
 | Import at top | All imports must precede any other declarations or statements |
 | Direct name access | Imported identifiers are used directly, with no namespace prefix |
 | Exact name match | Imported names must match the export list exactly |
+| Aliasing | Functions and variables only; structs cannot be aliased |
 | Local modules | Local file imports must reference `.zen` files |
 | Installed packages | Installed packages are imported by package name without the `.zen` extension |
 | Circular imports | Supported and automatically resolved by the compiler |
@@ -3488,15 +3823,23 @@ double area = PI * r * r
 | `E` | `double` | `2.71828182845904...` | Euler's number |
 | `PHI` | `double` | `1.61803398874989...` | Golden ratio |
 | `SQRT2` | `double` | `1.41421356237309...` | Square root of 2 |
+| `SQRT1_2` | `double` | `0.70710678118654...` | Square root of 1/2 |
+| `SQRT3` | `double` | `1.73205080756887...` | Square root of 3 |
 | `LN2` | `double` | `0.69314718055994...` | Natural log of 2 |
 | `LN10` | `double` | `2.30258509299404...` | Natural log of 10 |
+| `LOG2E` | `double` | `1.44269504088896...` | Base-2 log of `E` |
+| `LOG10E` | `double` | `0.43429448190325...` | Base-10 log of `E` |
 
 #### Numeric Bounds
 
 | Name | Type | Description |
 |---|---|---|
+| `BYTE_MAX` | `byte` | Maximum value of a byte (127) |
+| `BYTE_MIN` | `byte` | Minimum value of a byte (-128) |
 | `I32_MAX` | `int` | Maximum value of a 32-bit integer |
 | `I32_MIN` | `int` | Minimum value of a 32-bit integer |
+| `I64_MAX` | `long` | Maximum value of a 64-bit integer |
+| `I64_MIN` | `long` | Minimum value of a 64-bit integer |
 | `F64_MAX` | `double` | Maximum finite 64-bit float |
 | `F64_MIN` | `double` | Minimum positive 64-bit float |
 | `F64_EPS` | `double` | Smallest difference between two doubles |
@@ -3558,7 +3901,7 @@ screen(3.14, "%.2f")
 
 #### `input`
 
-Reads a line from standard input and returns it as a `string`. The caller is responsible for casting to the required type using Zen's built-in casting functions.
+Reads a line from standard input and returns it as a `string`. The caller is responsible for converting it to the required type using Zen's type conversion functions.
 
 ```
 input(prompt?) → string
@@ -3568,8 +3911,6 @@ input(prompt?) → string
 |---|---|---|---|
 | `prompt` | `string` | No | Text to display before reading input |
 
----
-
 **Basic Usage**
 
 ```zen
@@ -3577,31 +3918,27 @@ string name = input("Enter name: ")
 string raw  = input()
 ```
 
-`input()` always returns a `string` — even if the user types a number.
+`input()` always returns a `string`, even if the user types a number.
 
 ```zen
 string age = input("Enter age: ")   # user types 23 → age is "23"
 ```
 
----
+**Type Conversion**
 
-**Type Casting**
-
-To work with the input as a specific type, use Zen's built-in casting functions:
+To work with the input as a specific type, use Zen's type conversion functions:
 
 ```zen
-int age      = Int(input("Enter age: "))
-float price  = Double(input("Enter price: "))
-bool confirm = Bool(input("Enter true/false: "))
-long maxAge = Long("10292929292982828")
-byte hex = Byte(12)
+int age       = Int(input("Enter age: "))
+double price  = Double(input("Enter price: "))
+bool confirm  = Bool(input("Enter true/false: "))
+long maxAge   = Long("10292929292982828")
+byte b        = Byte(12)
 ```
-
----
 
 **Flexible Usage**
 
-Unlike many languages, `input()` in Zen is a first-class expression. It can be used anywhere a `string` value is valid — inline in expressions, as a function argument, or as a standalone statement.
+Unlike many languages, `input()` in Zen is a first-class expression. It can be used anywhere a `string` value is valid: inline in expressions, as a function argument, or as a standalone statement.
 
 ```zen
 # Standalone
@@ -3613,8 +3950,8 @@ screen("Hello, " + input("Name: "))
 # As function argument
 process(input("Enter value: "))
 
-# In condition (after cast)
-if Int(input("Enter number: ")) > 100 {
+# In condition (after conversion)
+if (Int(input("Enter number: ")) > 100) {
   screen("Large number")
 }
 ```
@@ -3646,7 +3983,7 @@ string t = type(true)        # "bool"
 
 #### `length`
 
-Returns the number of elements in a `List`, fixed-size array, or the number of characters in a `string`.
+Returns the number of elements in a `List` or fixed-size array, or the number of characters in a `string`.
 
 ```
 length(value)
@@ -3658,17 +3995,52 @@ length(value)
 
 Returns `int`.
 
+For a `List`, `length(nums)` is the same as the `nums.length` property.
+
 ```zen
 int len = length("hello")           # 5
 int len = length([1, 2, 3])         # 3
 List<int> nums = [10, 20, 30]
 int len = length(nums)              # 3
 ```
+
+---
+
+#### `stringToBytes`
+
+Converts a `string` to a `List<byte>`.
+
+```
+stringToBytes(text)
+```
+
+Returns `List<byte>`.
+
+```zen
+List<byte> data = stringToBytes("hello")
+```
+
+---
+
+#### `bytesToString`
+
+Converts a `List<byte>` to a `string`.
+
+```
+bytesToString(bytes)
+```
+
+Returns `string`.
+
+```zen
+string text = bytesToString(data)
+```
+
 ---
 
 #### Type Conversion Functions
 
-ZEN provides four explicit type conversion functions. These are the only supported forms of explicit casting.
+ZEN provides six explicit type conversion functions: `Int`, `Double`, `Bool`, `String`, `Byte`, and `Long`. These are the only supported forms of general explicit conversion.
 
 ---
 
@@ -3683,7 +4055,7 @@ Int(value)
 Returns `int`.
 
 ```zen
-int a = Int(3.99)        # 3 — truncates
+int a = Int(3.99)        # 3, truncates
 int b = Int("42")        # 42
 int c = Int(true)        # 1
 int d = Int(false)       # 0
@@ -3748,7 +4120,7 @@ string c = String(true)      # "true"
 
 #### `Byte`
 
-Converts an `int` to `byte`.
+Converts an `int` to `byte`. `byte` is signed (-128 to 127).
 
 ```
 Byte(value)
@@ -3760,7 +4132,7 @@ Returns `byte`.
 List<byte> bytes
 
 bytes.push(Byte(65))
-bytes.push(Byte(255))
+bytes.push(Byte(127))
 ```
 
 ---
@@ -3769,43 +4141,59 @@ bytes.push(Byte(255))
 
 Converts a value to `long`.
 
-    Long(value)
+```
+Long(value)
+```
 
 Returns `long`.
 
-    long a = Long(42)
-    long b = Long(3.99)
-    long c = Long("42")
-    long d = Long(true)
-    long e = Long(false)
+```zen
+long a = Long(42)
+long b = Long(3.99)
+long c = Long("42")
+long d = Long(true)
+long e = Long(false)
+```
 
 ---
 
-## toString
+#### ASCII Conversion Functions
 
-toString performs an ASCII-based integer-to-character conversion, not a general string cast. It takes an integer value and returns its corresponding ASCII character as a string — for example, toString(65) returns "A", not "65". For general type-to-string conversion, use String() instead. Using toString on non-ASCII integer values or expecting it to stringify numbers as text will produce unexpected results.
+`intToAscii` and `asciiToInt` convert between ASCII codes and characters. They are not general type conversions. For general conversion, use `String()` and `Int()`.
+
+> **Breaking change in v3.0.0:** `toString()` was renamed to `intToAscii()`, and `toInt()` was renamed to `asciiToInt()`.
+
+---
+
+#### `intToAscii`
+
+Takes an integer ASCII code and returns the corresponding character as a `string`. For example, `intToAscii(65)` returns `"A"`, not `"65"`.
 
 ```
-toString(value)
+intToAscii(value)
 ```
 
 Returns `string`.
 
 ```zen
-string s = toString(99)      # "c" ASCII of 99
+string s = intToAscii(99)      # "c", the ASCII character for 99
 ```
 
 ---
 
-#### `toInt`
+#### `asciiToInt`
 
-`toInt` performs an ASCII-based character-to-integer conversion, not a general integer cast. It takes a single character string and returns its corresponding ASCII code as an `int` — for example, `toInt("A")` returns `65`, not a parsed number. For general type-to-integer conversion, use `Int()` instead. Passing multi-character strings or expecting it to parse numeric strings as integers will produce unexpected results.
+Takes a single-character `string` and returns its ASCII code as an `int`. For example, `asciiToInt("A")` returns `65`, not a parsed number. Passing multi-character strings or expecting it to parse numeric strings will produce unexpected results.
+
+```
+asciiToInt(value)
+```
 
 Returns `int`.
 
 ```zen
-int n = toInt("A")       # 65 — ASCII code of A
-int m = toInt("a")       # 97 — ASCII code of a
+int n = asciiToInt("A")       # 65, the ASCII code of A
+int m = asciiToInt("a")       # 97, the ASCII code of a
 ```
 
 ---
@@ -3815,7 +4203,7 @@ int m = toInt("a")       # 97 — ASCII code of a
 Namespaced functions are accessed using dot notation: `namespace.function()`. The underlying compiler built-ins use internal `_namespace_name` identifiers, but ZEN source always uses the dot form.
 
 ```zen
-string os = os.osName()
+string name = os.osName()
 bool connected = net.online()
 ```
 
@@ -3824,184 +4212,6 @@ bool connected = net.online()
 #### 11.3.1 `sys`
 
 System-level process control.
-
----
-
-#### 11.3.2 `crypto`
-
-Cryptographic utilities for hashing, HMAC, secure random generation, and Base64 encoding/decoding.
-
----
-
-##### `crypto.sha256`
-
-Computes the SHA-256 cryptographic hash of the input data.
-
-    crypto.sha256(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `string` | Data to hash |
-
-Returns `List<byte>`.
-
-    List<byte> hash = crypto.sha256("Hello Zen")
-
----
-
-##### `crypto.sha512`
-
-Computes the SHA-512 cryptographic hash of the input data.
-
-    crypto.sha512(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `string` | Data to hash |
-
-Returns `List<byte>`.
-
-    List<byte> hash = crypto.sha512("Hello Zen")
-
----
-
-##### `crypto.hmacSha256`
-
-Computes an HMAC using SHA-256 with the specified key.
-
-    crypto.hmacSha256(key, data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `key` | `string` | Secret key used for HMAC |
-| `data` | `string` | Data to authenticate |
-
-Returns `List<byte>`.
-
-    List<byte> mac = crypto.hmacSha256("secret", "Hello Zen")
-
----
-
-##### `crypto.hmacSha512`
-
-Computes an HMAC using SHA-512 with the specified key.
-
-    crypto.hmacSha512(key, data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `key` | `string` | Secret key used for HMAC |
-| `data` | `string` | Data to authenticate |
-
-Returns `List<byte>`.
-
-    List<byte> mac = crypto.hmacSha512("secret", "Hello Zen")
-
----
-
-##### `crypto.randomBytes`
-
-Generates cryptographically secure random bytes.
-
-    crypto.randomBytes(length)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `length` | `int` | Number of random bytes to generate |
-
-Returns `List<byte>`.
-
-    List<byte> bytes = crypto.randomBytes(32)
-
----
-
-##### `crypto.randomInt`
-
-Generates a cryptographically secure random integer within the specified range.
-
-    crypto.randomInt(min, max)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `min` | `int` | Minimum value |
-| `max` | `int` | Maximum value |
-
-Returns `int`.
-
-    int value = crypto.randomInt(1, 100)
-    screen(value)
-
----
-
-##### `crypto.base64Encode`
-
-Encodes byte data using standard Base64 encoding.
-
-    crypto.base64Encode(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `List<byte>` | Data to encode |
-
-Returns `string`.
-
-    List<byte> data = crypto.randomBytes(16)
-    string encoded = crypto.base64Encode(data)
-
-    screen(encoded)
-
----
-
-##### `crypto.base64Decode`
-
-Decodes a standard Base64 string into bytes.
-
-    crypto.base64Decode(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `string` | Base64-encoded data |
-
-Returns `List<byte>`.
-
-    List<byte> decoded = crypto.base64Decode(encoded)
-
----
-
-##### `crypto.base64UrlEncode`
-
-Encodes byte data using Base64URL encoding.
-
-Base64URL is URL-safe and is commonly used by protocols such as JSON Web Tokens (JWT).
-
-    crypto.base64UrlEncode(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `List<byte>` | Data to encode |
-
-Returns `string`.
-
-    List<byte> data = crypto.randomBytes(16)
-    string encoded = crypto.base64UrlEncode(data)
-
-    screen(encoded)
-
----
-
-##### `crypto.base64UrlDecode`
-
-Decodes a Base64URL-encoded string into bytes.
-
-    crypto.base64UrlDecode(data)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `data` | `string` | Base64URL-encoded data |
-
-Returns `List<byte>`.
-
-    List<byte> decoded = crypto.base64UrlDecode(encoded)
 
 ---
 
@@ -4027,6 +4237,23 @@ if (x < 0) {
 
 ---
 
+##### `sys.key`
+
+Reads a single key press from the terminal.
+
+```
+sys.key()
+```
+
+Returns `string`.
+
+```zen
+string key = sys.key()
+screen(key)
+```
+
+---
+
 ##### `sys.setEnv`
 
 Sets an environment variable for the current process.
@@ -4048,84 +4275,23 @@ sys.setEnv("API_KEY", "123456")
 
 ---
 
----
+##### `sys.getEnv`
 
-##### `sys.clipboard.get`
-
-Returns the current clipboard text.
+Reads an environment variable by name.
 
 ```
-sys.clipboard.get()
-```
-
-Returns `string`.
-
-> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
-
-```zen
-string text = sys.clipboard.get()
-
-screen(text)
-```
-
----
-
-##### `sys.clipboard.set`
-
-Sets the system clipboard text.
-
-```
-sys.clipboard.set(text)
+sys.getEnv(name)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `text` | `string` | Text to copy to the clipboard |
+| `name` | `string` | Environment variable name |
 
-Returns `void`.
-
-> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
+Returns `string`.
 
 ```zen
-sys.clipboard.set("Hello from ZEN")
-```
-
----
-
-##### `sys.clipboard.clear`
-
-Clears the system clipboard.
-
-```
-sys.clipboard.clear()
-```
-
-Returns `void`.
-
-> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
-
-```zen
-sys.clipboard.clear()
-```
-
----
-
-##### `sys.clipboard.hasText`
-
-Checks whether the system clipboard currently contains text.
-
-```
-sys.clipboard.hasText()
-```
-
-Returns `bool`.
-
-> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
-
-```zen
-if (sys.clipboard.hasText()) {
-    screen(sys.clipboard.get())
-}
+string path = sys.getEnv("PATH")
+string home = sys.getEnv("HOME")
 ```
 
 ---
@@ -4146,7 +4312,7 @@ Returns `bool`.
 
 ```zen
 if (sys.hasEnv("API_KEY")) {
-    screen("Found")
+  screen("Found")
 }
 ```
 
@@ -4173,6 +4339,111 @@ screen(out)
 
 ---
 
+##### `sys.spawn`
+
+Starts a command as a separate process without waiting for it to finish.
+
+```
+sys.spawn(command)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `command` | `string` | Command to run |
+
+Returns `long`: the process ID.
+
+```zen
+long pid = sys.spawn("sleep 30")
+```
+
+---
+
+##### `sys.isRunning`
+
+Checks whether a spawned process is still running.
+
+```
+sys.isRunning(pid)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `pid` | `long` | Process ID returned by `sys.spawn` |
+
+Returns `bool`.
+
+```zen
+if (sys.isRunning(pid)) {
+  screen("still running")
+}
+```
+
+---
+
+##### `sys.exec`
+
+Executes a shell command and returns its raw exit status.
+
+```
+sys.exec(command)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `command` | `string` | Shell command to execute |
+
+Returns `int`: the raw status of the command. `0` means success. For a non-zero exit, the exit code is in the upper bits, so `exit 5` returns `1280` (`5 << 8`). Use `status >> 8` to get the exit code.
+
+```zen
+int status = sys.exec("exit 5")      # 1280
+int code = status >> 8               # 5
+```
+
+---
+
+##### `sys.wait`
+
+Blocks until a spawned process finishes.
+
+```
+sys.wait(pid)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `pid` | `long` | Process ID returned by `sys.spawn` |
+
+Returns `int`: the exit code of the process. If the process was stopped by a signal, the result is `128` plus the signal number (for example, `143` for signal `15`).
+
+```zen
+long pid = sys.spawn("false")
+int code = sys.wait(pid)             # 1
+```
+
+---
+
+##### `sys.kill`
+
+Sends a signal to a process.
+
+```
+sys.kill(pid, signal)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `pid` | `long` | Process ID returned by `sys.spawn` |
+| `signal` | `int` | Signal number to send (for example `15` to terminate, `9` to force kill) |
+
+Returns `int`: `0` on success, `-1` on failure (for example, if the process does not exist).
+
+```zen
+int result = sys.kill(pid, 15)
+```
+
+---
+
 ##### `sys.argv`
 
 Returns the command-line arguments passed to the program as a `List<string>`.
@@ -4186,7 +4457,7 @@ Returns `List<string>`.
 ```zen
 List<string> args = sys.argv()
 
-loop (arg in args) {
+loop (arg of args) {
   screen(arg)
 }
 ```
@@ -4221,7 +4492,7 @@ screen(end - start)                    # elapsed time in ms
 Changes the terminal output color using ANSI formatting. Affects all subsequent `screen` output until changed again.
 
 ```
-sys.color("color")
+sys.color(name)
 ```
 
 | Parameter | Type | Required | Description |
@@ -4239,48 +4510,300 @@ screen("back to normal")
 
 ---
 
-##### `sys.exec`
+##### Clipboard
 
-Executes a shell command and returns its exit code.
+> **Warning:** Clipboard support depends on the operating system and desktop environment. Some platforms (such as Android Termux or headless Linux systems) may not provide a system clipboard.
 
-```
-sys.exec(command)
-```
+##### `sys.clipboard.get`
 
-| Parameter | Type | Description |
-|---|---|---|
-| `command` | `string` | Shell command to execute |
-
-Returns `int` — the exit code of the command.
-
-```zen
-int code = sys.exec("mkdir output")
-```
-
----
-
-##### `sys.getEnv`
-
-Reads an environment variable by name.
+Returns the current clipboard text.
 
 ```
-sys.getEnv(name)
+sys.clipboard.get()
 ```
-
-| Parameter | Type | Description |
-|---|---|---|
-| `name` | `string` | Environment variable name |
 
 Returns `string`.
 
 ```zen
-string path = sys.getEnv("PATH")
-string home = sys.getEnv("HOME")
+string text = sys.clipboard.get()
+screen(text)
 ```
 
 ---
 
-#### 11.3.2 `fs`
+##### `sys.clipboard.set`
+
+Sets the system clipboard text.
+
+```
+sys.clipboard.set(text)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `text` | `string` | Text to copy to the clipboard |
+
+Returns `void`.
+
+```zen
+sys.clipboard.set("Hello from ZEN")
+```
+
+---
+
+##### `sys.clipboard.clear`
+
+Clears the system clipboard.
+
+```
+sys.clipboard.clear()
+```
+
+Returns `void`.
+
+```zen
+sys.clipboard.clear()
+```
+
+---
+
+##### `sys.clipboard.hasText`
+
+Checks whether the system clipboard currently contains text.
+
+```
+sys.clipboard.hasText()
+```
+
+Returns `bool`.
+
+```zen
+if (sys.clipboard.hasText()) {
+  screen(sys.clipboard.get())
+}
+```
+
+---
+
+#### 11.3.2 `crypto`
+
+Cryptographic utilities for hashing, HMAC, secure random generation, and Base64 encoding/decoding.
+
+---
+
+##### `crypto.sha256`
+
+Computes the SHA-256 cryptographic hash of the input data.
+
+```
+crypto.sha256(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Data to hash |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> hash = crypto.sha256("Hello Zen")
+```
+
+---
+
+##### `crypto.sha512`
+
+Computes the SHA-512 cryptographic hash of the input data.
+
+```
+crypto.sha512(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Data to hash |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> hash = crypto.sha512("Hello Zen")
+```
+
+---
+
+##### `crypto.hmacSha256`
+
+Computes an HMAC using SHA-256 with the specified key.
+
+```
+crypto.hmacSha256(key, data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Secret key used for HMAC |
+| `data` | `string` | Data to authenticate |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> mac = crypto.hmacSha256("secret", "Hello Zen")
+```
+
+---
+
+##### `crypto.hmacSha512`
+
+Computes an HMAC using SHA-512 with the specified key.
+
+```
+crypto.hmacSha512(key, data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `string` | Secret key used for HMAC |
+| `data` | `string` | Data to authenticate |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> mac = crypto.hmacSha512("secret", "Hello Zen")
+```
+
+---
+
+##### `crypto.randomBytes`
+
+Generates cryptographically secure random bytes.
+
+```
+crypto.randomBytes(length)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `length` | `int` | Number of random bytes to generate |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> bytes = crypto.randomBytes(32)
+```
+
+---
+
+##### `crypto.randomInt`
+
+Generates a cryptographically secure random integer within the specified range.
+
+```
+crypto.randomInt(min, max)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `min` | `int` | Minimum value |
+| `max` | `int` | Maximum value |
+
+Returns `int`.
+
+```zen
+int value = crypto.randomInt(1, 100)
+screen(value)
+```
+
+---
+
+##### `crypto.base64Encode`
+
+Encodes byte data using standard Base64 encoding.
+
+```
+crypto.base64Encode(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `List<byte>` | Data to encode |
+
+Returns `string`.
+
+```zen
+List<byte> data = crypto.randomBytes(16)
+string encoded = crypto.base64Encode(data)
+
+screen(encoded)
+```
+
+---
+
+##### `crypto.base64Decode`
+
+Decodes a standard Base64 string into bytes.
+
+```
+crypto.base64Decode(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Base64-encoded data |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> decoded = crypto.base64Decode(encoded)
+```
+
+---
+
+##### `crypto.base64UrlEncode`
+
+Encodes byte data using Base64URL encoding.
+
+Base64URL is URL-safe and is commonly used by protocols such as JSON Web Tokens (JWT).
+
+```
+crypto.base64UrlEncode(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `List<byte>` | Data to encode |
+
+Returns `string`.
+
+```zen
+List<byte> data = crypto.randomBytes(16)
+string encoded = crypto.base64UrlEncode(data)
+
+screen(encoded)
+```
+
+---
+
+##### `crypto.base64UrlDecode`
+
+Decodes a Base64URL-encoded string into bytes.
+
+```
+crypto.base64UrlDecode(data)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `string` | Base64URL-encoded data |
+
+Returns `List<byte>`.
+
+```zen
+List<byte> decoded = crypto.base64UrlDecode(encoded)
+```
+
+---
+
+#### 11.3.3 `fs`
 
 File system operations.
 
@@ -4310,7 +4833,7 @@ Writes a string to a file, overwriting existing content.
 fs.writeFile(path, content)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.writeFile("out.txt", "hello ZEN")
@@ -4342,15 +4865,14 @@ Writes a `List<byte>` to a file.
 fs.writeFileBytes(path, data)
 ```
 
-Returns `void`.
+Returns `int`: `0` on success, non-zero on failure.
+
+> **Breaking change in v3.0.0:** `fs.writeFileBytes()` now returns `int` (a success code) instead of `void`.
 
 ```zen
 List<byte> data = fs.readFileBytes("image.png")
 
-fs.writeFileBytes(
-  "copy.png",
-  data
-)
+int result = fs.writeFileBytes("copy.png", data)
 ```
 
 ---
@@ -4363,7 +4885,7 @@ Appends a string to an existing file without overwriting.
 fs.appendFile(path, content)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.appendFile("log.txt", "new entry\n")
@@ -4387,6 +4909,58 @@ bool found = fs.exists("config.zen")
 
 ---
 
+##### `fs.isFile`
+
+Checks whether the given path is a file.
+
+```
+fs.isFile(path)
+```
+
+Returns `bool`.
+
+```zen
+bool file = fs.isFile("data.txt")
+```
+
+---
+
+##### `fs.isDir`
+
+Checks whether the given path is a directory.
+
+```
+fs.isDir(path)
+```
+
+Returns `bool`.
+
+```zen
+bool dir = fs.isDir("output")
+```
+
+---
+
+##### `fs.listDir`
+
+Lists the entries in a directory.
+
+```
+fs.listDir(path)
+```
+
+Returns `List<string>`.
+
+```zen
+List<string> entries = fs.listDir(".")
+
+loop (entry of entries) {
+  screen(entry)
+}
+```
+
+---
+
 ##### `fs.deleteFile`
 
 Deletes a file at the given path.
@@ -4395,7 +4969,7 @@ Deletes a file at the given path.
 fs.deleteFile(path)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.deleteFile("temp.txt")
@@ -4411,7 +4985,7 @@ Renames or moves a file.
 fs.renameFile(oldPath, newPath)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.renameFile("old.txt", "new.txt")
@@ -4427,7 +5001,7 @@ Creates a new directory at the given path.
 fs.makeDir(path)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.makeDir("output")
@@ -4460,7 +5034,7 @@ Changes the current working directory.
 fs.changeDir(path)
 ```
 
-Returns `int` — `0` on success, non-zero on failure.
+Returns `int`: `0` on success, non-zero on failure.
 
 ```zen
 int result = fs.changeDir("../project")
@@ -4468,7 +5042,7 @@ int result = fs.changeDir("../project")
 
 ---
 
-#### 11.3.3 `os`
+#### 11.3.4 `os`
 
 Operating system and hardware information.
 
@@ -4504,42 +5078,41 @@ screen(os.cpuCount())
 screen(os.platform())
 
 if (os.isLinux()) {
-    screen("Running on Linux")
+  screen("Running on Linux")
 }
 
-int mem = os.freeMemory()
+long mem = os.freeMemory()
 screen(os.pid())
 screen(os.homeDir())
 ```
 
 ---
 
-#### 11.3.4 `net`
+#### 11.3.5 `net`
 
-Network information.
+Network functions.
 
----
+| Function | Returns | Description |
+|---|---|---|
+| `net.online()` | `bool` | Checks whether the system has an active network connection |
+| `net.connect(host, port)` | `Tcp` | Opens a TCP connection to `host` (`string`) on `port` (`int`) |
+| `net.listen(port)` | `TcpServer` | Starts a TCP server on `port` (`int`) |
 
-##### `net.online`
-
-Checks whether the system has an active network connection.
-
-```
-net.online()
-```
-
-Returns `bool`.
+`Tcp` and `TcpServer` are built-in structs. Their methods are documented under Built-in Structs.
 
 ```zen
 bool connected = net.online()
 if (connected) {
   screen("network available")
 }
+
+Tcp conn = net.connect("example.com", 80)
+TcpServer server = net.listen(9000)
 ```
 
 ---
 
-#### 11.3.5 `time`
+#### 11.3.6 `time`
 
 Time and date functions.
 
@@ -4577,7 +5150,6 @@ Returns `long`.
 
 ```zen
 long ts = time.now()
-
 screen(ts)
 ```
 
@@ -4599,7 +5171,6 @@ Returns `string`.
 
 ```zen
 long ts = time.now()
-
 screen(time.format(ts))
 ```
 
@@ -4704,11 +5275,16 @@ int y = time.year()    # e.g. 2026
 
 ---
 
-#### 11.3.6 `http`
+#### 11.3.7 `http`
 
-HTTP client functions. All HTTP functions take a URL as the first parameter and return the response body as a `string`.
+HTTP client functions. Request functions take a URL as the first parameter and return the response body as a `string`, except `http.getProgress`, which returns `List<byte>`.
 
-> **Request timeout:** HTTP requests use a default **10-second connection timeout** and **30-second overall timeout**. If either limit is exceeded, the request fails and returns an error.
+> **Timeouts:**
+> - The connect timeout is **10 seconds** for every request.
+> - Requests without a progress callback have a **30 second** total limit.
+> - Requests with a progress callback (`http.getProgress`) have no total limit. They abort only if the speed stays below 1 KB/s for 30 seconds.
+> - On a network failure or timeout, a `NetworkError` is printed and the program exits.
+> - Timeouts are not configurable, and there is no retry or resume.
 
 ---
 
@@ -4720,7 +5296,7 @@ Sends an HTTP GET request.
 http.get(url)
 ```
 
-Returns `string` — the response body.
+Returns `string`: the response body.
 
 ```zen
 string res = http.get("https://api.example.com/data")
@@ -4728,78 +5304,25 @@ string res = http.get("https://api.example.com/data")
 
 ---
 
-##### `http.urlEncode`
+##### `http.getProgress`
 
-Encodes a string for safe use in a URL.
+Downloads a URL and reports progress through a callback. Returns the data as `List<byte>` for low-level control.
 
-```zen
-http.urlEncode(text)
+```
+http.getProgress(url, callback)
 ```
 
-Returns `string` — the URL-encoded string.
+| Parameter | Type | Description |
+|---|---|---|
+| `url` | `string` | Request URL |
+| `callback` | `fn cb(long downloaded, long total) void` | Called with the downloaded and total bytes |
+
+Returns `List<byte>`.
 
 ```zen
-string encoded = http.urlEncode("Hello World!")
-```
-
-##### `http.urlDecode`
-
-Decodes a URL-encoded string.
-
-```zen
-http.urlDecode(text)
-```
-
-Returns `string` — the decoded string.
-
-```zen
-string decoded = http.urlDecode("Hello%20World%21")
-```
-
-##### `http.setHeader`
-
-Sets a default HTTP header used for subsequent requests.
-
-```zen
-http.setHeader(name, value)
-```
-
-Returns `void`.
-
-```zen
-http.setHeader("Authorization", "Bearer token")
-http.setHeader("User-Agent", "Zen")
-```
-
-##### `http.clearHeaders`
-
-Clears all previously set default HTTP headers.
-
-```zen
-http.clearHeaders()
-```
-
-Returns `void`.
-
-```zen
-http.clearHeaders()
-```
-
-##### `http.lastStatus`
-
-Returns the HTTP status code of the last request.
-
-```zen
-http.lastStatus()
-```
-
-Returns `int` — the last HTTP status code.
-
-```zen
-http.get("https://api.example.com/data")
-
-int status = http.lastStatus()
-screen(status)
+List<byte> data = http.getProgress(url, fn cb(long downloaded, long total) void {
+  screen(downloaded)
+})
 ```
 
 ---
@@ -4820,23 +5343,23 @@ http.post(url, body)
 Returns `string`.
 
 ```zen
-string res = http.post("https://api.example.com/users", '{"name":"ZEN"}')
+string res = http.post("https://api.example.com/users", "{\"name\":\"ZEN\"}")
 ```
 
 ---
 
-##### `http.update`
+##### `http.put`
 
 Sends an HTTP PUT request.
 
 ```
-http.update(url, body)
+http.put(url, body)
 ```
 
 Returns `string`.
 
 ```zen
-string res = http.update("https://api.example.com/users/1", '{"name":"updated"}')
+string res = http.put("https://api.example.com/users/1", "{\"name\":\"updated\"}")
 ```
 
 ---
@@ -4852,7 +5375,7 @@ http.patch(url, body)
 Returns `string`.
 
 ```zen
-string res = http.patch("https://api.example.com/users/1", '{"age":22}')
+string res = http.patch("https://api.example.com/users/1", "{\"age\":22}")
 ```
 
 ---
@@ -4873,7 +5396,87 @@ string res = http.delete("https://api.example.com/users/1")
 
 ---
 
-#### 11.3.7 `ffi`
+##### `http.urlEncode`
+
+Encodes a string for safe use in a URL.
+
+```
+http.urlEncode(text)
+```
+
+Returns `string`: the URL-encoded string.
+
+```zen
+string encoded = http.urlEncode("Hello World!")
+```
+
+---
+
+##### `http.urlDecode`
+
+Decodes a URL-encoded string.
+
+```
+http.urlDecode(text)
+```
+
+Returns `string`: the decoded string.
+
+```zen
+string decoded = http.urlDecode("Hello%20World%21")
+```
+
+---
+
+##### `http.setHeader`
+
+Sets a default HTTP header used for subsequent requests.
+
+```
+http.setHeader(name, value)
+```
+
+Returns `void`.
+
+```zen
+http.setHeader("Authorization", "Bearer token")
+http.setHeader("User-Agent", "Zen")
+```
+
+---
+
+##### `http.clearHeaders`
+
+Clears all previously set default HTTP headers.
+
+```
+http.clearHeaders()
+```
+
+Returns `void`.
+
+---
+
+##### `http.lastStatus`
+
+Returns the HTTP status code of the last request.
+
+```
+http.lastStatus()
+```
+
+Returns `int`.
+
+```zen
+http.get("https://api.example.com/data")
+
+int status = http.lastStatus()
+screen(status)
+```
+
+---
+
+#### 11.3.8 `ffi`
 
 Foreign Function Interface (FFI) bindings to selected C standard library functions.
 
@@ -4929,9 +5532,8 @@ Foreign Function Interface (FFI) bindings to selected C standard library functio
 | `ffi.isalnum` | Checks for alphanumeric character |
 | `ffi.ispunct` | Checks for punctuation character |
 | `ffi.isxdigit` | Checks for hexadecimal digit |
-```
 
-### Examples
+##### Examples
 
 ```zen
 ffi.puts("Hello from FFI")
@@ -4943,9 +5545,9 @@ double root = ffi.sqrt(144.0)
 int value = ffi.atoi("123")
 ```
 
-> FFI functions are thin wrappers around native C library functions. Their behavior follows the underlying platform implementation.
+---
 
-#### 11.3.8 `httpServer`
+#### 11.3.9 `httpServer`
 
 The `httpServer` namespace provides a built-in HTTP server for handling incoming HTTP requests.
 
@@ -4969,15 +5571,17 @@ HttpServer server = httpServer.create(8080)
 
 ---
 
-#### 11.3.9 `threads`
+#### 11.3.10 `threads`
 
 Utilities for working with threads.
+
+---
 
 ##### `threads.waitAll`
 
 Blocks execution until all running threads have finished.
 
-```zen
+```
 threads.waitAll()
 ```
 
@@ -4985,7 +5589,7 @@ Returns `void`.
 
 ```zen
 thread fn worker() {
-    screen("Working...")
+  screen("Working...")
 }
 
 worker()
@@ -4996,112 +5600,80 @@ screen("Done")
 
 ---
 
-#### 11.3.10 `debug`
+##### `threads.count`
 
-Utilities for inspecting complex values during development.
+Returns the number of running threads.
 
-The `debug` namespace provides helper functions for printing data structures in a human-readable format. Unlike `screen()`, which prints values directly, `debug.pretty()` formats nested objects, collections, and structs with indentation for easier debugging.
+```
+threads.count()
+```
 
-> 💡 **Tip:** `debug.pretty()` is intended for debugging and development. For normal program output, use `screen()`.
+Returns `long`.
+
+```zen
+long running = threads.count()
+```
 
 ---
 
-##### `debug.pretty`
+##### `threads.currentId`
 
-Pretty-prints supported values in a structured, readable format.
+Returns the ID of the current thread.
+
+```
+threads.currentId()
+```
+
+Returns `long`.
 
 ```zen
-debug.pretty(value)
+long id = threads.currentId()
 ```
 
-Returns `void`.
+---
 
-**Supported types**
+#### 11.3.11 `path`
 
-- `List<T>`
-- `Map`
-- User-defined structs
-- Nested combinations of the above
-
-```zen
-struct Person {
-    string name
-    int age
-}
-
-Person p = {
-    name: "Jishith",
-    age: 21
-}
-
-debug.pretty(p)
-```
-
-Output:
-
-```text
-Person {
-  name: "Jishith"
-  age: 21
-}
-```
-
-Lists and maps are also formatted recursively.
-
-```zen
-Map user = {
-    name: "ZEN",
-    version: 2,
-    tags: ["compiler", "llvm", "language"]
-}
-
-debug.pretty(user)
-```
-
-### 11.3.11 `path`
-
-The `path` namespace provides utilities for manipulating file system paths.
+File path manipulation utilities.
 
 ---
 
 ##### `path.basename`
 
-Returns the final portion of a path.
+Returns the final component of a file path.
 
-```zen
+```
 path.basename(path)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `path` | `string` | File or directory path |
+| `path` | `string` | File path |
 
 Returns `string`.
 
 ```zen
-string name = path.basename("/home/user/test.txt")
-screen(name)
+string name = path.basename("/home/user/file.txt")   # "file.txt"
 ```
 
 ---
 
 ##### `path.dirname`
 
-Returns the directory portion of a path.
+Returns the directory component of a file path.
 
-```zen
+```
 path.dirname(path)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `path` | `string` | File or directory path |
+| `path` | `string` | File path |
 
 Returns `string`.
 
 ```zen
-string dir = path.dirname("/home/user/test.txt")
-screen(dir)
+string dir = path.dirname("/home/user/file.txt")   # "/home/user"
 ```
 
 ---
@@ -5110,7 +5682,7 @@ screen(dir)
 
 Returns the file extension of a path.
 
-```zen
+```
 path.extname(path)
 ```
 
@@ -5121,51 +5693,76 @@ path.extname(path)
 Returns `string`.
 
 ```zen
-string ext = path.extname("image.png")
-screen(ext)
+string ext = path.extname("/home/user/file.txt")   # ".txt"
 ```
 
 ---
 
 ##### `path.join`
 
-Joins path components into a single path.
+Joins two path components into a single path.
 
-```zen
-path.join(first, second)
+```
+path.join(path, other)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `first` | `string` | First path component |
-| `second` | `string` | Second path component |
+| `path` | `string` | First path component |
+| `other` | `string` | Second path component |
 
 Returns `string`.
 
 ```zen
-string file = path.join("build", "test.ll")
-screen(file)
+string full = path.join("/home/user", "file.txt")   # "/home/user/file.txt"
 ```
 
 ---
 
 ##### `path.normalize`
 
-Normalizes a path by resolving redundant path components.
+Normalizes a file path by resolving redundant path components.
 
-```zen
+```
 path.normalize(path)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `path` | `string` | Path to normalize |
+| `path` | `string` | File path to normalize |
 
 Returns `string`.
 
 ```zen
-string normalized = path.normalize("build/../src/main.zen")
-screen(normalized)
+string normalized = path.normalize("/home/user/../user/file.txt")   # "/home/user/file.txt"
+```
+
+---
+
+#### 11.3.12 `debug`
+
+Debugging and value inspection utilities.
+
+---
+
+##### `debug.pretty`
+
+Pretty-prints a `List`, `Map`, or struct as readable text.
+
+```
+debug.pretty(value)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `value` | `any` | List, Map, or struct to pretty-print |
+
+Returns `string`.
+
+```zen
+List<int> numbers = [1, 2, 3]
+string result = debug.pretty(numbers)
+screen(result)
 ```
 
 ---
@@ -5299,11 +5896,11 @@ double r = pow(2, 10)   # 1024.0
 
 ##### `sqrt`
 ```
-sqrt(n) → int
+sqrt(double n) → double
 ```
-Returns the integer square root of `n`.
+Returns the square root of `n`.
 ```zen
-int r = sqrt(16)        # 4
+double r = sqrt(16.0)     # 4.0
 ```
 
 ---
@@ -5560,8 +6157,6 @@ int r = randomInt(1, 100)
 
 #### 11.4.7 String
 
----
-
 ##### `reverse`
 ```
 reverse(s) → string
@@ -5581,6 +6176,42 @@ Returns the index of the first occurrence of `sub` in `s`. Returns `-1` if not f
 ```zen
 int r = indexOf("hello", "ll")  # 2
 int r = indexOf("hello", "x")   # -1
+```
+
+---
+
+---
+
+##### `lastIndexOf`
+```
+lastIndexOf(s, sub) → int
+```
+Returns the index of the last occurrence of `sub` in `s`. Returns `-1` if not found.
+```zen
+int r = lastIndexOf("hello", "l")   # 3
+int r = lastIndexOf("hello", "x")   # -1
+```
+
+---
+
+##### `stringToBytes`
+```
+stringToBytes(s) → List<byte>
+```
+Returns the bytes of `s`.
+```zen
+List<byte> b = stringToBytes("hi")
+```
+
+---
+
+##### `bytesToString`
+```
+bytesToString(List<byte>) → string
+```
+Converts a list of bytes back to a string.
+```zen
+string s = bytesToString(b)   # "hi"
 ```
 
 ---
@@ -5707,6 +6338,30 @@ string r = repeat("ab", 3)   # "ababab"
 
 ---
 
+##### `split`
+```
+split(source, delimiter) → List<string>
+```
+Splits `source` by `delimiter` and returns all resulting elements as a list.
+```zen
+List<string> r = split("a,b,c", ",")   # ["a", "b", "c"]
+List<string> r = split("hello world", " ")   # ["hello", "world"]
+```
+
+---
+
+##### `replaceAll`
+```
+replaceAll(source, search, replacement) → string
+```
+Replaces all occurrences of `search` in `source` with `replacement`.
+```zen
+string r = replaceAll("hello world", "world", "Zen")   # "hello Zen"
+string r = replaceAll("a-b-c", "-", "_")   # "a_b_c"
+```
+
+---
+
 ##### `count`
 ```
 count(s, sub) → int
@@ -5808,6 +6463,7 @@ screen(ok)   # true
 ---
 
 ##### `match`
+
 ```
 match(s, pattern) → bool
 ```
@@ -5893,11 +6549,11 @@ bool u = match("hello world", ":string") # true
 - Character range `[lo-hi]` requires exactly 3 characters inside brackets with a dash in the middle — e.g. `[a-z]`, `[0-9]`.
 - `:id` must start with a **letter or underscore**. A leading digit or symbol returns `false`.
 - `:int` allows a **leading minus sign**. The remainder must be digits only with no trailing characters.
-```
 
 ---
 
 ##### `json`
+
 ```
 json(jsonString, accessor) → string
 ```
@@ -5999,14 +6655,18 @@ The ZEN compiler is implemented in **JavaScript** and runs on **Node.js**. This 
 
 ### 12.4 Optimization
 
-ZEN uses Clang's `-O2` optimization level, which enables aggressive optimizations including:
+ZEN compiles with Clang's `-O2` optimization level by default, which enables standard optimizations including:
 
 - Inlining of small functions
 - Dead code elimination
 - Constant folding and propagation
 - Loop optimizations
 
-No user-facing optimization flags are exposed in v2.1.1. All compilation uses `-O2` by default.
+The level can be changed per command with `-O0` (none), `-O1` (basic), `-O2` (standard, default) and `-O3` (aggressive):
+
+```bash
+zen build main.zen -O3
+```
 
 ---
 
@@ -6018,7 +6678,7 @@ ZEN is invoked from the command line using the `zen` command.
 zen run <filename>
 ```
 
-`filename` must be a `.zen` source file.
+`filename` must be a `.zen` source file or package name
 
 ```bash
 zen run main.zen
@@ -6035,570 +6695,303 @@ This command runs the full pipeline — lexing, parsing, IR emission, Clang comp
 | `.ll` | LLVM IR intermediate representation |
 | Binary | `.o` object file|
 
+---
+
 ## 13. Error Model
 
-ZEN errors are divided into two categories: **compile-time errors**, caught before any code executes, and **runtime errors**, raised during program execution. Both follow a consistent format that includes the error type, a descriptive message, the source location when available, and a partial stack trace when available.
+ZEN errors are either **compile-time errors**, caught before any code runs, or **runtime errors**, raised during execution. See [errors.md](errors.md) for all error types.
 
 ---
 
-### 13.1 Error Format
+## 14. Built-in Structs
 
-All Zen errors follow a consistent structured format:
-
-```
-[Zen  ErrorType]
-  ├── message
-  ├── at: filename.zen:line:col
-  └── hint: optional suggestion
-```
-
-| Field | Description |
-|---|---|
-| `ErrorType` | The category of error (see sections below) |
-| `message` | A human-readable description of what went wrong |
-| `at` | File name, line number, and column offset — included for all compile-time errors |
-| `hint` | An optional suggestion to help resolve the error, shown when applicable |
+Built-in structs are provided by the runtime and are available without any import. They use reference semantics, and the ones with `free()` follow the ownership rules in Semantics: free only the object you own, never a child you got from it.
 
 ---
 
-**Compile-time errors** always include the `at` field pinpointing the exact location of the fault.
+### 14.1 Tcp
 
-```
-[Zen  TypeError]
-  ├── Cannot assign 'string' to variable of type 'int'
-  └── at: main.zen:5:10
-```
+A TCP connection, created by `net.connect()` or `TcpServer.accept()`.
 
-**Runtime errors** omit location information — the program has already left the static analysis stage.
-
-```
-[Zen  IndexError]
-  └── Index 5 is out of bounds for List of length 3 — valid range is 0 to 2
-```
-
-> **Note:** Stack traces are not included in Zen v2. A full call stack trace is planned for future versions.
-
-```
-[Zen  ArgumentError]
-  ├── Function time.sleep accepts exactly 1 argument(s), got 0
-  ├── at: main.zen:12:3
-  └── stack trace:
-        test (main.zen:12)
-```
+| Method | Returns | Description |
+|---|---|---|
+| `send(List<byte> data)` | `long` | Sends bytes and returns the number of bytes sent |
+| `receive(int size)` | `List<byte>` | Receives up to `size` bytes |
+| `close()` | `void` | Closes the connection |
+| `isOpen()` | `bool` | Returns `true` while the connection is open |
 
 ---
 
-### 13.2 Compile-Time Errors
+### 14.2 TcpServer
 
-Compile-time errors are raised by the compiler during lexing, parsing, or code generation. The program does not execute if any compile-time error is present.
+A TCP server, created by `net.listen()`.
 
----
-
-## Error Reference
-
-Zen reports errors in a consistent structured format. Compile-time errors include the source location. Runtime errors include only the error message — location information is not available at runtime.
-
-**Compile-time format:**
-```
-[Zen  <ErrorType>]
-  ├── <message>
-  └── at: <file>:<line>:<col>
-```
-
-**Runtime format:**
-```
-[Zen  <ErrorType>]
-  └── <message>
-```
+| Method | Returns | Description |
+|---|---|---|
+| `accept()` | `Tcp` | Waits for the next client and returns its connection |
+| `close()` | `void` | Stops the server |
+| `isOpen()` | `bool` | Returns `true` while the server is listening |
 
 ---
 
-## Compile-Time Errors
+### 14.3 Json
 
-Compile-time errors are caught before execution. The program will not run until all compile-time errors are resolved.
+A parsed JSON document. Free it with `free()` when done.
 
----
+| Method | Returns | Description |
+|---|---|---|
+| `parse(string text)` | `void` | Parses a JSON string into this value |
+| `getRootObject()` | `JsonObject` | Returns the root as an object |
+| `getRootArray()` | `JsonArray` | Returns the root as an array |
+| `getInt(string key)` | `int` | Reads a number as `int` |
+| `getLong(string key)` | `long` | Reads a number as `long` |
+| `getByte(string key)` | `byte` | Reads a number as `byte` |
+| `getDouble(string key)` | `double` | Reads a number as `double` |
+| `getString(string key)` | `string` | Reads a string |
+| `getBool(string key)` | `bool` | Reads a boolean |
+| `getObject(string key)` | `JsonObject` | Reads a nested object |
+| `getArray(string key)` | `JsonArray` | Reads a nested array |
+| `has(string key)` | `bool` | Returns `true` if the key exists |
+| `isNull()` | `bool` | Returns `true` if the value is JSON null |
+| `arrayLength()` | `int` | Returns the length when the value is an array |
+| `arrayGetInt(int i)` | `int` | Reads array element `i` as `int` |
+| `arrayGetDouble(int i)` | `double` | Reads array element `i` as `double` |
+| `arrayGetString(int i)` | `string` | Reads array element `i` as `string` |
+| `arrayGetBool(int i)` | `bool` | Reads array element `i` as `bool` |
+| `arrayGetObject(int i)` | `JsonObject` | Reads array element `i` as an object |
+| `arrayGetArray(int i)` | `JsonArray` | Reads array element `i` as an array |
+| `map()` | `Map` | Converts the JSON into a `Map` (the caller owns the new Map) |
+| `free()` | `void` | Releases the document |
 
-#### SyntaxError
-
-Raised when source text does not conform to Zen's grammar.
-
-```
-[Zen  SyntaxError]
-  ├── Unexpected token '}' — expected expression
-  └── at: main.zen:20:1
-```
-
-```
-[Zen  SyntaxError]
-  ├── Unterminated string literal — expected closing '"'
-  └── at: main.zen:8:5
-```
-
-```
-[Zen  SyntaxError]
-  ├── Expected '(' after 'fn' in function declaration
-  └── at: main.zen:15:4
-```
-
-Common triggers:
-- Mismatched or missing brackets, braces, or parentheses
-- Unterminated string literals
-- Malformed function, loop, or conditional declarations
+A missing key, a wrong type, or a number that does not fit the getter used (for example `getByte` on 300) raises a `JsonError`.
 
 ---
 
-#### TypeError
+### 14.4 JsonObject
 
-Raised when a value is used in a context that does not match its declared or expected type.
+A JSON object obtained from a `Json` value. Do not free it; free the parent `Json`.
 
-```
-[Zen  TypeError]
-  ├── Cannot assign 'string' to variable of type 'int'
-  └── at: main.zen:5:10
-```
-
-```
-[Zen  TypeError]
-  ├── Argument 1 of 'process' expects 'int', got 'bool'
-  └── at: main.zen:12:14
-```
-
-```
-[Zen  TypeError]
-  ├── Condition must be of type 'bool', got 'int'
-  └── at: main.zen:9:7
-```
-
-```
-[Zen  TypeError]
-  ├── Ternary branches must return the same type — got 'int' and 'string'
-  └── at: main.zen:17:5
-```
-
-```
-[Zen  TypeError]
-  ├── 'switch' condition must be of type 'int', got 'float'
-  └── at: main.zen:22:10
-```
-
-Common triggers:
-- Assigning a value of the wrong type to a typed variable
-- Passing an argument of the wrong type to a function
-- Using a non-`bool` expression as a condition in `if`, `while`, or `do-while`
-- Using a non-`int` expression as a `switch` condition
-- Ternary branches resolving to different types
+| Method | Returns | Description |
+|---|---|---|
+| `getInt(string key)` | `int` | Reads a number as `int` |
+| `getLong(string key)` | `long` | Reads a number as `long` |
+| `getByte(string key)` | `byte` | Reads a number as `byte` |
+| `getDouble(string key)` | `double` | Reads a number as `double` |
+| `getString(string key)` | `string` | Reads a string |
+| `getBool(string key)` | `bool` | Reads a boolean |
+| `getObject(string key)` | `JsonObject` | Reads a nested object |
+| `getArray(string key)` | `JsonArray` | Reads a nested array |
+| `has(string key)` | `bool` | Returns `true` if the key exists |
+| `isNull()` | `bool` | Returns `true` if the value is JSON null |
 
 ---
 
-#### ArgumentError
+### 14.5 JsonArray
 
-Raised when a function is called with the wrong number of arguments.
+A JSON array obtained from a `Json` value. Do not free it; free the parent `Json`.
 
-```
-[Zen  ArgumentError]
-  ├── 'screen' accepts 1 to 2 argument(s), got 0
-  └── at: main.zen:8:3
-```
-
-```
-[Zen  ArgumentError]
-  ├── 'multiply' accepts exactly 2 argument(s), got 5
-  └── at: main.zen:31:5
-```
-
-Common triggers:
-- Calling a function with fewer arguments than required parameters
-- Calling a function with more arguments than it declares
-- Omitting a required argument when default parameters are partially defined
+| Method | Returns | Description |
+|---|---|---|
+| `arrayLength()` | `int` | Returns the number of elements |
+| `arrayGetInt(int i)` | `int` | Reads element `i` as `int` |
+| `arrayGetLong(int i)` | `long` | Reads element `i` as `long` |
+| `arrayGetByte(int i)` | `byte` | Reads element `i` as `byte` |
+| `arrayGetDouble(int i)` | `double` | Reads element `i` as `double` |
+| `arrayGetString(int i)` | `string` | Reads element `i` as `string` |
+| `arrayGetBool(int i)` | `bool` | Reads element `i` as `bool` |
+| `arrayGetObject(int i)` | `JsonObject` | Reads element `i` as an object |
+| `arrayGetArray(int i)` | `JsonArray` | Reads element `i` as an array |
 
 ---
 
-#### DeclarationError
+### 14.6 HttpServer
 
-Raised when a variable or function is declared incorrectly or violates a declaration rule.
+An HTTP server, created by `httpServer.create(port)`.
 
-```
-[Zen  DeclarationError]
-  ├── 'fn' is a reserved keyword and cannot be used as an identifier
-  └── at: main.zen:3:5
-```
-
-```
-[Zen  DeclarationError]
-  ├── Nested function declarations are not allowed in Zen
-  └── at: main.zen:10:3
-```
-
-```
-[Zen  DeclarationError]
-  ├── Variable 'x' must have an explicit type or use 'auto'
-  └── at: main.zen:6:1
-```
-
-```
-[Zen  DeclarationError]
-  ├── 'List<auto>' is not a valid type — element type must be explicit
-  └── at: main.zen:4:8
-```
-
-```
-[Zen  DeclarationError]
-  ├── Cannot manually assign to reactive variable 'total'
-  └── at: main.zen:18:3
-```
-
-Common triggers:
-- Using a reserved keyword as an identifier
-- Declaring a function inside another function
-- Declaring a variable with no type annotation and no `auto` keyword
-- Using `List<auto>` as a type
-- Manually reassigning a `reactive` variable
+| Method | Returns | Description |
+|---|---|---|
+| `listen()` | `int` | Starts listening for connections |
+| `next()` | `HttpRequest` | Waits for and returns the next request |
+| `close()` | `void` | Stops the server |
 
 ---
 
-#### ConstError
+### 14.7 HttpRequest
 
-Raised when a `const` variable is reassigned after declaration.
+An incoming request, which is also used to send the response.
 
-```
-[Zen  ConstError]
-  ├── Cannot reassign constant 'MAX' — declared as 'const' on line 2
-  └── at: main.zen:14:3
-```
+**Properties**
 
-Common triggers:
-- Assigning a new value to a `const` variable anywhere after its declaration
-- Using a `const` variable as a loop counter or accumulator
+| Property | Type | Description |
+|---|---|---|
+| `method` | `string` | HTTP method (`GET`, `POST`, ...) |
+| `path` | `string` | Request path |
+| `body` | `string` | Request body |
 
----
+**Methods**
 
-#### SemanticError
-
-Raised when code is syntactically valid but violates a language rule that cannot be caught by grammar alone.
-
-```
-[Zen  SemanticError]
-  ├── 'return' used outside of a function body
-  └── at: main.zen:3:1
-```
-
-```
-[Zen  SemanticError]
-  ├── 'break' used outside of a loop or switch block
-  └── at: main.zen:25:5
-```
-
-```
-[Zen  SemanticError]
-  ├── 'continue' used outside of a loop block
-  └── at: main.zen:19:5
-```
-
-```
-[Zen  SemanticError]
-  ├── Function 'add' does not return a value on all code paths
-  └── at: main.zen:7:1
-```
-
-```
-[Zen  SemanticError]
-  ├── Undefined variable 'count' — used before declaration
-  └── at: main.zen:11:9
-```
-
-```
-[Zen  SemanticError]
-  ├── Undefined function 'compute' — no declaration found in scope
-  └── at: main.zen:44:3
-```
-
-Common triggers:
-- Using `return`, `break`, or `continue` outside their valid contexts
-- Referencing a variable or function that has not been declared
-- A non-`void` function that does not return a value on all execution paths
-- Using a variable before it has been assigned a value
+| Method | Returns | Description |
+|---|---|---|
+| `getHeader(string name)` | `string` | Reads a request header |
+| `setHeader(string name, string value)` | `void` | Sets a response header |
+| `status(int code)` | `void` | Sets the response status code |
+| `send(string body)` | `void` | Sends a plain text response |
+| `json(string body)` | `void` | Sends a JSON response |
+| `html(string body)` | `void` | Sends an HTML response |
+| `css(string body)` | `void` | Sends a CSS response |
+| `sendFile(string path, string contentType)` | `void` | Sends a file with the given content type |
+| `redirect(string url)` | `void` | Redirects the client to another URL |
 
 ---
 
-#### ArrayError
+### 14.8 Map
 
-Raised when a fixed-size array declaration is invalid.
+A string-keyed map. Free it with `free()` when done. Maps returned by `getMap()` belong to the parent; do not free them.
 
-```
-[Zen  ArrayError]
-  ├── Array size must be a positive integer greater than 0
-  └── at: main.zen:7:3
-```
-
-```
-[Zen  ArrayError]
-  ├── Partial initializer not allowed — array of size 4 requires exactly 4 elements
-  └── at: main.zen:9:5
-```
-
-```
-[Zen  ArrayError]
-  ├── Negative index -1 is not allowed — array indices must be non-negative integers
-  └── at: main.zen:12:6
-```
-
-Common triggers:
-- Declaring an array with size `0` or a negative size
-- Providing an initializer list that does not exactly match the declared array size
-- Using a negative literal as an array index
-
----
-
-#### ExportError
-
-Raised when an export rule is violated.
-
-```
-[Zen  ExportError]
-  ├── Cannot export 'b' — only compile-time constant values can be exported
-  └── at: utils.zen:6:1
-```
-
-```
-[Zen  ExportError]
-  ├── A file may only contain one 'export' statement
-  └── at: utils.zen:12:1
-```
-
-```
-[Zen  ExportError]
-  ├── A file cannot use both 'import' and 'export'
-  └── at: utils.zen:1:1
-```
-
-Common triggers:
-- Exporting a variable whose value is a runtime expression
-- Declaring more than one `export` statement in a file
-- Using both `import` and `export` in the same file
+| Method | Returns | Description |
+|---|---|---|
+| `keys()` | `List<string>` | Returns all keys |
+| `entries()` | `List<List<string>>` | Returns all key/value pairs |
+| `has(string key)` | `bool` | Returns `true` if the key exists |
+| `remove(string key)` | `void` | Removes a key |
+| `json()` | `string` | Returns the map as a JSON string |
+| `getInt(string key)` | `int` | Reads an `int` |
+| `getLong(string key)` | `long` | Reads a `long` |
+| `getByte(string key)` | `byte` | Reads a `byte` |
+| `getDouble(string key)` | `double` | Reads a `double` |
+| `getBool(string key)` | `bool` | Reads a `bool` |
+| `getString(string key)` | `string` | Reads a `string` |
+| `getMap(string key)` | `Map` | Reads a nested Map |
+| `getList(string key)` | `List` | Reads a List (generic) |
+| `setInt(string key, int v)` | `void` | Stores an `int` |
+| `setLong(string key, long v)` | `void` | Stores a `long` |
+| `setByte(string key, byte v)` | `void` | Stores a `byte` |
+| `setDouble(string key, double v)` | `void` | Stores a `double` |
+| `setBool(string key, bool v)` | `void` | Stores a `bool` |
+| `setString(string key, string v)` | `void` | Stores a `string` |
+| `setMap(string key, Map v)` | `void` | Stores a nested Map |
+| `setList(string key, List v)` | `void` | Stores a List |
+| `free()` | `void` | Releases the Map |
 
 ---
 
-#### ImportError
+### 14.9 Ptr
 
-Raised when an import cannot be resolved or violates an import rule.
+A native pointer, mainly used with `extern fn` for C interop. Free it with `free()` when you own it.
 
-```
-[Zen  ImportError]
-  ├── 'multiply' is not exported by 'utils.zen'
-  └── at: main.zen:1:1
-```
-
-```
-[Zen  ImportError]
-  ├── Cannot resolve module 'helpers.zen' — file not found
-  └── at: main.zen:1:1
-```
-
-```
-[Zen  ImportError]
-  ├── 'import' must appear before all other declarations
-  └── at: main.zen:10:1
-```
-
-Common triggers:
-- Importing a name that does not exist in the target file's export list
-- Importing a file that does not exist on disk
-- Placing an `import` statement after other declarations in the file
+| Method | Returns | Description |
+|---|---|---|
+| `isNull()` | `bool` | Returns `true` if the pointer is null |
+| `offset(int n)` | `Ptr` | Returns a pointer advanced by `n` bytes |
+| `storeInt(int v)` / `loadInt()` | `void` / `int` | Writes / reads an `int` |
+| `storeLong(long v)` / `loadLong()` | `void` / `long` | Writes / reads a `long` |
+| `storeByte(byte v)` / `loadByte()` | `void` / `byte` | Writes / reads a `byte` |
+| `storeDouble(double v)` / `loadDouble()` | `void` / `double` | Writes / reads a `double` |
+| `storeBool(bool v)` / `loadBool()` | `void` / `bool` | Writes / reads a `bool` |
+| `storeString(string v)` / `loadString()` | `void` / `string` | Writes / reads a string |
+| `storePtr(Ptr v)` / `loadPtr()` | `void` / `Ptr` | Writes / reads another pointer |
+| `copyFrom(Ptr src, int n)` | `void` | Copies `n` bytes from `src` into this pointer |
+| `copyTo(Ptr dst, int n)` | `void` | Copies `n` bytes from this pointer into `dst` |
+| `fill(int value, int n)` | `void` | Sets `n` bytes to `value` |
+| `free()` | `void` | Releases the memory |
 
 ---
 
-#### InternalError
+## 15. Future Planned Features
 
-Raised when the compiler encounters an unexpected internal failure. This indicates a bug in the Zen compiler rather than user code.
+The following features and improvements are planned or being considered for future versions of Zen. These are **not part of Zen v3**, and their final syntax, behavior, implementation, or priority may change.
 
-```
-[Zen  InternalError]
-  ├── Unexpected compiler state in IR generation
-  └── at: main.zen:0:0
-```
+### 15.1 Type System Improvements
 
-```
-[Zen  InternalError]
-  ├── LLVM code generation failed due to invalid AST node
-  └── at: main.zen:22:14
-```
+- Add `uint` for unsigned integers.
+- Add `ulong` for unsigned long integers.
+- Add `ubyte` as an unsigned byte type, while the current `byte` type remains signed.
 
-```
-[Zen  InternalError]
-  ├── Null reference encountered during type resolution
-  └── at: main.zen:0:0
-```
+### 15.2 Current Limitations
 
-Common triggers:
-- Invalid or unexpected AST structure
-- Codegen receiving unsupported node types
-- Compiler state corruption during IR generation
-- Missing or broken type resolution
-- Bugs in compiler passes (parser / semantic / IR / optimizer)
-```
+Future versions are planned to address the following current limitations:
 
----
+- Support importing structs with aliases.
+- Extend `debug.pretty()` to support struct fields containing `List<Map>`.
+- Make HTTP timeouts configurable.
+- Add HTTP retry support.
+- Add HTTP resume support where applicable.
+- Improve or restore Windows support.
 
-#### ReferenceError
+### 15.3 Built-in APIs and Namespaces
 
-Raised when a variable, function, struct, field is referenced but has not been defined.
+- Add more priority namespaces and built-in methods.
+- Expand the standard library with additional useful built-in functions.
+- Add more built-in structs and methods.
+- Continue improving existing built-in APIs based on practical usage.
 
-```
-[Zen  ReferenceError]
-  ├── Function 'compute' is not defined
-  └── at: main.zen:44:3
-```
+### 15.4 Function Parameter Improvements
 
-```
-[Zen  ReferenceError]
-  ├── Struct 'Player' is not defined
-  └── at: main.zen:12:5
-```
+- Reconsider `screen()` parameter handling.
+- Potentially make `screen()` support variadic parameters.
+- Alternatively, introduce a separate function specifically for accepting variadic parameters.
 
-```
-[Zen  ReferenceError]
-  ├── Field 'salary' does not exist in struct 'Employee'
-  └── at: main.zen:27:8
-```
+### 15.5 Syntax Improvements
 
-```
-[Zen  ReferenceError]
-  ├── Key 'email' is not defined in Map 'user'
-  └── at: main.zen:33:10
-```
+- Improve parser-supported syntax while keeping Zen simple and predictable.
+- Add useful syntax sugar where it does not introduce ambiguity or unnecessary complexity.
+- Consider concise one-line conditional syntax, including forms such as:
+  - `if (...) ...`
+  - `if (...) ... else ...`
+  - `if (...) ... else if (...) ... else ...`
+- Continue identifying opportunities for cleaner syntax without compromising readability.
 
-```
-[Zen  ReferenceError]
-  ├── Method 'calculate' is not defined
-  └── at: main.zen:19:6
-```
+### 15.6 Runtime Error Handling
 
-Common triggers:
-- Calling a function that has not been declared
-- Accessing a struct that has not been defined
-- Accessing a field that does not exist in a struct
-- Calling a method that does not exist on a type
-```
+- Improve runtime error reporting.
+- Propagate source-location information through runtime errors where practical.
+- Include accurate line and column numbers in runtime errors where possible.
+- Improve the clarity and usefulness of runtime diagnostics.
 
----
+### 15.7 Parser and Lexer
 
-## Runtime Errors
+- Improve parser performance and internal architecture.
+- Optimize parser and lexer node structures.
+- Reduce unnecessary parser and lexer overhead.
+- Improve internal AST representation and processing efficiency.
+- Continue optimizing parsing without making the language syntax unnecessarily complex.
 
-Runtime errors are raised during program execution and cannot always be anticipated at compile time. They terminate the program immediately.
+### 15.8 Compiler Internals
 
----
+- Improve the underlying Clang compilation pipeline.
+- Improve code generation.
+- Optimize compiler internal data flow.
+- Reduce unnecessary compilation work.
+- Improve generated LLVM IR efficiency.
+- Investigate further opportunities for producing smaller and more efficient IR.
+- Continue compiler optimizations while preserving correctness and debuggability.
 
-#### IndexError
+### 15.9 Configuration System
 
-Raised when a `List` or fixed-size array is accessed with an index that is out of bounds at runtime.
+- Improve the compiler configuration-file data structure.
+- Make configuration data easier to maintain and extend.
+- Improve configuration validation and accuracy.
+- Reduce inconsistencies caused by configuration structure or data handling.
 
-```
-[Zen  IndexError]
-  └── Index 5 is out of bounds for List of length 3 — valid range is 0 to 2
-```
+### 15.10 Platform Support
 
-```
-[Zen  IndexError]
-  └── Index 12 is out of bounds for array of length 5 — valid range is 0 to 4
-```
+- Continue improving cross-platform support.
+- Investigate and potentially restore full Windows support.
+- Improve consistency between supported platforms.
+- provide easy installation with zero dependencies
 
-Common triggers:
-- Accessing a list or array element at an index greater than or equal to its length
-- Off-by-one errors when iterating near the end of a collection
+### 15.11 Experimental Compiler Features
+
+- Explore a secure internal system for registering or adding built-in functionality through the terminal.
+- This feature is currently only a prototype/experimental idea and is **not planned as a public Zen feature unless its security and design are proven suitable**.
 
 ---
-
-#### MemoryError
-
-Raised when a heap object is accessed after it has been freed.
-
-```
-[Zen  MemoryError]
-  └── Use after free — 'nums' has been freed and is no longer accessible
-```
-
-```
-[Zen  MemoryError]
-  └── Use after free — inner list at index 2 of 'matrix' has been freed
-```
-
-Common triggers:
-- Accessing a `List` after calling `.free()` on it
-- Accessing a freed inner list within a nested `List<List<T>>`
-- Retaining a reference to a freed object across function calls
-
----
-
-#### LoopError
-
-Raised when `loop in` is used on a non-objects.
-
-#### PanicError
-
-Raised explicitly by the program via `sys.panic()`. Signals an unrecoverable state defined by the developer.
-
-```
-[Zen  PanicError]
-  └── negative value not allowed
-```
-
-```
-[Zen  PanicError]
-  └── unreachable code path reached in 'resolve'
-```
-
-Common triggers:
-- Explicit `sys.panic("message")` call to abort on an invalid program state
-- Defensive assertions that should never be reached in correct programs
-
----
-
-### 13.4 Error Improvement Roadmap
-
-ZEN v2.1.1 may provides partial stack traces showing only the frame where the error occurred. The following improvements are planned for future versions.
-
-- Full call stack traces across all active frames
-- Better source location tracking through nested expressions
-- Recoverable runtime errors
-- Improved error messages with suggested fixes
-
 
 ## Appendix
 
 ### A. Reserved Keywords
 
-The following identifiers are reserved by the language and cannot be used as user-defined names.
-
-| Keyword | Category |
-|---|---|
-| `int` | Type |
-| `double` | Type |
-| `string` | Type |
-| `bool` | Type |
-| `List` | Type |
-| `fn` | Function declaration |
-| `return` | Function |
-| `const` | Declaration modifier |
-| `auto` | Type inference |
-| `if` | Control flow |
-| `else if` | Control flow |
-| `else` | Control flow |
-| `switch` | Control flow |
-| `loop` | Loop |
-| `while` | Loop |
-| `do` | Loop |
-| `in` | Loop iteration |
-| `of` | Loop iteration |
-| `break` | Loop control |
-| `continue` | Loop control |
-| `struct` | Data structure |
-| `this` | Struct method context |
-| `async` | Concurrency (reserved) |
-| `await` | Concurrency (reserved) |
-| `export` | Module |
-| `import` | Module |
-| `from` | Module |
+See [2.4 Keywords](#24-keywords) for the full list.
 
 ---
 
@@ -6608,19 +7001,19 @@ The following names are reserved as built-in functions, standard library functio
 
 #### Global Constants
 
-`PI` `TAU` `E` `PHI` `SQRT2` `LN2` `LN10` `SEED` `I32_MAX` `I32_MIN` `F64_MAX` `F64_MIN` `F64_EPS` `INF` `NEG_INF` `NAN`
+`PI` `TAU` `E` `PHI` `SQRT2` `SQRT1_2` `SQRT3` `LN2` `LN10` `LOG2E` `LOG10E` `SEED` `I32_MAX` `I32_MIN` `I64_MAX` `I64_MIN` `BYTE_MAX` `BYTE_MIN` `F64_MAX` `F64_MIN` `F64_EPS` `INF` `NEG_INF` `NAN`
 
 #### Core Functions
 
-`screen` `input` `type` `Int` `Double` `Bool` `String` `toString` `toInt` `length` `sizeOf` `Byte`
+`screen` `input` `type` `Int` `Double` `Long` `Byte` `Bool` `String` `intToAscii` `asciiToInt` `length` `sizeOf` `stringToBytes` `bytesToString`
 
 #### Standard Functions
 
-`isEven` `isOdd` `isPositive` `isNegative` `abs` `max` `min` `clamp` `sign` `pow` `sqrt` `square` `cube` `floor` `ceil` `round` `toFixed` `mod` `gcd` `lcm` `factorial` `isPrime` `lerp` `normalize` `between` `sin` `cos` `tan` `log` `exp` `random` `randomInt` `reverse` `indexOf` `slice` `charAt` `replace` `contains` `upperCase` `lowerCase` `startsWith` `endsWith` `trim` `splitAt` `repeat` `count` `padStart` `padEnd` `padCenter` `capitalize` `extName` `match` `json`
+`isEven` `isOdd` `isPositive` `isNegative` `abs` `max` `min` `clamp` `sign` `pow` `sqrt` `square` `cube` `floor` `ceil` `round` `toFixed` `mod` `gcd` `lcm` `factorial` `isPrime` `lerp` `normalize` `between` `sin` `cos` `tan` `log` `exp` `random` `randomInt` `reverse` `indexOf` `lastIndexOf` `slice` `charAt` `replace` `contains` `upperCase` `lowerCase` `startsWith` `endsWith` `trim` `splitAt` `repeat` `count` `padStart` `padEnd` `padCenter` `capitalize` `extName` `match` `matchRegex` `json`
 
 #### Namespace Identifiers
 
-`os` `fs` `sys` `time` `http` `net` `httpServer`, `ffi`, `path`, `threads`, `debug`, `crypto`
+`os` `fs` `sys` `time` `http` `net` `httpServer` `ffi` `path` `threads` `debug` `crypto`
 
 ---
 
@@ -6631,16 +7024,19 @@ Operators are listed from highest to lowest precedence. Operators on the same ro
 | Level | Operators | Description |
 |---|---|---|
 | 1 (highest) | `()` | Parenthesised grouping |
-| 2 | `++` `--` `!` `-` | Unary operators |
+| 2 | `++` `--` `!` `~` `+` `-` | Unary operators |
 | 3 | `*` `/` `%` | Multiplicative |
 | 4 | `+` `-` | Additive |
-| 5 | `^` | Bitwise XOR |
-| 6 | `<` `>` `<=` `>=` | Relational comparison |
-| 7 | `==` `!=` | Equality |
-| 8 | `&&` | Logical AND |
-| 9 | `\|\|` | Logical OR |
-| 10 | `? :` | Ternary |
-| 11 (lowest) | `=` `+=` `-=` `*=` `/=` `%=` | Assignment |
+| 5 | `<<` `>>` | Bitwise shift |
+| 6 | `&` | Bitwise AND |
+| 7 | `^` | Bitwise XOR |
+| 8 | `\|` | Bitwise OR |
+| 9 | `<` `>` `<=` `>=` | Relational comparison |
+| 10 | `==` `!=` | Equality |
+| 11 | `&&` | Logical AND |
+| 12 | `\|\|` | Logical OR |
+| 13 | `? :` | Ternary |
+| 14 (lowest) | `=` `+=` `-=` `*=` `/=` `%=` | Assignment |
 
 ---
 
@@ -6657,6 +7053,7 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `long` | `0L` |
 | `byte` | `0B` |
 | `List<T>` | `[]` |
+| `struct` | Each field gets its default (`0`, `""`, `false`, empty list) or its declared initializer |
 
 ---
 
@@ -6694,6 +7091,8 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `byte` | `bool` | `Bool(x)` — `0` → `false`, non-zero → `true` |
 | `string` | `bool` | `Bool(x)` — `"true"` → `true`, `"false"` → `false` |
 
+---
+
 ### F. Implicit Type Behavior
 
 | Context | Behavior |
@@ -6703,8 +7102,11 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | `byte` operand with `int` in expression | `byte` promoted to `int`; result is `int` |
 | `byte` operand with `long` in expression | `byte` promoted to `long`; result is `long` |
 | `int` operand with `long` in expression | `int` promoted to `long`; result is `long` |
+| `bool` in arithmetic or bitwise expression | `true` is `1`, `false` is `0` |
 | `string` + any type via `+` | Other operand coerced to `string`; result is `string` |
 | Any other cross-type expression | Compile-time `TypeError` |
+
+---
 
 ### G. Data Structure Constraints Summary
 
@@ -6720,13 +7122,15 @@ When a variable is declared without an initializer, it is lowered to its type's 
 
 | Rule | Detail |
 |---|---|
-| One `export` per file | Multiple export statements are a compile-time error |
+| Multiple exports per file | A file can have several `export` statements |
+| Multiple imports per file | A file can have several `import` statements |
 | Export at bottom | Required for variables; recommended for functions |
 | Static values only | Expressions and runtime values cannot be exported |
-| No import in exported file | An exporting file must not import |
 | Import at top | All imports must precede any other statements |
 | Direct name access | No namespace prefix on imported identifiers |
 | Exact name match | Imported names must match the export list |
+| Import aliasing | Functions and variables can be aliased on import; structs cannot |
+| Struct dependencies | Importing a struct also brings its dependent structs as hidden structs (usable, not nameable) |
 | `.zen` extension | Import paths must reference `.zen` files |
 
 ---
@@ -6738,52 +7142,32 @@ When a variable is declared without an initializer, it is lowered to its type's 
 | Lexer | `.zen` source | Token stream |
 | Parser | Token stream | AST |
 | Code Generator | AST | `.ll` LLVM IR |
-| Clang (`-O2`) | `.ll` LLVM IR | Native binary |
+| Clang (`-O2` by default) | `.ll` LLVM IR + runtime + native objects | Native binary |
 
 ---
 
 ### J. Error Type Reference
 
-| Error | Category | Trigger |
-|---|---|---|
-| `TypeError` | Compile-time | Type mismatch in assignment or expression |
-| `ArgumentError` | Compile-time | Wrong number of arguments to a function |
-| `ReferenceError` | Compile-time | Variable, function, struct, field, module, etc. referenced before definition |
-| `DeclarationError` | Compile-time | Invalid identifier or declaration |
-| `ConstError` | Compile-time | Reassignment of a constant |
-| `ExportError` | Compile-time | Invalid export — undefined, duplicate, or non-exportable item |
-| `ImportError` | Compile-time | Unresolved import name, missing file, invalid import, or circular import |
-| `ModuleError` | Compile-time | Invalid module state or module loading/generation failure |
-| `SyntaxError` | Compile-time | Source does not conform to the grammar |
-| `ArrayError` | Compile-time | Invalid array size or partial initializer |
-| `MemoryError` | Runtime | Use after free or invalid memory access |
-| `IndexError` | Runtime | Out-of-bounds array or list access |
-| `PanicError` | Runtime | Explicit `sys.panic()` call |
+See [errors.md](errors.md) for all error types.
 
+---
 
 ### K. Installation
 
-Zen can be installed depending on the target platform.
-
-#### All Platforms (Linux, macOS, Android)
+#### Linux, macOS, and Android (Termux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/main/install.sh | bash -s -- --branch dev -y
 ```
 
-### Windows (Git Bash / MSYS2)
+#### Windows
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/jishith-dev/Zen/main/install.sh | bash
-```
-
-> Requires Git Bash, MSYS2, or another Bash-compatible environment.
+Native Windows is not supported yet. Use WSL and run the command above.
 
 ---
 
 ### L. Links
 
-- Source Code: 
 - **GitHub**: https://github.com/Jishith-dev/Zen
 - Documentation: https://jishith-dev.github.io/zen-doc/
 - Issue Tracker: https://github.com/Jishith-dev/Zen/issues
@@ -6799,7 +7183,7 @@ You are free to:
 - Modify the compiler
 - Contribute improvements and fixes
 
-License: MIT 
+License: MIT
 
 ---
 
@@ -6809,7 +7193,7 @@ For bugs, contributions, or discussions:
 
 - Email: jishithmp534@gmail.com
 - GitHub: https://github.com/Jishith-dev/Zen
-- Github registry: https://github.com/Jishith-dev/zen-registry
+- GitHub registry: https://github.com/Jishith-dev/zen-registry
 
 ---
 
@@ -6819,6 +7203,7 @@ For bugs, contributions, or discussions:
 |---|---|
 | `.zen` | ZEN source file |
 | `.ll` | Generated LLVM IR |
+| `.c` / `.o` | Native dependency (detected by `zen deps`, linked automatically) |
 | Native binary | Platform-specific executable generated by Clang |
 
 ---
@@ -6841,8 +7226,9 @@ The ZEN style guide recommends:
 
 | Item | Value |
 |---|---|
-| Documentation Version | 2.0 |
-| Language Version | 2.0 |
+| Documentation Version | 3.0.0 |
+| Language Version | 3.0.0 |
+| Released | October 2026 |
 | Backend | LLVM |
 | License | MIT |
 
@@ -6850,9 +7236,9 @@ The ZEN style guide recommends:
 
 ## Disclaimer
 
-This documentation targets **ZEN v2**.
+This documentation targets **ZEN v3.0.0**.
 
-Starting with **v2**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
+v3.0.0 included several breaking changes from v2 (see [changelog.md](changelog.md)). Starting with **v3**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
 
 As the documentation continues to evolve alongside the language, you may occasionally encounter:
 
@@ -6861,4 +7247,4 @@ As the documentation continues to evolve alongside the language, you may occasio
 - Missing documentation for newer features
 - Documentation inaccuracies or omissions
 
-If you notice anything that does not match the current behavior of ZEN, please report it by opening an issue. Community feedback helps improve the language, compiler, standard library, tooling, and documentation.
+If you notice anything that does not match the current behavior of ZEN, please report it by [opening an issue](https://github.com/Jishith-dev/Zen/issues). Community feedback helps improve the language, compiler, standard library, tooling, and documentation.

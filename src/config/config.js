@@ -113,7 +113,7 @@ const ASSIGNMENT_OPS = ["=", "+=", "-=", "*=", "/=", "%="];
 
 const ARITHMETIC_OPS = ["+", "-", "*", "/", "%"];
 
-const UNARY_OPS = ["++", "--", "!"];
+const UNARY_OPS = ["++", "--", "!", /*"+"*/, "~"]; //commented out + unary, to avoid any conflics between arithamatic +, it handled in parser .
 
 const COMPARISON_OPS = ["==", "!=", ">=", "<=", ">", "<"];
 
@@ -274,7 +274,6 @@ const RESERVED_FUNCTIONS = [
   "upperCase",
   "lowerCase",
   "startsWith",
-  "replace",
   "replaceAll",
   "endsWith",
   "trim",
@@ -380,7 +379,6 @@ const BUILTIN_FUNCTIONS = [
   "replace",
   "replaceAll",
   "charAt",
-  "replace",
   "contains",
   "upperCase",
   "lowerCase",
@@ -631,7 +629,6 @@ const STD_FUNCTIONS = [
   "replace",
   "replaceAll",
   "charAt",
-  "replace",
   "contains",
   "upperCase",
   "lowerCase",

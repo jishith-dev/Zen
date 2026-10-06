@@ -499,3 +499,198 @@ Added the new `crypto` namespace:
 ### Fixes
 
 - Various compiler, runtime, standard library, and type-resolution bug fixes.
+
+---
+
+# v3.0.0 — Major Release
+
+> ⚠️ **Breaking Release**
+>
+> - `toString()` / `toInt()` renamed to `intToAscii()` / `asciiToInt()`
+> - `private` is now a reserved keyword (functions, methods, fields)
+> - Keyword `in` removed
+> - Classic loops must always use `loop (init, cond, update)`
+> - `+` with a string operand converts the other operand to a string and concatenates
+> - `fs.writeFileBytes()` now returns `int` (success code) instead of `void`
+> - `sqrt()` now takes and returns `double`
+> - `zen tests` renamed to `zen test`
+> - `zen -v` changed to `zen --v`
+> - JSON integers after `.map()` are no longer always `Long` (see Standard Library)
+> - Windows support is temporarily paused
+
+---
+
+## Language
+
+- Formalized numeric widening: `byte` → `int` → `long` → `double`
+- `bool` can now be used in arithmetic (`true` = 1, `false` = 0) and bitwise operations
+- Added bitwise operators `&`, `|`, `>>`, `<<`, `~`
+- Added unary `+`
+- `auto` inference now supports `int`, `bool`, `double`, `string`, `long`, `byte`
+- Added compile-time constants (`int N = 10; int arr[N]`)
+- `sizeOf()` now supports bare types and expressions (bare struct names are not supported)
+- Struct fields can have default initializers
+- Uninitialized structs get zero-value fields (`0`, `""`, `false`, empty list)
+- Struct literals only set the fields explicitly given
+- Added anonymous inline functions as callback arguments (no closures: they cannot capture outer variables)
+- Named functions passed as callbacks can use closures
+- Thread functions now accept parameters and report capture errors at compile time
+- Thread methods in structs are supported
+- Added multiple exports and imports per file
+- Added import aliasing for functions and variables (`import (worker as w)`); structs cannot be aliased
+- Struct dependencies are tracked: importing a struct also registers its dependent structs as hidden (usable through the struct, not nameable)
+- Exported functions can take or return structs that are not exported
+- Chained calls on returned structs are supported (`make().show()`)
+- Added `private` for fields and methods
+- Added scientific notation for `double` literals (`1e300`, `1.5e-10`, `2E+5`)
+- `byte` is signed (-128 to 127); suffixed values outside the range wrap (two's complement)
+- Hex literals without a suffix are always `int` (`0xFB` is 251)
+- Hex literals with a type suffix need an underscore: `0xFB_B` is `byte`, `0xFF_L` is `long`
+- Added `\e` and `\xHH` string escapes (for example `"\e[31m"` for ANSI colors)
+- Added constants `SQRT1_2`, `SQRT3`, `LOG2E`, `LOG10E`, `BYTE_MAX`, `BYTE_MIN`, `I64_MAX`, `I64_MIN`
+
+---
+
+## Standard Library
+
+### General
+
+- Added `lastIndexOf()`
+- Added `stringToBytes()` and `bytesToString()`
+- `length()` now accepts a List directly, alongside `list.length`
+
+### List and Map
+
+- Added `List.remove()`, `List.reverse()`, `List.sort()`, `List.sum()`, `List.avg()`
+- Added `List.flat()` (flattens any depth to depth 1)
+- Added `Map.keys()` and `Map.entries()`
+
+### JSON
+
+> ⚠️ **Important**
+>
+> JSON numbers converted with `.map()` can be read with `getInt()`, `getByte()` or `getLong()`. Overflow is checked at runtime for the getter used. This replaces the v2.1.1 behavior where integers were always `Long`.
+
+### File System and System
+
+- Added `fs.listDir()`, `fs.isFile()`, `fs.isDir()`
+- Added `sys.spawn()`, `sys.kill()`, `sys.isRunning()`, `sys.wait()`
+- Added `threads.count()` and `threads.currentId()`
+
+### Networking
+
+- Added TCP support: `Tcp` and `TcpServer` structs
+- Added `net.online()`, `net.connect(host, port)`, `net.listen(port)`
+- Added `Tcp.send()`, `Tcp.receive()`, `Tcp.close()`, `Tcp.isOpen()`
+- Added `TcpServer.accept()`, `TcpServer.close()`, `TcpServer.isOpen()`
+
+### HTTP
+
+- Added `http.getProgress(url, callback)` for downloads with progress reporting. The callback receives `downloaded` and `total` bytes (`long`), and the call returns the data as `List<byte>`
+- Connect timeout is 10 seconds for every request
+- Requests without a progress callback have a 30 second total limit
+- Requests with a progress callback have no total limit; they abort only if speed stays below 1 KB/s for 30 seconds
+- Network failures and timeouts print a `NetworkError` and exit
+
+---
+
+## Tooling
+
+- `zen install` and `zen uninstall` accept multiple package names
+- renamed zen -h to zen --h
+- Added `zen installed`
+- Added `zen upgrade <package>`
+- Added `zen install <package>@<semver>`
+- Added `zen read <package> [--raw]` to render a package README in the terminal
+- Added `zen update --dev` to install the development version
+- Added `zen test <package>` to run a package's `test.zen`
+- Added `zen --v <package>`, `zen --version <package>` and `zen version <package>` for installed package versions
+- Added `zen info` for namespaces and globals (with `--methodName`)
+- `zen deps` now detects and records `native/*.o`; native objects link automatically
+- `.c` files are supported as native dependencies
+- `zen.json` supports `flags: []` at module and standalone level (for example `-lmariadb`)
+- Added `--link a.o b.o`
+- Added interactive REPL (`zen` with no arguments); prints "Bye!" on `exit()`
+- Enhanced LSP server (`zen lsp`)
+- Enhanced formatter and fixed bugs
+- Fixed linter bugs
+- Better compile-time diagnostics with hints and source text
+
+## zen fmt
+
+Formats `.zen` files. Output goes next to the source as `name.formatted.zen`
+(the original is never touched).
+
+### Usage
+
+    zen fmt <path...> [-r | --recursive] [--no-comments]
+
+| Command                  | What it formats                                  |
+|--------------------------|--------------------------------------------------|
+| `zen fmt a.zen`          | one file                                         |
+| `zen fmt a.zen b.zen`    | several files                                    |
+| `zen fmt src`            | `.zen` files directly inside `src`               |
+| `zen fmt src -r`         | everything under `src`, all subfolders           |
+| `zen fmt . -r`           | the whole project                                |
+| `zen fmt *.zen`          | shell glob, works as normal multiple paths       |
+
+### Flags
+
+- `-r`, `--recursive`  descend into subdirectories (flag position doesn't matter)
+- `--no-comments`      drop comments from the output
+
+### Rules
+
+- Skipped always: `*.formatted.*` files (so re-running never formats its own output)
+- Skipped when recursing: `node_modules`, `build`, `.git`, `.zen`
+- Duplicate paths are formatted once
+- Errors: `Path not found: <path>` if an input doesn't exist,
+  `No .zen files found` if nothing matched
+
+### Breaking change
+
+The old `dir/*` and `dir/**` syntax is removed. The shell expanded them
+before zen saw them. Use `dir` and `dir -r` instead.
+
+---
+
+## Installer
+
+- Added `--tag` and `--branch` install modes
+- Branch installs skip the `VERSION` check and version from the short commit hash
+- Verified on Termux (Android) and reviewed for apt, pacman, dnf and zypper
+- Windows is not supported for now (documented, not auto-installed)
+
+---
+
+## Compiler & Runtime
+
+- Thread methods spawn through the same path as thread functions
+- Thread context is freed inside the thread; string arguments are duplicated and freed per thread
+- Struct dependency tracking with clear errors for naming or clashing with hidden structs
+- Redefinition errors now show line information
+- Unified unknown-struct error in member chains
+- Parser supports chained access after a statement-level call
+
+---
+
+## Documentation
+
+- Added architecture documentation
+- Updated error reference
+
+---
+
+## Known Limitations
+
+- Structs cannot be imported with an alias
+- `debug.pretty()` does not support struct fields of type `List<Map>`
+- HTTP timeouts are not configurable; no retry or resume
+- Windows support is paused
+
+---
+
+## Fixes
+
+- Fixed linter, formatter and LSP bugs
+- Various compiler, runtime, CLI, and standard library bug fixes

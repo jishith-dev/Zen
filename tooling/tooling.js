@@ -138,69 +138,41 @@ export class Compiler {
     return /^https?:\/\//.test(input);
   }
 
-  getSourceFiles(input) {
-    const type = this.pathType(input);
+  getSourceFiles(inputs, recursive = false) {
+  const SKIP_DIRS = new Set(["node_modules", "build", ".git", ".zen"]);
+  const isFmtable = (name) =>
+    name.endsWith(".zen") && !name.includes(".formatted.");
 
-    if (type === "local") {
-      return [path.resolve(input)];
+  const files = [];
+
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (recursive && !SKIP_DIRS.has(e.name)) walk(full);
+      } else if (e.isFile() && isFmtable(e.name)) {
+        files.push(full);
+      }
     }
+  };
 
-    if (type === "project") {
-      const config = JSON.parse(
-        fs.readFileSync(path.join(input, "zen.json"), "utf8"),
-      );
-
-      return [path.join(input, config.main)];
+  for (const input of inputs) {
+    if (!fs.existsSync(input)) {
+      console.error(`error: Path not found: ${input}`);
+      process.exit(1);
     }
-
-    if (type === "non-recurse") {
-      const dir = input.slice(0, -2) || ".";
-
-      return fs
-        .readdirSync(dir, { withFileTypes: true })
-        .filter(
-          (e) =>
-            e.isFile() &&
-            e.name.endsWith(".zen") &&
-            !e.name.includes(".formatted."),
-        )
-        .map((e) => path.join(dir, e.name));
+    if (fs.statSync(input).isDirectory()) {
+      walk(input);
+    } else if (isFmtable(path.basename(input))) {
+      files.push(input);
     }
+  }
 
-    if (type === "recurse") {
-      const files = [];
-
-      const walk = (dir) => {
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-          const full = path.join(dir, entry.name);
-
-          if (entry.isDirectory()) {
-            walk(full);
-          } else if (
-            full.endsWith(".zen") &&
-            !path.basename(full).includes(".formatted.")
-          ) {
-            files.push(full);
-          }
-        }
-      };
-
-      walk(input.slice(0, -3) || ".");
-
-      return files;
-    }
-
-    return [];
+  return [...new Set(files.map((f) => path.resolve(f)))];
   }
 
   pathType(input) {
     if (this.isURL(input)) return "remote";
-
-    if (input.endsWith("/*")) {
-      return "non-recurse";
-    } else if (input.endsWith("/**")) {
-      return "recurse";
-    }
 
     if (input.endsWith(".zen") && fs.existsSync(input)) return "local";
     if (fs.existsSync(path.join(input, "zen.json"))) return "project";
@@ -347,6 +319,12 @@ export class Compiler {
 
   async compile(command) {
     this.setCompilerRoot();
+
+    if (command === "clean") {
+      this.PROJECT_ROOT = process.cwd();
+      await this.clean();
+      return;
+    }
 
     const file = this.args[1];
 
@@ -549,7 +527,16 @@ export class Compiler {
         );
       };
 
-      const files = this.getSourceFiles(file);
+      const fmtArgs = this.args.slice(1);
+      const recursive = fmtArgs.includes("-r") || fmtArgs.includes("--recursive");
+      const inputs = fmtArgs.filter((a) => !a.startsWith("-"));
+
+      if (inputs.length === 0) {
+        console.error("error: missing input path");
+        process.exit(1);
+      }
+
+      const files = this.getSourceFiles(inputs, recursive);
 
       if (files.length === 0) {
         console.error("error: No .zen files found");
@@ -674,10 +661,7 @@ export class Compiler {
     const moduleFiles = this.moduleFiles.moduleFiles;
     const buildDir = this.buildDir();
 
-    if (command === "clean") {
-      await this.clean();
-      return;
-    }
+    
 
     const outLL = path.join(buildDir, `${this.moduleName}.ll`);
     const outOptLL = path.join(buildDir, `${this.moduleName}_opt.ll`);

@@ -508,7 +508,9 @@ export class Parser {
   parseStruct() {
     this.expectKeyword("struct");
 
+    this.skipNewlines();
     const name = this.expect("IDENTIFIER").value;
+    
 
     if (BUILTIN_STRUCTS.includes(name)) {
       this.IRB.emitError(
@@ -517,16 +519,23 @@ export class Parser {
         this.lineAndColumn(),
       );
     }
-
+    this.skipNewlines();
     this.expect("BLOCK_START");
+    this.skipNewlines();
 
     const fields = [];
     const methods = [];
+    const members = [];
 
     while (!this.match("BLOCK_END")) {
       if (this.match("NEWLINE")) {
         this.advance();
         continue;
+      }
+
+      if (this.options.preserveComments && this.match("COMMENT")) {
+  members.push({ kind: "comment", node: this.parseComment() });
+  continue;
       }
 
       let isAsyncMethod = false;
@@ -562,6 +571,7 @@ export class Parser {
         method.isMethod = true;
 
         methods.push(method);
+        members.push({ kind: "method", node: method });
         continue;
       }
 
@@ -600,16 +610,17 @@ if (this.match("ASSIGNMENT")) {
   value = this.parseExpression();
 }
 
-fields.push(
-  this.node({
-    name: nameToken.value,
-    ...typeNode,
-    isPrivate,
-    dimensions,
-    isArray: dimensions.length > 0,
-    value,
-  }),
-);
+const field = this.node({
+  name: nameToken.value,
+  ...typeNode,
+  isPrivate,
+  dimensions,
+  isArray: dimensions.length > 0,
+  value,
+});
+
+fields.push(field);
+members.push({ kind: "field", node: field });
 
 if (this.match("NEWLINE")) this.advance();
 if (this.match("COMMA")) this.advance();
@@ -620,11 +631,12 @@ if (this.match("COMMA")) this.advance();
     this.expect("BLOCK_END");
 
     return this.node({
-      type: ParserTypes.STRUCT,
-      name,
-      fields,
-      methods,
-    });
+  type: ParserTypes.STRUCT,
+  name,
+  fields,
+  methods,
+  members,
+});
   }
 
   parseEnum() {

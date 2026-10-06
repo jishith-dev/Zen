@@ -76,7 +76,7 @@ export class IRBuilder {
     const hostBits = HOST_ARCH_BITS[process.arch];
 
 if (!hostBits) {
-  this.emitError(
+  this.emitError("platform error",
     `Unsupported host architecture: ${process.arch}`,
   );
 }

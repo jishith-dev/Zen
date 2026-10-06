@@ -1,23 +1,19 @@
 import { ParserTypes } from "../../src/config/config.js";
 import { BUILTIN_INFO } from "../../src/config/info_config.js";
 
-// ---------------------------------------------------------------------------
 // Zen linter
 //
 // Walks the AST produced by the Zen parser and reports errors and warnings.
 // Usage:  const { errors, warnings } = new Lint(ast, { builtins: [] }).run();
-//
-// Node shapes this file relies on (all taken from parser.js):
 //   function  { name, params[{name,type,isConstant,isRest,default}], returnType:{type},
 //               body:BLOCK|null, isExtern, isDeclaration, isMethod }
 //   return    { value }          value is [] for a bare `return`
 //   call      { name, args, isInbuilt }  or  { callee, args }  (method calls)
 //   var decl  { name, dataType, struct_ref, generic, dimensions, isConstant, value }
-// ---------------------------------------------------------------------------
 
 // Field on function/method nodes that holds the return type. The parser stores
 // it as { type: "void" | "int" | "auto" | ..., dimensions: [] } and fills in
-// void when none is written, so an omitted type means void.
+// void when none is written, so an omitted type is void.
 const RETURN_TYPE_FIELD = "returnType";
 
 const PRIMITIVE_TYPES = new Set([
@@ -34,14 +30,12 @@ const PRIMITIVE_TYPES = new Set([
   "Function",
 ]);
 
-// Calls that never come back, so code after them is unreachable and a
-// function may end with one instead of a return.
+
 const NEVER_RETURNS = new Set(["os.exit", "sys.panic"]);
 
-// Functions that are entry points and need no caller.
+
 const ENTRY_POINTS = new Set(["main"]);
 
-// Ways a statement can finish.
 const NORMAL = "normal";
 const RETURN = "return";
 const BREAK = "break";
@@ -50,7 +44,6 @@ const CONTINUE = "continue";
 const returnTypeName = (t) =>
   t == null ? "void" : typeof t === "string" ? t : t.type;
 
-// The parser gives a bare `return` the value [] (an empty array).
 const isBareReturn = (v) => v == null || (Array.isArray(v) && v.length === 0);
 
 const byPosition = (a, b) =>
@@ -61,8 +54,7 @@ export class Lint {
   constructor(ast, { builtins = [] } = {}) {
     this.ast = Array.isArray(ast) ? ast : Array.isArray(ast?.body) ? ast.body : [];
 
-    // Names that need no declaration: global functions, namespaces (os, fs...),
-    // builtin structs, constants (PI...), plus anything passed in `builtins`.
+  
     this.builtinNames = new Set([
       ...Object.keys(BUILTIN_INFO.global_fn || {}),
       ...Object.keys(BUILTIN_INFO.namespaces || {}),
@@ -88,10 +80,6 @@ export class Lint {
     this.flowCache = new WeakMap();
     this.lastPos = { line: undefined, column: undefined };
   }
-
-  // -------------------------------------------------------------------------
-  // Entry point
-  // -------------------------------------------------------------------------
 
   run() {
     this.enterScope();
@@ -154,10 +142,6 @@ export class Lint {
         return;
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Scopes and declarations
-  // -------------------------------------------------------------------------
 
   enterScope() {
     this.scopes.push(new Map());
@@ -222,7 +206,7 @@ export class Lint {
       return;
     }
 
-    // shadowing check (only applies to plain variables/params)
+    // shadowing check (only applies to plain variables or params)
     if (kind === "variable" || kind === "param") {
       for (let i = this.scopes.length - 2; i >= 0; i--) {
         if (this.scopes[i].has(name)) {
@@ -259,8 +243,7 @@ export class Lint {
     return null;
   }
 
-  // Marks `name` as used. Returns the scope entry, or null for builtins and
-  // errors.
+
   resolve(name, node) {
     const entry = this.lookup(name);
     if (entry) {
@@ -269,7 +252,7 @@ export class Lint {
     }
     if (this.builtinNames.has(name)) return null;
 
-    // A function body may use a global that is declared further down the file.
+    
     if (this.functionDepth > 0 && this.globalVars.has(name)) {
       this.lateUsed.add(name);
       return null;
@@ -279,8 +262,7 @@ export class Lint {
     return null;
   }
 
-  // Marks a type name as used. Unknown names starting with an uppercase letter
-  // are reported (lowercase ones are assumed to be primitive types).
+  
   markTypeName(name, node, strict = false) {
     if (typeof name !== "string" || name === "") return;
 
@@ -319,10 +301,7 @@ export class Lint {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Diagnostics
-  // -------------------------------------------------------------------------
-
+  
   report(list, node, message) {
     const line = node?.line ?? this.lastPos.line;
     const column = node?.column ?? this.lastPos.column;
@@ -341,10 +320,6 @@ export class Lint {
   warning(node, message) {
     this.report(this.warnings, node, message);
   }
-
-  // -------------------------------------------------------------------------
-  // Small helpers
-  // -------------------------------------------------------------------------
 
   isEmptyBlock(node) {
     return node?.type === ParserTypes.BLOCK && node.body.length === 0;
@@ -409,16 +384,6 @@ export class Lint {
         return null;
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Control-flow analysis
-  //
-  // flowOf(node) returns the set of ways the statement can finish:
-  //   "normal"    falls through to the next statement
-  //   "return"    returns (or calls something that never returns)
-  //   "break" / "continue"
-  // A statement list whose set has no "normal" cannot reach the code after it.
-  // -------------------------------------------------------------------------
 
   neverReturns(node) {
     const expr =
@@ -511,7 +476,7 @@ export class Lint {
 
         if (!infinite) {
           if (node.type === ParserTypes.DO_WHILE) {
-            // the condition is only reached when the body finishes or continues
+            
             if (body.has(NORMAL) || body.has(CONTINUE)) out.add(NORMAL);
           } else {
             out.add(NORMAL);
@@ -528,7 +493,7 @@ export class Lint {
           for (const kind of f) {
             if (kind !== NORMAL && kind !== BREAK) out.add(kind);
           }
-          // cases do not fall through, so finishing a case leaves the switch
+          
           if (f.has(NORMAL) || f.has(BREAK)) out.add(NORMAL);
         };
 
@@ -548,10 +513,7 @@ export class Lint {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Statement lists
-  // -------------------------------------------------------------------------
-
+  
   isDeclarationOnly(stmt) {
     return (
       stmt.type === ParserTypes.COMMENT ||
@@ -580,10 +542,6 @@ export class Lint {
       }
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Visitor
-  // -------------------------------------------------------------------------
 
   visit(node) {
     if (!node) return;
@@ -746,9 +704,6 @@ export class Lint {
     }
   }
 
-  // The parser re-parses `${...}` parts into their own statement lists, where
-  // a bare expression is wrapped in VARIABLE_REFERENCE. Those expressions are
-  // used for their value, so they must not get the "no effect" warning.
   visitTemplatePart(part) {
     const list = Array.isArray(part)
       ? part
@@ -1109,10 +1064,6 @@ export class Lint {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Conditions and loops
-  // -------------------------------------------------------------------------
-
   visitConditional(node) {
     if (this.isConstantCondition(node.if.condition)) {
       this.warning(node.if.condition, "Constant condition in if");
@@ -1150,9 +1101,6 @@ export class Lint {
     this.visit(body);
   }
 
-  // `while (true) { ... break ... }` is the normal way to write an endless
-  // loop with an exit, so a constant condition is only reported when the loop
-  // has no way out (or can never run).
   warnConstantLoopCondition(node, label) {
     if (!this.isConstantCondition(node.condition)) return;
 
