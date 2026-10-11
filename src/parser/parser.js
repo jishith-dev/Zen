@@ -63,6 +63,18 @@ export class Parser {
     }
   }
 
+  atEnd() {
+  return !this.current() || this.match("EOF");
+}
+
+unclosedBlock(open, what = "block") {
+  this.IRB.emitError(
+    "SyntaxError",
+    `Missing closing '}' for ${what} opened at line ${open.line}:${open.column}`,
+    { line: open.line, column: open.column },
+  );
+}
+
   matchKeyword(value) {
     return (
       this.current()?.type === "KEYWORD" && this.current()?.value === value
@@ -351,7 +363,7 @@ export class Parser {
 
   parseStructLiteral() {
     this.skipNewlines();
-    this.expect("BLOCK_START");
+    const open = this.expect("BLOCK_START");
 
     this.skipNewlines();
 
@@ -408,6 +420,9 @@ export class Parser {
       this.skipNewlines();
     }
 
+    if (this.atEnd()) {
+    this.unclosedBlock(open, "literal");
+    }
     this.expect("BLOCK_END");
 
     return this.node({
@@ -425,14 +440,14 @@ export class Parser {
 
     this.expect("RIGHT_PARENTHESIS");
 
-    this.expect("BLOCK_START");
+    const open = this.expect("BLOCK_START");
 
     const cases = [];
     let defaultCase = null;
 
     this.skipNewlines();
 
-    while (!this.match("BLOCK_END")) {
+    while (!this.match("BLOCK_END") && !this.atEnd()) {
       this.skipNewlines();
 
       // CASE
@@ -448,10 +463,11 @@ export class Parser {
         const statements = [];
 
         while (
-          !this.matchKeyword("case") &&
-          !this.matchKeyword("default") &&
-          !this.match("BLOCK_END")
-        ) {
+  !this.matchKeyword("case") &&
+  !this.matchKeyword("default") &&
+  !this.match("BLOCK_END") &&
+  !this.atEnd()
+) {
           statements.push(this.parseStatement());
 
           this.skipNewlines();
@@ -475,7 +491,7 @@ export class Parser {
 
         const statements = [];
 
-        while (!this.match("BLOCK_END")) {
+        while (!this.match("BLOCK_END") && !this.atEnd()) {   
           statements.push(this.parseStatement());
 
           this.skipNewlines();
@@ -495,6 +511,9 @@ export class Parser {
       );
     }
 
+    if (this.atEnd()) {
+  this.unclosedBlock(open, "switch");
+    }
     this.expect("BLOCK_END");
 
     return {
@@ -520,14 +539,14 @@ export class Parser {
       );
     }
     this.skipNewlines();
-    this.expect("BLOCK_START");
+    const open = this.expect("BLOCK_START");
     this.skipNewlines();
 
     const fields = [];
     const methods = [];
     const members = [];
 
-    while (!this.match("BLOCK_END")) {
+    while (!this.match("BLOCK_END") && !this.atEnd()) {   
       if (this.match("NEWLINE")) {
         this.advance();
         continue;
@@ -610,6 +629,14 @@ if (this.match("ASSIGNMENT")) {
   value = this.parseExpression();
 }
 
+      // auto init for Map.
+      if (value === null && typeNode.type === "Map" && dimensions.length === 0) {
+  value = this.node({
+    type: ParserTypes.STRUCT_LITERAL,
+    properties: [],
+  });
+      }
+
 const field = this.node({
   name: nameToken.value,
   ...typeNode,
@@ -626,6 +653,9 @@ if (this.match("NEWLINE")) this.advance();
 if (this.match("COMMA")) this.advance();
 
       
+    }
+    if (this.atEnd()) {
+  this.unclosedBlock(open, "struct");
     }
 
     this.expect("BLOCK_END");
@@ -644,11 +674,11 @@ if (this.match("COMMA")) this.advance();
 
     const name = this.expect("IDENTIFIER").value;
 
-    this.expect("BLOCK_START");
+    const open = this.expect("BLOCK_START");
 
     const members = [];
 
-    while (!this.match("BLOCK_END")) {
+    while (!this.match("BLOCK_END") && !this.atEnd()) {   
       if (this.match("NEWLINE")) {
         this.advance();
         continue;
@@ -674,6 +704,9 @@ if (this.match("COMMA")) this.advance();
       if (this.match("NEWLINE")) this.advance();
     }
 
+    if (this.atEnd()) {
+      this.unclosedBlock(open, "enum");
+    }
     this.expect("BLOCK_END");
 
     return this.node({
@@ -1335,30 +1368,34 @@ if (this.match("COMMA")) this.advance();
   }
 
   parseBlock() {
-    this.expect("BLOCK_START");
+  const open = this.expect("BLOCK_START");
 
-    const body = [];
+  const body = [];
 
-    while (!this.match("BLOCK_END") && this.current()) {
-      if (this.match("NEWLINE")) {
-        this.advance();
-        continue;
-      }
-
-      const stmt = this.parseStatement();
-      if (stmt) body.push(stmt);
-
-      if (this.match("NEWLINE")) {
-        this.advance();
-      }
+  while (!this.match("BLOCK_END") && !this.atEnd()) {
+    if (this.match("NEWLINE")) {
+      this.advance();
+      continue;
     }
 
-    this.expect("BLOCK_END");
+    const stmt = this.parseStatement();
+    if (stmt) body.push(stmt);
 
-    return this.node({
-      type: ParserTypes.BLOCK,
-      body,
-    });
+    if (this.match("NEWLINE")) {
+      this.advance();
+    }
+  }
+
+  if (this.atEnd()) {
+    this.unclosedBlock(open);
+  }
+
+  this.expect("BLOCK_END");
+
+  return this.node({
+    type: ParserTypes.BLOCK,
+    body,
+  });
   }
 
   parseVariableDeclaration() {

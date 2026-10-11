@@ -401,7 +401,7 @@ export class HandleFunction {
       const generic = node.returnType.generic;
       listGeneric.generic = generic;
       listGeneric.type = this.IRB.getDeepestGeneric(generic);
-      listGeneric.depth = this.IRB.getListDepth(generic);
+      listGeneric.depth = this.IRB.getListDepth(node.returnType);
     }
 
     if (!isDecl) {

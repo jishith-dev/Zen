@@ -1,3 +1,5 @@
+import { PRIMITIVE_TYPES } from "../../config/config.js";
+
 export class Struct {
   constructor(IRB, expr, fn) {
     this.IRB = IRB;
@@ -104,6 +106,23 @@ if (prev?.hidden) {
 
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
+
+      const fieldType =
+  f.type === "List" ? this.IRB.getDeepestGeneric(f.generic) : f.type;
+
+if (
+  fieldType &&
+  !PRIMITIVE_TYPES.includes(fieldType) &&
+  fieldType !== "Map" &&
+  fieldType !== name &&
+  !this.IRB.hasStruct(fieldType)
+) {
+  this.IRB.emitError(
+    "ReferenceError",
+    `Struct '${fieldType}' is not defined`,
+    f,
+  );
+}
 
       let llvmType;
 

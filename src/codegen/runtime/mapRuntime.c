@@ -390,9 +390,26 @@ char *zen_map_get_string(ZenMap *map, char *key) {
   return (char *)e->value;
 }
 
-ZenList *zen_map_get_list(ZenMap *map, char *key) {
+ZenList *zen_map_get_list(ZenMap *map, char *key, int depth, int deepestType) {
   MapEntry *e = _zen_map_get_entry(map, key);
   _zen_map_expect_type(key, e, ZEN_LIST);
+
+  if (e->depth != depth) {
+    fprintf(stderr,
+            "\033[1;31m[Zen  TypeError]\n  └── Key '%s' holds a List of depth %d, "
+            "but getList requested depth %d\033[0m\n",
+            key, e->depth, depth);
+    exit(1);
+  }
+
+  if (e->deepestType != deepestType) {
+    fprintf(stderr,
+            "\033[1;31m[Zen  TypeError]\n  └── Key '%s' holds a List of %s, "
+            "but getList requested %s\033[0m\n",
+            key, _zen_type_name(e->deepestType), _zen_type_name(deepestType));
+    exit(1);
+  }
+
   return (ZenList *)e->value;
 }
 

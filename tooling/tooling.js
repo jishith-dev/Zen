@@ -318,6 +318,7 @@ export class Compiler {
   }
 
   async compile(command) {
+    
     this.setCompilerRoot();
 
     if (command === "clean") {
@@ -795,10 +796,23 @@ linkArgs.push("-lcrypto");
     }
 
     const userArgs =
-      linkIndex !== -1
-        ? this.args.slice(2, linkIndex).join(" ")
-        : this.args.slice(3).join(" ");
+  linkIndex !== -1
+    ? this.args.slice(2, linkIndex)
+    : this.args.slice(2);
 
-    this.run(`${outputExe} ${userArgs}`);
+    const quotedArgs = userArgs
+  .map(arg => "'" + String(arg).replace(/'/g, "'\\''") + "'")
+  .join(" ");
+
+    const result = spawnSync(outputExe, userArgs, {
+  stdio: "inherit",
+});
+
+if (result.error) {
+  console.error(`error: Failed to execute program: ${result.error.message}`);
+  process.exit(1);
+}
+
+process.exit(result.status ?? 1);
   }
 }

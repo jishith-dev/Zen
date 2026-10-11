@@ -1435,12 +1435,12 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
           const isNested = normalizedGeneric?.type === "List";
 
-          const isStruct = this.IRB.hasStruct(base.type);
+          const isStruct = !isNested && this.IRB.hasStruct(base.type);
 const isOpaque =
   isStruct &&
   this.IRB.getStruct(base.type)?.isBuiltin &&
   this.IRB.getStruct(base.type)?.isOpaque;
-
+          
           return {
             ptr: elemPtr,
             type: base.type,

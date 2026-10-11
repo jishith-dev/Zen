@@ -91,7 +91,7 @@ export class Call {
       const valExpr = this.expr.handleExpression(fakeNode);
 
       if (asStatement) {
-  this.IRB.emitExpr(valExpr);
+         this.IRB.emitExpr(valExpr);
       }
 
       return {

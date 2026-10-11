@@ -243,7 +243,13 @@ export class DEBUG {
         `call void @_debug_pretty_list(ptr ${t}, i32 ${depth}, i32 ${tv})`,
       );
 
-      return;
+    }
+    return {
+      ptr: null,
+      type: "void",
+      llvmType: "void",
+      gloal: [],
+      local: []
     }
   }
 }
