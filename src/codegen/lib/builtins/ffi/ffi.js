@@ -13,12 +13,13 @@ export class FFI {
     params,
     name,
   ) {
+    const displayName = this.IRB.displayFnName(name);
     const args = node.args;
 
     if (!args) {
       this.IRB.emitError(
         "SyntaxError",
-        `'${name}' must be called as a function — did you forget '()'?`,
+        `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
     }
@@ -28,7 +29,7 @@ export class FFI {
     if (!isVariadic && args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} accepts exactly ${paramCount} argument(s)`,
+        `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
     }
@@ -36,59 +37,29 @@ export class FFI {
     if (isVariadic && args.length < params.length) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} requires at least ${params.length} argument(s)`,
+        `${displayName} takes at least ${params.length} argument(s), but ${args.length} were given`,
         node,
       );
     }
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
-    // type check only the FIXED params; variadic extras are unchecked
-    exprs.forEach((expr, i) => {
-      if (i >= params.length) return; // variadic extras — skip strict check
+    
+    this.IRB.checkArgTypes(displayName, params, exprs, args);
 
-      const actualType = expr.type;
-      const expectedType = params[i];
+    const llvm = (t) => this.IRB.getLLVMType(t);
 
-      if (expectedType !== actualType) {
-        this.IRB.emitError(
-          "TypeError",
-          `Function ${name} expects ${expectedType} at arg ${i + 1}, got ${actualType}`,
-          node.args[i],
-        );
-      }
-    });
-
-    // Arg type mapper
-    const getArgType = (e) => {
-      switch (e) {
-        case "int":
-          return "i32";
-        case "double":
-          return "double";
-        case "bool":
-          return "i1";
-        case "string":
-          return "ptr";
-        default:
-          this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
-      }
-    };
-
-    // C varargs promotion: bool -> i32, (float would -> double, but Zen has no float type)
-    const promoteForVariadic = (expr, isExtra) => {
-      if (!isExtra) return { llvmType: getArgType(expr.type), ptr: expr.ptr };
-
-      if (expr.type === "bool") {
+    // C varargs promotion
+    const promoteForVariadic = (e, isExtra) => {
+      if (isExtra && e.type === "bool") {
         const widened = this.IRB.newTemp();
-        this.IRB.emit(`${widened} = zext i1 ${expr.ptr} to i32`);
+        this.IRB.emit(`${widened} = zext i1 ${e.ptr} to i32`);
         return { llvmType: "i32", ptr: widened };
       }
 
-      return { llvmType: getArgType(expr.type), ptr: expr.ptr };
+      return { llvmType: llvm(e.type), ptr: e.ptr };
     };
 
-    // flush all pending instructions for each arg expression
     exprs.forEach((e) => this.IRB.emitExpr(e));
 
     const resolvedArgs = exprs.map((e, i) =>
@@ -99,12 +70,11 @@ export class FFI {
       .map((r) => `${r.llvmType} ${r.ptr}`)
       .join(", ");
 
-    const llvmRet = this.IRB.getLLVMType(returnType);
-    const cSymbol = funcName.split("_")[2];
+    const llvmRet = llvm(returnType);
+    const cSymbol = funcName.split("_").slice(2).join("_");
+    const fixedTypes = params.map((p) => llvm(p)).join(", ");
 
     if (isVariadic) {
-      const fixedTypes = params.map(getArgType).join(", ");
-
       this.IRB.declareOneTime(
         cSymbol,
         `declare ${llvmRet} @${cSymbol}(${fixedTypes}, ...)`,
@@ -125,10 +95,9 @@ export class FFI {
       };
     }
 
-    // non-variadic — fixed arity, safe to declare from params directly
     this.IRB.declareOneTime(
       cSymbol,
-      `declare ${llvmRet} @${cSymbol}(${params.map(getArgType).join(", ")})`,
+      `declare ${llvmRet} @${cSymbol}(${fixedTypes})`,
     );
 
     if (returnType === "void") {

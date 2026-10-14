@@ -92,7 +92,7 @@ this.target = {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -127,6 +127,18 @@ this.target = {
     this.returnTypes = [];
     this.haveExport = false;
     this.allocaBuff = [];
+  }
+
+  displayFnName(name) {
+  if (!name) return name;
+
+  if (name.startsWith("_")) {
+    const rest = name.slice(1);
+    const i = rest.indexOf("_");
+    return i === -1 ? rest : `${rest.slice(0, i)}.${rest.slice(i + 1)}`;
+  }
+
+  return name;
   }
 
   genOwnerId() {
@@ -5561,4 +5573,41 @@ emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr =
     );
   }
 }
+
+    checkArgTypes(displayName, params, exprs, args, skip = () => false) {
+    exprs.forEach((e, i) => {
+      if (skip(i)) return;
+
+      const actualIsList = e?.isList === true;
+      const actual = actualIsList ? `List<${e.type}>` : e.type;
+
+      // variadic extras (ffi.printf): only reject lists
+      if (i >= params.length) {
+        if (actualIsList) {
+          this.emitError(
+            "TypeError",
+            `${displayName}: argument ${i + 1} cannot be a list, got '${actual}'`,
+            args[i],
+          );
+        }
+        return;
+      }
+
+      const expected = params[i];
+      const expectedIsList = expected.startsWith("List");
+      const elem = expected.startsWith("List<") ? expected.slice(5, -1) : null;
+
+      const valid = expectedIsList
+        ? actualIsList && (elem === null || e.type === elem)
+        : !actualIsList && e.type === expected;
+
+      if (!valid) {
+        this.emitError(
+          "TypeError",
+          `${displayName}: argument ${i + 1} must be '${expected}', but got '${actual}'`,
+          args[i],
+        );
+      }
+    });
+    }
 }

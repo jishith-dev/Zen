@@ -980,37 +980,30 @@ char* _path_extname(const char* path) {
 }
 
 
-char* _path_join(
-    const char* a,
-    const char* b
-) {
-
+char* _path_join(const char* a, const char* b) {
     size_t lenA = strlen(a);
+
+    
+    while (*b == '/') b++;
     size_t lenB = strlen(b);
 
-    int needSlash =
-        lenA > 0 &&
-        a[lenA - 1] != '/';
+    
+    while (lenA > 1 && a[lenA - 1] == '/') lenA--;
 
-    char* out =
-        malloc(
-            lenA +
-            lenB +
-            needSlash +
-            1
-        );
+    if (lenA == 0) return strdup(b);
+    if (lenB == 0) return strndup(a, lenA);
 
-    strcpy(out, a);
+    int needSlash = a[lenA - 1] != '/';
 
-    if (needSlash) {
-        strcat(out, "/");
-    }
+    char* out = malloc(lenA + needSlash + lenB + 1);
+    if (!out) return NULL;
 
-    strcat(out, b);
+    memcpy(out, a, lenA);
+    if (needSlash) out[lenA++] = '/';
+    memcpy(out + lenA, b, lenB + 1);
 
     return out;
 }
-
 
 char* _path_normalize(const char* path) {
     if (!path) path = "";

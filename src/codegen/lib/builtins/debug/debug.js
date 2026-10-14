@@ -3,7 +3,7 @@ export class DEBUG {
     this.IRB = IRB;
     this.expr = expr;
   }
-  zenDEBUG(
+    zenDEBUG(
     node,
     globalScope,
     funcName,
@@ -12,14 +12,13 @@ export class DEBUG {
     params,
     name,
   ) {
-    const isAwait = node.isAwait;
-
+    const displayName = this.IRB.displayFnName(name);
     const args = node.args;
 
     if (!args) {
       this.IRB.emitError(
         "SyntaxError",
-        `'${funcName}' must be called as a function — did you forget '()'?`,
+        `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
     }
@@ -27,7 +26,7 @@ export class DEBUG {
     if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} accept exactly ${paramCount} argument(s)`,
+        `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
     }
@@ -38,59 +37,22 @@ export class DEBUG {
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
-    exprs.forEach((expr, i) => {
-      const actualType = expr.type;
-      const expectedType = params[i];
-      const isList = expr?.isList;
-      const displayType = isList ? `List` : actualType;
-
-      if (isList || expectedType !== actualType) {
-        this.IRB.emitError(
-          "TypeError",
-          `Function ${name} expects ${expectedType} at arg ${i + 1}, got ${displayType}`,
-          node.args[i],
-        );
-      }
-    });
-
-    // Arg type mapper
-
-    const getArgType = (e) => {
-      switch (e) {
-        case "int":
-          return "i32";
-        case "double":
-          return "double";
-        case "bool":
-          return "i1";
-        case "string":
-          return "ptr";
-        case "long":
-          return "i64";
-        case "byte":
-          return "i8";
-        default:
-          this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
-      }
-    };
+    this.IRB.checkArgTypes(displayName, params, exprs, args);
 
     exprs.forEach((e) => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
+    const argLLVMTypes = exprs.map((e) => this.IRB.getLLVMType(e.type));
     const callArgs = exprs
-      .map((e) => {
-        const t = getArgType(e.type);
-        return `${t} ${e.ptr}`;
-      })
+      .map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`)
       .join(", ");
-
     const llvmRet = this.IRB.getLLVMType(returnType);
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${exprs.map((e) => getArgType(e.type)).join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${argLLVMTypes.join(", ")})`,
     );
 
     let t = this.IRB.newTemp();
@@ -112,7 +74,7 @@ export class DEBUG {
       global: [],
       postOrPrefix: false,
     };
-  }
+    }
 
   pretty(node) {
     const arg = node.args[0];
@@ -248,7 +210,7 @@ export class DEBUG {
       ptr: null,
       type: "void",
       llvmType: "void",
-      gloal: [],
+      global: [],
       local: []
     }
   }

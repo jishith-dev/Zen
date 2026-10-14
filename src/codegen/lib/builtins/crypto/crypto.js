@@ -13,6 +13,7 @@ export class ZenCrypto {
     params = [],
     name,
   ) {
+    const displayName = this.IRB.displayFnName(name);
     const args = node.args;
 
     this.IRB.usedNameSpaces.add("crypto");
@@ -20,7 +21,7 @@ export class ZenCrypto {
     if (!args) {
       this.IRB.emitError(
         "SyntaxError",
-        `'${funcName}' must be called as a function — did you forget '()'?`,
+        `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
     }
@@ -28,128 +29,43 @@ export class ZenCrypto {
     if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} accept exactly ${paramCount} argument(s)`,
+        `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
     }
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
-    exprs.forEach((expr, i) => {
-      const expectedType = params[i];
-
-      const expectedIsList = expectedType.startsWith("List<");
-
-      const expectedElementType = expectedIsList
-        ? expectedType.slice(5, -1)
-        : null;
-
-      const actualIsList = expr?.isList === true;
-      const actualType = expr.type;
-
-      const displayType = actualIsList ? `List<${actualType}>` : actualType;
-
-      let valid;
-
-      if (expectedIsList) {
-        valid = actualIsList && actualType === expectedElementType;
-      } else {
-        valid = !actualIsList && actualType === expectedType;
-      }
-
-      if (!valid) {
-        this.IRB.emitError(
-          "TypeError",
-          `Function ${name} expects ${expectedType} at arg ${
-            i + 1
-          }, got ${displayType}`,
-          node.args[i],
-        );
-      }
-    });
+    this.IRB.checkArgTypes(displayName, params, exprs, args);
 
     exprs.forEach((e) => {
-      if (e.local?.length) {
-        this.IRB.emit(e.local.join("\n"));
-      }
-
-      if (e.global?.length) {
-        this.IRB.emit(e.global.join("\n"));
-      }
+      if (e.local?.length) this.IRB.emit(e.local.join("\n"));
+      if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
-    const getArgType = (type) => {
-      if (type.startsWith("List<")) {
-        return "ptr";
+    // Any List<T> is passed as a plain "List" pointer
+    const argLLVMTypes = params.map((p) =>
+      this.IRB.getLLVMType(p.startsWith("List<") ? "List" : p),
+    );
+
+    const callArgs = exprs.map((e, i) => {
+      let value = e.ptr;
+
+      if (e.needsLoad) {
+        value = this.IRB.newTemp();
+        this.IRB.emit(`${value} = load ptr, ptr ${e.ptr}`);
       }
 
-      switch (type) {
-        case "int":
-          return "i32";
-
-        case "long":
-          return "i64";
-
-        case "double":
-          return "double";
-
-        case "bool":
-          return "i1";
-
-        case "byte":
-          return "i8";
-
-        case "string":
-          return "ptr";
-
-        case "List":
-          return "ptr";
-
-        case "Map":
-          return "ptr";
-
-        default:
-          this.IRB.emitError(
-            "TypeError",
-            `Unsupported arg type: ${type}`,
-            node,
-          );
-      }
-    };
-
-    const callArgs = [];
-    const declarationArgs = [];
-
-    exprs.forEach((expr, i) => {
-      const expectedType = params[i];
-
-      const llvmType = getArgType(expectedType);
-
-      let value = expr.ptr;
-
-      if (expr.needsLoad) {
-        const tmp = this.IRB.newTemp();
-
-        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-
-        value = tmp;
-      }
-
-      callArgs.push(`${llvmType} ${value}`);
-      declarationArgs.push(llvmType);
+      return `${argLLVMTypes[i]} ${value}`;
     });
 
     const isList = returnType.startsWith("List<");
-
     const type = isList ? returnType.slice(5, -1) : returnType;
-
-    const baseReturnType = isList ? "List" : returnType;
-
-    const llvmRet = this.IRB.getLLVMType(baseReturnType);
+    const llvmRet = this.IRB.getLLVMType(isList ? "List" : returnType);
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${declarationArgs.join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${argLLVMTypes.join(", ")})`,
     );
 
     let t = null;
@@ -158,7 +74,6 @@ export class ZenCrypto {
       this.IRB.emit(`call ${llvmRet} @${funcName}(${callArgs.join(", ")})`);
     } else {
       t = this.IRB.newTemp();
-
       this.IRB.emit(
         `${t} = call ${llvmRet} @${funcName}(${callArgs.join(", ")})`,
       );
@@ -180,3 +95,4 @@ export class ZenCrypto {
     };
   }
 }
+

@@ -886,6 +886,7 @@ export class Call {
       // for future modification and semantic understanding of compiler internal we keep this now.
 
       case name: {
+        
         const os = OS_MAP[name];
         const file = FILE_MAP[name];
         const time = TIME_MAP[name];
@@ -971,6 +972,7 @@ export class Call {
             name,
           );
         } else if (PATH) {
+          
           return this.path.zenPATH(
             node,
             globalScope,

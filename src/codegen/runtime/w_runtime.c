@@ -18,6 +18,7 @@
 #include <openssl/rand.h>
 #include <stdint.h>
 
+
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
     exit(1);
@@ -833,34 +834,41 @@ char* _path_extname(const char* path) {
     return strdup(dot);
 }
 
-char* _path_join(
-    const char* a,
-    const char* b
-) {
+#define IS_SEP(c) ((c) == '/' || (c) == '\\')
 
+static char* _path_dup(const char* s, size_t n) {
+    char* out = (char*)malloc(n + 1);
+    if (!out) return NULL;
+    memcpy(out, s, n);
+    out[n] = '\0';
+    return out;
+}
+
+char* _path_join(const char* a, const char* b) {
     size_t lenA = strlen(a);
+
+    // drop leading separators from b
+    while (IS_SEP(*b)) b++;
     size_t lenB = strlen(b);
 
-    int needSlash =
-        lenA > 0 &&
-        a[lenA - 1] != '/' &&
-        a[lenA - 1] != '\\';
-
-    char* out =
-        malloc(
-            lenA +
-            lenB +
-            needSlash +
-            1
-        );
-
-    strcpy(out, a);
-
-    if (needSlash) {
-        strcat(out, "\\");
+    // drop trailing separators from a, but keep a lone root "\" and drive root "C:\"
+    while (lenA > 1 && IS_SEP(a[lenA - 1])) {
+        if (lenA == 3 && a[1] == ':') break;
+        lenA--;
     }
 
-    strcat(out, b);
+    if (lenA == 0) return _path_dup(b, lenB);
+    if (lenB == 0) return _path_dup(a, lenA);
+
+    // no separator after a separator, or after a bare drive like "C:"
+    int needSep = !IS_SEP(a[lenA - 1]) && !(lenA == 2 && a[1] == ':');
+
+    char* out = (char*)malloc(lenA + needSep + lenB + 1);
+    if (!out) return NULL;
+
+    memcpy(out, a, lenA);
+    if (needSep) out[lenA++] = '\\';
+    memcpy(out + lenA, b, lenB + 1);
 
     return out;
 }

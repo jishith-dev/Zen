@@ -13,12 +13,13 @@ export class ZenFileSystem {
     params,
     name,
   ) {
+    const displayName = this.IRB.displayFnName(name);
     const args = node.args;
 
     if (!args) {
       this.IRB.emitError(
         "SyntaxError",
-        `'${funcName}' must be called as a function — did you forget '()'?`,
+        `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
     }
@@ -26,56 +27,26 @@ export class ZenFileSystem {
     if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} accept exactly ${paramCount} argument(s)`,
+        `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
     }
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
-    exprs.forEach((expr, i) => {
-      const actualType = expr.type;
-      const expectedType = params[i];
-      const isList = expr?.isList;
-      const displayType = isList ? `List` : actualType;
-
-      if (isList || expectedType !== actualType) {
-        if (funcName !== "_fs_writeFileBytes" && expectedType !== "Byte") {
-          this.IRB.emitError(
-            "TypeError",
-            `Function ${name} expects ${expectedType} at arg ${i + 1}, got ${displayType}`,
-            node.args[i],
-          );
-        }
-      }
-    });
-
-    const getArgType = (e) => {
-      switch (e) {
-        case "int":
-          return "i32";
-        case "double":
-          return "double";
-        case "bool":
-          return "i1";
-        case "string":
-          return "ptr";
-        case "long":
-          return "i64";
-        case "byte":
-          return "i8";
-        default:
-          this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
-      }
-    };
+    this.IRB.checkArgTypes(displayName, params, exprs, args);
 
     exprs.forEach((e) => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
+    const argLLVMTypes = exprs.map((e) =>
+      this.IRB.getLLVMType(e.isList ? "List" : e.type),
+    );
+
     const callArgs = exprs
-      .map((e) => {
+      .map((e, i) => {
         let ptr = e.ptr;
 
         if (e.needsLoad) {
@@ -84,19 +55,16 @@ export class ZenFileSystem {
           ptr = tmp;
         }
 
-        const t = e.isList ? "ptr" : getArgType(e.type);
-        return `${t} ${ptr}`;
+        return `${argLLVMTypes[i]} ${ptr}`;
       })
       .join(", ");
 
     const isListRet = ["_fs_readFileBytes", "_fs_listDir"].includes(funcName);
-    const llvmRet = isListRet ? "ptr" : this.IRB.getLLVMType(returnType);
+    const llvmRet = this.IRB.getLLVMType(isListRet ? "List" : returnType);
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${exprs
-        .map((e) => (e.isList ? "ptr" : getArgType(e.type)))
-        .join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${argLLVMTypes.join(", ")})`,
     );
 
     const isVoidFn = llvmRet === "void";

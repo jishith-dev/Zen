@@ -3,7 +3,7 @@ export class ZenHttp {
     this.IRB = IRB;
     this.expr = expr;
   }
-  zenNativeHTTPCall(
+    zenNativeHTTPCall(
     node,
     globalScope,
     funcName,
@@ -11,18 +11,17 @@ export class ZenHttp {
     paramCount = 0,
     params,
     name,
-    caller
+    caller,
   ) {
     this.IRB.usedNameSpaces.add("http");
 
-    const isAwait = node.isAwait;
-
+    const displayName = this.IRB.displayFnName(name);
     const args = node.args;
 
     if (!args) {
       this.IRB.emitError(
         "SyntaxError",
-        `'${funcName}' must be called as a function — did you forget '()'?`,
+        `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
     }
@@ -30,7 +29,7 @@ export class ZenHttp {
     if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
-        `Function ${name} accept exactly ${paramCount} argument(s)`,
+        `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
     }
@@ -42,92 +41,57 @@ export class ZenHttp {
     );
 
     const exprs = args.map((arg, i) => {
-  if (!specs[i]) return this.expr.handleExpression(arg);
+      if (!specs[i]) return this.expr.handleExpression(arg);
 
-  let callback = arg;
+      let callback = arg;
 
-  if (arg.type === "variable") {
-    if (!this.IRB.functions.has(arg.name)) {
-      this.IRB.emitError(
-        "TypeError",
-        `Function ${name} expects a callback at arg ${i + 1}`,
-        arg,
-      );
-    }
+      if (arg.type === "variable") {
+        if (!this.IRB.functions.has(arg.name)) {
+          this.IRB.emitError(
+            "TypeError",
+            `${displayName}: argument ${i + 1} must be a callback function`,
+            arg,
+          );
+        }
 
-    callback = this.IRB.functions.get(arg.name);
-  } else if (arg.type !== "FUNCTION_DECLARATION") {
-    this.IRB.emitError(
-      "TypeError",
-      `Function ${name} expects a callback at arg ${i + 1}`,
-      arg,
-    );
-  }
-
-  this.validateCallback(callback, specs[i], name, i);
-
-  if (arg.type === "FUNCTION_DECLARATION") {
-    return caller.lowerInlineCallback(arg);
-  }
-
-  return this.expr.handleExpression(arg);
-});
-
-    exprs.forEach((expr, i) => {
-      if (specs[i]) return;
-
-      const actualType = expr.type;
-      const expectedType = params[i];
-      const isList = expr?.isList;
-      const displayType = isList ? `List` : actualType;
-
-      if (isList || expectedType !== actualType) {
+        callback = this.IRB.functions.get(arg.name);
+      } else if (arg.type !== "FUNCTION_DECLARATION") {
         this.IRB.emitError(
           "TypeError",
-          `Function ${name} expects ${expectedType} at arg ${i + 1}, got ${displayType}`,
-          node.args[i],
+          `${displayName}: argument ${i + 1} must be a callback function`,
+          arg,
         );
       }
+
+      this.validateCallback(callback, specs[i], displayName, i);
+
+      if (arg.type === "FUNCTION_DECLARATION") {
+        return caller.lowerInlineCallback(arg);
+      }
+
+      return this.expr.handleExpression(arg);
     });
 
-    // Arg type mapper
-
-    const getArgType = (e) => {
-      switch (e) {
-        case "int":
-          return "i32";
-        case "double":
-          return "double";
-        case "bool":
-          return "i1";
-        case "string":
-          return "ptr";
-        case "long":
-          return "i64";
-        case "byte":
-          return "i8";
-        default:
-          this.IRB.emitError("TypeError", `Unsupported arg type: ${e}`, node);
-      }
-    };
+    this.IRB.checkArgTypes(displayName, params, exprs, args, (i) => specs[i]);
 
     exprs.forEach((e) => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
-    const argTypes = exprs.map((e, i) =>
-      specs[i] ? "ptr" : getArgType(e.type),
+    const argLLVMTypes = exprs.map((e, i) =>
+      specs[i] ? "ptr" : this.IRB.getLLVMType(e.type),
     );
-
-    const callArgs = exprs.map((e, i) => `${argTypes[i]} ${e.ptr}`).join(", ");
+    const callArgs = exprs
+      .map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`)
+      .join(", ");
 
     const isListRet = ["_http_getProgress"].includes(funcName);
-    const llvmRet = isListRet ? "ptr" : this.IRB.getLLVMType(returnType);
+    const llvmRet = this.IRB.getLLVMType(isListRet ? "List" : returnType);
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${argTypes.join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${argLLVMTypes.join(", ")})`,
     );
 
     let t = this.IRB.newTemp();
@@ -142,18 +106,18 @@ export class ZenHttp {
     this.IRB.cleanupBuiltinStringTemps(exprs);
 
     return {
-  ptr: t,
-  type: isListRet ? "byte" : returnType,
-  llvmType: llvmRet,
-  local: [],
-  global: [],
-  postOrPrefix: false,
-  isList: isListRet,
-  internalType: isListRet ? "List" : undefined,
-  retGeneric: isListRet ? "byte" : undefined,
-  generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
-};
-  }
+      ptr: t,
+      type: isListRet ? "byte" : returnType,
+      llvmType: llvmRet,
+      local: [],
+      global: [],
+      postOrPrefix: false,
+      isList: isListRet,
+      internalType: isListRet ? "List" : undefined,
+      retGeneric: isListRet ? "byte" : undefined,
+      generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
+    };
+    }
 
   parseCallbackSpec(spec) {
     const m = /^fn\s+\w+\s*\((.*)\)\s*(\w+)?$/.exec(spec.trim());
@@ -166,13 +130,14 @@ export class ZenHttp {
     };
   }
 
-  validateCallback(arg, spec, name, i) {
+    validateCallback(arg, spec, name, i) {
     const at = `argument ${i + 1} of '${name}'`;
+    const cb = arg.name ?? "<inline>";
 
     if (arg.params.length !== spec.params.length) {
       this.IRB.emitError(
         "TypeError",
-        `Callback '${arg.name}' does not match ${at}: expected ${spec.params.length} parameter(s), got ${arg.params.length}`,
+        `Callback '${cb}' does not match ${at}: expected ${spec.params.length} parameter(s), got ${arg.params.length}`,
         arg,
       );
     }
@@ -183,7 +148,7 @@ export class ZenHttp {
       if (got !== expected) {
         this.IRB.emitError(
           "TypeError",
-          `Callback '${arg.name}' does not match ${at}: parameter ${j + 1} expects '${expected}', got '${got}'`,
+          `Callback '${cb}' does not match ${at}: parameter ${j + 1} expects '${expected}', got '${got}'`,
           arg,
         );
       }
@@ -194,9 +159,9 @@ export class ZenHttp {
     if (actualReturn !== spec.returnType) {
       this.IRB.emitError(
         "TypeError",
-        `Callback '${arg.name}' does not match ${at}: expected return type '${spec.returnType}', got '${actualReturn}'`,
+        `Callback '${cb}' does not match ${at}: expected return type '${spec.returnType}', got '${actualReturn}'`,
         arg,
       );
     }
-  }
+    }
 }
