@@ -2263,6 +2263,7 @@ const BUILTIN_MAP = {
   },
 
   join: {
+    isVariadic: true,
     returnType: "string",
     llvmName: "_path_join",
   },
@@ -2834,7 +2835,7 @@ const PATH_MAP = {
 
   _path_extname: ["_path_extname", "string", 1, ["string"]],
 
-  _path_join: ["_path_join", "string", 2, ["string", "string"]],
+  _path_join: ["_path_join", "string", Infinity, ["string", "string"]],
 
   _path_normalize: ["_path_normalize", "string", 1, ["string"]],
 };

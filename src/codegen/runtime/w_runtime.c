@@ -18,6 +18,8 @@
 #include <openssl/rand.h>
 #include <stdint.h>
 
+#include <stdarg.h>
+
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
@@ -844,33 +846,62 @@ static char* _path_dup(const char* s, size_t n) {
     return out;
 }
 
-char* _path_join(const char* a, const char* b) {
-    size_t lenA = strlen(a);
+char* _path_join(int count, ...) {
+    if (count < 2) return NULL;
 
-    // drop leading separators from b
-    while (IS_SEP(*b)) b++;
-    size_t lenB = strlen(b);
+    va_list args;
+    va_start(args, count);
 
-    // drop trailing separators from a, but keep a lone root "\" and drive root "C:\"
-    while (lenA > 1 && IS_SEP(a[lenA - 1])) {
-        if (lenA == 3 && a[1] == ':') break;
-        lenA--;
+    char* result = _path_dup("", 0);
+    if (!result) {
+        va_end(args);
+        return NULL;
     }
 
-    if (lenA == 0) return _path_dup(b, lenB);
-    if (lenB == 0) return _path_dup(a, lenA);
+    for (int i = 0; i < count; i++) {
+        const char* part = va_arg(args, const char*);
+        if (!part) {
+            free(result);
+            va_end(args);
+            return NULL;
+        }
 
-    // no separator after a separator, or after a bare drive like "C:"
-    int needSep = !IS_SEP(a[lenA - 1]) && !(lenA == 2 && a[1] == ':');
+        size_t lenA = strlen(result);
 
-    char* out = (char*)malloc(lenA + needSep + lenB + 1);
-    if (!out) return NULL;
+        while (lenA > 1 && IS_SEP(result[lenA - 1])) {
+            if (lenA == 3 && result[1] == ':') break;
+            result[--lenA] = '\0';
+        }
 
-    memcpy(out, a, lenA);
-    if (needSep) out[lenA++] = '\\';
-    memcpy(out + lenA, b, lenB + 1);
+        while (IS_SEP(*part)) part++;
+        size_t lenB = strlen(part);
 
-    return out;
+        if (lenB == 0) continue;
+
+        int needSep = lenA > 0 &&
+            !IS_SEP(result[lenA - 1]) &&
+            !(lenA == 2 && result[1] == ':');
+
+        char* out = realloc(
+            result,
+            lenA + needSep + lenB + 1
+        );
+
+        if (!out) {
+            free(result);
+            va_end(args);
+            return NULL;
+        }
+
+        result = out;
+
+        if (needSep) result[lenA++] = '\\';
+
+        memcpy(result + lenA, part, lenB + 1);
+    }
+
+    va_end(args);
+    return result;
 }
 
 static int isSep(char c) { return c == '/' || c == '\\'; }

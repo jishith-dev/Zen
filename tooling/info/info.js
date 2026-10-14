@@ -301,9 +301,11 @@ export class Info {
       console.log(c.white("Parameters:"));
 
       for (const p of fn.parameters) {
-        const optional = p.optional ? c.dim(" (optional)") : "";
+  const optional = p.optional ? c.dim(" (optional)") : "";
+  const rest = p.rest ? c.dim(" (rest, 1 or more)") : "";
+  const name = p.rest ? `${p.name}...` : p.name;
 
-        console.log(`  ${c.green(p.name)}: ${c.yellow(p.type)}${optional}`);
+  console.log(`  ${c.green(name)}: ${c.yellow(p.type)}${optional}${rest}`);
       }
 
       if (fn.variadic) {

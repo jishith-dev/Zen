@@ -1941,12 +1941,15 @@ parseLogical() {
             break;
           }
 
+          const label = this.parseArgLabel();
+
           if (this.matchKeyword("fn")) {
             args.push(this.node(this.parseInlineCallback()));
           } else {
             args.push(this.node(this.parseExpression()));
           }
 
+          if (label) args[args.length - 1].label = label;
           this.skipNewlines();
 
           if (this.match("COMMA")) {
@@ -2227,7 +2230,8 @@ parseLogical() {
 
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
-
+      const label = this.parseArgLabel();
+      
       // sizeOf(int) support bare type in argument
     
       if (
@@ -2266,9 +2270,11 @@ parseLogical() {
       }
 
       this.skipNewlines();
+      if (label) args[args.length - 1].label = label;
       if (this.match("COMMA")) {
         this.advance();
         this.skipNewlines();
+        
       } else {
         break;
       }
@@ -2289,5 +2295,16 @@ parseLogical() {
 
   parseInlineCallback() {
     return this.parseFunction();
+  }
+
+    // optional readability label in call args: `name: value`
+  parseArgLabel() {
+    if (this.match("IDENTIFIER") && this.peek("COLON")) {
+      const label = this.advance().value;
+      this.advance(); // :
+      this.skipNewlines();
+      return label;
+    }
+    return null;
   }
 }

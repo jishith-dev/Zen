@@ -22,6 +22,8 @@
 #include <paths.h>
 #include <stdint.h>
 
+#include <stdarg.h>
+
 
 static void zen_error(const char *type, const char *msg) {
     fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
@@ -979,30 +981,51 @@ char* _path_extname(const char* path) {
     return strdup(dot);
 }
 
+char* _path_join(int count, ...) {
+    va_list args;
+    va_start(args, count);
 
-char* _path_join(const char* a, const char* b) {
-    size_t lenA = strlen(a);
+    char* result = strdup("");
+    if (!result) {
+        va_end(args);
+        return NULL;
+    }
 
-    
-    while (*b == '/') b++;
-    size_t lenB = strlen(b);
+    for (int i = 0; i < count; i++) {
+        const char* segment = va_arg(args, const char*);
+        if (!segment) segment = "";
 
-    
-    while (lenA > 1 && a[lenA - 1] == '/') lenA--;
+        size_t lenA = strlen(result);
+        size_t startB = 0;
 
-    if (lenA == 0) return strdup(b);
-    if (lenB == 0) return strndup(a, lenA);
+        while (segment[startB] == '/') startB++;
 
-    int needSlash = a[lenA - 1] != '/';
+        size_t lenB = strlen(segment + startB);
 
-    char* out = malloc(lenA + needSlash + lenB + 1);
-    if (!out) return NULL;
+        while (lenA > 0 && result[lenA - 1] == '/') {
+            result[--lenA] = '\0';
+        }
 
-    memcpy(out, a, lenA);
-    if (needSlash) out[lenA++] = '/';
-    memcpy(out + lenA, b, lenB + 1);
+        if (lenB == 0) continue;
 
-    return out;
+        int needSlash = lenA > 0 && result[lenA - 1] != '/';
+
+        char* out = realloc(result, lenA + needSlash + lenB + 1);
+        if (!out) {
+            free(result);
+            va_end(args);
+            return NULL;
+        }
+
+        result = out;
+
+        if (needSlash) result[lenA++] = '/';
+
+        memcpy(result + lenA, segment + startB, lenB + 1);
+    }
+
+    va_end(args);
+    return result;
 }
 
 char* _path_normalize(const char* path) {

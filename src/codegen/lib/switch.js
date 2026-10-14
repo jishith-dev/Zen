@@ -18,18 +18,18 @@ export class Switch {
         node,
       );
     }
+
     const endLabel = this.IRB.newLabel("switch_end");
+    let endUsed = false;
     const defaultLabel = this.IRB.newLabel("switch_default");
 
     const caseLabels = node.cases.map(() => this.IRB.newLabel("switch_case"));
-
-    // BUILD SWITCH INSTRUCTION
 
     let switchIR = `switch ${expr.llvmType} ${expr.ptr}, label %${defaultLabel} [\n`;
 
     for (let i = 0; i < node.cases.length; i++) {
       const caseNode = node.cases[i].value;
-      
+
       const caseConst = this.IRB.constEval(caseNode, "Switch Case");
 
       if (typeof caseConst !== "number") {
@@ -71,8 +71,10 @@ export class Switch {
 
       this.block.block(blockNode);
 
-      // implicit break
-      this.IRB.emit(`br label %${endLabel}`);
+      if (!this.IRB.hasTerminator()) {
+        this.IRB.emit(`br label %${endLabel}`);
+        endUsed = true;
+      }
     }
 
     // DEFAULT BLOCK
@@ -85,10 +87,13 @@ export class Switch {
       }
     }
 
-    this.IRB.emit(`br label %${endLabel}`);
+    if (!this.IRB.hasTerminator()) {
+      this.IRB.emit(`br label %${endLabel}`);
+      endUsed = true;
+    }
 
-    // END BLOCK
-
-    this.IRB.emit(`${endLabel}:`);
+    if (endUsed) {
+      this.IRB.emit(`${endLabel}:`);
+    }
   }
 }

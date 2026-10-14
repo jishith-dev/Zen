@@ -754,10 +754,14 @@ visitStruct(node) {
 
     this.write("(");
     const args = node.args || [];
-    for (let i = 0; i < args.length; i++) {
-      this.visit(args[i]);
-      if (i < args.length - 1) this.write(", ");
-    }
+for (let i = 0; i < args.length; i++) {
+  if (args[i].label) {
+    this.write(args[i].label);
+    this.write(": ");
+  }
+  this.visit(args[i]);
+  if (i < args.length - 1) this.write(", ");
+}
     this.write(")");
   }
 

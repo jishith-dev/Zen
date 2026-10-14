@@ -1,3 +1,4 @@
+
 export class PATH {
   constructor(IRB, expr) {
     this.IRB = IRB;
@@ -16,6 +17,7 @@ export class PATH {
     const displayName = this.IRB.displayFnName(name);
     const isVoid = returnType === "void";
     const args = node.args;
+    const isVariadic = paramCount === Infinity;
 
     if (!args) {
       this.IRB.emitError(
@@ -23,34 +25,76 @@ export class PATH {
         `'${displayName}' must be called as a function. Did you forget '()'?`,
         node,
       );
+      return;
     }
 
-    if (args.length !== paramCount) {
+    if (isVariadic) {
+      if (args.length < 2) {
+        this.IRB.emitError(
+          "ArgumentError",
+          `${displayName} takes at least 2 arguments, but ${args.length} were given`,
+          node,
+        );
+        return;
+      }
+    } else if (args.length !== paramCount) {
       this.IRB.emitError(
         "ArgumentError",
         `${displayName} takes exactly ${paramCount} argument(s), but ${args.length} were given`,
         node,
       );
+      return;
     }
 
-    const exprs = args.map((arg) => this.expr.handleExpression(arg));
+    const exprs = args.map((arg) =>
+      this.expr.handleExpression(arg),
+    );
 
-    this.IRB.checkArgTypes(displayName, params, exprs, args);
+    if (isVariadic) {
+      let invalid = false;
+
+      exprs.forEach((e, i) => {
+        if (e.type !== "string") {
+          invalid = true;
+          this.IRB.emitError(
+            "TypeError",
+            `Argument ${i + 1} of '${displayName}' must be a string, got '${e.type}'`,
+            args[i],
+          );
+        }
+      });
+
+      if (invalid) return;
+    } else {
+      this.IRB.checkArgTypes(displayName, params, exprs, args);
+    }
 
     exprs.forEach((e) => {
       if (e.local?.length) this.IRB.emit(e.local.join("\n"));
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
-    const argLLVMTypes = exprs.map((e) => this.IRB.getLLVMType(e.type));
-    const callArgs = exprs
-      .map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`)
-      .join(", ");
+    const argLLVMTypes = exprs.map((e) =>
+      this.IRB.getLLVMType(e.type),
+    );
     const llvmRet = isVoid ? "void" : this.IRB.getLLVMType(returnType);
+
+    const callArgs = isVariadic
+      ? [
+          `i32 ${args.length}`,
+          ...exprs.map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`),
+        ].join(", ")
+      : exprs
+          .map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`)
+          .join(", ");
+
+    const llvmParams = isVariadic
+      ? "i32, ..."
+      : argLLVMTypes.join(", ");
 
     this.IRB.declareOneTime(
       funcName,
-      `declare ${llvmRet} @${funcName}(${argLLVMTypes.join(", ")})`,
+      `declare ${llvmRet} @${funcName}(${llvmParams})`,
     );
 
     if (isVoid) {

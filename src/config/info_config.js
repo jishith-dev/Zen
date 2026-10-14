@@ -5,6 +5,8 @@
 // Types use Zen names (int, long, byte, bool, double, string, List<T>, Map, ...).
 // "any" means any value. "optional: true" marks an optional trailing parameter.
 // "variadic: true" means extra arguments are accepted after the listed ones.
+// "rest: true" on a parameter marks a rest parameter (name...): one or more arguments
+// of that type, collected into a List. It must be the last parameter.
 // origin: "compiler" = implemented by the compiler itself, "stdlib" = std function.
 
 const BUILTIN_INFO = {
@@ -222,7 +224,7 @@ const BUILTIN_INFO = {
         basename: { description: "Returns the last component of a path.", parameters: [{ name: "path", type: "string" }], returnType: "string" },
         dirname: { description: "Returns the directory part of a path.", parameters: [{ name: "path", type: "string" }], returnType: "string" },
         extname: { description: "Returns the file extension of a path.", parameters: [{ name: "path", type: "string" }], returnType: "string" },
-        join: { description: "Joins two path segments.", parameters: [{ name: "a", type: "string" }, { name: "b", type: "string" }], returnType: "string" },
+        join: { description: "Joins one or more path segments.", parameters: [{ name: "parts", type: "string", rest: true }], returnType: "string" },
         normalize: { description: "Resolves '.', '..' and duplicate separators in a path.", parameters: [{ name: "path", type: "string" }], returnType: "string" },
       },
     },
@@ -535,7 +537,7 @@ function getConstant(name) {
 // "screen(any value, string format?) -> void"
 function formatSignature(name, fn, prefix = "") {
   const params = fn.parameters.map(
-    (p) => `${p.type} ${p.name}${p.optional ? "?" : ""}`
+    (p) => `${p.type} ${p.name}${p.rest ? "..." : ""}${p.optional ? "?" : ""}`
   );
   if (fn.variadic) params.push("...");
   return `${prefix}${name}(${params.join(", ")}) -> ${fn.returnType}`;
