@@ -304,6 +304,26 @@ export class Call {
         this.IRB.emitExpr(val);
       }
 
+      if (param?.type?.type === "List" && val.isList && val.generic) {
+  const pd = this.IRB.getListDepth(param.type);
+  const ad = this.IRB.getListDepth(val.generic) + (val.fromParam ? 1 : 0);
+  if (pd !== ad) {
+    this.IRB.emitError(
+      "TypeError",
+      `argument ${i + 1} of '${node.name}' expected List depth ${pd} but got depth ${ad}`,
+      node,
+    );
+  }
+  const pl = this.IRB.getDeepestGeneric(param.type);
+  if (pl !== val.type) {
+    this.IRB.emitError(
+      "TypeError",
+      `argument ${i + 1} of '${node.name}' expected List<${pl}> but got List<${val.type}>`,
+      node,
+    );
+  }
+      }
+
       args.push(val);
     }
 
@@ -835,6 +855,10 @@ export class Call {
     switch (name) {
       case "screen":
         this.io.screen(node);
+        break;
+
+      case "print":
+        this.io.print(node);
         break;
 
       case "input":

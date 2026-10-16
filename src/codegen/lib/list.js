@@ -63,7 +63,7 @@ export class ZenList {
         );
       }
 
-      if (isActualList && el.type !== "variable") {
+      if (isActualList && (el.type === "ARRAY" || el.type === "LIST_LITERAL")) {
         for (const child of el.elements) {
           validateDepth(child, generic.generic);
         }
@@ -259,19 +259,32 @@ export class ZenList {
       }
 
       if (isValidList) {
-        if (expr.type.startsWith("List<")) {
-          const generic = this.IRB.parseGenericFromString(expr.type);
-          const t = this.IRB.getDeepestGeneric(generic);
-          expr.type = t;
-        }
+  if (!expr.generic) {
+    // temporary: surfaces every list-returning path that forgot to set generic
+    this.IRB.emitError(
+      "InternalError",
+      `list expression has no generic (cannot check depth for '${name}')`,
+      node,
+    );
+  }
 
-        if (type !== expr.type) {
-          this.IRB.emitError(
-            "TypeError",
-            `List ${name} expected ${type} but got ${expr.type}`,
-            node,
-          );
-        }
+  const exprDepth = this.IRB.getListDepth(expr.generic);
+
+  if (exprDepth !== depth) {
+    this.IRB.emitError(
+      "TypeError",
+      `List ${name} expected depth ${depth} but got depth ${exprDepth}`,
+      node,
+    );
+  }
+
+  if (type !== expr.type) {
+    this.IRB.emitError(
+      "TypeError",
+      `List ${name} expected ${type} but got ${expr.type}`,
+      node,
+    );
+  }
       }
 
       this.IRB.emitExpr(expr);
@@ -341,8 +354,8 @@ export class ZenList {
           actualType = this.infer.infer(el);
         }
 
-        if (el.type === "CALL") {
-          actualType = this.infer.infer(el);
+        if (el.type === "CALL") {   
+  actualType = this.infer.infer(el);
         }
 
         // Leaf check using the resolved actual type

@@ -289,6 +289,7 @@ const BUILTIN_INFO = {
     match: { origin: "stdlib", description: "Returns true if text matches pattern.", parameters: [{ name: "text", type: "string" }, { name: "pattern", type: "string" }], returnType: "bool" },
     json: { origin: "stdlib", description: "JSON string helper. Takes two strings and returns a string.", parameters: [{ name: "key", type: "string" }, { name: "value", type: "string" }], returnType: "string" },
     screen: { origin: "compiler", description: "Prints a value to the screen. The optional format string controls how the value is formatted.", parameters: [{ name: "value", type: "any" }, { name: "format", type: "string", optional: true }], returnType: "void" },
+    print: { origin: "compiler", description: "Prints one or more values on a single line, separated by spaces, and ends the line with one newline. Takes no format string; use screen() for formatted output.", parameters: [{ name: "value", type: "any" }], returnType: "void", variadic: true },
     input: { origin: "compiler", description: "Reads a line from standard input.", parameters: [], returnType: "string" },
     type: { origin: "compiler", description: "Returns the type name of a value.", parameters: [{ name: "value", type: "any" }], returnType: "string" },
     Int: { origin: "compiler", description: "Converts a value to int.", parameters: [{ name: "value", type: "any" }], returnType: "int" },

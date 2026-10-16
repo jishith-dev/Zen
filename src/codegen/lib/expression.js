@@ -34,7 +34,7 @@ export class Expression {
     this.func = fn;
   }
 
-  handleExpression(node, globalScope = true, Context = {}) {
+  handleExpression(node, globalScope = true, Context = {}, needEmit = {}) {
     // default globalScope true
 
     if (node === undefined && node?.type === undefined) {

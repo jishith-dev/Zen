@@ -303,6 +303,25 @@ hasGuaranteedReturn(node) {
         );
       }
 
+      const fnInfo = this.IRB.getActiveFunction();
+if (fnInfo.isList && !expr.isListLiteral && expr.generic) {
+  const ed = this.IRB.getListDepth(expr.generic) + (expr.fromParam ? 1 : 0);
+  if (ed !== fnInfo.listGeneric.depth) {
+    this.IRB.emitError(
+      "TypeError",
+      `function ${name} expected List depth ${fnInfo.listGeneric.depth} but got depth ${ed}`,
+      node,
+    );
+  }
+  if (expr.type !== fnInfo.listGeneric.type) {
+    this.IRB.emitError(
+      "TypeError",
+      `function ${name} expected List<${fnInfo.listGeneric.type}> but got List<${expr.type}>`,
+      node,
+    );
+  }
+}
+
       if (expr?.fromParam || expr?.isListLiteral || expr?.needsLoad === false) {
         // param already holds list pointer
         this.IRB.emit(`ret ptr ${expr.ptr}`);

@@ -1,3 +1,5 @@
+import { BUILTIN_INFO } from "./info_config.js";
+
 // data type
 
 const LLVM_TYPES_MAP = {
@@ -103,7 +105,127 @@ const hints = {
       hint: "Call 'Json.parse()' before accessing Json properties.",
     },
   ],
+
+    ReferenceError: [
+    {
+      // Function 'add' is not defined / variable fss is not defined
+      match: /(?:Function|variable) '?([\w.]+)'? is not defined/,
+      hint: m => suggestFromName(m[1]),
+    },
+    {
+      // fs.unknown does not exist
+      match: /([\w.]+) does not exist/,
+      hint: m => suggestFromName(m[1]),
+    },
+  ],
 };
+
+
+// Levenshtein + adjacent swap
+
+function distance(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function maxDistance(len) {
+  if (len < 3) return 0;
+  return Math.min(3, Math.floor((len + 1) / 3));
+}
+
+function suggestName(input, candidates, limit = 3) {
+  const q = input.toLowerCase();
+  const max = maxDistance(q.length);
+  const isUp = s => s[0] === s[0].toUpperCase() && s[0] !== s[0].toLowerCase();
+
+  return candidates
+    .map(name => {
+      const c = name.toLowerCase();
+      if (Math.abs(c.length - q.length) > max) return null;
+      const d = distance(q, c);
+      if (d > max || d >= Math.min(q.length, c.length)) return null;
+      return {
+        name,
+        d,
+        cm: isUp(name) === isUp(input) ? 0 : 1,
+        first: c[0] === q[0] ? 0 : 1,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) =>
+      a.d - b.d || a.cm - b.cm || a.first - b.first || a.name.localeCompare(b.name))
+    .filter((x, _, arr) => x.d === arr[0].d && x.cm === arr[0].cm)
+    .slice(0, limit)
+    .map(x => x.name);
+}
+
+const keysOf = v => (Array.isArray(v) ? v.map(x => x.name ?? x) : Object.keys(v || {}));
+
+function globalNames(info) {
+  return [
+    ...Object.keys(info.namespaces || {}),
+    ...keysOf(info.global_fn),
+    ...keysOf(info.structs),
+    ...keysOf(info.constants),
+  ];
+}
+
+function memberNames(info, ns) {
+  return Object.keys(info.namespaces?.[ns]?.functions || {});
+}
+
+// error hint 
+function didYouMean(info, name, ns = null) {
+  const list = ns ? memberNames(info, ns) : globalNames(info);
+  const s = suggestName(name, list);
+  if (!s.length) return "";
+  const full = n => (ns ? `${ns}.${n}` : n);
+  return s.length === 1
+    ? `Did you mean '${full(s[0])}'?`
+    : `Did you mean one of: ${s.map(full).join(", ")}?`;
+}
+
+function suggestFromName(raw) {
+  const dot = raw.indexOf(".");
+  if (dot < 1) return didYouMean(BUILTIN_INFO, raw);
+
+  const ns = raw.slice(0, dot);
+  const member = raw.slice(dot + 1);
+  const spaces = BUILTIN_INFO.namespaces || {};
+
+  if (spaces[ns]) {
+    
+    const own = didYouMean(BUILTIN_INFO, member, ns);
+    if (own) return own;
+
+    const owners = {};
+    for (const [n, v] of Object.entries(spaces))
+      for (const f of Object.keys(v.functions || {})) (owners[f] ??= []).push(n);
+
+    const hits = suggestName(member, Object.keys(owners), 1)
+      .flatMap(f => owners[f].map(n => `${n}.${f}`));
+    return hits.length ? `Did you mean '${hits.join("' or '")}'?` : "";
+  }
+
+
+  const s = suggestName(ns, Object.keys(spaces), 1);
+  return s.length ? `Did you mean '${s[0]}.${member}'?` : "";
+}
+//
 
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
@@ -211,6 +333,7 @@ const TokenTypes = {
 const RESERVED_FUNCTIONS = [
   // CORE
   "screen",
+  "print",
   "input",
   "type",
   "Int",
@@ -319,6 +442,7 @@ const BUILTIN_STRUCT_ABI = ["Ptr"];
 const BUILTIN_FUNCTIONS = [
   // CORE
   "screen",
+  "print",
   "input",
   "type",
   "Int",

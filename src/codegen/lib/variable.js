@@ -475,23 +475,47 @@ export class Variable {
 
     const expr = this.expr.handleExpression(expression.value);
 
-    if (orgData.type !== expr.type) {
-      this.IRB.emitError(
-        "TypeError",
-        `Cannot assign '${expr.type}' to variable '${name}' of type '${orgType}'`,
-        node,
-      );
-    }
+if (orgData.type !== expr.type) {
+  this.IRB.emitError(
+    "TypeError",
+    `Cannot assign '${expr.type}' to variable '${name}' of type '${orgType}'`,
+    node,
+  );
+}
 
-    if (orgData.isList) {
-      if (orgData.isList !== expr.isList) {
-        this.IRB.emitError(
-          "TypeError",
-          `Cannot assign '${expr.isList ? "List" : expr.type}' to variable '${name}' of type '${orgData.isList ? "List" : "non-List"}'`,
-          node,
-        );
-      }
-    }
+if (orgData.isList) {
+  if (!expr.isList) {
+    this.IRB.emitError(
+      "TypeError",
+      `Cannot assign '${expr.type}' to variable '${name}' of type 'List'`,
+      node,
+    );
+  }
+
+  if (!expr.generic) {
+    this.IRB.emitError(
+      "InternalError",
+      `list expression has no generic (cannot check depth for '${name}')`,
+      node,
+    );
+  }
+
+  const td = this.IRB.getListDepth(orgData.generic);
+  const ed = this.IRB.getListDepth(expr.generic);
+  if (td !== ed) {
+    this.IRB.emitError(
+      "TypeError",
+      `List ${name} expected depth ${td} but got depth ${ed}`,
+      node,
+    );
+  }
+} else if (expr.isList) {
+  this.IRB.emitError(
+    "TypeError",
+    `Cannot assign 'List' to variable '${name}' of type '${orgType}'`,
+    node,
+  );
+}
 
     this.IRB.emitExpr(expr);
 
@@ -580,6 +604,20 @@ export class Variable {
           `Cannot assign '${actual}' to variable '${name}' of type '${expected}'`,
           node,
         );
+      }
+
+      if (!isVarDecl && actualIsList) {
+  const target = this.IRB.getVar(name, node);
+  if (target.isList) {
+    const td = this.IRB.getListDepth(target.generic);
+    const ed = this.IRB.getListDepth(valExpr.generic);
+    if (td !== ed) {
+      this.IRB.emitError("TypeError", `List ${name} expected depth ${td} but got depth ${ed}`, node);
+    }
+    if (target.type !== valExpr.type) {
+      this.IRB.emitError("TypeError", `List ${name} expected ${target.type} but got ${valExpr.type}`, node);
+    }
+  }
       }
 
       this.IRB.emitExpr(valExpr);
@@ -673,6 +711,20 @@ export class Variable {
         `Cannot assign '${val.type}' to variable '${name}' of type '${dataType}'`,
         node,
       );
+    }
+
+    if (!isVarDecl && val.isList) {
+  const target = this.IRB.getVar(name, node);
+  if (target.isList) {
+    const td = this.IRB.getListDepth(target.generic);
+    const ed = this.IRB.getListDepth(val.generic);
+    if (td !== ed) {
+      this.IRB.emitError("TypeError", `List ${name} expected depth ${td} but got depth ${ed}`, node);
+    }
+    if (target.type !== val.type) {
+      this.IRB.emitError("TypeError", `List ${name} expected ${target.type} but got ${val.type}`, node);
+    }
+  }
     }
 
     let ptr;

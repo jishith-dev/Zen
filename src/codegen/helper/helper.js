@@ -1087,13 +1087,17 @@ getFunction(name, node) {
   }
 
   genHint(type, message) {
-    const rules = hints[type];
+  const rules = hints[type];
+  if (!rules) return null;
 
-    if (!rules) return null;
+  for (const { match, hint } of rules) {
+    const m = message.match(match);
+    if (!m) continue;
 
-    const rule = rules.find(({ match }) => match.test(message));
-
-    return rule?.hint ?? null;
+    const text = typeof hint === "function" ? hint(m) : hint;
+    if (text) return text;
+  }
+  return null;
   }
 
   printError() {
@@ -1794,35 +1798,41 @@ entry:
     this.emit(`call void @${fnName}(ptr ${val})`);
   }
 
-  emitScreenBool(val) {
-    this.declareOneTime(
-      "fmt_bool_t",
-      '@.fmt_bool_t = private constant [6 x i8] c"true\\0A\\00"',
-    );
-    this.declareOneTime(
-      "fmt_bool_f",
-      '@.fmt_bool_f = private constant [7 x i8] c"false\\0A\\00"',
-    );
+  emitScreenBool(val, sep = "\n") {
+  this.declareOneTime(
+    "str_bool_t",
+    '@.str_bool_t = private constant [5 x i8] c"true\\00"',
+  );
+  this.declareOneTime(
+    "str_bool_f",
+    '@.str_bool_f = private constant [6 x i8] c"false\\00"',
+  );
+  this.declareOneTime(
+    "fmt_bool",
+    '@.fmt_bool = private constant [5 x i8] c"%s%s\\00"',
+  );
+  this.declareOneTime(
+    "sep_nl",
+    '@.sep_nl = private constant [2 x i8] c"\\0A\\00"',
+  );
+  this.declareOneTime(
+    "sep_sp",
+    '@.sep_sp = private constant [2 x i8] c" \\00"',
+  );
 
-    this.declareOneTime(
-      "screen_bool",
-      `define void @_screen_bool(i1 %b) {
+  this.declareOneTime(
+    "screen_bool",
+    `define void @_screen_bool(i1 %b, ptr %sep) {
 entry:
-  br i1 %b, label %true, label %false
-true:
-  call i32 (ptr, ...) @printf(ptr getelementptr ([6 x i8], [6 x i8]* @.fmt_bool_t, i32 0, i32 0))
+  %s = select i1 %b, ptr @.str_bool_t, ptr @.str_bool_f
+  call i32 (ptr, ...) @printf(ptr @.fmt_bool, ptr %s, ptr %sep)
   call i32 @fflush(ptr null)
-  br label %end
-false:
-  call i32 (ptr, ...) @printf(ptr getelementptr ([7 x i8], [7 x i8]* @.fmt_bool_f, i32 0, i32 0))
-  call i32 @fflush(ptr null)
-  br label %end
-end:
   ret void
 }`,
-    );
+  );
 
-    this.emit(`call void @_screen_bool(i1 ${val})`);
+  const sepPtr = sep === "\n" ? "@.sep_nl" : "@.sep_sp";
+  this.emit(`call void @_screen_bool(i1 ${val}, ptr ${sepPtr})`);
   }
 
   containsUnary(node) {
@@ -4902,12 +4912,12 @@ emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr =
             );
           });
         }
-        // ---- raw pointer ----
+        // raw pointer
         else if (field.type === "Ptr") {
           buf.push(`  %v${i} = load ptr, ptr ${fp}`);
           pf("%p", `ptr %v${i}`);
         }
-        // ---- struct fields ----
+        // struct fields 
         else if (this.hasStruct(field.type)) {
           const si = this.getStruct(field.type);
           if (si?.isBuiltin && si?.isOpaque) {
@@ -5114,7 +5124,6 @@ emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr =
       generic = { type: "List", generic };
     }
 
-  /*  return { generic, type: first.deepestType, depth: first.depth };*/
     return { generic, type: first.deepestType, depth: first.depth + 1 };
   }
 
@@ -5610,4 +5619,5 @@ emitStructLiteral(structName, mapLiteralNode, globalScope = false, existingPtr =
       }
     });
     }
+
 }
