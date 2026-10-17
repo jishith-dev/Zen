@@ -967,12 +967,12 @@ char *_path_join(int count, ...) {
     size_t lenA = strlen(result);
     size_t startB = 0;
 
-    while (segment[startB] == '/')
+    while (i > 0 && segment[startB] == '/')
       startB++;
 
     size_t lenB = strlen(segment + startB);
 
-    while (lenA > 0 && result[lenA - 1] == '/') {
+    while (lenA > 1 && result[lenA - 1] == '/') {
       result[--lenA] = '\0';
     }
 

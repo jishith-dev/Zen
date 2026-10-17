@@ -872,8 +872,10 @@ char *_path_join(int count, ...) {
       result[--lenA] = '\0';
     }
 
-    while (IS_SEP(*part))
-      part++;
+    if (i > 0) {
+      while (IS_SEP(*part))
+        part++;
+    }
     size_t lenB = strlen(part);
 
     if (lenB == 0)
