@@ -66,55 +66,54 @@ export class HandleFunction {
     }
   }
 
-  
-hasGuaranteedReturn(node) {
-  if (!node) return false;
+  hasGuaranteedReturn(node) {
+    if (!node) return false;
 
-  switch (node.type) {
-    case "RETURN":
-      return true;
+    switch (node.type) {
+      case "RETURN":
+        return true;
 
-    case "BLOCK":
-      for (const stmt of node.body) {
-        if (this.hasGuaranteedReturn(stmt)) {
-          return true;
+      case "BLOCK":
+        for (const stmt of node.body) {
+          if (this.hasGuaranteedReturn(stmt)) {
+            return true;
+          }
         }
+        return false;
+
+      case "CONDITIONAL": {
+        if (!node.else) return false;
+
+        const ifRet = this.hasGuaranteedReturn(node.if.body);
+
+        const elifRet = (node.elseIf || []).every((e) =>
+          this.hasGuaranteedReturn(e.body),
+        );
+
+        const elseRet = this.hasGuaranteedReturn(node.else.body);
+
+        return ifRet && elifRet && elseRet;
       }
-      return false;
 
-    case "CONDITIONAL": {
-      if (!node.else) return false;
+      case "SWITCH": {
+        if (!node.defaultCase) return false;
 
-      const ifRet = this.hasGuaranteedReturn(node.if.body);
+        const casesRet = (node.cases || []).every((c) =>
+          this.hasGuaranteedReturn({ type: "BLOCK", body: c.statements }),
+        );
 
-      const elifRet = (node.elseIf || []).every((e) =>
-        this.hasGuaranteedReturn(e.body),
-      );
+        const defaultRet = this.hasGuaranteedReturn({
+          type: "BLOCK",
+          body: node.defaultCase.statements,
+        });
 
-      const elseRet = this.hasGuaranteedReturn(node.else.body);
+        return casesRet && defaultRet;
+      }
 
-      return ifRet && elifRet && elseRet;
+      default:
+        return false;
     }
-
-        case "SWITCH": {
-      if (!node.defaultCase) return false;
-
-      const casesRet = (node.cases || []).every((c) =>
-        this.hasGuaranteedReturn({ type: "BLOCK", body: c.statements }),
-      );
-
-      const defaultRet = this.hasGuaranteedReturn({
-        type: "BLOCK",
-        body: node.defaultCase.statements,
-      });
-
-      return casesRet && defaultRet;
-        }
-
-    default:
-      return false;
   }
-}
 
   handleReturn(node) {
     if (this.IRB.getActiveFunction() === null) {
@@ -303,24 +302,13 @@ hasGuaranteedReturn(node) {
         );
       }
 
-      const fnInfo = this.IRB.getActiveFunction();
-if (fnInfo.isList && !expr.isListLiteral && expr.generic) {
-  const ed = this.IRB.getListDepth(expr.generic) + (expr.fromParam ? 1 : 0);
-  if (ed !== fnInfo.listGeneric.depth) {
-    this.IRB.emitError(
-      "TypeError",
-      `function ${name} expected List depth ${fnInfo.listGeneric.depth} but got depth ${ed}`,
-      node,
-    );
-  }
-  if (expr.type !== fnInfo.listGeneric.type) {
-    this.IRB.emitError(
-      "TypeError",
-      `function ${name} expected List<${fnInfo.listGeneric.type}> but got List<${expr.type}>`,
-      node,
-    );
-  }
-}
+      const declared = this.IRB.getFunction(name)?.generic;
+      if (declared) {
+        this.IRB.checkType(declared, node.value, {
+          node,
+          what: `function ${name}`,
+        });
+      }
 
       if (expr?.fromParam || expr?.isListLiteral || expr?.needsLoad === false) {
         // param already holds list pointer
@@ -483,7 +471,7 @@ if (fnInfo.isList && !expr.isListLiteral && expr.generic) {
       );
       this.IRB.allocaBuff = savedAllocaBuff;
       this.IRB.funcTempCounter = savedFuncTempCounter;
-      
+
       return;
     }
 

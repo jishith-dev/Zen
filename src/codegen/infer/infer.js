@@ -6,13 +6,14 @@ import {
   ZEN_TYPES_MAP,
   LOOKUP,
   BUILTIN_STRUCT_METHODS,
-  BUILTIN_STRUCT_PROPS
+  BUILTIN_STRUCT_PROPS,
 } from "../../config/config.js";
 
 export class InferType {
   constructor(IRB, expr) {
     this.IRB = IRB;
     this.expr = expr;
+    this.IRB.inferer = this;
 
     this.numericTypes = ["byte", "int", "long", "double"];
 
@@ -159,29 +160,29 @@ export class InferType {
 
           const methodName = member.field;
 
-const builtin = BUILTIN_STRUCT_METHODS[objectType]?.[methodName];
+          const builtin = BUILTIN_STRUCT_METHODS[objectType]?.[methodName];
 
-if (builtin) {
-  const returnType = this.normalizeReturnType(builtin.returnType);
+          if (builtin) {
+            const returnType = this.normalizeReturnType(builtin.returnType);
 
-  this.checkFnRetType(returnType, context, node);
+            this.checkFnRetType(returnType, context, node);
 
-  node.inferredType = returnType;
+            node.inferredType = returnType;
 
-  return returnType;
-}
-
-          if (BUILTIN_STRUCT_METHODS[objectType] && !builtin) {
-  this.IRB.emitError(
-    "ReferenceError",
-    `'${objectType}' has no method '${methodName}()'`,
-    node,
-  );
+            return returnType;
           }
 
-const fullMethodName = `${objectType}_${methodName}`;
+          if (BUILTIN_STRUCT_METHODS[objectType] && !builtin) {
+            this.IRB.emitError(
+              "ReferenceError",
+              `'${objectType}' has no method '${methodName}()'`,
+              node,
+            );
+          }
 
-const fn = this.IRB.getFunction(fullMethodName, node);
+          const fullMethodName = `${objectType}_${methodName}`;
+
+          const fn = this.IRB.getFunction(fullMethodName, node);
 
           if (!fn) {
             this.IRB.emitError(
@@ -397,17 +398,17 @@ const fn = this.IRB.getFunction(fullMethodName, node);
         }
 
         if (node.operator === "+" || node.operator === "-") {
-  this.ensureNumeric(valueType, node.operator, node);
+          this.ensureNumeric(valueType, node.operator, node);
 
-  const result =
-    node.operator === "-" && valueType === "byte"
-      ? "byte"
-      : valueType === "byte"
-        ? "int"
-        : valueType;
+          const result =
+            node.operator === "-" && valueType === "byte"
+              ? "byte"
+              : valueType === "byte"
+                ? "int"
+                : valueType;
 
-  node.inferredType = result;
-  return result;
+          node.inferredType = result;
+          return result;
         }
 
         if (node.operator === "~") {
@@ -499,113 +500,101 @@ const fn = this.IRB.getFunction(fullMethodName, node);
   }
 
   inferMemberAccess(node, context) {
-  const { base, fields } = this.IRB.resolveMemberChain(node);
+    const { base, fields } = this.IRB.resolveMemberChain(node);
 
-  if (!base) {
-    this.IRB.emitError(
-      "ReferenceError",
-      "Cannot resolve member base",
-      node,
-    );
-  }
-
-  // Namespace function
-  if (base.type === "variable") {
-    const namespace = this.IRB.getVar(base.name, node);
-
-    if (namespace && namespace.type === "namespace") {
-      const entry = this.resolveNamespaceFunction(
-        namespace,
-        fields,
-        node,
-      );
-
-      const returnType = this.normalizeReturnType(entry[1]);
-
-      this.checkFnRetType(returnType, context, node);
-
-      node.inferredType = returnType;
-
-      return returnType;
-    }
-  }
-
-  let currentType = this.infer(base, context);
-  let currentGeneric = null;
-
-  for (const fieldName of fields) {
-
-    const prop = BUILTIN_STRUCT_PROPS[currentType]?.[fieldName];
-
-if (prop) {
-  currentType = this.normalizeReturnType(prop.returnType);
-  currentGeneric = null;
-  continue;
-}
-    
-    const structInfo = this.IRB.getStruct(currentType);
-
-    if (!structInfo) {
-      this.IRB.emitError(
-        "ReferenceError",
-        `Cannot access field '${fieldName}' on non-struct type '${currentType}'`,
-        node,
-      );
+    if (!base) {
+      this.IRB.emitError("ReferenceError", "Cannot resolve member base", node);
     }
 
-    
-    const fieldIndex = structInfo.fieldMap[fieldName];
+    // Namespace function
+    if (base.type === "variable") {
+      const namespace = this.IRB.getVar(base.name, node);
 
-    if (fieldIndex === undefined) {
-      const methodName = `${currentType}_${fieldName}`;
-      const fn = this.IRB.getFunction(methodName);
+      if (namespace && namespace.type === "namespace") {
+        const entry = this.resolveNamespaceFunction(namespace, fields, node);
 
-      if (!fn) {
+        const returnType = this.normalizeReturnType(entry[1]);
+
+        this.checkFnRetType(returnType, context, node);
+
+        node.inferredType = returnType;
+
+        return returnType;
+      }
+    }
+
+    let currentType = this.infer(base, context);
+    let currentGeneric = null;
+
+    for (const fieldName of fields) {
+      const prop = BUILTIN_STRUCT_PROPS[currentType]?.[fieldName];
+
+      if (prop) {
+        currentType = this.normalizeReturnType(prop.returnType);
+        currentGeneric = null;
+        continue;
+      }
+
+      const structInfo = this.IRB.getStruct(currentType);
+
+      if (!structInfo) {
         this.IRB.emitError(
           "ReferenceError",
-          `Unknown field '${fieldName}' in struct '${currentType}'`,
+          `Cannot access field '${fieldName}' on non-struct type '${currentType}'`,
           node,
         );
       }
 
-      const returnType = this.normalizeReturnType(fn.returnType);
+      const fieldIndex = structInfo.fieldMap[fieldName];
 
-      currentType = returnType;
-      currentGeneric = fn.generic || null;
+      if (fieldIndex === undefined) {
+        const methodName = `${currentType}_${fieldName}`;
+        const fn = this.IRB.getFunction(methodName);
 
-      continue;
+        if (!fn) {
+          this.IRB.emitError(
+            "ReferenceError",
+            `Unknown field '${fieldName}' in struct '${currentType}'`,
+            node,
+          );
+        }
+
+        const returnType = this.normalizeReturnType(fn.returnType);
+
+        currentType = returnType;
+        currentGeneric = fn.generic || null;
+
+        continue;
+      }
+
+      const fieldInfo = structInfo.layout[fieldIndex];
+
+      if (!fieldInfo) {
+        this.IRB.emitError(
+          "InternalError",
+          `Unknown field index '${fieldIndex}' in struct '${currentType}'`,
+          node,
+        );
+      }
+
+      if (fieldInfo.isList) {
+        currentType = "List";
+        currentGeneric = fieldInfo.generic || null;
+      } else {
+        currentType = fieldInfo.type;
+        currentGeneric = null;
+      }
     }
 
-    
-    const fieldInfo = structInfo.layout[fieldIndex];
+    this.checkFnRetType(currentType, context, node);
 
-    if (!fieldInfo) {
-      this.IRB.emitError(
-        "InternalError",
-        `Unknown field index '${fieldIndex}' in struct '${currentType}'`,
-        node,
-      );
+    node.inferredType = currentType;
+
+    if (currentGeneric) {
+      node.inferredGeneric = currentGeneric;
     }
 
-    
-    if (fieldInfo.isList) {
-      currentType = "List";
-      currentGeneric = fieldInfo.generic || null;
-    } else {
-      currentType = fieldInfo.type;
-      currentGeneric = null;
-    }
-  }
-
-  this.checkFnRetType(currentType, context, node);
-
-  node.inferredType = currentType;
-
-  if (currentGeneric) {
-    node.inferredGeneric = currentGeneric;
-  }
-
-  return currentType;
+    return currentType;
   }
 
   resolveNamespaceFunction(namespace, fields, node) {
@@ -718,22 +707,22 @@ if (prop) {
   }
 
   normalizeReturnType(type) {
-  if (!type) {
-    return "void";
-  }
-
-  if (typeof type === "object") {
-    type = type.type;
     if (!type) {
       return "void";
     }
-  }
 
-  if (ZEN_TYPES_MAP[type]) {
-    return ZEN_TYPES_MAP[type];
-  }
+    if (typeof type === "object") {
+      type = type.type;
+      if (!type) {
+        return "void";
+      }
+    }
 
-  return type;
+    if (ZEN_TYPES_MAP[type]) {
+      return ZEN_TYPES_MAP[type];
+    }
+
+    return type;
   }
 
   checkFnRetType(type, context, node) {
@@ -787,5 +776,84 @@ if (prop) {
     }
 
     return type;
+  }
+
+  unifyTypes(a, b, node) {
+    if (this.IRB.diffType(a, b))
+      this.IRB.emitError(
+        "TypeError",
+        `List literal elements disagree: ${a} vs ${b}`,
+        node,
+      );
+    return a.includes("?") ? b : a; // "?" = unknown element type of []
+  }
+
+  inferFull(node) {
+    // pure; returns canonical type string or null
+    switch (node?.type) {
+      case "variable":
+        return this.IRB.typeOf(this.IRB.getVar(node.name, node));
+
+      case "ARRAY": {
+        if (!node.elements?.length) return "List<?>";
+        let elem = null;
+        for (const el of node.elements) {
+          const t = this.inferFull(el);
+          if (t == null) return null;
+          elem = elem == null ? t : this.unifyTypes(elem, t, node);
+        }
+        return `List<${elem}>`;
+      }
+
+      case "ARRAY_ACCESS": {
+        const base = this.inferFull(node.array);
+        if (base == null) return null;
+        if (base.startsWith("List<")) return base.slice(5, -1);
+        const root = this.IRB.getBaseArray(node.array);
+        const rd =
+          root?.type === "variable" ? this.IRB.getVar(root.name, root) : null;
+        if (rd?.isList)
+          this.IRB.emitError(
+            "TypeError",
+            `too many indexes for list '${root.name}' (cannot index '${base}')`,
+            node,
+          );
+        return this.infer(node); // strings / fixed arrays: old behavior
+      }
+
+      case "CALL": {
+        if (node.callee?.type === "MEMBER_ACCESS") {
+          const f = node.callee.field;
+          if (f === "getList" && node.generic)
+            return this.IRB.typeOf(node.generic);
+          if (f === "pop") {
+            const o = this.inferFull(node.callee.object);
+            if (o?.startsWith("List<")) return o.slice(5, -1);
+          }
+          return this.infer(node);
+        }
+        if (
+          node.name &&
+          !STD_FUNCTIONS.includes(node.name) &&
+          !BUILTIN_MAP[node.name]
+        ) {
+          const fn = this.IRB.resolveFunction(node.name);
+          if (fn?.generic) return this.IRB.typeOf(fn.generic);
+        }
+        return this.infer(node);
+      }
+
+      case "MEMBER_ACCESS": {
+        const t = this.infer(node);
+        return t === "List" && node.inferredGeneric
+          ? this.IRB.typeOf(node.inferredGeneric)
+          : t;
+      }
+
+      case "STRUCT_LITERAL":
+        return null; // needs the expected type; pass {lenient:true}
+      default:
+        return this.infer(node);
+    }
   }
 }

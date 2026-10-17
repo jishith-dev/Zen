@@ -694,3 +694,61 @@ before zen saw them. Use `dir` and `dir -r` instead.
 
 - Fixed linter, formatter and LSP bugs
 - Various compiler, runtime, CLI, and standard library bug fixes
+
+---
+
+# v3.1.0 — Language and Standard Library Improvements
+
+## Language
+
+- Added automatic initialization of `Map` fields in structs when no initializer is provided
+- Added optional labeled function arguments using `label: value` syntax; labels are for readability and do not affect argument ordering or evaluation
+
+## Standard Library
+
+### Path
+
+- Updated `path.join()` to accept two or more path components in a single call
+
+### Output
+
+- Added variadic `print()` built-in for printing multiple values separated by a single space, followed by a newline
+- Preserved the existing `screen(value, format)` API for formatted output
+
+### Map
+
+- Added `Map.type(key)` to return the canonical type of a stored value as a string, including nested list types such as `List<List<int>>`
+
+## Compiler & Runtime
+
+- Restricted explicit type arguments to generic-capable calls; currently, `getList()` supports explicit type arguments
+- Added runtime validation of requested list depth and leaf type in `Map.getList()`
+- Added validation of declared list types against `getList()` generic arguments
+- Added validation of supported list element types in `Map.setList()` and `Map.getList()`
+- Improved nested list inference for Map values, `setList()` arguments, and function return values
+- Improved list depth and leaf-type validation during indexing
+- Added runtime bounds checking for string indexing
+- Fixed undefined behavior when iterating over a List of Maps
+
+## Diagnostics & Compiler Improvements
+
+- Improved parser diagnostics for missing closing braces at EOF
+- Improved source locations for unresolved struct field types
+- Improved type errors for void expressions used where values are expected
+- Improved built-in type handling and error messages
+- Improved return-path analysis for `switch` statements with a `default` case
+- Added typo suggestions for unknown functions, variables, and namespaces
+- Improved handling of generic type arguments in method and function calls
+
+## CLI & Runtime
+
+- Fixed program argument forwarding in `zen run`
+- Fixed propagation of nonzero exit codes from compiled programs
+
+## Fixes
+
+- Fixed Map initialization and pointer handling in struct fields
+- Fixed incorrect list element sizes and metadata for nested lists
+- Fixed generic handling and type validation in Map list operations
+- Fixed invalid LLVM generation when indexing beyond the declared list depth
+- Various compiler, parser, runtime, CLI, and standard library bug fixes

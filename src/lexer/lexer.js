@@ -59,21 +59,26 @@ export class Lexer {
   }
 
   readEscape() {
-  const c = this.currentChar;
-  switch (c) {
-    case "n": return "\n";
-    case "t": return "\t";
-    case "r": return "\r";
-    case "e": return "\x1b";
-    case "x": {
-      const hex = this.source.substr(this.pos + 1, 2);
-      if (!/^[0-9a-fA-F]{2}$/.test(hex)) return "x";
-      this.advance();
-      this.advance();
-      return String.fromCharCode(parseInt(hex, 16));
+    const c = this.currentChar;
+    switch (c) {
+      case "n":
+        return "\n";
+      case "t":
+        return "\t";
+      case "r":
+        return "\r";
+      case "e":
+        return "\x1b";
+      case "x": {
+        const hex = this.source.substr(this.pos + 1, 2);
+        if (!/^[0-9a-fA-F]{2}$/.test(hex)) return "x";
+        this.advance();
+        this.advance();
+        return String.fromCharCode(parseInt(hex, 16));
+      }
+      default:
+        return c;
     }
-    default: return c;
-  }
   }
 
   tokenize() {
@@ -243,7 +248,6 @@ export class Lexer {
         ) {
           this.angleDepth++;
         }
-        
       }
 
       // force '>' to close one generic level at a time instead of greedily
@@ -394,8 +398,8 @@ export class Lexer {
         this.advance();
 
         if (this.options.preserveComments) {
-           this.addTokenAt(TokenTypes.COMMENT, value, this.line, this.column);
-           this.tokens[this.tokens.length - 1].startLine = startLine;
+          this.addTokenAt(TokenTypes.COMMENT, value, this.line, this.column);
+          this.tokens[this.tokens.length - 1].startLine = startLine;
         }
 
         return;
@@ -421,7 +425,7 @@ export class Lexer {
     return result;
   }
 
-number() {
+  number() {
     let result = "";
     let hasDot = false;
 
@@ -469,10 +473,7 @@ number() {
       }
 
       // Anything alphabetic (or another underscore) left over is invalid
-      if (
-        this.currentChar !== null &&
-        /[a-zA-Z_]/.test(this.currentChar)
-      ) {
+      if (this.currentChar !== null && /[a-zA-Z_]/.test(this.currentChar)) {
         this.IRB.emitError(
           "SyntaxError",
           `Invalid numeric literal`,
@@ -483,7 +484,7 @@ number() {
       return {
         value: parseInt(hex, 16),
         type,
-        raw: "0x" + hex
+        raw: "0x" + hex,
       };
     }
 
@@ -583,8 +584,8 @@ number() {
       value: result,
       type,
     };
-}
-  
+  }
+
   string() {
     let result = "";
     const quoteType = this.currentChar;

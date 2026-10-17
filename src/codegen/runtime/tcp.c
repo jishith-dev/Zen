@@ -10,24 +10,24 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
-  typedef SOCKET zen_socket_t;
-  #define ZEN_INVALID_SOCKET INVALID_SOCKET
-  #define zen_close_socket closesocket
-  #define zen_socket_error() WSAGetLastError()
+#include <winsock2.h>
+#include <ws2tcpip.h>
+typedef SOCKET zen_socket_t;
+#define ZEN_INVALID_SOCKET INVALID_SOCKET
+#define zen_close_socket closesocket
+#define zen_socket_error() WSAGetLastError()
 #else
-  #include <sys/types.h>
-  #include <sys/socket.h>
-  #include <netdb.h>
-  #include <unistd.h>
-  #include <errno.h>
-  #include <signal.h>
-  #include <pthread.h>
-  typedef int zen_socket_t;
-  #define ZEN_INVALID_SOCKET (-1)
-  #define zen_close_socket close
-  #define zen_socket_error() errno
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <errno.h>
+#include <signal.h>
+#include <pthread.h>
+typedef int zen_socket_t;
+#define ZEN_INVALID_SOCKET (-1)
+#define zen_close_socket close
+#define zen_socket_error() errno
 #endif
 
 /* Must match Zen's existing List runtime layout. */
@@ -56,16 +56,14 @@ typedef struct ZenTcpServer {
 } ZenTcpServer;
 
 static void tcp_error(const char *message) {
-  fprintf(stderr, "[Zen NetworkError] %s (code=%d)\n", message,
-          zen_socket_error());
+  fprintf(stderr, "[Zen NetworkError] %s (code=%d)\n", message, zen_socket_error());
 }
 
 /* ---- Platform init: thread-safe, one-time ---- */
 
 #ifdef _WIN32
 
-static BOOL CALLBACK tcp_win_init_once(PINIT_ONCE initOnce, PVOID param,
-                                        PVOID *context) {
+static BOOL CALLBACK tcp_win_init_once(PINIT_ONCE initOnce, PVOID param, PVOID *context) {
   (void)initOnce;
   (void)param;
   (void)context;
@@ -126,8 +124,7 @@ ZenTcp *_net_connect(const char *host, int port) {
   zen_socket_t connected = ZEN_INVALID_SOCKET;
 
   for (struct addrinfo *it = results; it; it = it->ai_next) {
-    zen_socket_t s = (zen_socket_t)socket(it->ai_family, it->ai_socktype,
-                                          it->ai_protocol);
+    zen_socket_t s = (zen_socket_t)socket(it->ai_family, it->ai_socktype, it->ai_protocol);
     if (s == ZEN_INVALID_SOCKET)
       continue;
 
@@ -178,8 +175,7 @@ ZenTcpServer *_net_listen(int port) {
 
 #ifdef IPV6_V6ONLY
   int v6only = 0;
-  setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&v6only,
-             sizeof(v6only));
+  setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&v6only, sizeof(v6only));
 #endif
 
   struct addrinfo hints;
@@ -238,7 +234,7 @@ long _zen_tcp_send(ZenTcp *tcp, ZenList *data) {
 
     if (sent <= 0) {
       tcp_error("Send failed");
-      tcp->open = false;   /* peer is gone; don't let caller keep writing */
+      tcp->open = false; /* peer is gone; don't let caller keep writing */
       return total > 0 ? total : -1;
     }
 
@@ -256,14 +252,14 @@ ZenList *_zen_tcp_receive(ZenTcp *tcp, int maxBytes) {
 
   uint8_t *buffer = malloc((size_t)maxBytes);
   if (!buffer)
-    return _zen_list_new(sizeof(uint8_t));   /* consistent with every other failure path */
+    return _zen_list_new(sizeof(uint8_t)); /* consistent with every other failure path */
 
   int received = (int)recv(tcp->socket, (char *)buffer, maxBytes, 0);
 
   if (received < 0) {
     tcp_error("Receive failed");
     free(buffer);
-    tcp->open = false;   /* a receive error means this connection is done */
+    tcp->open = false; /* a receive error means this connection is done */
     return _zen_list_new(sizeof(uint8_t));
   }
 
@@ -274,7 +270,7 @@ ZenList *_zen_tcp_receive(ZenTcp *tcp, int maxBytes) {
   free(buffer);
 
   if (received == 0)
-    tcp->open = false;   /* peer performed an orderly shutdown */
+    tcp->open = false; /* peer performed an orderly shutdown */
 
   return list;
 }
@@ -298,9 +294,7 @@ void _zen_tcp_close(ZenTcp *tcp) {
   free(tcp);
 }
 
-bool _zen_tcp_isOpen(ZenTcp *tcp) {
-  return tcp != NULL && tcp->open;
-}
+bool _zen_tcp_isOpen(ZenTcp *tcp) { return tcp != NULL && tcp->open; }
 
 ZenTcp *_zen_tcp_accept(ZenTcpServer *server) {
   if (!server || !server->open)
@@ -335,6 +329,4 @@ void _zen_tcp_server_close(ZenTcpServer *server) {
   free(server);
 }
 
-bool _zen_tcp_server_isOpen(ZenTcpServer *server) {
-  return server != NULL && server->open;
-}
+bool _zen_tcp_server_isOpen(ZenTcpServer *server) { return server != NULL && server->open; }

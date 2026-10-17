@@ -1,4 +1,3 @@
-
 export class PATH {
   constructor(IRB, expr) {
     this.IRB = IRB;
@@ -46,9 +45,7 @@ export class PATH {
       return;
     }
 
-    const exprs = args.map((arg) =>
-      this.expr.handleExpression(arg),
-    );
+    const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
     if (isVariadic) {
       let invalid = false;
@@ -74,9 +71,7 @@ export class PATH {
       if (e.global?.length) this.IRB.emit(e.global.join("\n"));
     });
 
-    const argLLVMTypes = exprs.map((e) =>
-      this.IRB.getLLVMType(e.type),
-    );
+    const argLLVMTypes = exprs.map((e) => this.IRB.getLLVMType(e.type));
     const llvmRet = isVoid ? "void" : this.IRB.getLLVMType(returnType);
 
     const callArgs = isVariadic
@@ -84,13 +79,9 @@ export class PATH {
           `i32 ${args.length}`,
           ...exprs.map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`),
         ].join(", ")
-      : exprs
-          .map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`)
-          .join(", ");
+      : exprs.map((e, i) => `${argLLVMTypes[i]} ${e.ptr}`).join(", ");
 
-    const llvmParams = isVariadic
-      ? "i32, ..."
-      : argLLVMTypes.join(", ");
+    const llvmParams = isVariadic ? "i32, ..." : argLLVMTypes.join(", ");
 
     this.IRB.declareOneTime(
       funcName,

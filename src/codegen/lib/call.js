@@ -37,7 +37,7 @@ export class Call {
     thread,
     debug,
     crypto,
-    sourceName
+    sourceName,
   ) {
     this.IRB = IRB;
     this.moduleName = moduleName;
@@ -91,7 +91,7 @@ export class Call {
       const valExpr = this.expr.handleExpression(fakeNode);
 
       if (asStatement) {
-         this.IRB.emitExpr(valExpr);
+        this.IRB.emitExpr(valExpr);
       }
 
       return {
@@ -304,24 +304,11 @@ export class Call {
         this.IRB.emitExpr(val);
       }
 
-      if (param?.type?.type === "List" && val.isList && val.generic) {
-  const pd = this.IRB.getListDepth(param.type);
-  const ad = this.IRB.getListDepth(val.generic) + (val.fromParam ? 1 : 0);
-  if (pd !== ad) {
-    this.IRB.emitError(
-      "TypeError",
-      `argument ${i + 1} of '${node.name}' expected List depth ${pd} but got depth ${ad}`,
-      node,
-    );
-  }
-  const pl = this.IRB.getDeepestGeneric(param.type);
-  if (pl !== val.type) {
-    this.IRB.emitError(
-      "TypeError",
-      `argument ${i + 1} of '${node.name}' expected List<${pl}> but got List<${val.type}>`,
-      node,
-    );
-  }
+      if (param?.type?.type === "List") {
+        this.IRB.checkType(param.type, arg, {
+          node,
+          what: `argument ${i + 1} of '${node.name}'`,
+        });
       }
 
       args.push(val);
@@ -564,24 +551,26 @@ export class Call {
           }
         } else {
           if (fn.isThread) {
-    this.IRB.declareOneTime(
-      "_zen_thread",
-      "declare void @_zen_thread(ptr, ptr)",
-    );
+            this.IRB.declareOneTime(
+              "_zen_thread",
+              "declare void @_zen_thread(ptr, ptr)",
+            );
 
-     const { ctx, trampolineName } = this.IRB.createThreadArgContext(
-  mangledName,
-  fn,
-  args,
-  argStr,
-  local
-);       
+            const { ctx, trampolineName } = this.IRB.createThreadArgContext(
+              mangledName,
+              fn,
+              args,
+              argStr,
+              local,
+            );
 
-    local.push(`call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`);
-  } else {
-    const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
+            local.push(
+              `call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`,
+            );
+          } else {
+            const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
-    local.push(`call void ${target}(${argStr.join(", ")})`);
+            local.push(`call void ${target}(${argStr.join(", ")})`);
           }
 
           for (const a of args) {
@@ -735,14 +724,16 @@ export class Call {
         );
 
         const { ctx, trampolineName } = this.IRB.createThreadArgContext(
-  mangledName,
-  fn,
-  args,
-  argStr,
-  local
-);
+          mangledName,
+          fn,
+          args,
+          argStr,
+          local,
+        );
 
-        local.push(`call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`);
+        local.push(
+          `call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`,
+        );
       } else {
         const target = isFunctionParam ? fn.ptr : `@${mangledName}`;
 
@@ -910,7 +901,6 @@ export class Call {
       // for future modification and semantic understanding of compiler internal we keep this now.
 
       case name: {
-        
         const os = OS_MAP[name];
         const file = FILE_MAP[name];
         const time = TIME_MAP[name];
@@ -973,7 +963,7 @@ export class Call {
             HTTP[2],
             HTTP[3],
             name,
-            this
+            this,
           );
         } else if (SYS) {
           return this.sys.zenNativeSYSCall(
@@ -996,7 +986,6 @@ export class Call {
             name,
           );
         } else if (PATH) {
-          
           return this.path.zenPATH(
             node,
             globalScope,

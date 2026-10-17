@@ -46,10 +46,16 @@ class Client {
       const end = this.buffer.indexOf("\r\n\r\n");
       if (end === -1) return;
 
-      const len = Number(/Content-Length:\s*(\d+)/i.exec(this.buffer.slice(0, end).toString())[1]);
+      const len = Number(
+        /Content-Length:\s*(\d+)/i.exec(
+          this.buffer.slice(0, end).toString(),
+        )[1],
+      );
       if (this.buffer.length < end + 4 + len) return;
 
-      const msg = JSON.parse(this.buffer.slice(end + 4, end + 4 + len).toString());
+      const msg = JSON.parse(
+        this.buffer.slice(end + 4, end + 4 + len).toString(),
+      );
       this.buffer = this.buffer.slice(end + 4 + len);
 
       if (msg.id !== undefined && this.pending.has(msg.id)) {
@@ -65,15 +71,22 @@ class Client {
 
   write(obj) {
     const json = JSON.stringify(obj);
-    this.proc.stdin.write(`Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`);
+    this.proc.stdin.write(
+      `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`,
+    );
   }
 
   request(method, params) {
     const id = this.nextId++;
 
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`timeout: ${method}\n${this.stderr}`)), 8000);
-      this.pending.set(id, { resolve: (m) => (clearTimeout(timer), resolve(m)) });
+      const timer = setTimeout(
+        () => reject(new Error(`timeout: ${method}\n${this.stderr}`)),
+        8000,
+      );
+      this.pending.set(id, {
+        resolve: (m) => (clearTimeout(timer), resolve(m)),
+      });
       this.write({ jsonrpc: "2.0", id, method, params });
     });
   }
@@ -96,7 +109,9 @@ class Client {
     const text = fs.readFileSync(file, "utf8");
 
     const done = new Promise((resolve) => this.waiters.set(uri, resolve));
-    this.notify("textDocument/didOpen", { textDocument: { uri, languageId: "zen", version: 1, text } });
+    this.notify("textDocument/didOpen", {
+      textDocument: { uri, languageId: "zen", version: 1, text },
+    });
 
     return { uri, text, diagnostics: done };
   }
@@ -139,25 +154,33 @@ function show(feature, result) {
     case "rename":
       if (!r) return console.log("(nothing)");
       for (const [uri, edits] of Object.entries(r.changes)) {
-        edits.forEach((e) => console.log(`${short(uri)} ${rng(e.range)} -> ${e.newText}`));
+        edits.forEach((e) =>
+          console.log(`${short(uri)} ${rng(e.range)} -> ${e.newText}`),
+        );
       }
       break;
 
     case "completion":
-      (r?.items ?? []).slice(0, 40).forEach((i) => console.log(`${i.label.padEnd(18)} ${i.detail ?? ""}`));
+      (r?.items ?? [])
+        .slice(0, 40)
+        .forEach((i) => console.log(`${i.label.padEnd(18)} ${i.detail ?? ""}`));
       console.log(`(${r?.items?.length ?? 0} items)`);
       break;
 
     case "signature":
       if (!r) return console.log("(nothing)");
       console.log(r.signatures[0].label);
-      console.log(`active parameter: ${r.activeParameter} (${r.signatures[0].parameters[r.activeParameter]?.label})`);
+      console.log(
+        `active parameter: ${r.activeParameter} (${r.signatures[0].parameters[r.activeParameter]?.label})`,
+      );
       break;
 
     case "symbols": {
       const walk = (list, indent = "") =>
         list.forEach((s) => {
-          console.log(`${indent}${s.name} [kind ${s.kind}] ${rng(s.selectionRange)}${s.detail ? `  ${s.detail}` : ""}`);
+          console.log(
+            `${indent}${s.name} [kind ${s.kind}] ${rng(s.selectionRange)}${s.detail ? `  ${s.detail}` : ""}`,
+          );
           walk(s.children ?? [], indent + "  ");
         });
       walk(r ?? []);
@@ -165,12 +188,18 @@ function show(feature, result) {
     }
 
     case "workspace":
-      (r ?? []).forEach((s) => console.log(`${s.name} [kind ${s.kind}] ${short(s.location.uri)} ${rng(s.location.range)}`));
+      (r ?? []).forEach((s) =>
+        console.log(
+          `${s.name} [kind ${s.kind}] ${short(s.location.uri)} ${rng(s.location.range)}`,
+        ),
+      );
       if (!r?.length) console.log("(nothing)");
       break;
 
     case "folding":
-      (r ?? []).forEach((f) => console.log(`${f.startLine + 1}-${f.endLine + 1} ${f.kind}`));
+      (r ?? []).forEach((f) =>
+        console.log(`${f.startLine + 1}-${f.endLine + 1} ${f.kind}`),
+      );
       break;
   }
 }
@@ -201,13 +230,21 @@ async function query(feature, file, line, col, arg) {
 
   if (feature === "diagnostics") {
     if (!diags.length) console.log("(no diagnostics)");
-    diags.forEach((d) => console.log(`${d.severity === 1 ? "error" : "warning"} ${rng(d.range)} ${d.message}`));
+    diags.forEach((d) =>
+      console.log(
+        `${d.severity === 1 ? "error" : "warning"} ${rng(d.range)} ${d.message}`,
+      ),
+    );
   } else if (feature === "workspace") {
-    show(feature, await client.request("workspace/symbol", { query: arg ?? "" }));
+    show(
+      feature,
+      await client.request("workspace/symbol", { query: arg ?? "" }),
+    );
   } else if (METHODS[feature]) {
     const params = { textDocument: { uri: doc.uri } };
 
-    if (line !== undefined) params.position = { line: Number(line) - 1, character: Number(col) - 1 };
+    if (line !== undefined)
+      params.position = { line: Number(line) - 1, character: Number(col) - 1 };
     if (feature === "references") params.context = { includeDeclaration: true };
     if (feature === "rename") params.newName = arg;
 
@@ -278,11 +315,15 @@ async function selfTest() {
   };
 
   const ask = (method, position, extra = {}) =>
-    client.request(method, { textDocument: { uri: main.uri }, position, ...extra }).then((m) => m.error ? { error: m.error } : m.result);
+    client
+      .request(method, { textDocument: { uri: main.uri }, position, ...extra })
+      .then((m) => (m.error ? { error: m.error } : m.result));
 
   const check = (name, ok, detail = "") => {
     ok ? pass++ : fail++;
-    console.log(`${ok ? "PASS" : "FAIL"}  ${name}${ok ? "" : `  -> ${detail}`}`);
+    console.log(
+      `${ok ? "PASS" : "FAIL"}  ${name}${ok ? "" : `  -> ${detail}`}`,
+    );
   };
 
   const needsSymbols = errors.length === 0;
@@ -302,36 +343,61 @@ async function selfTest() {
     }
   };
 
-  console.log(`diagnostics on sample: ${diags.length} (${errors.length} errors)`);
+  console.log(
+    `diagnostics on sample: ${diags.length} (${errors.length} errors)`,
+  );
   errors.forEach((d) => console.log(`  ${rng(d.range)} ${d.message}`));
   console.log("");
 
   // builtins: no parser needed
   await test("hover: global fn", false, async () => {
     const r = await ask("textDocument/hover", at("screen", 1, 2));
-    return [r?.contents.value.includes("screen(any value, string format?) -> void"), r?.contents.value];
+    return [
+      r?.contents.value.includes("screen(any value, string format?) -> void"),
+      r?.contents.value,
+    ];
   });
 
   await test("hover: namespace fn", false, async () => {
     const r = await ask("textDocument/hover", at("readFile", 1, 2));
-    return [r?.contents.value.includes("fs.readFile(string path) -> string"), r?.contents.value];
+    return [
+      r?.contents.value.includes("fs.readFile(string path) -> string"),
+      r?.contents.value,
+    ];
   });
 
   await test("completion: namespace members", false, async () => {
     const r = await ask("textDocument/completion", at("fs.readFile", 1, 3));
     const labels = r.items.map((i) => i.label);
-    return [labels.includes("readFile") && labels.includes("writeFile") && !labels.includes("screen"), labels.slice(0, 5).join(",")];
+    return [
+      labels.includes("readFile") &&
+        labels.includes("writeFile") &&
+        !labels.includes("screen"),
+      labels.slice(0, 5).join(","),
+    ];
   });
 
   await test("completion: globals", false, async () => {
     const r = await ask("textDocument/completion", at("screen(", 1, 0));
     const labels = r.items.map((i) => i.label);
-    return [["screen", "fs", "Map", "PI", "int", "loop"].every((l) => labels.includes(l)), labels.length];
+    return [
+      ["screen", "fs", "Map", "PI", "int", "loop"].every((l) =>
+        labels.includes(l),
+      ),
+      labels.length,
+    ];
   });
 
   await test("signature help: active parameter", false, async () => {
-    const r = await ask("textDocument/signatureHelp", at('fs.writeFile("a", ', 1, 17));
-    return [r?.activeParameter === 1 && r.signatures[0].label.startsWith("fs.writeFile("), JSON.stringify(r)];
+    const r = await ask(
+      "textDocument/signatureHelp",
+      at('fs.writeFile("a", ', 1, 17),
+    );
+    return [
+      r?.activeParameter === 1 &&
+        r.signatures[0].label.startsWith("fs.writeFile("),
+      JSON.stringify(r),
+    ];
   });
 
   await test("no completion inside strings", false, async () => {
@@ -352,64 +418,102 @@ async function selfTest() {
 
   await test("hover: method on struct instance", true, async () => {
     const r = await ask("textDocument/hover", at("g.greet", 1, 3));
-    return [r?.contents.value.includes("Greeter.greet(string who)"), r?.contents.value];
+    return [
+      r?.contents.value.includes("Greeter.greet(string who)"),
+      r?.contents.value,
+    ];
   });
 
   await test("hover: builtin struct method", true, async () => {
     const r = await ask("textDocument/hover", at("getInt", 1, 2));
-    return [r?.contents.value.includes("Map.getInt(string key) -> int"), r?.contents.value];
+    return [
+      r?.contents.value.includes("Map.getInt(string key) -> int"),
+      r?.contents.value,
+    ];
   });
 
   await test("completion: struct instance members", true, async () => {
     const r = await ask("textDocument/completion", at("g.greet", 1, 2));
     const labels = r.items.map((i) => i.label);
-    return [labels.includes("greet") && labels.includes("name"), labels.join(",")];
+    return [
+      labels.includes("greet") && labels.includes("name"),
+      labels.join(","),
+    ];
   });
 
   await test("completion: builtin struct members", true, async () => {
     const r = await ask("textDocument/completion", at("m.getInt", 1, 2));
     const labels = r.items.map((i) => i.label);
-    return [labels.includes("getInt") && labels.includes("setString") && labels.includes("keys"), labels.length];
+    return [
+      labels.includes("getInt") &&
+        labels.includes("setString") &&
+        labels.includes("keys"),
+      labels.length,
+    ];
   });
 
   await test("signature help: user function", true, async () => {
     const r = await ask("textDocument/signatureHelp", at("add(1, 2)", 1, 6));
-    return [r?.activeParameter === 1 && r.signatures[0].label.startsWith("add(int a, int b)"), JSON.stringify(r)];
+    return [
+      r?.activeParameter === 1 &&
+        r.signatures[0].label.startsWith("add(int a, int b)"),
+      JSON.stringify(r),
+    ];
   });
 
   await test("definition: local function", true, async () => {
     const r = await ask("textDocument/definition", at("add(1", 1, 1));
-    return [r && r.uri === main.uri && r.range.start.line === 2, JSON.stringify(r)];
+    return [
+      r && r.uri === main.uri && r.range.start.line === 2,
+      JSON.stringify(r),
+    ];
   });
 
   await test("definition: imported struct (other file)", true, async () => {
     const r = await ask("textDocument/definition", at("Greeter g", 1, 2));
-    return [r && short(r.uri) === "lib.zen" && r.range.start.line === 0, JSON.stringify(r)];
+    return [
+      r && short(r.uri) === "lib.zen" && r.range.start.line === 0,
+      JSON.stringify(r),
+    ];
   });
 
   await test("definition: method in imported struct", true, async () => {
     const r = await ask("textDocument/definition", at("g.greet", 1, 3));
-    return [r && short(r.uri) === "lib.zen" && r.range.start.line === 2, JSON.stringify(r)];
+    return [
+      r && short(r.uri) === "lib.zen" && r.range.start.line === 2,
+      JSON.stringify(r),
+    ];
   });
 
   await test("references: function", true, async () => {
-    const r = await ask("textDocument/references", at("add(1", 1, 1), { context: { includeDeclaration: true } });
+    const r = await ask("textDocument/references", at("add(1", 1, 1), {
+      context: { includeDeclaration: true },
+    });
     return [r.length === 2, r.length];
   });
 
   await test("rename: local variable", true, async () => {
-    const r = await ask("textDocument/rename", at("sum", 1, 1), { newName: "total" });
+    const r = await ask("textDocument/rename", at("sum", 1, 1), {
+      newName: "total",
+    });
     const edits = r?.changes?.[main.uri] ?? [];
-    return [edits.length === 2 && edits.every((e) => e.newText === "total"), JSON.stringify(r)];
+    return [
+      edits.length === 2 && edits.every((e) => e.newText === "total"),
+      JSON.stringify(r),
+    ];
   });
 
   await test("rename: rejects keywords", true, async () => {
-    const r = await ask("textDocument/rename", at("sum", 1, 1), { newName: "loop" });
+    const r = await ask("textDocument/rename", at("sum", 1, 1), {
+      newName: "loop",
+    });
     return [!!r?.error, JSON.stringify(r)];
   });
 
   await test("rename: refuses imported symbol", true, async () => {
-    const r = await ask("textDocument/rename", at("Greeter g", 1, 2), { newName: "Hello" });
+    const r = await ask("textDocument/rename", at("Greeter g", 1, 2), {
+      newName: "Hello",
+    });
     return [!!r?.error, JSON.stringify(r)];
   });
 
@@ -420,8 +524,13 @@ async function selfTest() {
   });
 
   await test("workspace symbols (other file)", true, async () => {
-    const r = await client.request("workspace/symbol", { query: "greet" }).then((m) => m.result);
-    return [r.some((s) => s.name === "Greeter" || s.name === "greet"), JSON.stringify(r.map((s) => s.name))];
+    const r = await client
+      .request("workspace/symbol", { query: "greet" })
+      .then((m) => m.result);
+    return [
+      r.some((s) => s.name === "Greeter" || s.name === "greet"),
+      JSON.stringify(r.map((s) => s.name)),
+    ];
   });
 
   console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped`);
@@ -437,12 +546,18 @@ if (!feature) await selfTest();
 else {
   const noPos = ["diagnostics", "symbols", "workspace", "folding"];
 
-  if (!file || (!noPos.includes(feature) && (line === undefined || col === undefined))) {
-    console.log("usage: node tooling/tests/lsp_test.js <feature> <file.zen> <line> <col> [arg]");
+  if (
+    !file ||
+    (!noPos.includes(feature) && (line === undefined || col === undefined))
+  ) {
+    console.log(
+      "usage: node tooling/tests/lsp_test.js <feature> <file.zen> <line> <col> [arg]",
+    );
     process.exit(1);
   }
 
   // workspace takes its query as the 3rd positional arg
-  if (feature === "workspace") await query(feature, file, undefined, undefined, line);
+  if (feature === "workspace")
+    await query(feature, file, undefined, undefined, line);
   else await query(feature, file, line, col, arg);
 }

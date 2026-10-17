@@ -1,24 +1,20 @@
-import {
-  BUILTIN_MAP,
-  KEYWORDS,
-  LLVM_TYPES_MAP
-} from "../src/config/config.js";
+import { BUILTIN_MAP, KEYWORDS, LLVM_TYPES_MAP } from "../src/config/config.js";
 
 const RESET = "\x1b[0m";
 
 // Zen / VS Code-inspired palette
-const KEYWORD = "\x1b[38;5;204m";     // Pink
-const BUILTIN = "\x1b[38;5;117m";     // Light blue
-const TYPE = "\x1b[38;5;81m";         // Cyan
-const STRING = "\x1b[38;5;114m";      // Soft green
-const NUMBER = "\x1b[38;5;215m";      // Orange
+const KEYWORD = "\x1b[38;5;204m"; // Pink
+const BUILTIN = "\x1b[38;5;117m"; // Light blue
+const TYPE = "\x1b[38;5;81m"; // Cyan
+const STRING = "\x1b[38;5;114m"; // Soft green
+const NUMBER = "\x1b[38;5;215m"; // Orange
 const INTERPOLATION = "\x1b[38;5;214m";
-const COMMENT = "\x1b[38;5;245m";     // Gray
-const IDENTIFIER = "\x1b[38;5;252m";  // White
+const COMMENT = "\x1b[38;5;245m"; // Gray
+const IDENTIFIER = "\x1b[38;5;252m"; // White
 
-const PAREN = "\x1b[38;5;208m";    // orange
-const BRACKET = "\x1b[38;5;75m";   // blue
-const BRACE = "\x1b[38;5;141m";    // purple
+const PAREN = "\x1b[38;5;208m"; // orange
+const BRACKET = "\x1b[38;5;75m"; // blue
+const BRACE = "\x1b[38;5;141m"; // purple
 
 const BUILTINS = new Set(Object.keys(BUILTIN_MAP));
 const TYPES = new Set(Object.keys(LLVM_TYPES_MAP));
@@ -109,11 +105,7 @@ export function highlightCode(source) {
         }
 
         // ${...}
-        if (
-          quote === "`" &&
-          current === "$" &&
-          source[i + 1] === "{"
-        ) {
+        if (quote === "`" && current === "$" && source[i + 1] === "{") {
           output += STRING + value + RESET;
 
           output += INTERPOLATION + "${" + RESET;
@@ -188,10 +180,7 @@ export function highlightCode(source) {
       let number = ch;
       i++;
 
-      while (
-        i < source.length &&
-        /[0-9]/.test(source[i])
-      ) {
+      while (i < source.length && /[0-9]/.test(source[i])) {
         number += source[i];
         i++;
       }
@@ -205,10 +194,7 @@ export function highlightCode(source) {
       let word = ch;
       i++;
 
-      while (
-        i < source.length &&
-        isIdentifierPart(source[i])
-      ) {
+      while (i < source.length && isIdentifierPart(source[i])) {
         word += source[i];
         i++;
       }

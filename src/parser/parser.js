@@ -3,6 +3,7 @@ import {
   BUILTIN_FUNCTIONS,
   TYPES,
   BUILTIN_STRUCTS,
+  ALLOWED_GENERIC_SYNTAX_FN,
 } from "../config/config.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -64,16 +65,16 @@ export class Parser {
   }
 
   atEnd() {
-  return !this.current() || this.match("EOF");
-}
+    return !this.current() || this.match("EOF");
+  }
 
-unclosedBlock(open, what = "block") {
-  this.IRB.emitError(
-    "SyntaxError",
-    `Missing closing '}' for ${what} opened at line ${open.line}:${open.column}`,
-    { line: open.line, column: open.column },
-  );
-}
+  unclosedBlock(open, what = "block") {
+    this.IRB.emitError(
+      "SyntaxError",
+      `Missing closing '}' for ${what} opened at line ${open.line}:${open.column}`,
+      { line: open.line, column: open.column },
+    );
+  }
 
   matchKeyword(value) {
     return (
@@ -129,15 +130,15 @@ unclosedBlock(open, what = "block") {
   // STATEMENTS
 
   parseStatement() {
-  const start = this.current();
-  const stmt = this.parseStatementInner();
+    const start = this.current();
+    const stmt = this.parseStatementInner();
 
-  if (stmt && start) {
-    stmt.line = start.line;
-    stmt.column = start.column;
-  }
+    if (stmt && start) {
+      stmt.line = start.line;
+      stmt.column = start.column;
+    }
 
-  return stmt;
+    return stmt;
   }
 
   parseStatementInner() {
@@ -222,10 +223,9 @@ unclosedBlock(open, what = "block") {
       this.matchKeyword("fn") ||
       this.matchKeyword("async") ||
       this.matchKeyword("thread") ||
-      this.matchKeyword("extern") || 
+      this.matchKeyword("extern") ||
       this.matchKeyword("private")
     ) {
-      
       let isAsync = false; // default mode
       let isThread = false;
       const insideMethod = false;
@@ -243,7 +243,13 @@ unclosedBlock(open, what = "block") {
       }
 
       return this.node(
-        this.parseFunction(insideMethod, isAsync, isThread, isExtern, isPrivate)
+        this.parseFunction(
+          insideMethod,
+          isAsync,
+          isThread,
+          isExtern,
+          isPrivate,
+        ),
       );
     }
 
@@ -358,7 +364,7 @@ unclosedBlock(open, what = "block") {
       type: ParserTypes.COMMENT,
       value: token.value,
       startLine: token.startLine,
-   };
+    };
   }
 
   parseStructLiteral() {
@@ -421,7 +427,7 @@ unclosedBlock(open, what = "block") {
     }
 
     if (this.atEnd()) {
-    this.unclosedBlock(open, "literal");
+      this.unclosedBlock(open, "literal");
     }
     this.expect("BLOCK_END");
 
@@ -463,11 +469,11 @@ unclosedBlock(open, what = "block") {
         const statements = [];
 
         while (
-  !this.matchKeyword("case") &&
-  !this.matchKeyword("default") &&
-  !this.match("BLOCK_END") &&
-  !this.atEnd()
-) {
+          !this.matchKeyword("case") &&
+          !this.matchKeyword("default") &&
+          !this.match("BLOCK_END") &&
+          !this.atEnd()
+        ) {
           statements.push(this.parseStatement());
 
           this.skipNewlines();
@@ -491,7 +497,7 @@ unclosedBlock(open, what = "block") {
 
         const statements = [];
 
-        while (!this.match("BLOCK_END") && !this.atEnd()) {   
+        while (!this.match("BLOCK_END") && !this.atEnd()) {
           statements.push(this.parseStatement());
 
           this.skipNewlines();
@@ -512,7 +518,7 @@ unclosedBlock(open, what = "block") {
     }
 
     if (this.atEnd()) {
-  this.unclosedBlock(open, "switch");
+      this.unclosedBlock(open, "switch");
     }
     this.expect("BLOCK_END");
 
@@ -529,7 +535,6 @@ unclosedBlock(open, what = "block") {
 
     this.skipNewlines();
     const name = this.expect("IDENTIFIER").value;
-    
 
     if (BUILTIN_STRUCTS.includes(name)) {
       this.IRB.emitError(
@@ -546,15 +551,15 @@ unclosedBlock(open, what = "block") {
     const methods = [];
     const members = [];
 
-    while (!this.match("BLOCK_END") && !this.atEnd()) {   
+    while (!this.match("BLOCK_END") && !this.atEnd()) {
       if (this.match("NEWLINE")) {
         this.advance();
         continue;
       }
 
       if (this.options.preserveComments && this.match("COMMENT")) {
-  members.push({ kind: "comment", node: this.parseComment() });
-  continue;
+        members.push({ kind: "comment", node: this.parseComment() });
+        continue;
       }
 
       let isAsyncMethod = false;
@@ -571,8 +576,7 @@ unclosedBlock(open, what = "block") {
       } else if (this.matchKeyword("private")) {
         isPrivate = true;
         this.advance();
-      }
-      else if (this.matchKeyword("fn")) {
+      } else if (this.matchKeyword("fn")) {
         this.IRB.emitError(
           "SyntaxError",
           "method should be declared without 'fn' keyword",
@@ -584,7 +588,13 @@ unclosedBlock(open, what = "block") {
       if (this.match("IDENTIFIER") && this.peek("LEFT_PARENTHESIS")) {
         const nameToken = this.advance();
 
-        const method = this.parseFunction(true, isAsyncMethod, isThreadfn, isExtern, isPrivate);
+        const method = this.parseFunction(
+          true,
+          isAsyncMethod,
+          isThreadfn,
+          isExtern,
+          isPrivate,
+        );
 
         method.name = nameToken.value;
         method.isMethod = true;
@@ -595,78 +605,80 @@ unclosedBlock(open, what = "block") {
       }
 
       // FIELD
-const typeNode = this.parseType();
-const nameToken = this.expect("IDENTIFIER");
+      const typeNode = this.parseType();
+      const nameToken = this.expect("IDENTIFIER");
 
-const dimensions = [];
+      const dimensions = [];
 
-while (this.match("LBRACKET")) {
-  this.advance();
+      while (this.match("LBRACKET")) {
+        this.advance();
 
-  const dim = this.parseExpression();
+        const dim = this.parseExpression();
 
-  if (
-    dim.type !== ParserTypes.INT &&
-    dim.type !== ParserTypes.BINARY_EXPRESSION &&
-    dim.type !== "variable"
-  ) {
-    this.IRB.emitError(
-      "TypeError",
-      "array dimension must be int or constant expression",
-      this.lineAndColumn(),
-    );
-  }
+        if (
+          dim.type !== ParserTypes.INT &&
+          dim.type !== ParserTypes.BINARY_EXPRESSION &&
+          dim.type !== "variable"
+        ) {
+          this.IRB.emitError(
+            "TypeError",
+            "array dimension must be int or constant expression",
+            this.lineAndColumn(),
+          );
+        }
 
-  dimensions.push(dim);
+        dimensions.push(dim);
 
-  this.expect("RBRACKET");
-}
-
-let value = null;
-
-if (this.match("ASSIGNMENT")) {
-  this.advance();
-  value = this.parseExpression();
-}
-
-      // auto init for Map.
-      if (value === null && typeNode.type === "Map" && dimensions.length === 0) {
-  value = this.node({
-    type: ParserTypes.STRUCT_LITERAL,
-    properties: [],
-  });
+        this.expect("RBRACKET");
       }
 
-const field = this.node({
-  name: nameToken.value,
-  ...typeNode,
-  isPrivate,
-  dimensions,
-  isArray: dimensions.length > 0,
-  value,
-});
+      let value = null;
 
-fields.push(field);
-members.push({ kind: "field", node: field });
+      if (this.match("ASSIGNMENT")) {
+        this.advance();
+        value = this.parseExpression();
+      }
 
-if (this.match("NEWLINE")) this.advance();
-if (this.match("COMMA")) this.advance();
+      // auto init for Map.
+      if (
+        value === null &&
+        typeNode.type === "Map" &&
+        dimensions.length === 0
+      ) {
+        value = this.node({
+          type: ParserTypes.STRUCT_LITERAL,
+          properties: [],
+        });
+      }
 
-      
+      const field = this.node({
+        name: nameToken.value,
+        ...typeNode,
+        isPrivate,
+        dimensions,
+        isArray: dimensions.length > 0,
+        value,
+      });
+
+      fields.push(field);
+      members.push({ kind: "field", node: field });
+
+      if (this.match("NEWLINE")) this.advance();
+      if (this.match("COMMA")) this.advance();
     }
     if (this.atEnd()) {
-  this.unclosedBlock(open, "struct");
+      this.unclosedBlock(open, "struct");
     }
 
     this.expect("BLOCK_END");
 
     return this.node({
-  type: ParserTypes.STRUCT,
-  name,
-  fields,
-  methods,
-  members,
-});
+      type: ParserTypes.STRUCT,
+      name,
+      fields,
+      methods,
+      members,
+    });
   }
 
   parseEnum() {
@@ -678,7 +690,7 @@ if (this.match("COMMA")) this.advance();
 
     const members = [];
 
-    while (!this.match("BLOCK_END") && !this.atEnd()) {   
+    while (!this.match("BLOCK_END") && !this.atEnd()) {
       if (this.match("NEWLINE")) {
         this.advance();
         continue;
@@ -821,45 +833,45 @@ if (this.match("COMMA")) this.advance();
   }
 
   parseImport() {
-  this.expectKeyword("import");
-  this.expect("LEFT_PARENTHESIS");
+    this.expectKeyword("import");
+    this.expect("LEFT_PARENTHESIS");
 
-  const names = [];
-  const aliases = new Map();
+    const names = [];
+    const aliases = new Map();
 
-  while (!this.match("RIGHT_PARENTHESIS")) {
-    this.skipNewlines();
+    while (!this.match("RIGHT_PARENTHESIS")) {
+      this.skipNewlines();
 
-    const originalName = this.expect("IDENTIFIER").value;
-    names.push(originalName);
+      const originalName = this.expect("IDENTIFIER").value;
+      names.push(originalName);
 
-    this.skipNewlines();
+      this.skipNewlines();
 
-    if (this.matchKeyword("as")) {
-      this.advance();
+      if (this.matchKeyword("as")) {
+        this.advance();
 
-      const localName = this.expect("IDENTIFIER").value;
-      aliases.set(originalName, localName);
+        const localName = this.expect("IDENTIFIER").value;
+        aliases.set(originalName, localName);
+      }
+
+      this.skipNewlines();
+
+      if (this.match("COMMA")) {
+        this.advance();
+      }
     }
 
-    this.skipNewlines();
+    this.expect("RIGHT_PARENTHESIS");
+    this.expectKeyword("from");
 
-    if (this.match("COMMA")) {
-      this.advance();
-    }
-  }
+    const source = this.expect("string").value;
 
-  this.expect("RIGHT_PARENTHESIS");
-  this.expectKeyword("from");
-
-  const source = this.expect("string").value;
-
-  return this.node({
-    type: ParserTypes.IMPORT,
-    names,
-    aliases: Object.fromEntries(aliases),
-    source,
-  });
+    return this.node({
+      type: ParserTypes.IMPORT,
+      names,
+      aliases: Object.fromEntries(aliases),
+      source,
+    });
   }
 
   parseExport() {
@@ -1075,7 +1087,7 @@ if (this.match("COMMA")) this.advance();
     isAsyncFn = false,
     isThread = false,
     isExtern = false,
-    isPrivate = false
+    isPrivate = false,
   ) {
     if (!isInsideMethod) {
       if (this.matchKeyword("async")) {
@@ -1086,7 +1098,7 @@ if (this.match("COMMA")) this.advance();
         this.advance();
       } else if (this.matchKeyword("private")) {
         this.advance();
-      } 
+      }
 
       this.expectKeyword("fn");
     }
@@ -1283,30 +1295,30 @@ if (this.match("COMMA")) this.advance();
     }
 
     // loop (init, condition, update)
-    
+
     const init = this.parseVariableDeclaration();
 
-   this.expect("COMMA");
-   
-  const condition = this.parseExpression();
+    this.expect("COMMA");
 
-  this.expect("COMMA");
+    const condition = this.parseExpression();
 
-  const update = this.parseExpression();
+    this.expect("COMMA");
 
-  this.expect("RIGHT_PARENTHESIS");
+    const update = this.parseExpression();
 
-  const body = this.match("BLOCK_START")
-    ? this.parseBlock()
-    : this.parseStatement();
+    this.expect("RIGHT_PARENTHESIS");
 
-  return this.node({
-    type: ParserTypes.LOOP,
-    init: this.node(init),
-    condition,
-    update,
-    body,
-  });
+    const body = this.match("BLOCK_START")
+      ? this.parseBlock()
+      : this.parseStatement();
+
+    return this.node({
+      type: ParserTypes.LOOP,
+      init: this.node(init),
+      condition,
+      update,
+      body,
+    });
   }
 
   parseConditional() {
@@ -1368,34 +1380,34 @@ if (this.match("COMMA")) this.advance();
   }
 
   parseBlock() {
-  const open = this.expect("BLOCK_START");
+    const open = this.expect("BLOCK_START");
 
-  const body = [];
+    const body = [];
 
-  while (!this.match("BLOCK_END") && !this.atEnd()) {
-    if (this.match("NEWLINE")) {
-      this.advance();
-      continue;
+    while (!this.match("BLOCK_END") && !this.atEnd()) {
+      if (this.match("NEWLINE")) {
+        this.advance();
+        continue;
+      }
+
+      const stmt = this.parseStatement();
+      if (stmt) body.push(stmt);
+
+      if (this.match("NEWLINE")) {
+        this.advance();
+      }
     }
 
-    const stmt = this.parseStatement();
-    if (stmt) body.push(stmt);
-
-    if (this.match("NEWLINE")) {
-      this.advance();
+    if (this.atEnd()) {
+      this.unclosedBlock(open);
     }
-  }
 
-  if (this.atEnd()) {
-    this.unclosedBlock(open);
-  }
+    this.expect("BLOCK_END");
 
-  this.expect("BLOCK_END");
-
-  return this.node({
-    type: ParserTypes.BLOCK,
-    body,
-  });
+    return this.node({
+      type: ParserTypes.BLOCK,
+      body,
+    });
   }
 
   parseVariableDeclaration() {
@@ -1626,7 +1638,7 @@ if (this.match("COMMA")) this.advance();
     return condition;
   }
 
-parseLogical() {
+  parseLogical() {
     this.skipNewlines();
     let expr = this.node(this.parseLogicalAnd());
 
@@ -1666,7 +1678,7 @@ parseLogical() {
     }
 
     return expr;
-  }  
+  }
 
   // COMPARISON
 
@@ -1923,6 +1935,14 @@ parseLogical() {
       }
 
       if (this.isGenericStart(this.pos)) {
+        const callee = expr.field ?? expr.name;
+        if (!ALLOWED_GENERIC_SYNTAX_FN.has(callee)) {
+          this.IRB.emitError(
+            "TypeError",
+            `${callee}() does not take type arguments`,
+            this.lineAndColumn(),
+          );
+        }
         this.advance(); // <
         expr.generic = this.parseListGeneric();
         this.advance(); // >
@@ -2039,7 +2059,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.INT,
         value: token.value,
-        raw: token.raw
+        raw: token.raw,
       });
     }
 
@@ -2076,7 +2096,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.BYTE,
         value: token.value,
-        raw: token.raw
+        raw: token.raw,
       });
     }
 
@@ -2086,7 +2106,7 @@ parseLogical() {
       return this.node({
         type: ParserTypes.LONG,
         value: token.value,
-        raw: token.raw
+        raw: token.raw,
       });
     }
 
@@ -2209,6 +2229,13 @@ parseLogical() {
     let generic = null;
 
     if (this.current().value === "<") {
+      if (!ALLOWED_GENERIC_SYNTAX_FN.has(name)) {
+        this.IRB.emitError(
+          "TypeError",
+          `${name}() does not take type arguments`,
+          this.lineAndColumn(),
+        );
+      }
       this.advance();
 
       generic = this.parseListGeneric();
@@ -2231,39 +2258,35 @@ parseLogical() {
     while (!this.match("RIGHT_PARENTHESIS")) {
       this.skipNewlines();
       const label = this.parseArgLabel();
-      
+
       // sizeOf(int) support bare type in argument
-    
+
       if (
-  name === "sizeOf" &&
-  (
-    this.current().type === "TYPE" ||
-    this.current().value === "List"
-  )
-) {
-  if (this.current().value === "List") {
-    const generic = this.parseListGeneric();
+        name === "sizeOf" &&
+        (this.current().type === "TYPE" || this.current().value === "List")
+      ) {
+        if (this.current().value === "List") {
+          const generic = this.parseListGeneric();
 
-    args.push(
-      this.node({
-        type: "SIZEOF_TYPE",
-        value: "List",
-        generic,
-      })
-    );
-  } else {
-    args.push(
-      this.node({
-        type: "SIZEOF_TYPE",
-        value: this.current().value,
-        generic: null,
-      })
-    );
+          args.push(
+            this.node({
+              type: "SIZEOF_TYPE",
+              value: "List",
+              generic,
+            }),
+          );
+        } else {
+          args.push(
+            this.node({
+              type: "SIZEOF_TYPE",
+              value: this.current().value,
+              generic: null,
+            }),
+          );
 
-    this.advance();
-  }
-      }
-     else if (this.matchKeyword("fn")) {
+          this.advance();
+        }
+      } else if (this.matchKeyword("fn")) {
         args.push(this.node(this.parseInlineCallback()));
       } else {
         args.push(this.node(this.parseExpression()));
@@ -2274,7 +2297,6 @@ parseLogical() {
       if (this.match("COMMA")) {
         this.advance();
         this.skipNewlines();
-        
       } else {
         break;
       }
@@ -2297,7 +2319,7 @@ parseLogical() {
     return this.parseFunction();
   }
 
-    // optional readability label in call args: `name: value`
+  // optional readability label in call args: `name: value`
   parseArgLabel() {
     if (this.match("IDENTIFIER") && this.peek("COLON")) {
       const label = this.advance().value;

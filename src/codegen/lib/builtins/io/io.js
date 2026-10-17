@@ -5,39 +5,43 @@ export class IO {
   }
 
   resolveValue(arg, node) {
-  let expr = null, type, valuePtr;
+    let expr = null,
+      type,
+      valuePtr;
 
-  const isFunction =
-    arg?.type === "variable" && this.IRB.functions.has(arg.name);
+    const isFunction =
+      arg?.type === "variable" && this.IRB.functions.has(arg.name);
 
-  if (isFunction) {
-    type = "string";
-    valuePtr = this.IRB.newGlobalString(`Function<${arg.name}>`).name;
-  } else {
-    arg.line = node?.line;
-    arg.column = node?.column;
-    expr = this.expr.handleExpression(arg, false);
-    this.IRB.emitExpr(expr);
-    type = expr.type;
-    valuePtr = expr.ptr;
-  }
-
-  if (expr) {
-    if (expr.isArray) {
-      valuePtr = this.IRB.newGlobalString("<array>").name;
+    if (isFunction) {
       type = "string";
+      valuePtr = this.IRB.newGlobalString(`Function<${arg.name}>`).name;
+    } else {
+      arg.line = node?.line;
+      arg.column = node?.column;
+      expr = this.expr.handleExpression(arg, false);
+      this.IRB.emitExpr(expr);
+      type = expr.type;
+      valuePtr = expr.ptr;
     }
-    if (expr.isStruct) {
-      valuePtr = this.IRB.newGlobalString(`struct<${expr.type}>`).name;
-      type = "string";
-    }
-    if (expr.isList && typeof expr.generic === "object") {
-      valuePtr = this.IRB.newGlobalString(`${this.IRB.getExpressionTypeString(expr)}`).name;
-      type = "string";
-    }
-  }
 
-  return { expr, type, valuePtr };
+    if (expr) {
+      if (expr.isArray) {
+        valuePtr = this.IRB.newGlobalString("<array>").name;
+        type = "string";
+      }
+      if (expr.isStruct) {
+        valuePtr = this.IRB.newGlobalString(`struct<${expr.type}>`).name;
+        type = "string";
+      }
+      if (expr.isList && typeof expr.generic === "object") {
+        valuePtr = this.IRB.newGlobalString(
+          `${this.IRB.getExpressionTypeString(expr)}`,
+        ).name;
+        type = "string";
+      }
+    }
+
+    return { expr, type, valuePtr };
   }
 
   screen(node) {
@@ -78,7 +82,7 @@ export class IO {
       format = args[1].value;
     }
 
-   let { expr, type, valuePtr } = this.resolveValue(arg, node);
+    let { expr, type, valuePtr } = this.resolveValue(arg, node);
 
     switch (type) {
       case "int": {
@@ -136,57 +140,57 @@ export class IO {
   }
 
   print(node) {
-  const args = node.args;
+    const args = node.args;
 
-  if (!args) {
-    this.IRB.emitError(
-      "SyntaxError",
-      "'print()' must be called as a function",
-      node,
-    );
-  }
-
-  this.IRB.declareOneTime("printf", "declare i32 @printf(ptr, ...)");
-  this.IRB.declareOneTime("fflush", "declare i32 @fflush(ptr)");
-
-  if (args.length === 0) {
-    const empty = this.IRB.newGlobalString("").name;
-    this.IRB.emitScreenString(empty, "%s\n");
-    return;
-  }
-
-  args.forEach((arg, i) => {
-    const sep = i === args.length - 1 ? "\n" : " ";
-    const { expr, type, valuePtr } = this.resolveValue(arg, node);
-
-    switch (type) {
-      case "int":
-        this.IRB.emitScreenInt(valuePtr, `%d${sep}`);
-        break;
-      case "double":
-        this.IRB.emitScreenDouble(valuePtr, `%lf${sep}`);
-        break;
-      case "byte":
-        this.IRB.emitScreenByte(valuePtr, `%d${sep}`);
-        break;
-      case "long":
-        this.IRB.emitScreenLong(valuePtr, `%lld${sep}`);
-        break;
-      case "bool":
-        this.IRB.emitScreenBool(valuePtr, sep);
-        break;
-      case "string":
-        this.IRB.emitScreenString(valuePtr, `%s${sep}`);
-        if (expr) this.IRB.cleanupBuiltinStringTemps([expr]);
-        break;
-      default:
-        this.IRB.emitError(
-          "TypeError",
-          `print() unsupported type: ${type}`,
-          node,
-        );
+    if (!args) {
+      this.IRB.emitError(
+        "SyntaxError",
+        "'print()' must be called as a function",
+        node,
+      );
     }
-  });
+
+    this.IRB.declareOneTime("printf", "declare i32 @printf(ptr, ...)");
+    this.IRB.declareOneTime("fflush", "declare i32 @fflush(ptr)");
+
+    if (args.length === 0) {
+      const empty = this.IRB.newGlobalString("").name;
+      this.IRB.emitScreenString(empty, "%s\n");
+      return;
+    }
+
+    args.forEach((arg, i) => {
+      const sep = i === args.length - 1 ? "\n" : " ";
+      const { expr, type, valuePtr } = this.resolveValue(arg, node);
+
+      switch (type) {
+        case "int":
+          this.IRB.emitScreenInt(valuePtr, `%d${sep}`);
+          break;
+        case "double":
+          this.IRB.emitScreenDouble(valuePtr, `%lf${sep}`);
+          break;
+        case "byte":
+          this.IRB.emitScreenByte(valuePtr, `%d${sep}`);
+          break;
+        case "long":
+          this.IRB.emitScreenLong(valuePtr, `%lld${sep}`);
+          break;
+        case "bool":
+          this.IRB.emitScreenBool(valuePtr, sep);
+          break;
+        case "string":
+          this.IRB.emitScreenString(valuePtr, `%s${sep}`);
+          if (expr) this.IRB.cleanupBuiltinStringTemps([expr]);
+          break;
+        default:
+          this.IRB.emitError(
+            "TypeError",
+            `print() unsupported type: ${type}`,
+            node,
+          );
+      }
+    });
   }
 
   input(node) {
@@ -208,9 +212,10 @@ export class IO {
       }
 
       const expr = this.expr.handleExpression(args[0]);
+      
       const displayType = expr?.isList ? "List" : expr.type;
 
-      if (expr.type !== "string" && expr.isList) {
+      if (expr.type !== "string" || expr.isList) {
         this.IRB.emitError(
           "TypeError",
           `input() prompt must be string, got ${displayType}`,

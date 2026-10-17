@@ -21,87 +21,90 @@ export class Compiler {
   }
 
   async repl() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: ">>> ",
-  });
-  let exitingWithCommand = false;
-  const declarations = []; // persisted forever — decls only, no side effects on replay
-  const replDir = path.join(process.cwd(), ".zen", "repl");
-  const replFile = path.join(replDir, "repl.zen");
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: ">>> ",
+    });
+    let exitingWithCommand = false;
+    const declarations = []; // persisted forever — decls only, no side effects on replay
+    const replDir = path.join(process.cwd(), ".zen", "repl");
+    const replFile = path.join(replDir, "repl.zen");
 
-  fs.mkdirSync(replDir, { recursive: true });
+    fs.mkdirSync(replDir, { recursive: true });
 
-  console.log("Zen REPL");
-  console.log("Type exit() or press Ctrl+D to exit.");
-
-  rl.prompt();
-
-  rl.on("line", (line) => {
-    const input = line.trim();
-
-    if (input === "exit()") {
-      exitingWithCommand = true;
-      rl.close();
-      return;
-    }
-
-    if (!input) {
-      rl.prompt();
-      return;
-    }
-
-    const isDecl = this.isDeclaration(input);
-    const program = [...declarations, input].join("\n") + "\n";
-
-    fs.writeFileSync(replFile, program);
-
-    const result = spawnSync(
-      process.execPath,
-      [process.argv[1], "run", replFile],
-      { stdio: "inherit" },
-    );
-
-    if (result.error) {
-      console.error(`error: ${result.error.message}`);
-    } else if (isDecl && result.status === 0) {
-      declarations.push(input);
-    }
+    console.log("Zen REPL");
+    console.log("Type exit() or press Ctrl+D to exit.");
 
     rl.prompt();
-  });
 
-  rl.on("close", () => {
-    if (!exitingWithCommand) console.log();
-    console.log("Bye!");
-    try {
-      fs.rmSync(replDir, { recursive: true, force: true });
-    } catch {}
+    rl.on("line", (line) => {
+      const input = line.trim();
 
-    process.exit(0);
-  });
+      if (input === "exit()") {
+        exitingWithCommand = true;
+        rl.close();
+        return;
+      }
+
+      if (!input) {
+        rl.prompt();
+        return;
+      }
+
+      const isDecl = this.isDeclaration(input);
+      const program = [...declarations, input].join("\n") + "\n";
+
+      fs.writeFileSync(replFile, program);
+
+      const result = spawnSync(
+        process.execPath,
+        [process.argv[1], "run", replFile],
+        { stdio: "inherit" },
+      );
+
+      if (result.error) {
+        console.error(`error: ${result.error.message}`);
+      } else if (isDecl && result.status === 0) {
+        declarations.push(input);
+      }
+
+      rl.prompt();
+    });
+
+    rl.on("close", () => {
+      if (!exitingWithCommand) console.log();
+      console.log("Bye!");
+      try {
+        fs.rmSync(replDir, { recursive: true, force: true });
+      } catch {}
+
+      process.exit(0);
+    });
   }
 
   ensureRuntimeArchive(runtimeDir, names) {
-  const lib = path.join(runtimeDir, "libzenrt.a");
-  const srcs = names.map((n) =>
-  path.join(runtimeDir, `${this.isWindows && n === "runtime" ? "w_runtime" : n}.c`),
-);
+    const lib = path.join(runtimeDir, "libzenrt.a");
+    const srcs = names.map((n) =>
+      path.join(
+        runtimeDir,
+        `${this.isWindows && n === "runtime" ? "w_runtime" : n}.c`,
+      ),
+    );
 
-  const stale =
-    !fs.existsSync(lib) ||
-    srcs.some((s) => fs.statSync(s).mtimeMs > fs.statSync(lib).mtimeMs);
+    const stale =
+      !fs.existsSync(lib) ||
+      srcs.some((s) => fs.statSync(s).mtimeMs > fs.statSync(lib).mtimeMs);
 
-  if (stale) {
-    const objs = names.map((n) => path.join(runtimeDir, `${n}.o`));
-    names.forEach((n, i) => {
-      this.run(`clang -O2 -fPIC -c "${srcs[i]}" -o "${objs[i]}"`);
-    });
-    this.run(`ar rcs "${lib}" ${objs.map((o) => `"${o}"`).join(" ")}`);
-  }
+    if (stale) {
+      const objs = names.map((n) => path.join(runtimeDir, `${n}.o`));
+      names.forEach((n, i) => {
+        this.run(`clang -O2 -fPIC -c "${srcs[i]}" -o "${objs[i]}"`);
+      });
+      this.run(`ar rcs "${lib}" ${objs.map((o) => `"${o}"`).join(" ")}`);
+    }
 
-  return lib;
+    return lib;
   }
 
   isDeclaration(line) {
@@ -139,36 +142,36 @@ export class Compiler {
   }
 
   getSourceFiles(inputs, recursive = false) {
-  const SKIP_DIRS = new Set(["node_modules", "build", ".git", ".zen"]);
-  const isFmtable = (name) =>
-    name.endsWith(".zen") && !name.includes(".formatted.");
+    const SKIP_DIRS = new Set(["node_modules", "build", ".git", ".zen"]);
+    const isFmtable = (name) =>
+      name.endsWith(".zen") && !name.includes(".formatted.");
 
-  const files = [];
+    const files = [];
 
-  const walk = (dir) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        if (recursive && !SKIP_DIRS.has(e.name)) walk(full);
-      } else if (e.isFile() && isFmtable(e.name)) {
-        files.push(full);
+    const walk = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          if (recursive && !SKIP_DIRS.has(e.name)) walk(full);
+        } else if (e.isFile() && isFmtable(e.name)) {
+          files.push(full);
+        }
+      }
+    };
+
+    for (const input of inputs) {
+      if (!fs.existsSync(input)) {
+        console.error(`error: Path not found: ${input}`);
+        process.exit(1);
+      }
+      if (fs.statSync(input).isDirectory()) {
+        walk(input);
+      } else if (isFmtable(path.basename(input))) {
+        files.push(input);
       }
     }
-  };
 
-  for (const input of inputs) {
-    if (!fs.existsSync(input)) {
-      console.error(`error: Path not found: ${input}`);
-      process.exit(1);
-    }
-    if (fs.statSync(input).isDirectory()) {
-      walk(input);
-    } else if (isFmtable(path.basename(input))) {
-      files.push(input);
-    }
-  }
-
-  return [...new Set(files.map((f) => path.resolve(f)))];
+    return [...new Set(files.map((f) => path.resolve(f)))];
   }
 
   pathType(input) {
@@ -318,7 +321,6 @@ export class Compiler {
   }
 
   async compile(command) {
-    
     this.setCompilerRoot();
 
     if (command === "clean") {
@@ -529,7 +531,8 @@ export class Compiler {
       };
 
       const fmtArgs = this.args.slice(1);
-      const recursive = fmtArgs.includes("-r") || fmtArgs.includes("--recursive");
+      const recursive =
+        fmtArgs.includes("-r") || fmtArgs.includes("--recursive");
       const inputs = fmtArgs.filter((a) => !a.startsWith("-"));
 
       if (inputs.length === 0) {
@@ -625,13 +628,10 @@ export class Compiler {
     }
 
     this.moduleFiles.baseDir = this.PROJECT_ROOT;
-    this.moduleFiles.projectRoot = this.PROJECT_ROOT; 
+    this.moduleFiles.projectRoot = this.PROJECT_ROOT;
     this.moduleFiles.startCompiling(file, this.source);
 
-    const codegen = new CodeGen(
-      ast,
-      this.moduleFiles
-    );
+    const codegen = new CodeGen(ast, this.moduleFiles);
     const llvm = codegen.generateLLVM();
 
     if (codegen.IRB.exported && command === "run") {
@@ -661,8 +661,6 @@ export class Compiler {
 
     const moduleFiles = this.moduleFiles.moduleFiles;
     const buildDir = this.buildDir();
-
-    
 
     const outLL = path.join(buildDir, `${this.moduleName}.ll`);
     const outOptLL = path.join(buildDir, `${this.moduleName}_opt.ll`);
@@ -739,8 +737,15 @@ export class Compiler {
       }
 
       if (nativeFile.endsWith(".c")) {
-        const id = crypto.createHash("sha1").update(nativeFile).digest("hex").slice(0, 8);
-const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.${id}.native.o`);
+        const id = crypto
+          .createHash("sha1")
+          .update(nativeFile)
+          .digest("hex")
+          .slice(0, 8);
+        const obj = path.join(
+          buildDir,
+          `${path.basename(nativeFile, ".c")}.${id}.native.o`,
+        );
 
         this.run(`clang -fPIC -c "${nativeFile}" -o "${obj}"`);
 
@@ -778,13 +783,13 @@ const obj = path.join(buildDir, `${path.basename(nativeFile, ".c")}.${id}.native
     }
 
     if (process.platform === "darwin") {
-  linkArgs.push("-Wl,-dead_strip_dylibs");
-} else {
-  linkArgs.push("-Wl,--as-needed");
-}
-linkArgs.push("-lcurl");
-linkArgs.push("-lcrypto");
-    
+      linkArgs.push("-Wl,-dead_strip_dylibs");
+    } else {
+      linkArgs.push("-Wl,--as-needed");
+    }
+    linkArgs.push("-lcurl");
+    linkArgs.push("-lcrypto");
+
     linkArgs.push("-o");
     linkArgs.push(outputExe);
 
@@ -796,23 +801,23 @@ linkArgs.push("-lcrypto");
     }
 
     const userArgs =
-  linkIndex !== -1
-    ? this.args.slice(2, linkIndex)
-    : this.args.slice(2);
+      linkIndex !== -1 ? this.args.slice(2, linkIndex) : this.args.slice(2);
 
     const quotedArgs = userArgs
-  .map(arg => "'" + String(arg).replace(/'/g, "'\\''") + "'")
-  .join(" ");
+      .map((arg) => "'" + String(arg).replace(/'/g, "'\\''") + "'")
+      .join(" ");
 
     const result = spawnSync(outputExe, userArgs, {
-  stdio: "inherit",
-});
+      stdio: "inherit",
+    });
 
-if (result.error) {
-  console.error(`error: Failed to execute program: ${result.error.message}`);
-  process.exit(1);
-}
+    if (result.error) {
+      console.error(
+        `error: Failed to execute program: ${result.error.message}`,
+      );
+      process.exit(1);
+    }
 
-process.exit(result.status ?? 1);
+    process.exit(result.status ?? 1);
   }
 }

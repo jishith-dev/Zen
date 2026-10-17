@@ -596,7 +596,7 @@ export class Fmt {
       this.visit(node.body);
     }
   }
-/*
+  /*
   visitStruct(node) {
     this.write("struct ");
     this.write(node.name);
@@ -636,46 +636,49 @@ export class Fmt {
   }
 */
 
-visitStruct(node) {
-  this.write("struct ");
-  this.write(node.name);
-  this.space();
+  visitStruct(node) {
+    this.write("struct ");
+    this.write(node.name);
+    this.space();
 
-  if (!node.members.length) {
-    this.write("{}");
-    return;
-  }
-
-  this.write("{");
-  this.indent();
-
-  for (const m of node.members) {
-    this.newline();
-    if (m.kind === "comment") {
-      this.write(m.node.value.trimEnd());
-    } else if (m.kind === "method") {
-      this.visit(m.node);
-      this.newline();
-    } else {
-      const field = m.node;
-      if (field.isPrivate) this.write("private ");
-      this.write(this.formatType({ ...field, dimensions: [] }));
-      this.space();
-      this.write(field.name);
-      for (const dim of field.dimensions || []) {
-        this.write("[");
-        if (dim != null) this.visit(dim);
-        this.write("]");
-      }
-      if (field.value) { this.write(" = "); this.visit(field.value); }
+    if (!node.members.length) {
+      this.write("{}");
+      return;
     }
+
+    this.write("{");
+    this.indent();
+
+    for (const m of node.members) {
+      this.newline();
+      if (m.kind === "comment") {
+        this.write(m.node.value.trimEnd());
+      } else if (m.kind === "method") {
+        this.visit(m.node);
+        this.newline();
+      } else {
+        const field = m.node;
+        if (field.isPrivate) this.write("private ");
+        this.write(this.formatType({ ...field, dimensions: [] }));
+        this.space();
+        this.write(field.name);
+        for (const dim of field.dimensions || []) {
+          this.write("[");
+          if (dim != null) this.visit(dim);
+          this.write("]");
+        }
+        if (field.value) {
+          this.write(" = ");
+          this.visit(field.value);
+        }
+      }
+    }
+
+    this.dedent();
+    this.newline();
+    this.write("}");
   }
 
-  this.dedent();
-  this.newline();
-  this.write("}");
-}
-  
   visitBlock(node) {
     const body = node.body || [];
 
@@ -754,14 +757,14 @@ visitStruct(node) {
 
     this.write("(");
     const args = node.args || [];
-for (let i = 0; i < args.length; i++) {
-  if (args[i].label) {
-    this.write(args[i].label);
-    this.write(": ");
-  }
-  this.visit(args[i]);
-  if (i < args.length - 1) this.write(", ");
-}
+    for (let i = 0; i < args.length; i++) {
+      if (args[i].label) {
+        this.write(args[i].label);
+        this.write(": ");
+      }
+      this.visit(args[i]);
+      if (i < args.length - 1) this.write(", ");
+    }
     this.write(")");
   }
 
@@ -801,6 +804,11 @@ for (let i = 0; i < args.length; i++) {
     this.writeOperand(node.object, Infinity, false);
     this.write(".");
     this.write(node.field);
+    if (node.generic) {
+      this.write("<");
+      this.write(this.formatType(node.generic));
+      this.write(">");
+    }
   }
 
   visitArrayAccess(node) {

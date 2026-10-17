@@ -86,6 +86,10 @@ screen(type(isPrime(7)))
 screen(type(floor(2.7)))
 screen(type(factorial(5)))
 
+# print (variadic arguments)
+print("Hello", "Zen")
+print("Welcome", "to", "Zen", "Language")
+
 # random
 
 int r = randomInt(1, 10)
@@ -100,6 +104,7 @@ screen(path.basename("/a/b/c.txt"))
 screen(path.dirname("/a/b/c.txt"))
 screen(path.extname("/a/b/c.txt"))
 screen(path.join("/a", "b"))
+screen(path.join("/a", "b", "c", "d"))
 screen(path.normalize("/a/b/../c"))
 screen(path.normalize("/a//b/./c/")) // trailing slash is kept
 screen(path.normalize("a/../.."))

@@ -163,7 +163,7 @@ export class Loop {
       continueLabel: condLabel,
     });
 
-    // ENTRY BODY FIRST
+    // ENTRY BODY
 
     this.IRB.emit(`br label %${bodyLabel}`);
 
@@ -173,7 +173,7 @@ export class Loop {
 
     this.IRB.emit(`br label %${condLabel}`);
 
-    // CONDITION CHECK
+    // CONDITION
 
     this.IRB.emit(`${condLabel}:`);
 
@@ -341,6 +341,8 @@ export class Loop {
 
       const isNested = nextGeneric?.type === "List";
       const isStruct = this.IRB.hasStruct(varType);
+      const structDef = isStruct ? this.IRB.getStruct(varType) : null;
+      const isOpaque = !!(structDef?.isBuiltin && structDef?.isOpaque);
 
       this.IRB.setVar(varName, {
         ptr: valTmp,
@@ -352,7 +354,7 @@ export class Loop {
         isListAccess: true,
         generic: nextGeneric,
         fromLoopOf: true,
-        needsLoad: !isStruct,
+        needsLoad: !isStruct || isOpaque,
       });
     }
 
@@ -376,177 +378,4 @@ export class Loop {
     this.IRB.loopStack.pop();
     this.IRB.exitScope();
   }
-
-  // Loop over Map is disabled: Map is not an iterable sequence type in ZEN.
-  /*
-  loopIn(node) {
-    
-    const { keyName, iterable, body } = node;
-    
-    this.IRB.guardStackOp("LOOP_IN", node);
-    this.IRB.enterScope();
-    
-    // RESOLVE MAP POINTER
-    
-    const expr = this.expr.handleExpression(iterable, false);
-    
-    this.IRB.emitExpr(expr);
-    
-    let mapPtr = expr.ptr;
-    
-    if (expr.needsLoad) {
-      const tmp = this.IRB.newTemp();
-      this.IRB.emit(`${tmp} = load ptr, ptr ${mapPtr}`);
-      mapPtr = tmp;
-    }
-    
-    this.IRB.declareOneTime("zen_map_get", "declare ptr @_zen_map_get(ptr, ptr)");
-    
-    // GET MAP LAYOUT
-    
-    const mapLayout = this.IRB.maps.get(iterable.name) || expr?.layout;
-    if (!mapLayout) {
-      this.IRB.emitError("InternalError", "Map iteration requires known key layout", node);
-      return;
-    }
-    
-    const keys = Object.keys(mapLayout);
-    
-    const inferredType = mapLayout[keys[0]].type;
-    
-    const allSame = keys.every(k => mapLayout[k].type === inferredType);
-    
-    const hasNestedMap = keys.some(k => mapLayout[k].type === "Map");
-    
-    if (hasNestedMap) {
-      
-      this.IRB.emitError(
-        "TypeError",
-        "loop in doesn't support nested Map",
-        node
-      );
-    }
-    
-    if (!allSame) {
-      this.IRB.emitError(
-        "TypeError",
-        "loop in requires all map values to be the same type",
-        node
-      );
-    }
-    
-    // PRE-INTERN ALL KEY STRINGS AS GLOBALS
-    
-    const keyPtrs = keys.map((key) => {
-      const keyPtr = this.IRB.newGlobalString(key);
-      
-      return keyPtr.name;
-    });
-    
-    // LOOP LABELS
-    
-    const startLabel = this.IRB.newLabel("map_loop_start");
-    const bodyLabel = this.IRB.newLabel("map_loop_body");
-    const endLabel = this.IRB.newLabel("map_loop_end");
-    const continueLabel = this.IRB.newLabel("map_loop_continue");
-    const switchLabel = this.IRB.newLabel("map_loop_switch");
-    
-    this.IRB.loopStack.push({ breakLabel: endLabel, continueLabel });
-    
-    // INDEX ALLOCA
-    
-    const idxPtr = this.IRB.newTemp();
-    this.IRB.emitAlloca(idxPtr, `i32`);
-    this.IRB.emit(`store i32 0, ptr ${idxPtr}`);
-  
-    
-    const keySlot = this.IRB.newTemp();
-    this.IRB.emitAlloca(keySlot, `ptr`);
-    
-    this.IRB.emit(`br label %${startLabel}`);
-    
-    // CONDITION BLOCK
-    
-    this.IRB.emit(`${startLabel}:`);
-    
-    const idxVal = this.IRB.newTemp();
-    this.IRB.emit(`${idxVal} = load i32, ptr ${idxPtr}`);
-    
-    const cmpTmp = this.IRB.newTemp();
-    this.IRB.emit(`${cmpTmp} = icmp slt i32 ${idxVal}, ${keys.length}`);
-    this.IRB.emit(`br i1 ${cmpTmp}, label %${switchLabel}, label %${endLabel}`);
-    
-    // SWITCH BLOCK — selects the right key ptr
-    
-    this.IRB.emit(`${switchLabel}:`);
-    
-    // Build one case-label per key
-    const caseLabels = keys.map((_, i) => this.IRB.newLabel(`map_key_${i}`));
-    // Default (unreachable) points at first case — index is always in range
-    const defaultLabel = caseLabels[0];
-    
-    const switchCases = keys
-      .map((_, i) => `i32 ${i}, label %${caseLabels[i]}`)
-      .join(" ");
-    
-    this.IRB.emit(
-      `switch i32 ${idxVal}, label %${defaultLabel} [ ${switchCases} ]`
-    );
-    
-    // One tiny block per key: store the string pointer, jump to body
-    keys.forEach((_, i) => {
-      
-      this.IRB.emit(`${caseLabels[i]}:`);
-      this.IRB.emit(`store ptr ${keyPtrs[i]}, ptr ${keySlot}`);
-      this.IRB.emit(`br label %${bodyLabel}`);
-    });
-    
-    // BODY BLOCK
-    
-    this.IRB.emit(`${bodyLabel}:`);
-    
-    // Load the selected key ptr and expose it as the loop variable
-    const currentKeyPtr = this.IRB.newTemp();
-    
-    this.IRB.emit(`${currentKeyPtr} = load ptr, ptr ${keySlot}`);
-    
-    // Fetch the value for this key (available to body if needed)
-    const valueTmp = this.IRB.newTemp();
-    this.IRB.emit(
-      `${valueTmp} = call ptr @_zen_map_get(ptr ${mapPtr}, ptr ${currentKeyPtr})`
-    );
-    
-    this.IRB.setVar(keyName, {
-      ptr: valueTmp,
-      type: inferredType,
-      llvmType: this.IRB.getLLVMType(inferredType),
-      needsLoad: inferredType !== "string" ? true : false,
-      name: iterable.name,
-      layout: mapLayout
-    });
-    
-    
-    // Execute body
-    this.block.block(body, false);
-    
-    this.IRB.emit(`br label %${continueLabel}`);
-    
-    // INCREMENT
-    
-    this.IRB.emit(`${continueLabel}:`);
-    
-    const incTmp = this.IRB.newTemp();
-    this.IRB.emit(`${incTmp} = add i32 ${idxVal}, 1`);
-    this.IRB.emit(`store i32 ${incTmp}, ptr ${idxPtr}`);
-    
-    this.IRB.emit(`br label %${startLabel}`);
-    
-    // END
-    
-    this.IRB.emit(`${endLabel}:`);
-    
-    this.IRB.loopStack.pop();
-    this.IRB.exitScope();
-  }
-  */
 }

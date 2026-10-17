@@ -64,7 +64,7 @@ export class Info {
     }
   }
 
-  // namespace 
+  // namespace
 
   showNamespace() {
     const name = this.args[2];
@@ -93,7 +93,7 @@ export class Info {
         [`Namespace: ${name}`, `Method: ${key}`],
         key,
         ns.functions[key],
-        `${name}.`
+        `${name}.`,
       );
     }
 
@@ -134,7 +134,8 @@ export class Info {
 
     const fn = getGlobalFn(name);
     if (fn) {
-      const label = fn.origin === "stdlib" ? "Standard function" : "Built-in function";
+      const label =
+        fn.origin === "stdlib" ? "Standard function" : "Built-in function";
       return this.showFunction(label, name, fn);
     }
 
@@ -208,7 +209,7 @@ export class Info {
         methodKey,
         fn,
         `${structName}.`,
-        extra
+        extra,
       );
     }
 
@@ -232,7 +233,7 @@ export class Info {
     this.error(`Unknown method '${memberName}' in struct '${structName}'.`);
   }
 
-  // lookups 
+  // lookups
 
   namespaceMatches(name) {
     return Object.entries(namespaces)
@@ -261,7 +262,7 @@ export class Info {
     return hits;
   }
 
-  // printing helpers 
+  // printing helpers
 
   member() {
     const option = this.args.find((arg, i) => i > 1 && arg.startsWith("--"));
@@ -291,7 +292,7 @@ export class Info {
     }
 
     console.log(
-      `${c.white("Signature:")} ${colorSig(formatSignature(name, fn, prefix))}`
+      `${c.white("Signature:")} ${colorSig(formatSignature(name, fn, prefix))}`,
     );
     console.log(`${c.white("Return type:")} ${c.magenta(fn.returnType)}`);
 
@@ -301,15 +302,19 @@ export class Info {
       console.log(c.white("Parameters:"));
 
       for (const p of fn.parameters) {
-  const optional = p.optional ? c.dim(" (optional)") : "";
-  const rest = p.rest ? c.dim(" (rest, 1 or more)") : "";
-  const name = p.rest ? `${p.name}...` : p.name;
+        const optional = p.optional ? c.dim(" (optional)") : "";
+        const rest = p.rest ? c.dim(" (rest, 1 or more)") : "";
+        const name = p.rest ? `${p.name}...` : p.name;
 
-  console.log(`  ${c.green(name)}: ${c.yellow(p.type)}${optional}${rest}`);
+        console.log(
+          `  ${c.green(name)}: ${c.yellow(p.type)}${optional}${rest}`,
+        );
       }
 
       if (fn.variadic) {
-        console.log(`  ${c.green("...")}: ${c.white("any number of extra arguments")}`);
+        console.log(
+          `  ${c.green("...")}: ${c.white("any number of extra arguments")}`,
+        );
       }
     }
 
@@ -319,7 +324,10 @@ export class Info {
   }
 
   wrap(text, indent = 0, color = c.cyan) {
-    const width = Math.max(20, Math.min(process.stdout.columns || 60, 80) - indent);
+    const width = Math.max(
+      20,
+      Math.min(process.stdout.columns || 60, 80) - indent,
+    );
     const lines = [];
     let line = "";
 
@@ -358,8 +366,12 @@ export class Info {
     cmd("zen info global Tcp");
     cmd("zen info global Tcp --send");
     console.log("");
-    console.log(`${c.bold("Namespaces:")} ${c.cyan(Object.keys(namespaces).join(", "))}`);
-    console.log(`${c.bold("Structs:")} ${c.cyan(Object.keys(structs).join(", "))}`);
+    console.log(
+      `${c.bold("Namespaces:")} ${c.cyan(Object.keys(namespaces).join(", "))}`,
+    );
+    console.log(
+      `${c.bold("Structs:")} ${c.cyan(Object.keys(structs).join(", "))}`,
+    );
     console.log("");
   }
 

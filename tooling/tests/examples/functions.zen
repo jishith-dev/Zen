@@ -114,6 +114,17 @@ check(fn greet(string name) bool {
   return true
 })
 
+# labeled arguments
+# labels are optional, for readability only, and do not affect argument ordering
+
+fn greetUser(string name, int age) void {
+  screen(`Hello ${name}, age ${age}`)
+}
+
+greetUser(name: "Jishith", age: 21)
+greetUser("Abhinav", age: 22)
+greetUser(fullName: 'Abhishek', older: 19)
+
 # async function
 # currently reserved keyword and has no functionality yet
 

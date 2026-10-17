@@ -1,149 +1,454 @@
-Zen v3.0.0 — Internal Changelog
-===============================
+Zen v3.0.1 — Error Diagnostics and Improvements
 
-Reference for updating the docs. Grouped by area.
+1. Parser Diagnostics: Missing Closing Brace at EOF
 
+Category: Parser / Error Diagnostics
+Severity: Minor
+Status: Fixed
 
-BREAKING CHANGES
-----------------
+Problem
+A missing closing "}" at EOF reported "Unexpected token 'null'"
+instead of naming the unclosed block.
 
-- `toString` / `toInt` renamed to `intToAscii` / `asciiToInt` (ASCII conversion).
-- `private` is now a reserved keyword (functions, methods, fields). Any identifier named `private` collides.
-- Keyword `in` removed.
-- Classic loop must always be `loop (init, cond, update)`.
-- `+` with any string operand converts the other operand to string and concatenates.
-- `fs.writeFileBytes` now returns `int` (success code) instead of `void`.
-- `sqrt` now takes `double` and returns `double` (was `int`).
-- `zen tests` renamed to `zen test`.
-- `zen -v` changed to `zen --v`.
-- Windows support temporarily paused in this version.
+Fix
+Added atEnd() and unclosedBlock() helpers in parser.js. Blocks,
+structs, enums, switches and map/struct literals now stop at EOF and
+report: Missing closing '}' for <block|struct|enum|switch|literal>
+opened at line L:C. Nested blocks point at the innermost unclosed brace.
 
+Verified
+Unclosed function, nested block, struct, enum, switch and literal
+all give the correct diagnostic. Valid programs (t1 to t14) unchanged.
 
-LANGUAGE AND TYPE SYSTEM
-------------------------
+---
 
-- Numeric widening formalized: `byte -> int -> long -> double`.
-- `bool` works in arithmetic (`true`=1, `false`=0) and bitwise ops.
-- New bitwise operators: `&  |  >>  <<  ~`. Unary `+` added.
-- `infer` supports: `int`, `bool`, `double`, `string`, `long`, `byte`. Errors on list/struct/other.
-- Compile-time constants: `int N = 10; int arr[N]`.
-- `sizeOf()` supports bare types and expressions. Bare struct names are unsupported (instantiate first).
-- Struct field initializers with defaults. Uninitialized structs get zero-value fields (`0`, `""`, `false`, empty list). Struct literals only set the fields given.
-- Anonymous inline functions as callback args: compiled as separate functions, no closures (cannot capture outer variables).
-- Named functions passed as callbacks can use closure (outer variables allowed).
-- Multiple exports/imports per file. Import aliasing works for functions and variables only (not structs).
-- Thread fns accept parameters and report capture errors at compile time.
-- Thread methods in structs spawn correctly.
-- Chained calls on returned structs work: `make().show()`.
+2. Error Location Consistency: Missing Line and Column Information
 
+Category: Compiler Diagnostics
+Severity: Minor
+Status: Fixed
 
-LITERALS AND ESCAPES
---------------------
+Problem
+"Struct 'X' is not defined" for an unresolved struct field type had no
+line or column, because the error was raised later in sizeOf/alignOf
+with no node.
 
-- `byte` is signed: -128 to 127. With a byte suffix, out-of-range values wrap (two's complement).
-- Scientific notation for doubles: `1e300`, `1.5e-10`, `2E+5`. Supported in source parsing and in LLVM double formatting (fixes invalid constants like `1e-9` with no decimal point).
-- Hex literals with no suffix are always `int`: `0xFB` is int 251, not a byte.
-- Hex with a type suffix needs an underscore: `0xFB_B` is byte, `0xFF_L` is long.
-- Decimal suffixes unchanged: `20B`, `42L`.
-- New string escapes `\e` and `\xHH` (`readEscape()` in lexer, ESC handling in `toLLVMString`). Example: `"\e[31m"` for ANSI colors.
+Fix
+struct() in struct.js validates each field type up front and passes the
+field node to emitError.
 
+Verified
+l.zen reports l.zen:2:12. Valid struct, List<struct> and Map fields
+still accepted. t1 to t14 unchanged.
 
-STDLIB AND RUNTIME
-------------------
+---
 
-Globals
-- `lastIndexOf` added.
-- `stringToBytes` / `bytesToString` added.
-- `length()` accepts a List directly, alongside `list.length`.
-- Naming: `extName()` returns no dot, `path.extname()` returns with dot.
+3. Automatic Map and List Initialization
 
-List methods: `remove()`, `reverse()`, `sort()`, `sum()`, `avg()`, `flat()` (any depth to depth 1).
+Category: Language Design / Usability
+Severity: Enhancement
+Status: Fixed
 
-Map methods: `keys()`, `entries()`.
+Problem
+Map fields in structs stayed null unless written as `Map m = {}`.
+Using one gave "[Zen MemoryError] Map is null". List fields were
+already initialized to empty lists.
 
-Json.map()
-- Builds a Map from JSON.
-- JSON numbers (JS number type) can be read with `getInt()`, `getByte()` or `getLong()`.
-- Overflow is checked at runtime per getter (int overflow, byte overflow, etc.).
+Fix
+parseStruct (parser.js) gives a Map field with no initializer an empty
+{} literal as its default. An explicit initializer overrides it.
+applyFieldInitializers (helper.js) now stores the Map pointer for Map
+fields instead of memcpy-ing the Map object into the field slot, which
+caused "realloc failed" with `Map m = {}`.
 
-Namespaces
-- `fs`: `listDir`, `isFile`, `isDir`.
-- `sys`: `spawn`, `kill`, `isRunning`, `wait`.
-- `threads`: `count()`, `currentId()`.
-- `HttpRequest.getHeader` added.
+Verified
+Map field with and without initializer, List<Map> field (stays a
+list), Map in a nested struct, List and List<List> fields.
 
-TCP (native: `tcp.c`)
-- Structs: `Tcp`, `TcpServer`.
-- `net.online()`, `net.connect(host, port)`, `net.listen(port)`.
-- `Tcp`: `send()`, `receive()`, `close()`, `isOpen()`.
-- `TcpServer`: `accept()`, `close()`, `isOpen()`.
+Release note: included in v3.0.1.
 
-New constants: `SQRT1_2`, `SQRT3`, `LOG2E`, `LOG10E` (double); `BYTE_MAX`, `BYTE_MIN` (i8); `I64_MAX`, `I64_MIN` (i64).
+---
 
+4. Void Expression Handling: Prevent Compiler Crashes
 
-HTTP
-----
+Category: Compiler / Type Checking / Error Diagnostics
+Severity: Minor
+Type: Compiler robustness
+Status: Fixed
 
-- `http.getProgress(string url, fn cb(long downloaded, long total) void callback) -> List<byte>`: downloads a URL and reports downloaded and total bytes through the callback. Returns the data as `List<byte>` for low-level control.
-- Connect timeout: 10 s for every request. Fails if the server can't be reached.
-- Without a progress callback (get/post/put/patch/delete): hard total cap of 30 s.
-- With a progress callback (`getProgress`): no total cap. Aborts only if speed stays below 1 KB/s for 30 s (`CURLOPT_LOW_SPEED_LIMIT` / `LOW_SPEED_TIME`).
-- On any curl error (including timeout or "Operation too slow"), `http_error()` prints a NetworkError and exits.
-- Tested: 3.4 MB PDF (`gcc.pdf`) downloads correctly.
+Problem
 
+When a void-returning function is used in an expression that expects a value, the compiler may attempt to access expression properties that do not exist, causing an internal JavaScript exception instead of a meaningful compiler error.
 
-PACKAGES AND CLI
-----------------
+Example
 
-- `zen install` / `zen uninstall` accept multiple package names.
-- `zen installed`: lists installed package count.
-- `zen deps` auto-detects/records `native/*.o`. Native objects auto-link. `.c` files supported as native deps.
-- `zen.json` `flags: []` at module + standalone level (e.g. `--flags -lmariadb`).
-- `--link a.o b.o` supported.
-- `zen read pkgName [--raw]`: renders package README in terminal.
-- `zen update --dev`: installs dev version.
-- `zen upgrade pkgName`; `zen install pkg@semver`.
-- `zen test pkg-name`: runs the package's `test.zen`.
-- `zen --v` shows version; `zen --v pkgName` / `zen --version pkgName` shows an installed package's version.
-- `zen info` (namespace/global, with `--methodName`).
-- Interactive REPL (`zen` with no args), prints "Bye!" on `exit()`.
-- `zen version pkgName`: shows the installed version of a package (separate command from `zen --v`).
+screen(debug.pretty(sys.argv()))
 
-TOOLING
--------
+Here, "debug.pretty()" returns "void", but "screen()" expects a supported value type.
 
-- LSP server enhanced: `zen lsp` (used by editors).
-- Formatter enhanced, bugs fixed.
-- Linter fixed.
-- Better compile-time diagnostics: hints + source text.
+Previous behavior
 
+The compiler crashes with an internal error similar to:
 
-INSTALLER (`INSTALL.SH`)
-------------------------
+"TypeError: Cannot read properties of undefined (reading 'ptr')"
 
-- `--tag` / `--branch` install modes. Branch installs skip the VERSION check and version off the short commit hash.
-- Verified end-to-end on Termux (Android). Reviewed for apt/pacman/dnf/zypper Linux paths.
-- Windows unsupported for now (documented, not auto-installed).
+Expected behavior
 
+The compiler should recognize the void expression and report a clear type error at the relevant source location.
 
-COMPILER INTERNALS
-------------------
+Example:
 
-- Thread methods spawn via `_zen_thread` (method call path in `expression.js`).
-- Thread ctx freed in trampoline; string args duplicated and freed per thread.
-- Structs record transitive deps (fields, `List<T>`, method params/returns).
-- Importing a struct or fn implicitly registers its deps as hidden structs: usable through the export, not nameable. Clear errors on naming or clash. Hidden struct is promoted when explicitly imported. Emitted types/methods deduped.
-- Unknown-struct error unified in member chain walk.
-- Parser allows chained access after a statement-level call; `call.js` emits the method-call expression when used as a statement.
-- `setStruct` takes the node, so redefinition errors show line info.
-- Architecture documentation added.
+"screen() unsupported type: void"
 
+---
 
-KNOWN LIMITATIONS
------------------
+5. Runtime Argument Forwarding and Exit-Code Propagation
 
-- Structs cannot be imported with an alias (ImportError).
-- `debug.pretty()` does not support user struct fields of type `List<Map>`.
-- `sizeOf()` does not accept bare struct names.
-- HTTP: no user-configurable timeouts, no retry/resume.
-- Windows support paused.
+Category: CLI / Compiler Execution
+Severity: Minor
+Type: Runtime argument handling
+Status: Fixed 
+
+Problem
+
+"zen run" did not correctly forward user arguments because argument extraction started at the wrong index. Additionally, nonzero exit codes from compiled programs were converted to "1".
+
+Fix
+
+- Corrected argument extraction to start at index "2".
+- Preserved arguments containing spaces and excluded "--link" arguments.
+- Replaced shell-based execution with "spawnSync()" to preserve the executable's exit code.
+
+Verification
+
+- Multiple arguments forwarded correctly.
+- Arguments containing spaces preserved correctly.
+- Argument forwarding works with "--link" and a valid object file.
+- Exit codes "0" and "7" propagated correctly.
+- Existing argument-free execution remains supported.
+
+---
+
+6. fixed builtins and made clear error message instead of internal mangle names
+status: fixed
+
+7. Variadic "path.join()"
+
+Category: Standard Library / API Usability
+Severity: Enhancement
+Status: Implemented
+
+Problem:
+
+Currently, "path.join()" accepts exactly two arguments, requiring multiple calls to construct paths with several segments.
+
+Example:
+
+string refsDir = path.join(dir, "refs")
+string headsDir = path.join(refsDir, "heads")
+string mainPath = path.join(headsDir, "main")
+
+Expected behavior:
+
+Allow "path.join()" to accept two or more path segments in a single call.
+
+Example:
+
+string mainPath = path.join(dir, "refs", "heads", "main")
+
+Proposed improvement:
+
+- Support a variable number of path segments.
+- Normalize and join segments consistently.
+- Preserve existing two-argument behavior.
+- Handle empty segments and platform-specific path separators correctly.
+
+8. Return-Path Analysis: False “Not All Code Paths Return a Value” Diagnostic
+
+Category: Compiler / Semantic Analysis / Error Diagnostics
+Severity: Minor
+Status: fixed
+
+Problem
+
+The compiler may report "not all code paths return a value" for a function whose "switch" statement contains a "default" case, with every case returning a value.
+
+Proposed improvement
+
+- Review return-path analysis for "switch" statements.
+- Ensure exhaustive return paths, including "default" cases, are recognized before emitting the error.
+- Preserve diagnostics for genuinely missing return paths.
+
+9. Labeled Function Arguments for Readability
+
+Category: Language Design / Developer Experience
+Severity: Enhancement
+Status: Implemented
+
+Proposal
+
+Allow optional visual labels in function calls using "label: value" syntax.
+
+Example:
+
+predict(raining: false)
+
+Labels are for readability only. They do not need to match parameter names and do not affect argument ordering or evaluation.
+
+Proposed improvement
+
+- Recognize labels during parsing without requiring parameter-name validation.
+- Preserve existing positional argument behavior.
+- Avoid introducing unnecessary AST changes where possible.
+
+10. Variadic "print()" Built-in
+
+Category: Standard Library / API Usability
+Severity: Enhancement
+Status: implemented
+
+Proposal
+
+Introduce a variadic "print()" function for printing multiple values in a single call.
+
+Example:
+
+print("Name: ", name, " Score: ", score)
+
+Proposed behavior
+
+- Accept multiple arguments of supported types.
+- Convert values to their display representations.
+- Insert a single space between arguments and append a newline, following Python's default "print()" behavior.
+- Preserve the existing "screen(value, format)" API for formatted output.
+
+11. Typo Suggestions for Unknown Names
+
+Category: Compiler / Error Diagnostics
+Severity: Minor
+Status: implemented
+
+Problem
+
+When an identifier references an undefined function, variable, or namespace, the compiler reports the error without suggesting a possible intended name.
+
+Proposed improvement
+
+- Suggest similar existing names when an unknown identifier is detected.
+- Support functions, variables, and namespaces where applicable.
+- Avoid suggestions when no sufficiently similar name exists.
+- Preserve the original error message and source location.
+
+12. Nested List Retrieval from Map
+
+Category: Compiler / List Literal Inference
+Severity: Major
+Status: Fixed 
+
+Problem
+Nested list literals without a declared type (Map literal values,
+setList arguments) were built with the wrong element size, so reading
+a nested element crashed. The outer length printed correctly, but
+matrix[0][0] stopped execution before later output.
+
+Root cause
+inferListContextFromLiteral (helper.js) returned the depth of an
+element, not of the literal. For [[1, 2], [3, 4]] it returned 1 instead
+of 2, so the outer list got element size 4 instead of 8 and meta
+(1, int) instead of (2, int). _zen_list_push copied half of each inner
+list pointer.
+
+Fix
+return { generic, type: first.deepestType, depth: first.depth + 1 };
+
+Verified
+Map literal: 2-level, 3-level, 5-level, flat, nested string, mixed
+keys all print correct values. Empty list in a map literal gives a
+clean TypeError.
+
+13. Map.getList generic not checked against the stored value
+
+Category: Runtime / Map / List
+Severity: Major
+Status: Fixed 
+
+Problem
+getList<List<int>> on a key stored as List<List<int>> compiled and
+read garbage (a pointer read as int) or crashed. The compiler can't
+know what the map holds, and zen_map_get_list took only (map, key).
+
+Repro
+Map c = { "m": [[1, 2]] }
+List<int> r = c.getList<List<int>>("m")
+screen(r[0])
+
+Fix
+zen_map_get_list now takes (map, key, depth, deepestType) and compares
+them with the entry's stored values. The compiler adds the two i32
+arguments before building the declare and call lines (helper.js,
+handleBuiltinStructMethod). Result:
+Key 'm' holds a List of depth 2, but getList requested depth 1
+
+---
+
+14. Declared type not compared with getList generic
+
+Category: Compiler / Type Checking
+Severity: Major
+Status: Fixed
+
+Repro
+Map c = { "m": [[1, 2]] }
+List<int> r = c.getList<List<List<int>>>("m")
+screen(r[0])
+
+Actual: compiles, prints garbage.
+Expected: compile-time TypeError (List<int> vs List<List<int>>).
+
+15. Indexing deeper than the list gives an opt error
+
+Category: Compiler / Codegen
+Severity: Minor
+Status: Fixed
+
+also fixed whole compiler missing depth and leaf type check.
+
+Repro
+List<int> r = [1, 2]
+screen(r[0][1])
+
+Actual: opt: invalid getelementptr indices
+Expected: Zen TypeError, cannot index into 'int'.
+Cause: ARRAY_ACCESS on a non-list falls through to the fixed-size
+array branch.
+
+---
+
+16. setList generic dropped for statement calls
+
+Category: Parser / Compiler
+Severity: Minor
+Status: Fixed
+
+Problem
+In m.setList<List<int>>("k", [[1, 2]]) used as a statement,
+node.generic is undefined in handleBuiltinStructMethod, so the
+generic-vs-literal check never runs. The literal's own type is used,
+so the stored data is correct, but a wrong generic is silently ignored.
+
+17. Returning a bare list literal tags depth one level short
+
+Category: Compiler / Functions / List
+Severity: Major
+Status: FIxed
+
+Problem
+fn lit2() List<List<int>> { return [[1, 2], [3, 4]] } builds the outer
+list with element size 4 instead of 8 and meta depth 1 instead of 2.
+Reading y[1][1] on the result crashes after earlier output.
+
+Cause
+handleFunction (function.js) computes listGeneric.depth with
+getListDepth(node.returnType.generic) instead of
+getListDepth(node.returnType).
+
+Fix
+listGeneric.depth = this.IRB.getListDepth(node.returnType);
+
+18. made runtime string outof bounds check
+ status: Implimented
+
+19. loop of with List of Maps is ub.
+status: Fixed
+
+20. Type Arguments Restricted to Generic-Capable Calls
+
+Category: Parser / Error Diagnostics
+Severity: Minor
+Status: Implemented
+
+Problem
+Type arguments on calls that ignore them, such as screen<List<int>>(1)
+or foo<List<int>>() on a plain function, compiled silently.
+
+Fix
+ALLOWED_GENERIC_SYNTAX_FN (config.js) lists the calls that accept
+type arguments, currently only getList. The parser checks it in
+parsePostfix (method calls) and parseCall (plain calls) and reports:
+TypeError: <name>() does not take type arguments
+
+Notes
+setList infers its type from the list argument and no longer accepts
+a generic, which supersedes the generic check in item 16.
+
+Verified
+screen, a user function and setList with a generic all error at the
+call location. setList without a generic, and getList with a generic,
+still work.
+
+---
+
+21. Map.type(key)
+
+Category: Standard Library / Map
+Severity: Enhancement
+Status: Implemented
+
+Proposal
+m.type(key) returns the canonical type of a stored value as a string:
+int, long, byte, bool, double, string, Map, or List<...> with the full
+depth and leaf type, for example List<List<string>>.
+
+Implementation
+zen_map_type (map runtime) builds the string from the entry's type,
+depth and deepestType. A missing key errors like the get* methods.
+
+Verified
+All value types, 1 to 3 level lists, and the missing-key error.
+
+22. Map.setList and Map.getList: Unsupported List Element Types
+
+Category: Compiler / Type Checking / Map
+Severity: Major
+Status: Fixed
+
+Problem
+A Map can store primitives (int, long, byte, bool, double, string),
+Map values, and lists of those, including nested lists and List<Map>.
+A list of any other element type is accepted by setList and getList
+but breaks silently, because the Map runtime identifies list contents
+by a leaf code that only exists for those types.
+
+Repro
+struct User { string name  int age }
+User a = {name: "Jishith", age: 21}
+List<User> us = [a]
+Map m = {}
+m.setList("users", us)
+screen(m.type("users"))
+screen(m.json())
+
+Actual
+List<unknown>
+{"users":[null]}
+
+json(), entries(), debug.pretty and type() give wrong output with no
+error. Reading the list back with getList works, since it returns the
+stored pointer.
+
+Expected
+Compile-time TypeError at the setList or getList call:
+'Map.setList' cannot store List<User>, use List<Map>
+'Map.getList' cannot read List<User>, use List<Map>
+
+Plan
+MAP_LIST_LEAF_TYPES allow-list in config.js (int, long, byte, bool,
+double, string, Map). Check the deepest list type in the setList and
+getList branches of handleBuiltinStructMethod (helper.js). An
+allow-list also rejects List<Json>, List<Ptr> and other builtin
+structs.
+
+Future
+Struct elements would need a runtime struct descriptor (name, field
+types, offsets) so json, pretty, type, entries and free can walk
+fields.

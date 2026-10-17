@@ -1,6 +1,6 @@
 # Error Reference
 
-Version: Zen v3.0.0
+Version: Zen v3.1.0
 
 Every error is reported as `[Zen  <ErrorType>]` followed by a message. Compile-time errors also include the source location (`file:line:col`). Runtime errors include only the message, because location is not available at runtime.
 

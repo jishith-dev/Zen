@@ -16,7 +16,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const COMPILER_ROOT = path.resolve(__dirname, "..");
 
 const DEBUG = !!process.env.ZEN_LSP_DEBUG;
-const trace = (...a) => DEBUG && process.stderr.write(`[zen-lsp] ${a.join(" ")}\n`);
+const trace = (...a) =>
+  DEBUG && process.stderr.write(`[zen-lsp] ${a.join(" ")}\n`);
 
 let IRBuilder, Lexer, Parser, Lint;
 let KEYWORDS, TYPES, ParserTypes, HINTS;
@@ -89,11 +90,12 @@ function readMessages(onMessage) {
 function send(msg) {
   const json = JSON.stringify(msg);
   process.stdout.write(
-    `Content-Length: ${Buffer.byteLength(json, "utf8")}\r\n\r\n${json}`
+    `Content-Length: ${Buffer.byteLength(json, "utf8")}\r\n\r\n${json}`,
   );
 }
 
-const reply = (id, result) => send({ jsonrpc: "2.0", id, result: result ?? null });
+const reply = (id, result) =>
+  send({ jsonrpc: "2.0", id, result: result ?? null });
 const replyError = (id, code, message) =>
   send({ jsonrpc: "2.0", id, error: { code, message } });
 const notify = (method, params) => send({ jsonrpc: "2.0", method, params });
@@ -281,7 +283,7 @@ function blockRanges(doc, keyword) {
 
   const re = new RegExp(
     `(?<![A-Za-z0-9_])${keyword}\\s+([A-Za-z_][A-Za-z0-9_]*)`,
-    "g"
+    "g",
   );
   const ranges = [];
   let m;
@@ -451,7 +453,7 @@ function collectSymbols(ast) {
     }
   }
 
-  const top = Array.isArray(ast) ? ast : ast?.body ?? [ast];
+  const top = Array.isArray(ast) ? ast : (ast?.body ?? [ast]);
 
   for (const item of top) {
     if (
@@ -537,9 +539,14 @@ function resolveImportFile(uri, spec) {
     return null;
   }
 
-  const candidates = [path.resolve(base, spec), path.resolve(base, `${spec}.zen`)];
+  const candidates = [
+    path.resolve(base, spec),
+    path.resolve(base, `${spec}.zen`),
+  ];
 
-  return candidates.find((f) => fs.existsSync(f) && fs.statSync(f).isFile()) ?? null;
+  return (
+    candidates.find((f) => fs.existsSync(f) && fs.statSync(f).isFile()) ?? null
+  );
 }
 
 function externalFor(file) {
@@ -562,7 +569,11 @@ function externalFor(file) {
 
   const text = fs.readFileSync(file, "utf8");
   const symbols = parseSymbolsOnly(text);
-  const entry = { mtime: st.mtimeMs, doc: makeDoc(uri, text), symbols: symbols ?? emptySymbols() };
+  const entry = {
+    mtime: st.mtimeMs,
+    doc: makeDoc(uri, text),
+    symbols: symbols ?? emptySymbols(),
+  };
 
   extCache.set(file, entry);
   return entry;
@@ -588,13 +599,25 @@ function mergeImports(doc, local) {
       const s = ext.symbols;
 
       if (s.functions.has(name)) {
-        merged.functions.set(localName, { ...s.functions.get(name), origin, originalName: name });
+        merged.functions.set(localName, {
+          ...s.functions.get(name),
+          origin,
+          originalName: name,
+        });
       }
       if (s.structs.has(name)) {
-        merged.structs.set(localName, { ...s.structs.get(name), origin, originalName: name });
+        merged.structs.set(localName, {
+          ...s.structs.get(name),
+          origin,
+          originalName: name,
+        });
       }
       if (s.enums.has(name)) {
-        merged.enums.set(localName, { ...s.enums.get(name), origin, originalName: name });
+        merged.enums.set(localName, {
+          ...s.enums.get(name),
+          origin,
+          originalName: name,
+        });
       }
     }
   }
@@ -621,11 +644,18 @@ function toDiagnostic(doc, message, line, column, severity) {
   const c = Math.max((column || 1) - 1, 0);
 
   const text = lineText(doc, l);
-  const ident = identsOf(doc).find((i) => i.line === l && i.col <= c && c <= i.col + i.name.length);
-  const end = ident ? ident.col + ident.name.length : Math.min(c + 1, Math.max(text.length, c + 1));
+  const ident = identsOf(doc).find(
+    (i) => i.line === l && i.col <= c && c <= i.col + i.name.length,
+  );
+  const end = ident
+    ? ident.col + ident.name.length
+    : Math.min(c + 1, Math.max(text.length, c + 1));
 
   return {
-    range: { start: { line: l, character: c }, end: { line: l, character: Math.max(end, c + 1) } },
+    range: {
+      start: { line: l, character: c },
+      end: { line: l, character: Math.max(end, c + 1) },
+    },
     severity,
     source: "zen",
     message: withHint(String(message)),
@@ -652,14 +682,20 @@ function analyze(doc) {
 
       const { errors, warnings } = new Lint(ast).run();
 
-      for (const e of errors) diagnostics.push(toDiagnostic(doc, e.message, e.line, e.column, 1));
-      for (const w of warnings) diagnostics.push(toDiagnostic(doc, w.message, w.line, w.column, 2));
+      for (const e of errors)
+        diagnostics.push(toDiagnostic(doc, e.message, e.line, e.column, 1));
+      for (const w of warnings)
+        diagnostics.push(toDiagnostic(doc, w.message, w.line, w.column, 2));
     });
   } catch (err) {
     if (err && err.__lspGuardExit) {
-      diagnostics.push(toDiagnostic(doc, "Syntax error (parsing aborted)", 1, 1, 1));
+      diagnostics.push(
+        toDiagnostic(doc, "Syntax error (parsing aborted)", 1, 1, 1),
+      );
     } else {
-      diagnostics.push(toDiagnostic(doc, `Internal error: ${err?.message || err}`, 1, 1, 1));
+      diagnostics.push(
+        toDiagnostic(doc, `Internal error: ${err?.message || err}`, 1, 1, 1),
+      );
     }
   }
 
@@ -693,7 +729,7 @@ function scheduleDiagnostics(uri, delay = 200) {
     setTimeout(() => {
       timers.delete(uri);
       publishDiagnostics(uri);
-    }, delay)
+    }, delay),
   );
 }
 
@@ -704,7 +740,10 @@ const displayType = (t) => (t === "ptr" ? "string" : typeStr(t));
 function userCallable(info) {
   return {
     description: "",
-    parameters: info.params.map((p) => ({ name: p.name, type: displayType(p.dataType) })),
+    parameters: info.params.map((p) => ({
+      name: p.name,
+      type: displayType(p.dataType),
+    })),
     returnType: displayType(info.returnType),
   };
 }
@@ -722,10 +761,20 @@ function structInfo(typeName, symbols) {
     }
 
     const fields = new Map(
-      user.fields.map((f) => [f.name, { type: displayType(f.dataType), line: f.line, user: true }])
+      user.fields.map((f) => [
+        f.name,
+        { type: displayType(f.dataType), line: f.line, user: true },
+      ]),
     );
 
-    return { name: typeName, builtin: false, description: "", methods, fields, user };
+    return {
+      name: typeName,
+      builtin: false,
+      description: "",
+      methods,
+      fields,
+      user,
+    };
   }
 
   if (has(INFO.structs, typeName)) {
@@ -737,7 +786,10 @@ function structInfo(typeName, symbols) {
       description: s.description,
       methods: new Map(Object.entries(s.methods ?? {})),
       fields: new Map(
-        Object.entries(s.properties ?? {}).map(([n, p]) => [n, { type: p.type, description: p.description }])
+        Object.entries(s.properties ?? {}).map(([n, p]) => [
+          n,
+          { type: p.type, description: p.description },
+        ]),
       ),
     };
   }
@@ -814,7 +866,13 @@ function memberOf(res, name, symbols) {
   if (!s) return null;
 
   if (s.methods.has(name)) {
-    return { type: "callable", name, callable: s.methods.get(name), prefix: `${s.name}.`, struct: s };
+    return {
+      type: "callable",
+      name,
+      callable: s.methods.get(name),
+      prefix: `${s.name}.`,
+      struct: s,
+    };
   }
 
   if (s.fields.has(name)) {
@@ -825,14 +883,22 @@ function memberOf(res, name, symbols) {
 }
 
 function resolveFree(name, symbols) {
-  if (symbols.variables.has(name)) return { kind: "variable", info: symbols.variables.get(name) };
-  if (symbols.functions.has(name)) return { kind: "function", info: symbols.functions.get(name) };
-  if (symbols.structs.has(name)) return { kind: "struct", info: symbols.structs.get(name) };
-  if (symbols.enums.has(name)) return { kind: "enum", info: symbols.enums.get(name) };
-  if (has(INFO.namespaces, name)) return { kind: "namespace", info: INFO.namespaces[name] };
-  if (has(INFO.structs, name)) return { kind: "builtinStruct", info: INFO.structs[name] };
-  if (has(INFO.global_fn, name)) return { kind: "globalFn", info: INFO.global_fn[name] };
-  if (has(INFO.constants, name)) return { kind: "constant", info: INFO.constants[name] };
+  if (symbols.variables.has(name))
+    return { kind: "variable", info: symbols.variables.get(name) };
+  if (symbols.functions.has(name))
+    return { kind: "function", info: symbols.functions.get(name) };
+  if (symbols.structs.has(name))
+    return { kind: "struct", info: symbols.structs.get(name) };
+  if (symbols.enums.has(name))
+    return { kind: "enum", info: symbols.enums.get(name) };
+  if (has(INFO.namespaces, name))
+    return { kind: "namespace", info: INFO.namespaces[name] };
+  if (has(INFO.structs, name))
+    return { kind: "builtinStruct", info: INFO.structs[name] };
+  if (has(INFO.global_fn, name))
+    return { kind: "globalFn", info: INFO.global_fn[name] };
+  if (has(INFO.constants, name))
+    return { kind: "constant", info: INFO.constants[name] };
   if (TYPES.includes(name) || name === "List") return { kind: "type" };
   if (KEYWORD_WORDS.has(name)) return { kind: "keyword" };
   return null;
@@ -864,7 +930,9 @@ function structMarkdown(name, s) {
 }
 
 function originNote(info) {
-  return info.origin ? `\nImported from \`${path.basename(info.origin.uri)}\`` : "";
+  return info.origin
+    ? `\nImported from \`${path.basename(info.origin.uri)}\``
+    : "";
 }
 
 function hoverMarkdown(doc, offset) {
@@ -881,7 +949,10 @@ function hoverMarkdown(doc, offset) {
     if (!m) return null;
 
     if (m.type === "callable") {
-      return callableMarkdown(m.name, m.callable, m.prefix) + (m.callable.user ? `\nMethod of \`${m.struct.name}\`` : "");
+      return (
+        callableMarkdown(m.name, m.callable, m.prefix) +
+        (m.callable.user ? `\nMethod of \`${m.struct.name}\`` : "")
+      );
     }
 
     if (m.type === "field") {
@@ -898,16 +969,28 @@ function hoverMarkdown(doc, offset) {
 
   switch (r.kind) {
     case "variable":
-      return fence(`${displayType(r.info.dataType)} ${id.name}`) + (r.info.isParam ? "\nParameter" : "\nVariable");
+      return (
+        fence(`${displayType(r.info.dataType)} ${id.name}`) +
+        (r.info.isParam ? "\nParameter" : "\nVariable")
+      );
 
     case "function":
-      return callableMarkdown(id.name, userCallable(r.info)) + `\nUser-defined function${originNote(r.info)}`;
+      return (
+        callableMarkdown(id.name, userCallable(r.info)) +
+        `\nUser-defined function${originNote(r.info)}`
+      );
 
     case "struct":
-      return structMarkdown(id.name, structInfo(id.name, symbols)) + originNote(r.info);
+      return (
+        structMarkdown(id.name, structInfo(id.name, symbols)) +
+        originNote(r.info)
+      );
 
     case "enum":
-      return fence(`enum ${id.name} {\n  ${r.info.members.join(",\n  ")}\n}`) + originNote(r.info);
+      return (
+        fence(`enum ${id.name} {\n  ${r.info.members.join(",\n  ")}\n}`) +
+        originNote(r.info)
+      );
 
     case "namespace": {
       const list = Object.entries(r.info.functions)
@@ -920,10 +1003,18 @@ function hoverMarkdown(doc, offset) {
       return structMarkdown(id.name, structInfo(id.name, symbols));
 
     case "globalFn":
-      return callableMarkdown(id.name, r.info) + (r.info.origin === "compiler" ? "\nCompiler built-in" : "\nStandard function");
+      return (
+        callableMarkdown(id.name, r.info) +
+        (r.info.origin === "compiler"
+          ? "\nCompiler built-in"
+          : "\nStandard function")
+      );
 
     case "constant":
-      return fence(`${r.info.type} ${id.name}`) + `\n${r.info.description}\n\n${r.info.mutable ? "Global variable" : "Global constant"}`;
+      return (
+        fence(`${r.info.type} ${id.name}`) +
+        `\n${r.info.description}\n\n${r.info.mutable ? "Global variable" : "Global constant"}`
+      );
 
     case "type":
       return fence(id.name) + "\nBuilt-in type";
@@ -963,7 +1054,9 @@ function callableItem(name, callable, prefix, kind, sortPrefix) {
     label: name,
     kind,
     detail: formatSignature(name, callable, prefix),
-    documentation: callable.description ? { kind: "markdown", value: callable.description } : undefined,
+    documentation: callable.description
+      ? { kind: "markdown", value: callable.description }
+      : undefined,
     insertText: snippet(name, callable),
     insertTextFormat: 2,
     sortText: `${sortPrefix}${name}`,
@@ -982,7 +1075,11 @@ function memberItems(res, symbols) {
 
   if (res.kind === "enum") {
     for (const m of res.info.members) {
-      items.push({ label: m, kind: Kind.EnumMember, detail: `${res.name}.${m}` });
+      items.push({
+        label: m,
+        kind: Kind.EnumMember,
+        detail: `${res.name}.${m}`,
+      });
     }
     return items;
   }
@@ -995,7 +1092,9 @@ function memberItems(res, symbols) {
       label: n,
       kind: Kind.Field,
       detail: `${s.name}.${n}: ${f.type}`,
-      documentation: f.description ? { kind: "markdown", value: f.description } : undefined,
+      documentation: f.description
+        ? { kind: "markdown", value: f.description }
+        : undefined,
       sortText: `0${n}`,
     });
   }
@@ -1012,10 +1111,17 @@ function completionItems(doc, offset) {
 
   const symbols = getSymbols(doc.uri);
   const before = doc.masked.slice(Math.max(0, offset - 300), offset);
-  const dot = /((?:[A-Za-z_]\w*\s*\.\s*)*[A-Za-z_]\w*)\s*\.\s*(?:[A-Za-z_]\w*)?$/.exec(before);
+  const dot =
+    /((?:[A-Za-z_]\w*\s*\.\s*)*[A-Za-z_]\w*)\s*\.\s*(?:[A-Za-z_]\w*)?$/.exec(
+      before,
+    );
 
   if (dot) {
-    const res = resolveChain(dot[1].split(".").map((s) => s.trim()), doc, offset);
+    const res = resolveChain(
+      dot[1].split(".").map((s) => s.trim()),
+      doc,
+      offset,
+    );
     return res ? memberItems(res, symbols) : [];
   }
 
@@ -1026,13 +1132,28 @@ function completionItems(doc, offset) {
     items.push(callableItem(n, userCallable(info), "", Kind.Function, "0"));
   }
   for (const [n, info] of symbols.variables) {
-    items.push({ label: n, kind: Kind.Variable, detail: displayType(info.dataType), sortText: `0${n}` });
+    items.push({
+      label: n,
+      kind: Kind.Variable,
+      detail: displayType(info.dataType),
+      sortText: `0${n}`,
+    });
   }
   for (const n of symbols.structs.keys()) {
-    items.push({ label: n, kind: Kind.Struct, detail: "struct", sortText: `0${n}` });
+    items.push({
+      label: n,
+      kind: Kind.Struct,
+      detail: "struct",
+      sortText: `0${n}`,
+    });
   }
   for (const n of symbols.enums.keys()) {
-    items.push({ label: n, kind: Kind.Class, detail: "enum", sortText: `0${n}` });
+    items.push({
+      label: n,
+      kind: Kind.Class,
+      detail: "enum",
+      sortText: `0${n}`,
+    });
   }
 
   for (const [n, f] of Object.entries(INFO.global_fn)) {
@@ -1066,10 +1187,20 @@ function completionItems(doc, offset) {
     });
   }
   for (const t of TYPES) {
-    items.push({ label: t, kind: Kind.Class, detail: "type", sortText: `2${t}` });
+    items.push({
+      label: t,
+      kind: Kind.Class,
+      detail: "type",
+      sortText: `2${t}`,
+    });
   }
   for (const k of KEYWORDS) {
-    items.push({ label: k, kind: Kind.Keyword, detail: "keyword", sortText: `3${k}` });
+    items.push({
+      label: k,
+      kind: Kind.Keyword,
+      detail: "keyword",
+      sortText: `3${k}`,
+    });
   }
 
   return items;
@@ -1101,7 +1232,10 @@ function findCall(doc, offset) {
 
 function calleeAt(doc, open) {
   const before = doc.masked.slice(Math.max(0, open - 300), open);
-  const m = /([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*(?:<[A-Za-z0-9_<>,\s]*>)?\s*$/.exec(before);
+  const m =
+    /([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*(?:<[A-Za-z0-9_<>,\s]*>)?\s*$/.exec(
+      before,
+    );
 
   return m ? m[1].split(".").map((s) => s.trim()) : null;
 }
@@ -1113,7 +1247,11 @@ function resolveCallable(doc, segments, open) {
     const name = segments[0];
 
     if (symbols.functions.has(name)) {
-      return { name, callable: userCallable(symbols.functions.get(name)), prefix: "" };
+      return {
+        name,
+        callable: userCallable(symbols.functions.get(name)),
+        prefix: "",
+      };
     }
 
     if (has(INFO.global_fn, name)) {
@@ -1127,7 +1265,9 @@ function resolveCallable(doc, segments, open) {
   const res = resolveChain(segments.slice(0, -1), doc, open);
   const m = memberOf(res, name, symbols);
 
-  return m && m.type === "callable" ? { name, callable: m.callable, prefix: m.prefix } : null;
+  return m && m.type === "callable"
+    ? { name, callable: m.callable, prefix: m.prefix }
+    : null;
 }
 
 function signatureHelp(doc, offset) {
@@ -1143,14 +1283,18 @@ function signatureHelp(doc, offset) {
   if (!found) return null;
 
   const { name, callable, prefix } = found;
-  const labels = callable.parameters.map((p) => `${p.type} ${p.name}${p.optional ? "?" : ""}`);
+  const labels = callable.parameters.map(
+    (p) => `${p.type} ${p.name}${p.optional ? "?" : ""}`,
+  );
   if (callable.variadic) labels.push("...");
 
   return {
     signatures: [
       {
         label: formatSignature(name, callable, prefix),
-        documentation: callable.description ? { kind: "markdown", value: callable.description } : undefined,
+        documentation: callable.description
+          ? { kind: "markdown", value: callable.description }
+          : undefined,
         parameters: labels.map((label) => ({ label })),
       },
     ],
@@ -1165,7 +1309,9 @@ function locateDecl(doc, name, lineHint, opts = {}) {
   let cands = identsOf(doc).filter((i) => i.name === name && !i.afterDot);
 
   if (opts.range) {
-    cands = cands.filter((i) => i.line >= opts.range.startLine && i.line <= opts.range.endLine);
+    cands = cands.filter(
+      (i) => i.line >= opts.range.startLine && i.line <= opts.range.endLine,
+    );
   }
 
   const prefer = (pred) => {
@@ -1179,7 +1325,9 @@ function locateDecl(doc, name, lineHint, opts = {}) {
   if (!cands.length) return null;
 
   if (lineHint != null) {
-    const hit = cands.find((i) => i.line === lineHint - 1) ?? cands.find((i) => i.line === lineHint);
+    const hit =
+      cands.find((i) => i.line === lineHint - 1) ??
+      cands.find((i) => i.line === lineHint);
     if (hit) return hit;
   }
 
@@ -1196,14 +1344,15 @@ function declarationOfFree(doc, name, r) {
 
   const id =
     r.kind === "function"
-      ? locateDecl(d, declName, r.info.line, { keyword: "fn" }) ?? locateDecl(d, declName, r.info.line, { paren: true })
+      ? (locateDecl(d, declName, r.info.line, { keyword: "fn" }) ??
+        locateDecl(d, declName, r.info.line, { paren: true }))
       : r.kind === "struct"
-      ? locateDecl(d, declName, r.info.line, { keyword: "struct" })
-      : r.kind === "enum"
-      ? locateDecl(d, declName, r.info.line, { keyword: "enum" })
-      : r.kind === "variable"
-      ? locateDecl(d, declName, r.info.line)
-      : null;
+        ? locateDecl(d, declName, r.info.line, { keyword: "struct" })
+        : r.kind === "enum"
+          ? locateDecl(d, declName, r.info.line, { keyword: "enum" })
+          : r.kind === "variable"
+            ? locateDecl(d, declName, r.info.line)
+            : null;
 
   return id ? { doc: d, id } : null;
 }
@@ -1214,10 +1363,16 @@ function declarationOfMember(doc, m) {
 
   const origin = m.struct.user.origin;
   const d = origin ? origin.doc : doc;
-  const range = structRangeByName(d, m.struct.user.originalName ?? m.struct.name);
+  const range = structRangeByName(
+    d,
+    m.struct.user.originalName ?? m.struct.name,
+  );
   const hint = m.type === "callable" ? m.callable.line : m.field.line;
 
-  const id = locateDecl(d, m.name, hint, { range, paren: m.type === "callable" });
+  const id = locateDecl(d, m.name, hint, {
+    range,
+    paren: m.type === "callable",
+  });
 
   return id ? { doc: d, id } : null;
 }
@@ -1262,16 +1417,30 @@ function targetAt(doc, offset) {
 
   if (struct) {
     const s = symbols.structs.get(struct.name);
-    const isMember = s && (s.methods.has(id.name) || s.fields.some((f) => f.name === id.name));
-    const decl = isMember && locateDecl(doc, id.name, null, { range: struct, paren: s.methods.has(id.name) });
+    const isMember =
+      s && (s.methods.has(id.name) || s.fields.some((f) => f.name === id.name));
+    const decl =
+      isMember &&
+      locateDecl(doc, id.name, null, {
+        range: struct,
+        paren: s.methods.has(id.name),
+      });
 
-    if (isMember && decl && decl.start === id.start) return { id, kind: "member", name: id.name };
+    if (isMember && decl && decl.start === id.start)
+      return { id, kind: "member", name: id.name };
   }
 
   const r = resolveFree(id.name, symbols);
-  if (!r || !["variable", "function", "struct", "enum"].includes(r.kind)) return null;
+  if (!r || !["variable", "function", "struct", "enum"].includes(r.kind))
+    return null;
 
-  return { id, kind: "free", name: id.name, imported: !!r.info.origin, resolved: r };
+  return {
+    id,
+    kind: "free",
+    name: id.name,
+    imported: !!r.info.origin,
+    resolved: r,
+  };
 }
 
 function referencesOf(doc, target) {
@@ -1293,7 +1462,10 @@ function renameEdits(doc, offset, newName) {
   const target = targetAt(doc, offset);
   if (!target) return { error: "Nothing renameable here." };
 
-  if (target.imported) return { error: "This symbol is defined in another file; rename it there." };
+  if (target.imported)
+    return {
+      error: "This symbol is defined in another file; rename it there.",
+    };
 
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(newName)) {
     return { error: `'${newName}' is not a valid identifier.` };
@@ -1303,14 +1475,25 @@ function renameEdits(doc, offset, newName) {
     return { error: `'${newName}' is a reserved word.` };
   }
 
-  const edits = referencesOf(doc, target).map((i) => ({ range: identRange(doc, i), newText: newName }));
+  const edits = referencesOf(doc, target).map((i) => ({
+    range: identRange(doc, i),
+    newText: newName,
+  }));
 
   return { edits };
 }
 
 // Symbols: outline + workspace
 
-const SymbolKind = { Enum: 10, Function: 12, Variable: 13, Method: 6, Field: 8, Struct: 23, EnumMember: 22 };
+const SymbolKind = {
+  Enum: 10,
+  Function: 12,
+  Variable: 13,
+  Method: 6,
+  Field: 8,
+  Struct: 23,
+  EnumMember: 22,
+};
 
 function blockEnd(doc, from) {
   const m = doc.masked;
@@ -1318,7 +1501,8 @@ function blockEnd(doc, from) {
   if (open === -1) return null;
 
   const between = m.slice(from, open);
-  if (/[;]/.test(between) || (between.match(/\n/g) || []).length > 3) return null;
+  if (/[;]/.test(between) || (between.match(/\n/g) || []).length > 3)
+    return null;
 
   return matchBrace(m, open) + 1;
 }
@@ -1342,8 +1526,18 @@ function outline(doc, local) {
 
   for (const [name, info] of local.functions) {
     if (info.origin) continue;
-    const id = locateDecl(doc, name, info.line, { keyword: "fn" }) ?? locateDecl(doc, name, info.line, { paren: true });
-    if (id) out.push(make(name, SymbolKind.Function, id, formatSignature(name, userCallable(info)).slice(name.length)));
+    const id =
+      locateDecl(doc, name, info.line, { keyword: "fn" }) ??
+      locateDecl(doc, name, info.line, { paren: true });
+    if (id)
+      out.push(
+        make(
+          name,
+          SymbolKind.Function,
+          id,
+          formatSignature(name, userCallable(info)).slice(name.length),
+        ),
+      );
   }
 
   for (const [name, info] of local.structs) {
@@ -1356,12 +1550,21 @@ function outline(doc, local) {
 
     for (const f of info.fields) {
       const fid = locateDecl(doc, f.name, f.line, { range });
-      if (fid) sym.children.push(make(f.name, SymbolKind.Field, fid, f.dataType));
+      if (fid)
+        sym.children.push(make(f.name, SymbolKind.Field, fid, f.dataType));
     }
 
     for (const [mName, m] of info.methods) {
       const mid = locateDecl(doc, mName, m.line, { range, paren: true });
-      if (mid) sym.children.push(make(mName, SymbolKind.Method, mid, formatSignature(mName, userCallable(m)).slice(mName.length)));
+      if (mid)
+        sym.children.push(
+          make(
+            mName,
+            SymbolKind.Method,
+            mid,
+            formatSignature(mName, userCallable(m)).slice(mName.length),
+          ),
+        );
     }
 
     out.push(sym);
@@ -1389,7 +1592,9 @@ function outline(doc, local) {
     if (id) out.push(make(name, SymbolKind.Variable, id, info.dataType));
   }
 
-  out.sort((a, b) => positionCompare(a.selectionRange.start, b.selectionRange.start));
+  out.sort((a, b) =>
+    positionCompare(a.selectionRange.start, b.selectionRange.start),
+  );
 
   return out;
 }
@@ -1398,13 +1603,24 @@ const positionCompare = (a, b) => a.line - b.line || a.character - b.character;
 
 function flatten(doc, symbols, container, out = []) {
   for (const s of symbols) {
-    out.push({ name: s.name, kind: s.kind, containerName: container, location: { uri: doc.uri, range: s.selectionRange } });
+    out.push({
+      name: s.name,
+      kind: s.kind,
+      containerName: container,
+      location: { uri: doc.uri, range: s.selectionRange },
+    });
     flatten(doc, s.children, s.name, out);
   }
   return out;
 }
 
-const IGNORED_DIRS = new Set(["node_modules", ".git", "logs", "zen_modules", ".zen"]);
+const IGNORED_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "logs",
+  "zen_modules",
+  ".zen",
+]);
 
 function workspaceFiles() {
   const files = [];
@@ -1423,7 +1639,8 @@ function workspaceFiles() {
     for (const e of entries) {
       if (files.length >= 400) return;
       if (e.isDirectory()) {
-        if (!IGNORED_DIRS.has(e.name) && !e.name.startsWith(".")) walk(path.join(dir, e.name), depth + 1);
+        if (!IGNORED_DIRS.has(e.name) && !e.name.startsWith("."))
+          walk(path.join(dir, e.name), depth + 1);
       } else if (e.name.endsWith(".zen")) {
         files.push(path.join(dir, e.name));
       }
@@ -1477,7 +1694,8 @@ function foldingRanges(doc) {
     else if (m[i] === "}" && stack.length) {
       const start = positionAt(doc, stack.pop()).line;
       const end = positionAt(doc, i).line - 1;
-      if (end > start) out.push({ startLine: start, endLine: end, kind: "region" });
+      if (end > start)
+        out.push({ startLine: start, endLine: end, kind: "region" });
     }
   }
 
@@ -1488,7 +1706,8 @@ function foldingRanges(doc) {
     if (m[c.index] !== " ") continue;
     const start = positionAt(doc, c.index).line;
     const end = positionAt(doc, c.index + c[0].length).line;
-    if (end > start) out.push({ startLine: start, endLine: end, kind: "comment" });
+    if (end > start)
+      out.push({ startLine: start, endLine: end, kind: "comment" });
   }
 
   return out;
@@ -1535,7 +1754,10 @@ function handleMessage(msg) {
           textDocumentSync: { openClose: true, change: 1 },
           completionProvider: { triggerCharacters: ["."] },
           hoverProvider: true,
-          signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
+          signatureHelpProvider: {
+            triggerCharacters: ["(", ","],
+            retriggerCharacters: [","],
+          },
           definitionProvider: true,
           referencesProvider: true,
           documentHighlightProvider: true,
@@ -1589,16 +1811,25 @@ function handleMessage(msg) {
         const md = hoverMarkdown(doc, offset);
         const ident = identAt(doc, offset);
 
-        return md ? { contents: { kind: "markdown", value: md }, range: ident ? identRange(doc, ident) : undefined } : null;
+        return md
+          ? {
+              contents: { kind: "markdown", value: md },
+              range: ident ? identRange(doc, ident) : undefined,
+            }
+          : null;
       });
       return;
 
     case "textDocument/signatureHelp":
-      withDoc(id, params, (doc) => signatureHelp(doc, offsetAt(doc, params.position)));
+      withDoc(id, params, (doc) =>
+        signatureHelp(doc, offsetAt(doc, params.position)),
+      );
       return;
 
     case "textDocument/definition":
-      withDoc(id, params, (doc) => definitionAt(doc, offsetAt(doc, params.position)));
+      withDoc(id, params, (doc) =>
+        definitionAt(doc, offsetAt(doc, params.position)),
+      );
       return;
 
     case "textDocument/references":
@@ -1607,7 +1838,11 @@ function handleMessage(msg) {
         if (!target) return [];
 
         return referencesOf(doc, target)
-          .filter((i) => params.context?.includeDeclaration !== false || i.start !== definitionStart(doc, target))
+          .filter(
+            (i) =>
+              params.context?.includeDeclaration !== false ||
+              i.start !== definitionStart(doc, target),
+          )
           .map((i) => locationOf(doc, i));
       });
       return;
@@ -1617,7 +1852,10 @@ function handleMessage(msg) {
         const target = targetAt(doc, offsetAt(doc, params.position));
         if (!target) return [];
 
-        return referencesOf(doc, target).map((i) => ({ range: identRange(doc, i), kind: 1 }));
+        return referencesOf(doc, target).map((i) => ({
+          range: identRange(doc, i),
+          kind: 1,
+        }));
       });
       return;
 
@@ -1626,11 +1864,20 @@ function handleMessage(msg) {
       const target = doc && targetAt(doc, offsetAt(doc, params.position));
 
       if (!target || target.imported) {
-        replyError(id, -32602, target?.imported ? "Defined in another file; rename it there." : "Nothing renameable here.");
+        replyError(
+          id,
+          -32602,
+          target?.imported
+            ? "Defined in another file; rename it there."
+            : "Nothing renameable here.",
+        );
         return;
       }
 
-      reply(id, { range: identRange(doc, target.id), placeholder: target.name });
+      reply(id, {
+        range: identRange(doc, target.id),
+        placeholder: target.name,
+      });
       return;
     }
 
@@ -1642,7 +1889,11 @@ function handleMessage(msg) {
         return;
       }
 
-      const result = renameEdits(doc, offsetAt(doc, params.position), params.newName);
+      const result = renameEdits(
+        doc,
+        offsetAt(doc, params.position),
+        params.newName,
+      );
 
       if (result.error) replyError(id, -32602, result.error);
       else reply(id, { changes: { [doc.uri]: result.edits } });
@@ -1675,7 +1926,8 @@ function handleMessage(msg) {
 
     default:
       // unknown request -> null result; unknown notifications ($/…) are ignored
-      if (id !== undefined && method && !method.startsWith("$/")) reply(id, null);
+      if (id !== undefined && method && !method.startsWith("$/"))
+        reply(id, null);
       return;
   }
 }
@@ -1690,7 +1942,12 @@ function definitionStart(doc, target) {
 
   const range = enclosingStruct(doc, target.id.start);
   const s = range && symbols.structs.get(range.name);
-  const decl = s && locateDecl(doc, target.name, null, { range, paren: s.methods.has(target.name) });
+  const decl =
+    s &&
+    locateDecl(doc, target.name, null, {
+      range,
+      paren: s.methods.has(target.name),
+    });
 
   return decl ? decl.start : -1;
 }

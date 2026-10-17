@@ -95,7 +95,7 @@ export class CodeGen {
       this.thread,
       this.debug,
       this.crypto,
-      this.IRB.sourceName
+      this.IRB.sourceName,
     );
 
     this.expr.setCall(this.call);
@@ -113,7 +113,7 @@ export class CodeGen {
       this.moduleName,
       BUILTIN_STRUCT_ABI,
       BUILTIN_STRUCTS,
-      this.IRB.sourceName
+      this.IRB.sourceName,
     );
     this.call.applyFn(this.fn);
     this.expr.setFn(this.fn);
@@ -140,15 +140,15 @@ export class CodeGen {
 
     const exportNodes = this.ast.filter((f) => f.type === "EXPORT");
 
-this.IRB.exportNames = new Set(
-  exportNodes.flatMap((node) => node.names || [])
-);
+    this.IRB.exportNames = new Set(
+      exportNodes.flatMap((node) => node.names || []),
+    );
 
-if (exportNodes.length > 0) {
-  this.IRB.haveExport = true;
-  this.IRB.globals.push(`@argc = external global i32`);
-  this.IRB.globals.push(`@argv = external global ptr`);
-}
+    if (exportNodes.length > 0) {
+      this.IRB.haveExport = true;
+      this.IRB.globals.push(`@argc = external global i32`);
+      this.IRB.globals.push(`@argv = external global ptr`);
+    }
 
     for (const node of this.ast) {
       if (node.type === "EXPORT") {
@@ -251,8 +251,6 @@ define void @_assignSeed () {
           }
           */
 
-          
-
           if (returnType !== "void") {
             this.IRB.emitError(
               "ThreadError",
@@ -275,7 +273,7 @@ define void @_assignSeed () {
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
           freedPindex: new Set(),
-          isAsync: node?.isAsync
+          isAsync: node?.isAsync,
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);
@@ -305,7 +303,9 @@ define void @_assignSeed () {
 
           const params = fn.params.join(", ");
 
-          this.IRB.globals.unshift(`declare ${fn.ret} @_zen_std_${name}(${params})`);
+          this.IRB.globals.unshift(
+            `declare ${fn.ret} @_zen_std_${name}(${params})`,
+          );
         }
       }
     }
@@ -407,7 +407,7 @@ define void @_assignSeed () {
           isDeclaration: node.isDeclaration,
           isExtern: node.isExtern,
           freedPindex: new Set(),
-          isAsync: node?.isAsync
+          isAsync: node?.isAsync,
         };
 
         this.IRB.setFunction(`${node.name}`, data, node);

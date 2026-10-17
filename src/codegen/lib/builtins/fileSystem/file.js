@@ -90,9 +90,7 @@ export class ZenFileSystem {
       isList: isListRet,
       internalType: isListRet ? "List" : undefined,
       retGeneric: isListRet ? elemType : undefined,
-      generic: isListRet
-        ? { type: "List", generic: { type: elemType } }
-        : null,
+      generic: isListRet ? { type: "List", generic: { type: elemType } } : null,
     };
   }
 }

@@ -42,7 +42,7 @@ const VALID_COMMANDS = new Set([
   "info",
   "test",
   "upgrade",
-  "lsp"
+  "lsp",
 ]);
 
 const OPT_FLAGS = ["-O0", "-O1", "-O2", "-O3"];
@@ -66,7 +66,7 @@ const PACKAGE_COMMANDS = {
   deps: "deps",
   installed: "installed",
   read: "read",
-  upgrade: "upgrade"
+  upgrade: "upgrade",
 };
 
 const COMPILE_COMMANDS = new Set([
@@ -81,17 +81,13 @@ const COMPILE_COMMANDS = new Set([
   "lint", // linter
 ]);
 
-const INFO_COMMANDS = new Set([
-  "info",
-]);
+const INFO_COMMANDS = new Set(["info"]);
 
-const TEST_COMMANDS = new Set([
-  "test"
-]);
+const TEST_COMMANDS = new Set(["test"]);
 
 function help() {
   console.log(`
-Zen Programming Language v3.0.0
+Zen Programming Language v3.1.0
 
 Usage:
   zen <command> [arguments] [options]
@@ -194,38 +190,37 @@ export class CLI {
     }
 
     if (command === "--version" || command === "--v" || command === "version") {
+      // pkg version
+      if (this.args[1] !== undefined) {
+        const pkgName = this.args[1];
+        const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
+        const zenJsonPath = path.join(pkgDir, "zen.json");
 
-  // pkg version
-  if (this.args[1] !== undefined) {
-    const pkgName = this.args[1];
-    const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
-    const zenJsonPath = path.join(pkgDir, "zen.json");
+        if (!fs.existsSync(pkgDir)) {
+          console.log(`Package '${pkgName}' not installed!`);
+          process.exit(1);
+        }
 
-    if (!fs.existsSync(pkgDir)) {
-      console.log(`Package '${pkgName}' not installed!`);
-      process.exit(1);
+        if (!fs.existsSync(zenJsonPath)) {
+          console.log(`Package '${pkgName}' has no zen.json!`);
+          process.exit(1);
+        }
+
+        const zenJson = JSON.parse(fs.readFileSync(zenJsonPath, "utf8"));
+
+        if (zenJson.version === undefined) {
+          console.log(`Package '${pkgName}' has no version in zen.json!`);
+          process.exit(1);
+        }
+
+        console.log(`${pkgName}@${zenJson.version}`);
+        process.exit(0);
+      }
+
+      console.log("Zen v3.1.0 (latest)");
+      process.exit(0);
     }
 
-    if (!fs.existsSync(zenJsonPath)) {
-      console.log(`Package '${pkgName}' has no zen.json!`);
-      process.exit(1);
-    }
-
-    const zenJson = JSON.parse(fs.readFileSync(zenJsonPath, "utf8"));
-
-    if (zenJson.version === undefined) {
-      console.log(`Package '${pkgName}' has no version in zen.json!`);
-      process.exit(1);
-    }
-
-    console.log(`${pkgName}@${zenJson.version}`);
-    process.exit(0);
-  }
-
-  console.log("Zen v3.0.0 (latest)");
-  process.exit(0);
-    }
-    
     if (!VALID_COMMANDS.has(command)) {
       console.error(`error: unknown command '${command}'`);
       help();
@@ -245,15 +240,15 @@ export class CLI {
     }
 
     if (INFO_COMMANDS.has(command)) {
-     const info = new Info(this.args);
-     await info.run();
-     return;
+      const info = new Info(this.args);
+      await info.run();
+      return;
     }
 
     if (TEST_COMMANDS.has(command)) {
-     const tests = new Tests(this.args);
-     await tests.run();
-     return;
+      const tests = new Tests(this.args);
+      await tests.run();
+      return;
     }
 
     if (COMPILE_COMMANDS.has(command)) {

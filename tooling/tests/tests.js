@@ -18,58 +18,58 @@ const RESET = "\x1b[0m";
 const TESTS = [
   {
     name: "Hello World",
-    file: "hello_world.zen"
+    file: "hello_world.zen",
   },
 
   {
     name: "Variables and access",
-    file: "variables.zen"
+    file: "variables.zen",
   },
 
   {
     name: "Functions and builtins",
-    file: "functions.zen"
+    file: "functions.zen",
   },
 
   {
     name: "loops",
-    file: "loops.zen"
+    file: "loops.zen",
   },
 
   {
     name: "Control flow",
-    file: "control_flow.zen"
+    file: "control_flow.zen",
   },
 
   {
     name: "Data structures",
-    file: "data_structure.zen"
+    file: "data_structure.zen",
   },
 
   {
     name: "operators and type promotion rules",
-    file: "operators.zen"
+    file: "operators.zen",
   },
 
   {
     name: "Zen built-ins",
-    file: "builtins.zen"
+    file: "builtins.zen",
   },
 
   {
     name: "Zen Semantics",
-    file: "semantics.zen"
+    file: "semantics.zen",
   },
 
   {
     name: "Reactive variables",
-    file: "reactive.zen"
+    file: "reactive.zen",
   },
 
   {
-   name: "Zen modules, imports, exports, paths, and module validation",
-   file: "modules.zen"
- },
+    name: "Zen modules, imports, exports, paths, and module validation",
+    file: "modules.zen",
+  },
 ];
 
 export class Tests {
@@ -78,70 +78,68 @@ export class Tests {
   }
 
   async run() {
-
-    
     // package test runner
-if (this.args[1] !== undefined) {
-  const pkgName = this.args[1];
-  const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
+    if (this.args[1] !== undefined) {
+      const pkgName = this.args[1];
+      const pkgDir = path.join(os.homedir(), ".zen_packages", pkgName);
 
-  if (!fs.existsSync(pkgDir)) {
-    console.log(`Package '${pkgName}' not installed!`);
-    return;
-  }
+      if (!fs.existsSync(pkgDir)) {
+        console.log(`Package '${pkgName}' not installed!`);
+        return;
+      }
 
-  const pkgTestPath = path.join(pkgDir, "test.zen");
+      const pkgTestPath = path.join(pkgDir, "test.zen");
 
-  if (!fs.existsSync(pkgTestPath)) {
-    console.log(`There is no test.zen in package '${pkgName}'!`);
-    return;
-  }
+      if (!fs.existsSync(pkgTestPath)) {
+        console.log(`There is no test.zen in package '${pkgName}'!`);
+        return;
+      }
 
-  const testSource = fs.readFileSync(pkgTestPath, "utf8");
+      const testSource = fs.readFileSync(pkgTestPath, "utf8");
 
-  console.log("");
-  console.log(`Zen Test: ${pkgName}`);
-  console.log("─".repeat(50));
-  console.log("");
-  console.log(highlightCode(testSource));
-  console.log("─".repeat(50));
-  console.log("");
+      console.log("");
+      console.log(`Zen Test: ${pkgName}`);
+      console.log("─".repeat(50));
+      console.log("");
+      console.log(highlightCode(testSource));
+      console.log("─".repeat(50));
+      console.log("");
 
-  const answer = await this.question("Run this test? [y/N] ");
+      const answer = await this.question("Run this test? [y/N] ");
 
-  if (answer.toLowerCase() !== "y") {
-    console.log("Test not run.");
-    return;
-  }
+      if (answer.toLowerCase() !== "y") {
+        console.log("Test not run.");
+        return;
+      }
 
-  console.log("");
-console.log("Running test...");
-console.log("─".repeat(50));
-console.log("");
+      console.log("");
+      console.log("Running test...");
+      console.log("─".repeat(50));
+      console.log("");
 
-const child = spawn("zen", ["run", pkgTestPath], {
-  stdio: "inherit",
-  cwd: pkgDir
-});
+      const child = spawn("zen", ["run", pkgTestPath], {
+        stdio: "inherit",
+        cwd: pkgDir,
+      });
 
-await new Promise((resolve) => {
-  child.on("close", (code) => {
-    console.log("");
-    console.log("─".repeat(50));
+      await new Promise((resolve) => {
+        child.on("close", (code) => {
+          console.log("");
+          console.log("─".repeat(50));
 
-    if (code === 0) {
-      console.log(`${GREEN}✓${RESET} Test completed successfully.`);
-    } else {
-      console.log(`✗ Test failed with exit code ${code}.`);
+          if (code === 0) {
+            console.log(`${GREEN}✓${RESET} Test completed successfully.`);
+          } else {
+            console.log(`✗ Test failed with exit code ${code}.`);
+          }
+
+          resolve();
+        });
+      });
+
+      return;
     }
 
-    resolve();
-  });
-});
-
-return;
-}
-    
     console.log("");
     console.log("Zen Tests");
     console.log("─".repeat(50));
@@ -180,11 +178,7 @@ return;
 
     const index = Number(answer) - 1;
 
-    if (
-      !Number.isInteger(index) ||
-      index < 0 ||
-      index >= TESTS.length
-    ) {
+    if (!Number.isInteger(index) || index < 0 || index >= TESTS.length) {
       console.log("");
       console.log("Invalid test selection.");
       return null;
@@ -223,27 +217,21 @@ return;
   }
 
   async runTest(filePath) {
-  console.log("");
-  console.log("Running test...");
-  console.log("─".repeat(50));
-  console.log("");
+    console.log("");
+    console.log("Running test...");
+    console.log("─".repeat(50));
+    console.log("");
 
-  const tempDir = path.join(
-    os.homedir(),
-    ".zen_test"
-  );
+    const tempDir = path.join(os.homedir(), ".zen_test");
 
-  fs.mkdirSync(tempDir, { recursive: true });
+    fs.mkdirSync(tempDir, { recursive: true });
 
-  const tempFile = path.join(
-    tempDir,
-    path.basename(filePath)
-  );
+    const tempFile = path.join(tempDir, path.basename(filePath));
 
-  fs.copyFileSync(filePath, tempFile);
+    fs.copyFileSync(filePath, tempFile);
 
-  const moduleFiles = {
-    "module_basic.zen": `
+    const moduleFiles = {
+      "module_basic.zen": `
 fn add() {
   screen("called add")
 }
@@ -291,7 +279,7 @@ export (message, numbers)
 # export (helper)
 `,
 
-    "module_struct.zen": `
+      "module_struct.zen": `
 struct Person {
   string name
   int age
@@ -327,7 +315,7 @@ export (Person)
 export (User)
 `,
 
-    "module_deps.zen": `
+      "module_deps.zen": `
 struct Address {
   string city
 
@@ -366,7 +354,7 @@ struct Company {
 export (Company)
 `,
 
-    "module_nested.zen": `
+      "module_nested.zen": `
 const int first = 10
 const int second = 20
 const int third = 30
@@ -375,55 +363,48 @@ const int fourth = 40
 export (first, second)
 export (third)
 export (fourth)
-`
-  };
+`,
+    };
 
-  if (path.basename(filePath) === "modules.zen") {
-    
-    for (const [moduleFile, source] of Object.entries(moduleFiles)) {
-      fs.writeFileSync(
-        path.join(tempDir, moduleFile),
-        source.trim() + "\n"
-      );
-    }
-  }
-
-  const child = spawn("zen", ["run", tempFile], {
-  stdio: "inherit"
-});
-
-  await new Promise((resolve) => {
-    child.on("close", (code) => {
-      console.log("");
-      console.log("─".repeat(50));
-
-      if (code === 0) {
-        console.log(`${GREEN}✓${RESET} Test completed successfully.`);
-      } else {
-        console.log(`✗ Test failed with exit code ${code}.`);
+    if (path.basename(filePath) === "modules.zen") {
+      for (const [moduleFile, source] of Object.entries(moduleFiles)) {
+        fs.writeFileSync(path.join(tempDir, moduleFile), source.trim() + "\n");
       }
-
-      resolve();
-    });
-  });
-
-  fs.rmSync(tempFile, { force: true });
-
-  if (path.basename(filePath) === "modules.zen") {
-    for (const moduleFile of Object.keys(moduleFiles)) {
-      fs.rmSync(
-        path.join(tempDir, moduleFile),
-        { force: true }
-      );
     }
-  }
+
+    const child = spawn("zen", ["run", tempFile], {
+      stdio: "inherit",
+    });
+
+    await new Promise((resolve) => {
+      child.on("close", (code) => {
+        console.log("");
+        console.log("─".repeat(50));
+
+        if (code === 0) {
+          console.log(`${GREEN}✓${RESET} Test completed successfully.`);
+        } else {
+          console.log(`✗ Test failed with exit code ${code}.`);
+        }
+
+        resolve();
+      });
+    });
+
+    fs.rmSync(tempFile, { force: true });
+
+    if (path.basename(filePath) === "modules.zen") {
+      for (const moduleFile of Object.keys(moduleFiles)) {
+        fs.rmSync(path.join(tempDir, moduleFile), { force: true });
+      }
+    }
   }
 
   question(prompt) {
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
       rl.question(prompt, (answer) => {

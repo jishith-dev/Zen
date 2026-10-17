@@ -42,7 +42,7 @@ export class ZenList {
       let isActualList = el.type === "ARRAY" || el.type === "LIST_LITERAL";
 
       if (el.type !== "ARRAY" && el.type !== "STRUCT_LITERAL") {
-        isActualList = this.expr.handleExpression(el)?.isList;
+        isActualList = this.IRB.typeDepth(el) > 0;
       }
 
       // expected list but got primitive
@@ -98,17 +98,22 @@ export class ZenList {
         return;
       }
 
-      // EXISTING LIST VARIABLE
-      if (element.type === "variable") {
-        const expr = this.expr.handleExpression(element);
-        this.IRB.emitExpr(expr);
+      // EXISTING LIST VARIABLE / STRUCT FIELD / LIST ELEMENT
+      let preExpr = null;
+      if (
+        element.type === "variable" ||
+        element.type === "MEMBER_ACCESS" ||
+        element.type === "ARRAY_ACCESS"
+      ) {
+        preExpr = this.expr.handleExpression(element);
+        this.IRB.emitExpr(preExpr);
 
-        if (expr.isList) {
-          let listVal = expr.ptr;
+        if (preExpr.isList) {
+          let listVal = preExpr.ptr;
 
-          if (expr.needsLoad) {
+          if (preExpr.needsLoad) {
             const t = this.IRB.newTemp();
-            this.IRB.emit(`${t} = load ptr, ptr ${expr.ptr}`);
+            this.IRB.emit(`${t} = load ptr, ptr ${preExpr.ptr}`);
             listVal = t;
           }
 
@@ -175,8 +180,12 @@ export class ZenList {
       }
 
       // NORMAL VALUE
-      const expr = this.expr.handleExpression(element);
-      this.IRB.emitExpr(expr);
+      // NORMAL VALUE
+      let expr = preExpr;
+      if (!expr) {
+        expr = this.expr.handleExpression(element);
+        this.IRB.emitExpr(expr);
+      }
 
       if (expr.isStruct) {
         const struct = this.IRB.getStruct(expr.type);
@@ -191,7 +200,6 @@ export class ZenList {
             p = tmp;
           }
 
-          // if needsLoad==true, expr.ptr is already the address of the pointer
           this.IRB.emit(`call void @_zen_list_push(ptr ${listPtr}, ptr ${p})`);
           return;
         }
@@ -259,32 +267,32 @@ export class ZenList {
       }
 
       if (isValidList) {
-  if (!expr.generic) {
-    // temporary: surfaces every list-returning path that forgot to set generic
-    this.IRB.emitError(
-      "InternalError",
-      `list expression has no generic (cannot check depth for '${name}')`,
-      node,
-    );
-  }
+        if (!expr.generic) {
+          // temporary: surfaces every list-returning path that forgot to set generic
+          this.IRB.emitError(
+            "InternalError",
+            `list expression has no generic (cannot check depth for '${name}')`,
+            node,
+          );
+        }
 
-  const exprDepth = this.IRB.getListDepth(expr.generic);
+        const exprDepth = this.IRB.getListDepth(expr.generic);
 
-  if (exprDepth !== depth) {
-    this.IRB.emitError(
-      "TypeError",
-      `List ${name} expected depth ${depth} but got depth ${exprDepth}`,
-      node,
-    );
-  }
+        if (exprDepth !== depth) {
+          this.IRB.emitError(
+            "TypeError",
+            `List ${name} expected depth ${depth} but got depth ${exprDepth}`,
+            node,
+          );
+        }
 
-  if (type !== expr.type) {
-    this.IRB.emitError(
-      "TypeError",
-      `List ${name} expected ${type} but got ${expr.type}`,
-      node,
-    );
-  }
+        if (type !== expr.type) {
+          this.IRB.emitError(
+            "TypeError",
+            `List ${name} expected ${type} but got ${expr.type}`,
+            node,
+          );
+        }
       }
 
       this.IRB.emitExpr(expr);
@@ -354,8 +362,12 @@ export class ZenList {
           actualType = this.infer.infer(el);
         }
 
-        if (el.type === "CALL") {   
-  actualType = this.infer.infer(el);
+        if (el.type === "CALL") {
+          actualType = this.IRB.typeLeaf(el) ?? this.infer.infer(el);
+        }
+
+        if (el.type === "MEMBER_ACCESS" || el.type === "ARRAY_ACCESS") {
+          actualType = this.IRB.typeLeaf(el) ?? this.infer.infer(el);
         }
 
         // Leaf check using the resolved actual type
@@ -370,6 +382,13 @@ export class ZenList {
 
       if (node.value && node.value.elements && node.value.elements.length > 0) {
         for (const el of node.value.elements) {
+          if (el.type !== "STRUCT_LITERAL") {
+            this.IRB.checkType(node.generic.generic, el, {
+              node,
+              what: `List ${name}`,
+            });
+          }
+
           validateDepth(el, node.generic.generic);
           validate(el, type);
 

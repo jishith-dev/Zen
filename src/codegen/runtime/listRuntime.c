@@ -15,9 +15,7 @@
 #include <openssl/rand.h>
 #include <dirent.h>
 
-void **zen_args_new(int count) {
-  return (void **)malloc(sizeof(void *) * count);
-}
+void **zen_args_new(int count) { return (void **)malloc(sizeof(void *) * count); }
 
 void zen_args_set(void **args, int index, void *value) { args[index] = value; }
 
@@ -31,28 +29,26 @@ typedef struct {
   int deepestType;
 } ZenList;
 
-
 #define ZEN_LIST_STRING 4
 
-void _zen_map_free_internal(void *map); 
+void _zen_map_free_internal(void *map);
 void _zen_list_free(ZenList *list);
 
 static void _zen_list_free_leaf(ZenList *list, int i) {
   if (list->deepestType == ZEN_LIST_STRING) {
     free(*(char **)((char *)list->data + i * list->element_size));
-  } 
+  }
 }
 
 ZenList *_zen_list_new(size_t element_size) {
 
   ZenList *list = (ZenList *)malloc(sizeof(ZenList));
-  
+
   if (list == NULL) {
-    fprintf(stderr,
-        "[Zen RuntimeError]\n"
-        "  └── Out of memory\n");
+    fprintf(stderr, "[Zen RuntimeError]\n"
+                    "  └── Out of memory\n");
     exit(1);
-}
+  }
 
   list->data = NULL;
   list->size = 0;
@@ -75,14 +71,12 @@ void _zen_list_grow(ZenList *list) {
   }
 
   void *new_data = malloc(new_capacity * list->element_size);
-  
 
-if (new_data == NULL) {
-    fprintf(stderr,
-        "[Zen RuntimeError]\n"
-        "  └── Out of memory\n");
+  if (new_data == NULL) {
+    fprintf(stderr, "[Zen RuntimeError]\n"
+                    "  └── Out of memory\n");
     exit(1);
-}
+  }
 
   // copy old
   if (list->data != NULL) {
@@ -123,19 +117,15 @@ void *_zen_list_get(ZenList *list, int index) {
     exit(1);
   }
 
-  
-    // Guard: corrupted/garbage list struct
-    if (list->size < 0 ||
-        list->capacity < 0 ||
-        list->size > list->capacity ||
-        list->element_size == 0 ||
-        list->element_size > 4096) {
-        fprintf(stderr,
+  // Guard: corrupted/garbage list struct
+  if (list->size < 0 || list->capacity < 0 || list->size > list->capacity ||
+      list->element_size == 0 || list->element_size > 4096) {
+    fprintf(stderr,
             "[Zen RuntimeError]\n"
             "  └── List metadata is corrupted (size=%d capacity=%d element_size=%zu)\n",
             list->size, list->capacity, list->element_size);
-        exit(1);
-    }
+    exit(1);
+  }
 
   if (index < 0 || index >= list->size) {
     fprintf(stderr,
@@ -166,7 +156,8 @@ void _zen_list_set(ZenList *list, int index, void *value) {
 
   if (list->depth > 1) {
     ZenList *old = ((ZenList **)list->data)[index];
-    if (old) _zen_list_free(old);
+    if (old)
+      _zen_list_free(old);
   } else {
     _zen_list_free_leaf(list, index);
   }
@@ -186,8 +177,7 @@ void _zen_list_pop(ZenList *list, void *out) {
 
   char *base = (char *)list->data;
 
-  memcpy(out, base + ((list->size - 1) * list->element_size),
-         list->element_size);
+  memcpy(out, base + ((list->size - 1) * list->element_size), list->element_size);
 
   list->size--;
 }
@@ -204,15 +194,15 @@ void _zen_list_remove(ZenList *list, int index) {
 
   if (list->depth > 1) {
     ZenList *old = ((ZenList **)list->data)[index];
-    if (old) _zen_list_free(old);
+    if (old)
+      _zen_list_free(old);
   } else {
     _zen_list_free_leaf(list, index);
   }
 
   char *base = (char *)list->data;
 
-  memmove(base + (index * list->element_size),
-          base + ((index + 1) * list->element_size),
+  memmove(base + (index * list->element_size), base + ((index + 1) * list->element_size),
           (list->size - index - 1) * list->element_size);
 
   list->size--;
@@ -322,14 +312,14 @@ ZenList *zen_va_bools(int count, va_list args) {
 }
 
 ZenList *_sys_argv(int argc, char **argv) {
-    ZenList *list = _zen_list_new(sizeof(char *));
+  ZenList *list = _zen_list_new(sizeof(char *));
 
-    for (int i = 0; i < argc; i++) {
-        char *arg = strdup(argv[i]);
-        _zen_list_push(list, &arg);
-    }
+  for (int i = 0; i < argc; i++) {
+    char *arg = strdup(argv[i]);
+    _zen_list_push(list, &arg);
+  }
 
-    return list;
+  return list;
 }
 
 char *_zen_list_join(ZenList *list, const char *sep) {
@@ -400,24 +390,24 @@ ZenList *_fs_readFileBytes(const char *path) {
 }
 
 int _fs_writeFileBytes(const char *path, ZenList *list) {
-    FILE *f = fopen(path, "wb");
+  FILE *f = fopen(path, "wb");
 
-    if (!f) {
-        return 1;
+  if (!f) {
+    return 1;
+  }
+
+  for (int i = 0; i < list->size; i++) {
+    int8_t b = *(int8_t *)_zen_list_get(list, i);
+
+    if (fwrite(&b, 1, 1, f) != 1) {
+      fclose(f);
+      return 1;
     }
+  }
 
-    for (int i = 0; i < list->size; i++) {
-        int8_t b = *(int8_t *)_zen_list_get(list, i);
+  fclose(f);
 
-        if (fwrite(&b, 1, 1, f) != 1) {
-            fclose(f);
-            return 1;
-        }
-    }
-
-    fclose(f);
-
-    return 0;
+  return 0;
 }
 
 bool _zen_list_contains_primitive(ZenList *list, void *value) {
@@ -472,16 +462,7 @@ int _zen_list_indexOf_string(ZenList *list, char **valuePtr) {
 
 // pretty print
 
-enum {
-  ZEN_INT = 1,
-  ZEN_BOOL,
-  ZEN_DOUBLE,
-  ZEN_STRING,
-  ZEN_LIST,
-  ZEN_MAP,
-  ZEN_LONG,
-  ZEN_BYTE
-};
+enum { ZEN_INT = 1, ZEN_BOOL, ZEN_DOUBLE, ZEN_STRING, ZEN_LIST, ZEN_MAP, ZEN_LONG, ZEN_BYTE };
 
 void _debug_pretty_list_impl(ZenList *list, int depth, int deepestType) {
   printf("[");
@@ -515,12 +496,12 @@ void _debug_pretty_list_impl(ZenList *list, int depth, int deepestType) {
         break;
 
       case ZEN_BYTE:
-    printf("%d", (int)*(int8_t *)_zen_list_get(list, i));
+        printf("%d", (int)*(int8_t *)_zen_list_get(list, i));
         break;
 
-case ZEN_LONG:
-    printf("%lld", (long long)*(int64_t *)_zen_list_get(list, i));
-    break;
+      case ZEN_LONG:
+        printf("%lld", (long long)*(int64_t *)_zen_list_get(list, i));
+        break;
 
       default:
         printf("<unknown>");
@@ -537,61 +518,50 @@ void _debug_pretty_list(ZenList *list, int depth, int deepestType) {
   printf("\n");
 }
 
-
-typedef void (*ZenPrintFn)(void*);
+typedef void (*ZenPrintFn)(void *);
 
 void _debug_print_indent(int n) {
-    for (int i = 0; i < n; i++) {
-        printf(" ");
+  for (int i = 0; i < n; i++) {
+    printf(" ");
+  }
+}
+
+void _debug_pretty_list_struct_impl(ZenList *list, int depth, ZenPrintFn printFn) {
+  printf("[");
+  printf("\n");
+
+  for (int i = 0; i < list->size; i++) {
+
+    _debug_print_indent(2);
+
+    if (i)
+      printf(", ");
+
+    if (depth > 1) {
+
+      ZenList *inner = *(ZenList **)_zen_list_get(list, i);
+
+      _debug_pretty_list_struct_impl(inner, depth - 1, printFn);
+
+    } else {
+
+      printFn(_zen_list_get(list, i));
     }
+  }
+
+  printf("]");
 }
 
-void _debug_pretty_list_struct_impl(
-    ZenList* list,
-    int depth,
-    ZenPrintFn printFn
-) {
-    printf("[");
-    printf("\n");
-
-    for (int i = 0; i < list->size; i++) {
-
-      _debug_print_indent(2);
-
-        if (i)
-            printf(", ");
-
-        if (depth > 1) {
-
-            ZenList* inner =
-                *(ZenList**)_zen_list_get(list, i);
-
-            _debug_pretty_list_struct_impl(
-                inner,
-                depth - 1,
-                printFn
-            );
-
-        } else {
-
-            printFn(_zen_list_get(list, i));
-        }
-        
-    }
-    
-    printf("]");
+void _debug_pretty_list_struct(ZenList *list, int depth, ZenPrintFn printFn) {
+  _debug_pretty_list_struct_impl(list, depth, printFn);
+  printf("\n");
 }
 
-void _debug_pretty_list_struct(ZenList* list, int depth, ZenPrintFn printFn) {
-    _debug_pretty_list_struct_impl(list, depth, printFn);
-    printf("\n");
-}
+void _debug_pretty_map(void *map, int depth);
 
-void _debug_pretty_map(void* map, int depth);
-
-void _debug_pretty_map_elem(void* slot, int depth) {
-    void* handle = *(void**)slot;
-    _debug_pretty_map(handle, depth);
+void _debug_pretty_map_elem(void *slot, int depth) {
+  void *handle = *(void **)slot;
+  _debug_pretty_map(handle, depth);
 }
 
 void _zen_list_set_meta(ZenList *list, int depth, int deepestType) {
@@ -599,537 +569,501 @@ void _zen_list_set_meta(ZenList *list, int depth, int deepestType) {
   list->deepestType = deepestType;
 }
 
-
 // crypto
 
 static void _crypto_error(const char *msg) {
-    fprintf(stderr, "CryptoError: %s\n", msg);
-    exit(1);
+  fprintf(stderr, "CryptoError: %s\n", msg);
+  exit(1);
 }
 
 static ZenList *_crypto_bytes_to_list(const unsigned char *data, size_t len) {
-    ZenList *list = _zen_list_new(sizeof(int8_t));
+  ZenList *list = _zen_list_new(sizeof(int8_t));
 
-    for (size_t i = 0; i < len; i++) {
-        int8_t byte = data[i];
-        _zen_list_push(list, &byte);
-    }
+  for (size_t i = 0; i < len; i++) {
+    int8_t byte = data[i];
+    _zen_list_push(list, &byte);
+  }
 
-    return list;
+  return list;
 }
 
 ZenList *_crypto_randomBytes(int length) {
-    if (length < 0)
-        return _zen_list_new(sizeof(int8_t));
+  if (length < 0)
+    return _zen_list_new(sizeof(int8_t));
 
-    ZenList *list = _zen_list_new(sizeof(int8_t));
+  ZenList *list = _zen_list_new(sizeof(int8_t));
 
-    for (int i = 0; i < length; i++) {
-        int8_t byte;
+  for (int i = 0; i < length; i++) {
+    int8_t byte;
 
-        if (RAND_bytes((unsigned char *)&byte, 1) != 1) {
-            fprintf(stderr,
-                    "[Zen CryptoError]\n"
-                    "  └── Failed to generate random bytes\n");
-            exit(1);
-        }
-
-        _zen_list_push(list, &byte);
+    if (RAND_bytes((unsigned char *)&byte, 1) != 1) {
+      fprintf(stderr, "[Zen CryptoError]\n"
+                      "  └── Failed to generate random bytes\n");
+      exit(1);
     }
 
-    return list;
+    _zen_list_push(list, &byte);
+  }
+
+  return list;
 }
 
 int _crypto_randomInt(int min, int max) {
-    if (min >= max)
-        _crypto_error("randomInt min must be less than max");
+  if (min >= max)
+    _crypto_error("randomInt min must be less than max");
 
-    uint32_t range =
-        (uint32_t)max - (uint32_t)min;
+  uint32_t range = (uint32_t)max - (uint32_t)min;
 
-    uint32_t threshold =
-        (uint32_t)(-range) % range;
+  uint32_t threshold = (uint32_t)(-range) % range;
 
-    uint32_t value;
+  uint32_t value;
 
-    do {
-        if (RAND_bytes(
-                (unsigned char *)&value,
-                sizeof(value)
-            ) != 1) {
-            _crypto_error("failed to generate random integer");
-        }
-    } while (value < threshold);
+  do {
+    if (RAND_bytes((unsigned char *)&value, sizeof(value)) != 1) {
+      _crypto_error("failed to generate random integer");
+    }
+  } while (value < threshold);
 
-    return min + (int)(value % range);
+  return min + (int)(value % range);
 }
 
 ZenList *_crypto_sha256(const char *data) {
-    if (!data)
-        _crypto_error("sha256 data cannot be null");
+  if (!data)
+    _crypto_error("sha256 data cannot be null");
 
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digestLen = 0;
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digestLen = 0;
 
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
-    if (!ctx)
-        _crypto_error("failed to create SHA-256 context");
+  if (!ctx)
+    _crypto_error("failed to create SHA-256 context");
 
-    int ok =
-        EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) == 1 &&
-        EVP_DigestUpdate(ctx, data, strlen(data)) == 1 &&
-        EVP_DigestFinal_ex(ctx, digest, &digestLen) == 1;
+  int ok = EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) == 1 &&
+           EVP_DigestUpdate(ctx, data, strlen(data)) == 1 &&
+           EVP_DigestFinal_ex(ctx, digest, &digestLen) == 1;
 
-    EVP_MD_CTX_free(ctx);
+  EVP_MD_CTX_free(ctx);
 
-    if (!ok)
-        _crypto_error("SHA-256 failed");
+  if (!ok)
+    _crypto_error("SHA-256 failed");
 
-    return _crypto_bytes_to_list(digest, digestLen);
+  return _crypto_bytes_to_list(digest, digestLen);
 }
 
 ZenList *_crypto_sha512(const char *data) {
-    if (!data)
-        _crypto_error("sha512 data cannot be null");
+  if (!data)
+    _crypto_error("sha512 data cannot be null");
 
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digestLen = 0;
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digestLen = 0;
 
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
-    if (!ctx)
-        _crypto_error("failed to create SHA-512 context");
+  if (!ctx)
+    _crypto_error("failed to create SHA-512 context");
 
-    int ok =
-        EVP_DigestInit_ex(ctx, EVP_sha512(), NULL) == 1 &&
-        EVP_DigestUpdate(ctx, data, strlen(data)) == 1 &&
-        EVP_DigestFinal_ex(ctx, digest, &digestLen) == 1;
+  int ok = EVP_DigestInit_ex(ctx, EVP_sha512(), NULL) == 1 &&
+           EVP_DigestUpdate(ctx, data, strlen(data)) == 1 &&
+           EVP_DigestFinal_ex(ctx, digest, &digestLen) == 1;
 
-    EVP_MD_CTX_free(ctx);
+  EVP_MD_CTX_free(ctx);
 
-    if (!ok)
-        _crypto_error("SHA-512 failed");
+  if (!ok)
+    _crypto_error("SHA-512 failed");
 
-    return _crypto_bytes_to_list(digest, digestLen);
+  return _crypto_bytes_to_list(digest, digestLen);
 }
 
-static ZenList *_crypto_hmac(
-    const char *key,
-    const char *data,
-    const EVP_MD *md
-) {
-    if (!key || !data)
-        _crypto_error("HMAC key and data cannot be null");
+static ZenList *_crypto_hmac(const char *key, const char *data, const EVP_MD *md) {
+  if (!key || !data)
+    _crypto_error("HMAC key and data cannot be null");
 
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digestLen = 0;
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digestLen = 0;
 
-    unsigned char *result = HMAC(
-        md,
-        key,
-        (int)strlen(key),
-        (const unsigned char *)data,
-        strlen(data),
-        digest,
-        &digestLen
-    );
+  unsigned char *result = HMAC(md, key, (int)strlen(key), (const unsigned char *)data, strlen(data),
+                               digest, &digestLen);
 
-    if (!result)
-        _crypto_error("HMAC failed");
+  if (!result)
+    _crypto_error("HMAC failed");
 
-    return _crypto_bytes_to_list(digest, digestLen);
+  return _crypto_bytes_to_list(digest, digestLen);
 }
 
-ZenList *_crypto_hmacSha256(
-    const char *key,
-    const char *data
-) {
-    return _crypto_hmac(key, data, EVP_sha256());
+ZenList *_crypto_hmacSha256(const char *key, const char *data) {
+  return _crypto_hmac(key, data, EVP_sha256());
 }
 
-ZenList *_crypto_hmacSha512(
-    const char *key,
-    const char *data
-) {
-    return _crypto_hmac(key, data, EVP_sha512());
+ZenList *_crypto_hmacSha512(const char *key, const char *data) {
+  return _crypto_hmac(key, data, EVP_sha512());
 }
 
 static int _crypto_base64_value(char c) {
-    if (c >= 'A' && c <= 'Z') return c - 'A';
-    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
-    if (c >= '0' && c <= '9') return c - '0' + 52;
-    if (c == '+') return 62;
-    if (c == '/') return 63;
+  if (c >= 'A' && c <= 'Z')
+    return c - 'A';
+  if (c >= 'a' && c <= 'z')
+    return c - 'a' + 26;
+  if (c >= '0' && c <= '9')
+    return c - '0' + 52;
+  if (c == '+')
+    return 62;
+  if (c == '/')
+    return 63;
 
-    return -1;
+  return -1;
 }
 
-static ZenList *_crypto_base64_decode(
-    const char *data,
-    bool urlSafe
-) {
-    if (!data) {
-        fprintf(stderr,
-                "[Zen CryptoError]\n"
-                "  └── Base64 data cannot be null\n");
-        exit(1);
-    }
+static ZenList *_crypto_base64_decode(const char *data, bool urlSafe) {
+  if (!data) {
+    fprintf(stderr, "[Zen CryptoError]\n"
+                    "  └── Base64 data cannot be null\n");
+    exit(1);
+  }
 
-    size_t len = strlen(data);
+  size_t len = strlen(data);
 
-    ZenList *list = _zen_list_new(sizeof(int8_t));
+  ZenList *list = _zen_list_new(sizeof(int8_t));
 
-    if (len == 0)
-        return list;
-
-    size_t i = 0;
-
-    while (i < len) {
-        char c1 = i < len ? data[i++] : '=';
-        char c2 = i < len ? data[i++] : '=';
-        char c3 = i < len ? data[i++] : '=';
-        char c4 = i < len ? data[i++] : '=';
-
-        if (urlSafe) {
-            if (c1 == '-') c1 = '+';
-            else if (c1 == '_') c1 = '/';
-
-            if (c2 == '-') c2 = '+';
-            else if (c2 == '_') c2 = '/';
-
-            if (c3 == '-') c3 = '+';
-            else if (c3 == '_') c3 = '/';
-
-            if (c4 == '-') c4 = '+';
-            else if (c4 == '_') c4 = '/';
-        }
-
-        int a = c1 == '=' ? 0 : _crypto_base64_value(c1);
-        int b = c2 == '=' ? 0 : _crypto_base64_value(c2);
-        int c = c3 == '=' ? 0 : _crypto_base64_value(c3);
-        int d = c4 == '=' ? 0 : _crypto_base64_value(c4);
-
-        if (a < 0 || b < 0 || c < 0 || d < 0) {
-            fprintf(stderr,
-                    "[Zen CryptoError]\n"
-                    "  └── Invalid Base64 data\n");
-            exit(1);
-        }
-
-        int32_t triple =
-            ((int32_t)a << 18) |
-            ((int32_t)b << 12) |
-            ((int32_t)c << 6) |
-            (int32_t)d;
-
-        int8_t byte = (triple >> 16) & 0xff;
-        _zen_list_push(list, &byte);
-
-        if (c3 != '=') {
-            byte = (triple >> 8) & 0xff;
-            _zen_list_push(list, &byte);
-        }
-
-        if (c4 != '=') {
-            byte = triple & 0xff;
-            _zen_list_push(list, &byte);
-        }
-    }
-
+  if (len == 0)
     return list;
-}
 
-ZenList *_crypto_base64Decode(const char *data) {
-    return _crypto_base64_decode(data, false);
-}
+  size_t i = 0;
 
-ZenList *_crypto_base64UrlDecode(const char *data) {
-    return _crypto_base64_decode(data, true);
-}
-
-static const char _crypto_base64_table[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789+/";
-
-static char *_crypto_base64_encode(
-    ZenList *list,
-    bool urlSafe
-) {
-  
-    if (!list) {
-        fprintf(stderr,
-                "[Zen CryptoError]\n"
-                "  └── Byte list cannot be null\n");
-        exit(1);
-    }
-
-    if (list->element_size != sizeof(int8_t)) {
-        fprintf(stderr,
-                "[Zen CryptoError]\n"
-                "  └── Base64 encoding expects List<byte>\n");
-        exit(1);
-    }
-
-    size_t len = (size_t)list->size;
-    size_t outLen = 4 * ((len + 2) / 3);
-
-    char *out = malloc(outLen + 1);
-
-    if (!out) {
-        fprintf(stderr,
-                "[Zen RuntimeError]\n"
-                "  └── Out of memory\n");
-        exit(1);
-    }
-
-    const int8_t *data =
-        (const int8_t *)list->data;
-
-    size_t i = 0;
-    size_t j = 0;
-
-    while (i < len) {
-        size_t remaining = len - i;
-
-        int32_t a = (uint8_t)data[i++];
-
-        int32_t b = remaining > 1
-            ? (uint8_t)data[i++]
-            : 0;
-
-        int32_t c = remaining > 2
-            ? (uint8_t)data[i++]
-            : 0;
-
-        int32_t triple =
-            (a << 16) |
-            (b << 8) |
-            c;
-
-        char c1 =
-            _crypto_base64_table[(triple >> 18) & 0x3f];
-
-        char c2 =
-            _crypto_base64_table[(triple >> 12) & 0x3f];
-
-        char c3 =
-            remaining > 1
-                ? _crypto_base64_table[(triple >> 6) & 0x3f]
-                : '=';
-
-        char c4 =
-            remaining > 2
-                ? _crypto_base64_table[triple & 0x3f]
-                : '=';
-
-        if (urlSafe) {
-            if (c1 == '+') c1 = '-';
-            else if (c1 == '/') c1 = '_';
-
-            if (c2 == '+') c2 = '-';
-            else if (c2 == '/') c2 = '_';
-
-            if (c3 == '+') c3 = '-';
-            else if (c3 == '/') c3 = '_';
-
-            if (c4 == '+') c4 = '-';
-            else if (c4 == '/') c4 = '_';
-        }
-
-        out[j++] = c1;
-        out[j++] = c2;
-        out[j++] = c3;
-        out[j++] = c4;
-    }
+  while (i < len) {
+    char c1 = i < len ? data[i++] : '=';
+    char c2 = i < len ? data[i++] : '=';
+    char c3 = i < len ? data[i++] : '=';
+    char c4 = i < len ? data[i++] : '=';
 
     if (urlSafe) {
-    while (j > 0 && out[j - 1] == '=') {
-        j--;
+      if (c1 == '-')
+        c1 = '+';
+      else if (c1 == '_')
+        c1 = '/';
+
+      if (c2 == '-')
+        c2 = '+';
+      else if (c2 == '_')
+        c2 = '/';
+
+      if (c3 == '-')
+        c3 = '+';
+      else if (c3 == '_')
+        c3 = '/';
+
+      if (c4 == '-')
+        c4 = '+';
+      else if (c4 == '_')
+        c4 = '/';
     }
+
+    int a = c1 == '=' ? 0 : _crypto_base64_value(c1);
+    int b = c2 == '=' ? 0 : _crypto_base64_value(c2);
+    int c = c3 == '=' ? 0 : _crypto_base64_value(c3);
+    int d = c4 == '=' ? 0 : _crypto_base64_value(c4);
+
+    if (a < 0 || b < 0 || c < 0 || d < 0) {
+      fprintf(stderr, "[Zen CryptoError]\n"
+                      "  └── Invalid Base64 data\n");
+      exit(1);
+    }
+
+    int32_t triple = ((int32_t)a << 18) | ((int32_t)b << 12) | ((int32_t)c << 6) | (int32_t)d;
+
+    int8_t byte = (triple >> 16) & 0xff;
+    _zen_list_push(list, &byte);
+
+    if (c3 != '=') {
+      byte = (triple >> 8) & 0xff;
+      _zen_list_push(list, &byte);
+    }
+
+    if (c4 != '=') {
+      byte = triple & 0xff;
+      _zen_list_push(list, &byte);
+    }
+  }
+
+  return list;
 }
 
-out[j] = '\0';
+ZenList *_crypto_base64Decode(const char *data) { return _crypto_base64_decode(data, false); }
 
-return out;
+ZenList *_crypto_base64UrlDecode(const char *data) { return _crypto_base64_decode(data, true); }
+
+static const char _crypto_base64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                           "abcdefghijklmnopqrstuvwxyz"
+                                           "0123456789+/";
+
+static char *_crypto_base64_encode(ZenList *list, bool urlSafe) {
+
+  if (!list) {
+    fprintf(stderr, "[Zen CryptoError]\n"
+                    "  └── Byte list cannot be null\n");
+    exit(1);
+  }
+
+  if (list->element_size != sizeof(int8_t)) {
+    fprintf(stderr, "[Zen CryptoError]\n"
+                    "  └── Base64 encoding expects List<byte>\n");
+    exit(1);
+  }
+
+  size_t len = (size_t)list->size;
+  size_t outLen = 4 * ((len + 2) / 3);
+
+  char *out = malloc(outLen + 1);
+
+  if (!out) {
+    fprintf(stderr, "[Zen RuntimeError]\n"
+                    "  └── Out of memory\n");
+    exit(1);
+  }
+
+  const int8_t *data = (const int8_t *)list->data;
+
+  size_t i = 0;
+  size_t j = 0;
+
+  while (i < len) {
+    size_t remaining = len - i;
+
+    int32_t a = (uint8_t)data[i++];
+
+    int32_t b = remaining > 1 ? (uint8_t)data[i++] : 0;
+
+    int32_t c = remaining > 2 ? (uint8_t)data[i++] : 0;
+
+    int32_t triple = (a << 16) | (b << 8) | c;
+
+    char c1 = _crypto_base64_table[(triple >> 18) & 0x3f];
+
+    char c2 = _crypto_base64_table[(triple >> 12) & 0x3f];
+
+    char c3 = remaining > 1 ? _crypto_base64_table[(triple >> 6) & 0x3f] : '=';
+
+    char c4 = remaining > 2 ? _crypto_base64_table[triple & 0x3f] : '=';
+
+    if (urlSafe) {
+      if (c1 == '+')
+        c1 = '-';
+      else if (c1 == '/')
+        c1 = '_';
+
+      if (c2 == '+')
+        c2 = '-';
+      else if (c2 == '/')
+        c2 = '_';
+
+      if (c3 == '+')
+        c3 = '-';
+      else if (c3 == '/')
+        c3 = '_';
+
+      if (c4 == '+')
+        c4 = '-';
+      else if (c4 == '/')
+        c4 = '_';
+    }
+
+    out[j++] = c1;
+    out[j++] = c2;
+    out[j++] = c3;
+    out[j++] = c4;
+  }
+
+  if (urlSafe) {
+    while (j > 0 && out[j - 1] == '=') {
+      j--;
+    }
+  }
+
+  out[j] = '\0';
+
+  return out;
 }
 
-char *_crypto_base64Encode(ZenList *list) {
-    return _crypto_base64_encode(list, false);
-}
+char *_crypto_base64Encode(ZenList *list) { return _crypto_base64_encode(list, false); }
 
-char *_crypto_base64UrlEncode(ZenList *list) {
-    return _crypto_base64_encode(list, true);
-}
+char *_crypto_base64UrlEncode(ZenList *list) { return _crypto_base64_encode(list, true); }
 
 typedef struct {
-    char *buf;
-    size_t len;
-    size_t cap;
+  char *buf;
+  size_t len;
+  size_t cap;
 } JsonBuf;
 
 void jbuf_init(JsonBuf *jb) {
-    jb->cap = 64;
-    jb->len = 0;
-    jb->buf = malloc(jb->cap);
+  jb->cap = 64;
+  jb->len = 0;
+  jb->buf = malloc(jb->cap);
 
-    if (!jb->buf) { fprintf(stderr, "[Zen MemoryError]\n  └── Failed to allocate JSON buffer\n"); exit(1); }
-    jb->buf[0] = '\0';
+  if (!jb->buf) {
+    fprintf(stderr, "[Zen MemoryError]\n  └── Failed to allocate JSON buffer\n");
+    exit(1);
+  }
+  jb->buf[0] = '\0';
 }
 
 void jbuf_ensure(JsonBuf *jb, size_t extra) {
-    if (jb->len + extra + 1 > jb->cap) {
-        while (jb->len + extra + 1 > jb->cap) jb->cap *= 2;
-        char *newBuf = realloc(jb->buf, jb->cap);
-        if (!newBuf) { fprintf(stderr, "[Zen MemoryError]\n  └── Failed to grow JSON buffer\n"); exit(1); }
-        jb->buf = newBuf;
+  if (jb->len + extra + 1 > jb->cap) {
+    while (jb->len + extra + 1 > jb->cap)
+      jb->cap *= 2;
+    char *newBuf = realloc(jb->buf, jb->cap);
+    if (!newBuf) {
+      fprintf(stderr, "[Zen MemoryError]\n  └── Failed to grow JSON buffer\n");
+      exit(1);
     }
+    jb->buf = newBuf;
+  }
 }
 
 void jbuf_append(JsonBuf *jb, const char *s) {
-    size_t n = strlen(s);
-    jbuf_ensure(jb, n);
-    memcpy(jb->buf + jb->len, s, n + 1);
-    jb->len += n;
+  size_t n = strlen(s);
+  jbuf_ensure(jb, n);
+  memcpy(jb->buf + jb->len, s, n + 1);
+  jb->len += n;
 }
 
 void jbuf_append_char(JsonBuf *jb, char c) {
-    jbuf_ensure(jb, 1);
-    jb->buf[jb->len++] = c;
-    jb->buf[jb->len] = '\0';
+  jbuf_ensure(jb, 1);
+  jb->buf[jb->len++] = c;
+  jb->buf[jb->len] = '\0';
 }
 
 void jbuf_append_json_string(JsonBuf *jb, const char *s) {
-    jbuf_append_char(jb, '"');
-    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
-        switch (*p) {
-            case '"':  jbuf_append(jb, "\\\""); break;
-            case '\\': jbuf_append(jb, "\\\\"); break;
-            case '\n': jbuf_append(jb, "\\n");  break;
-            case '\r': jbuf_append(jb, "\\r");  break;
-            case '\t': jbuf_append(jb, "\\t");  break;
-            default:
-                if (*p < 0x20) {
-                    char esc[8];
-                    snprintf(esc, sizeof(esc), "\\u%04x", *p);
-                    jbuf_append(jb, esc);
-                } else {
-                    jbuf_append_char(jb, (char)*p);
-                }
-        }
+  jbuf_append_char(jb, '"');
+  for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+    switch (*p) {
+    case '"':
+      jbuf_append(jb, "\\\"");
+      break;
+    case '\\':
+      jbuf_append(jb, "\\\\");
+      break;
+    case '\n':
+      jbuf_append(jb, "\\n");
+      break;
+    case '\r':
+      jbuf_append(jb, "\\r");
+      break;
+    case '\t':
+      jbuf_append(jb, "\\t");
+      break;
+    default:
+      if (*p < 0x20) {
+        char esc[8];
+        snprintf(esc, sizeof(esc), "\\u%04x", *p);
+        jbuf_append(jb, esc);
+      } else {
+        jbuf_append_char(jb, (char)*p);
+      }
     }
-    jbuf_append_char(jb, '"');
+  }
+  jbuf_append_char(jb, '"');
 }
 
-extern char *zen_map_json(void *map);  
+extern char *zen_map_json(void *map);
 
 void _zen_list_append_json(JsonBuf *jb, ZenList *list, int depth, int deepestType) {
-    jbuf_append_char(jb, '[');
+  jbuf_append_char(jb, '[');
 
-    for (int i = 0; i < list->size; i++) {
-        if (i) jbuf_append_char(jb, ',');
+  for (int i = 0; i < list->size; i++) {
+    if (i)
+      jbuf_append_char(jb, ',');
 
-        if (depth > 1) {
-            ZenList *inner = *(ZenList **)_zen_list_get(list, i);
-            _zen_list_append_json(jb, inner, depth - 1, deepestType);
-        } else {
-            char numBuf[64];
+    if (depth > 1) {
+      ZenList *inner = *(ZenList **)_zen_list_get(list, i);
+      _zen_list_append_json(jb, inner, depth - 1, deepestType);
+    } else {
+      char numBuf[64];
 
-            switch (deepestType) {
-                case ZEN_INT:
-                    snprintf(numBuf, sizeof(numBuf), "%d", *(int *)_zen_list_get(list, i));
-                    jbuf_append(jb, numBuf);
-                    break;
-                case ZEN_BOOL:
-                    jbuf_append(jb, *(bool *)_zen_list_get(list, i) ? "true" : "false");
-                    break;
-                case ZEN_DOUBLE:
-                    snprintf(numBuf, sizeof(numBuf), "%g", *(double *)_zen_list_get(list, i));
-                    jbuf_append(jb, numBuf);
-                    break;
-              case ZEN_MAP: {
-    void *mapHandle = *(void **)_zen_list_get(list, i);
-    char *mapJson = zen_map_json(mapHandle);
-    jbuf_append(jb, mapJson);
-    break;
-              }
-                case ZEN_STRING:
-                    jbuf_append_json_string(jb, *(char **)_zen_list_get(list, i));
-                    break;
-                case ZEN_BYTE:
-    snprintf(numBuf, sizeof(numBuf), "%d", (int)*(int8_t *)_zen_list_get(list, i));
-    jbuf_append(jb, numBuf);
-    break;
-                case ZEN_LONG:
-                    snprintf(numBuf, sizeof(numBuf), "%" PRId64, *(int64_t *)_zen_list_get(list, i));
-                    jbuf_append(jb, numBuf);
-                    break;
-                default:
-                    jbuf_append(jb, "null");
-            }
-        }
+      switch (deepestType) {
+      case ZEN_INT:
+        snprintf(numBuf, sizeof(numBuf), "%d", *(int *)_zen_list_get(list, i));
+        jbuf_append(jb, numBuf);
+        break;
+      case ZEN_BOOL:
+        jbuf_append(jb, *(bool *)_zen_list_get(list, i) ? "true" : "false");
+        break;
+      case ZEN_DOUBLE:
+        snprintf(numBuf, sizeof(numBuf), "%g", *(double *)_zen_list_get(list, i));
+        jbuf_append(jb, numBuf);
+        break;
+      case ZEN_MAP: {
+        void *mapHandle = *(void **)_zen_list_get(list, i);
+        char *mapJson = zen_map_json(mapHandle);
+        jbuf_append(jb, mapJson);
+        break;
+      }
+      case ZEN_STRING:
+        jbuf_append_json_string(jb, *(char **)_zen_list_get(list, i));
+        break;
+      case ZEN_BYTE:
+        snprintf(numBuf, sizeof(numBuf), "%d", (int)*(int8_t *)_zen_list_get(list, i));
+        jbuf_append(jb, numBuf);
+        break;
+      case ZEN_LONG:
+        snprintf(numBuf, sizeof(numBuf), "%" PRId64, *(int64_t *)_zen_list_get(list, i));
+        jbuf_append(jb, numBuf);
+        break;
+      default:
+        jbuf_append(jb, "null");
+      }
     }
+  }
 
-    jbuf_append_char(jb, ']');
+  jbuf_append_char(jb, ']');
 }
 
-int _zen_list_get_depth(ZenList *list) {
-    return list->depth;
-}
+int _zen_list_get_depth(ZenList *list) { return list->depth; }
 
-int _zen_list_get_deepest_type(ZenList *list) {
-    return list->deepestType;
-}
+int _zen_list_get_deepest_type(ZenList *list) { return list->deepestType; }
 
 // String <-> Bytes
 
 ZenList *_zen_strToBytes(const char *str) {
-    if (str == NULL) {
-        return _zen_list_new(sizeof(int8_t));
-    }
+  if (str == NULL) {
+    return _zen_list_new(sizeof(int8_t));
+  }
 
-    size_t length = strlen(str);
+  size_t length = strlen(str);
 
-    ZenList *list = _zen_list_new(sizeof(int8_t));
+  ZenList *list = _zen_list_new(sizeof(int8_t));
 
-    for (size_t i = 0; i < length; i++) {
-        int8_t byte = (int8_t)(unsigned char)str[i];
-        _zen_list_push(list, &byte);
-    }
+  for (size_t i = 0; i < length; i++) {
+    int8_t byte = (int8_t)(unsigned char)str[i];
+    _zen_list_push(list, &byte);
+  }
 
-    return list;
+  return list;
 }
 
-
 char *_zen_bytesToStr(ZenList *list) {
-    if (list == NULL || list->data == NULL || list->size == 0) {
-        return strdup("");
-    }
+  if (list == NULL || list->data == NULL || list->size == 0) {
+    return strdup("");
+  }
 
-    char *str = malloc((size_t)list->size + 1);
+  char *str = malloc((size_t)list->size + 1);
 
-    if (str == NULL) {
-        fprintf(
-            stderr,
-            "[Zen RuntimeError]\n"
-            "  └── Failed to allocate string memory\n"
-        );
-        exit(1);
-    }
+  if (str == NULL) {
+    fprintf(stderr, "[Zen RuntimeError]\n"
+                    "  └── Failed to allocate string memory\n");
+    exit(1);
+  }
 
-    for (int i = 0; i < list->size; i++) {
-        int8_t byte = *(int8_t *)_zen_list_get(list, i);
-        str[i] = (char)byte;
-    }
+  for (int i = 0; i < list->size; i++) {
+    int8_t byte = *(int8_t *)_zen_list_get(list, i);
+    str[i] = (char)byte;
+  }
 
-    str[list->size] = '\0';
+  str[list->size] = '\0';
 
-    return str;
+  return str;
 }
 
 // new
-
 
 // list remove
 
@@ -1143,8 +1077,7 @@ static void _zen_list_remove_at_noerror(ZenList *list, int index) {
   char *base = (char *)list->data;
 
   if (list->depth > 1) {
-    ZenList *old =
-        ((ZenList **)list->data)[index];
+    ZenList *old = ((ZenList **)list->data)[index];
 
     if (old)
       _zen_list_free(old);
@@ -1153,15 +1086,10 @@ static void _zen_list_remove_at_noerror(ZenList *list, int index) {
   }
 
   size_t offset = (size_t)index * list->element_size;
-  size_t move_count =
-      (size_t)(list->size - index - 1) * list->element_size;
+  size_t move_count = (size_t)(list->size - index - 1) * list->element_size;
 
   if (move_count > 0) {
-    memmove(
-        base + offset,
-        base + offset + list->element_size,
-        move_count
-    );
+    memmove(base + offset, base + offset + list->element_size, move_count);
   }
 
   list->size--;
@@ -1237,24 +1165,19 @@ void _zen_list_remove_bool(ZenList *list, bool value) {
   }
 }
 
-void _zen_list_remove_string(
-    ZenList *list,
-    const char *value
-) {
+void _zen_list_remove_string(ZenList *list, const char *value) {
   if (!list || !list->data)
     return;
 
   char **base = (char **)list->data;
 
   for (int i = 0; i < list->size; i++) {
-    if (base[i] == value ||
-        (base[i] && value && strcmp(base[i], value) == 0)) {
+    if (base[i] == value || (base[i] && value && strcmp(base[i], value) == 0)) {
       _zen_list_remove_at_noerror(list, i);
       return;
     }
   }
 }
-
 
 // list reverse
 
@@ -1265,11 +1188,9 @@ void _zen_list_reverse(ZenList *list) {
   char *base = (char *)list->data;
 
   for (int i = 0, j = list->size - 1; i < j; i++, j--) {
-    char *left =
-        base + ((size_t)i * list->element_size);
+    char *left = base + ((size_t)i * list->element_size);
 
-    char *right =
-        base + ((size_t)j * list->element_size);
+    char *right = base + ((size_t)j * list->element_size);
 
     for (size_t k = 0; k < list->element_size; k++) {
       char temp = left[k];
@@ -1279,21 +1200,19 @@ void _zen_list_reverse(ZenList *list) {
   }
 }
 
-
 // list sort
 
 static int _zen_list_compare_byte(const void *a, const void *b) {
   int8_t x = *(const int8_t *)a;
   int8_t y = *(const int8_t *)b;
-  if (x < y) return -1;
-  if (x > y) return 1;
+  if (x < y)
+    return -1;
+  if (x > y)
+    return 1;
   return 0;
 }
 
-static int _zen_list_compare_int(
-    const void *a,
-    const void *b
-) {
+static int _zen_list_compare_int(const void *a, const void *b) {
   int x = *(const int *)a;
   int y = *(const int *)b;
 
@@ -1306,10 +1225,7 @@ static int _zen_list_compare_int(
   return 0;
 }
 
-static int _zen_list_compare_long(
-    const void *a,
-    const void *b
-) {
+static int _zen_list_compare_long(const void *a, const void *b) {
   int64_t x = *(const int64_t *)a;
   int64_t y = *(const int64_t *)b;
 
@@ -1322,10 +1238,7 @@ static int _zen_list_compare_long(
   return 0;
 }
 
-static int _zen_list_compare_double(
-    const void *a,
-    const void *b
-) {
+static int _zen_list_compare_double(const void *a, const void *b) {
   double x = *(const double *)a;
   double y = *(const double *)b;
 
@@ -1338,10 +1251,7 @@ static int _zen_list_compare_double(
   return 0;
 }
 
-static int _zen_list_compare_string(
-    const void *a,
-    const void *b
-) {
+static int _zen_list_compare_string(const void *a, const void *b) {
   const char *x = *(const char *const *)a;
   const char *y = *(const char *const *)b;
 
@@ -1361,70 +1271,46 @@ void _zen_list_sort_byte(ZenList *list) {
   if (!list || !list->data || list->size <= 1)
     return;
 
-  qsort(
-      list->data,
-      (size_t)list->size,
-      list->element_size,
-      _zen_list_compare_byte
-  );
+  qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_byte);
 }
 
 void _zen_list_sort_int(ZenList *list) {
   if (!list || !list->data || list->size <= 1)
     return;
 
-  qsort(
-      list->data,
-      (size_t)list->size,
-      list->element_size,
-      _zen_list_compare_int
-  );
+  qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_int);
 }
 
 void _zen_list_sort_long(ZenList *list) {
   if (!list || !list->data || list->size <= 1)
     return;
 
-  qsort(
-      list->data,
-      (size_t)list->size,
-      list->element_size,
-      _zen_list_compare_long
-  );
+  qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_long);
 }
 
 void _zen_list_sort_double(ZenList *list) {
   if (!list || !list->data || list->size <= 1)
     return;
 
-  qsort(
-      list->data,
-      (size_t)list->size,
-      list->element_size,
-      _zen_list_compare_double
-  );
+  qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_double);
 }
 
 void _zen_list_sort_string(ZenList *list) {
   if (!list || !list->data || list->size <= 1)
     return;
 
-  qsort(
-      list->data,
-      (size_t)list->size,
-      list->element_size,
-      _zen_list_compare_string
-  );
+  qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_string);
 }
-
 
 // list sum
 
 int8_t _zen_list_sum_byte(ZenList *list) {
-  if (!list || !list->data) return 0;
+  if (!list || !list->data)
+    return 0;
   int8_t *base = (int8_t *)list->data;
   int8_t total = 0;
-  for (int i = 0; i < list->size; i++) total += base[i];
+  for (int i = 0; i < list->size; i++)
+    total += base[i];
   return total;
 }
 
@@ -1470,15 +1356,11 @@ double _zen_list_sum_double(ZenList *list) {
   return total;
 }
 
-
 // list average
 
 static void _zen_list_avg_empty_error(void) {
-  fprintf(
-      stderr,
-      "[Zen RuntimeError]\n"
-      "  └── Cannot calculate average of an empty List\n"
-  );
+  fprintf(stderr, "[Zen RuntimeError]\n"
+                  "  └── Cannot calculate average of an empty List\n");
 
   exit(1);
 }
@@ -1488,7 +1370,8 @@ double _zen_list_avg_byte(ZenList *list) {
     _zen_list_avg_empty_error();
   int8_t *base = (int8_t *)list->data;
   int64_t total = 0;
-  for (int i = 0; i < list->size; i++) total += base[i];
+  for (int i = 0; i < list->size; i++)
+    total += base[i];
   return (double)total / (double)list->size;
 }
 
@@ -1542,63 +1425,67 @@ double _zen_list_avg_double(ZenList *list) {
 }
 
 ZenList *_fs_listDir(const char *path) {
-    ZenList *list = _zen_list_new(sizeof(char *));
-    list->depth = 1;
-    list->deepestType = ZEN_LIST_STRING;
+  ZenList *list = _zen_list_new(sizeof(char *));
+  list->depth = 1;
+  list->deepestType = ZEN_LIST_STRING;
 
-    if (!path) return list;
+  if (!path)
+    return list;
 
 #ifdef _WIN32
-    size_t n = strlen(path);
-    char *pattern = (char *)malloc(n + 3);
-    if (!pattern) return list;
+  size_t n = strlen(path);
+  char *pattern = (char *)malloc(n + 3);
+  if (!pattern)
+    return list;
 
-    memcpy(pattern, path, n);
-    if (n > 0 && path[n - 1] != '\\' && path[n - 1] != '/') {
-        pattern[n++] = '\\';
-    }
-    pattern[n++] = '*';
-    pattern[n] = '\0';
+  memcpy(pattern, path, n);
+  if (n > 0 && path[n - 1] != '\\' && path[n - 1] != '/') {
+    pattern[n++] = '\\';
+  }
+  pattern[n++] = '*';
+  pattern[n] = '\0';
 
-    WIN32_FIND_DATAA fd;
-    HANDLE h = FindFirstFileA(pattern, &fd);
-    free(pattern);
+  WIN32_FIND_DATAA fd;
+  HANDLE h = FindFirstFileA(pattern, &fd);
+  free(pattern);
 
-    if (h == INVALID_HANDLE_VALUE) return list;
+  if (h == INVALID_HANDLE_VALUE)
+    return list;
 
-    do {
-        if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
-            continue;
+  do {
+    if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
+      continue;
 
-        char *name = strdup(fd.cFileName);
-        if (name) _zen_list_push(list, &name);
-    } while (FindNextFileA(h, &fd));
+    char *name = strdup(fd.cFileName);
+    if (name)
+      _zen_list_push(list, &name);
+  } while (FindNextFileA(h, &fd));
 
-    FindClose(h);
+  FindClose(h);
 #else
-    DIR *d = opendir(path);
-    if (!d) return list;
+  DIR *d = opendir(path);
+  if (!d)
+    return list;
 
-    struct dirent *e;
-    while ((e = readdir(d)) != NULL) {
-        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
-            continue;
+  struct dirent *e;
+  while ((e = readdir(d)) != NULL) {
+    if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
+      continue;
 
-        char *name = strdup(e->d_name);
-        if (name) _zen_list_push(list, &name);
-    }
+    char *name = strdup(e->d_name);
+    if (name)
+      _zen_list_push(list, &name);
+  }
 
-    closedir(d);
+  closedir(d);
 #endif
 
-    if (list->size > 1) {
-        qsort(list->data, (size_t)list->size, list->element_size,
-              _zen_list_compare_string);
-    }
+  if (list->size > 1) {
+    qsort(list->data, (size_t)list->size, list->element_size, _zen_list_compare_string);
+  }
 
-    return list;
+  return list;
 }
-
 
 static void _zen_list_flat_into(ZenList *out, ZenList *list, int depth, int isString) {
   if (!list || !list->data)

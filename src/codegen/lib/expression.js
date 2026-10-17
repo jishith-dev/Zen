@@ -252,7 +252,7 @@ export class Expression {
         Context?.type !== undefined &&
         Context?.depth !== undefined
       ) {
-        const name = "list literal"; // used only in error messages — no declared var to reference here
+        const name = "list literal"; // used only in error messages , no declared var to reference here
 
         const deepestType = Context.type;
         const depth = Context.depth;
@@ -275,10 +275,7 @@ export class Expression {
           } else if (el.type === "STRUCT_LITERAL") {
             isActualList = false;
           } else {
-            // side-effect-free: reuses the same pure lookup as inference,
-            // no handleExpression call, no duplicated instructions
-            const inferred = this.IRB.inferDepthAndTypeFromElement(el);
-            isActualList = inferred.depth > 0;
+            isActualList = this.IRB.typeDepth(el) > 0;
           }
 
           if (expectsList && !isActualList) {
@@ -322,6 +319,26 @@ export class Expression {
               `call void @_zen_list_push(ptr ${listPtr}, ptr ${structPtr.ptr})`,
             );
             return;
+          }
+
+          if (element.type === "variable") {
+            const e = this.handleExpression(element);
+            this.IRB.emitExpr(e);
+            if (e.isList) {
+              let listVal = e.ptr;
+              if (e.needsLoad) {
+                const t = this.IRB.newTemp();
+                this.IRB.emit(`${t} = load ptr, ptr ${e.ptr}`);
+                listVal = t;
+              }
+              const tmp = this.IRB.newTemp();
+              this.IRB.emitAlloca(tmp, `ptr`);
+              this.IRB.emit(`store ptr ${listVal}, ptr ${tmp}`);
+              this.IRB.emit(
+                `call void @_zen_list_push(ptr ${listPtr}, ptr ${tmp})`,
+              );
+              return;
+            }
           }
 
           if (element.type === "ARRAY" || element.type === "LIST_LITERAL") {
@@ -564,7 +581,7 @@ export class Expression {
           global: [],
           isStruct: true,
           isVarRef: false,
-          isTHIS: true
+          isTHIS: true,
         };
       } else {
         object = this.handleExpression(base);
@@ -659,7 +676,6 @@ export class Expression {
           }
 
           if (!this.IRB.hasStruct(structName)) {
-            
             if (node?.args && i === fields.length - 1) {
               this.IRB.emitError(
                 "TypeError",
@@ -684,7 +700,12 @@ export class Expression {
             );
           }
 
-          if (structInfo.isBuiltin && structInfo.isOpaque && object.needsLoad && i === 0) {
+          if (
+            structInfo.isBuiltin &&
+            structInfo.isOpaque &&
+            object.needsLoad &&
+            i === 0
+          ) {
             const t = this.IRB.newTemp();
             this.IRB.emit(`${t} = load ptr, ptr ${basePtr}`);
             basePtr = t;
@@ -738,15 +759,13 @@ export class Expression {
 
             const fn = this.IRB.getFunction(possibleMethod);
 
-if (fn?.isPrivate && !object?.isTHIS) {
-
-    this.IRB.emitError(
-        "SemanticError",
-        `Cannot access private method '${currentField}' in struct '${structName}'`,
-        node,
-    );
-
-}
+            if (fn?.isPrivate && !object?.isTHIS) {
+              this.IRB.emitError(
+                "SemanticError",
+                `Cannot access private method '${currentField}' in struct '${structName}'`,
+                node,
+              );
+            }
 
             const args = [];
             const callArgs = [];
@@ -989,32 +1008,30 @@ if (fn?.isPrivate && !object?.isTHIS) {
               args.push(`ptr ${listPtr}`);
             }
 
-    this.IRB.validateCallArgs(fn, callArgs, hasRest, restIndex, node);
+            this.IRB.validateCallArgs(fn, callArgs, hasRest, restIndex, node);
 
             // void method
             if (fn.returnType.type === "void") {
-
               if (fn.isThread) {
-    this.IRB.declareOneTime(
-      "_zen_thread",
-      "declare void @_zen_thread(ptr, ptr)",
-    );
+                this.IRB.declareOneTime(
+                  "_zen_thread",
+                  "declare void @_zen_thread(ptr, ptr)",
+                );
 
-    const { ctx, trampolineName } = this.IRB.createThreadArgContext(
-      possibleMethod,
-      fn,
-      callArgs,
-      args,
-      local
-    );
+                const { ctx, trampolineName } = this.IRB.createThreadArgContext(
+                  possibleMethod,
+                  fn,
+                  callArgs,
+                  args,
+                  local,
+                );
 
-    local.push(
-      `call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`,
-    );
-  } else {
-    local.push(`call void @${possibleMethod}(${args.join(", ")})`);
+                local.push(
+                  `call void @_zen_thread(ptr @${trampolineName}, ptr ${ctx})`,
+                );
+              } else {
+                local.push(`call void @${possibleMethod}(${args.join(", ")})`);
               }
-
 
               return {
                 ptr: null,
@@ -1135,13 +1152,13 @@ if (fn?.isPrivate && !object?.isTHIS) {
           fieldInfo = structInfo.layout[fieldIndex];
 
           if (fieldInfo?.isPrivate && !object?.isTHIS) {
-  this.IRB.emitError(
-    "SemanticError",
-    `Cannot access private field '${currentField}' in struct '${structName}'`,
-    node,
-  );
-}
-          
+            this.IRB.emitError(
+              "SemanticError",
+              `Cannot access private field '${currentField}' in struct '${structName}'`,
+              node,
+            );
+          }
+
           const isList = fieldInfo.isList;
           const ptr = this.IRB.newTemp();
 
@@ -1152,7 +1169,11 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
           structName = fieldInfo.type;
 
-          if (!isList && this.IRB.hasStruct(structName) && i !== fields.length - 1) {
+          if (
+            !isList &&
+            this.IRB.hasStruct(structName) &&
+            i !== fields.length - 1
+          ) {
             const nextStructInfo = this.IRB.getStruct(structName);
             if (
               nextStructInfo?.isBuiltin &&
@@ -1229,7 +1250,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
             isStruct: true,
             global: [],
             isVarRef: false,
-            needsLoad: false
+            needsLoad: false,
           };
         }
 
@@ -1368,6 +1389,14 @@ if (fn?.isPrivate && !object?.isTHIS) {
 
         const base = buildAccess(n.array);
 
+        if (base?.internalType === "char") {
+          this.IRB.emitError(
+            "TypeError",
+            "Cannot index into a character value",
+            n,
+          );
+        }
+
         if (base.local?.length) {
           local.push(...base.local);
         }
@@ -1411,7 +1440,7 @@ if (fn?.isPrivate && !object?.isTHIS) {
             base.isMapValue ||
             base.fromParam ||
             base?.isDirectCall ||
-            base?.isListLiteral 
+            base?.isListLiteral
           ) {
             listTemp = base.ptr;
           } else {
@@ -1436,11 +1465,11 @@ if (fn?.isPrivate && !object?.isTHIS) {
           const isNested = normalizedGeneric?.type === "List";
 
           const isStruct = !isNested && this.IRB.hasStruct(base.type);
-const isOpaque =
-  isStruct &&
-  this.IRB.getStruct(base.type)?.isBuiltin &&
-  this.IRB.getStruct(base.type)?.isOpaque;
-          
+          const isOpaque =
+            isStruct &&
+            this.IRB.getStruct(base.type)?.isBuiltin &&
+            this.IRB.getStruct(base.type)?.isOpaque;
+
           return {
             ptr: elemPtr,
             type: base.type,
@@ -1458,19 +1487,27 @@ const isOpaque =
         }
 
         // string index access
-        
-if (base.type === "string") {
-  let strPtr = base.ptr ?? base.addr;
 
-  if (base.needsLoad) {
-    const loaded = this.IRB.newTemp();
-    local.push(`${loaded} = load ptr, ptr ${strPtr}`);
-    strPtr = loaded;
-  }
+        if (base.type === "string") {
+          let strPtr = base.ptr ?? base.addr;
 
-  local.push(
-    `${ptr} = getelementptr i8, ptr ${strPtr}, i32 ${index.ptr}`,
-  );
+          if (base.needsLoad) {
+            const loaded = this.IRB.newTemp();
+            local.push(`${loaded} = load ptr, ptr ${strPtr}`);
+            strPtr = loaded;
+          }
+
+          this.IRB.declareOneTime(
+            "zen_str_check",
+            "declare void @_zen_str_check(ptr, i32)",
+          );
+          local.push(
+            `call void @_zen_str_check(ptr ${strPtr}, i32 ${index.ptr})`,
+          );
+
+          local.push(
+            `${ptr} = getelementptr i8, ptr ${strPtr}, i32 ${index.ptr}`,
+          );
 
           const t = this.IRB.newTemp();
           local.push(`${t} = load i8, ptr ${ptr}`);
@@ -1491,6 +1528,14 @@ if (base.type === "string") {
             local: base.local || [],
             global: [],
           };
+        }
+
+        if (!base.isArray && !base.llvmType?.startsWith("[")) {
+          this.IRB.emitError(
+            "TypeError",
+            `cannot index into type '${base.type}'`,
+            n,
+          );
         }
 
         // fixed size array
@@ -1546,6 +1591,7 @@ if (base.type === "string") {
         postOrPrefix: false,
         isArray: final.isArray,
         isStruct,
+        internalType: final?.internalType,
         generic: final?.generic,
         needsLoad: final.needsLoad,
         isListAccess: final?.isListAccess,
@@ -1561,9 +1607,12 @@ if (base.type === "string") {
 
       if (val.isList || this.IRB.hasStruct(val.type)) {
         const displayType = val.isList ? "List" : val.type;
-        
-        this.IRB.emitError("TypeError",
-        `unary operators cannot be applied to type '${displayType}'`, node);
+
+        this.IRB.emitError(
+          "TypeError",
+          `unary operators cannot be applied to type '${displayType}'`,
+          node,
+        );
       }
 
       const local = [...(val.local || [])];
@@ -1741,23 +1790,22 @@ if (base.type === "string") {
           }
         }
 
-
         if (val.type === "byte") {
-  const tm = this.IRB.newTemp();
+          const tm = this.IRB.newTemp();
 
-  local.push(`${tm} = sub i8 0, ${v}`);
+          local.push(`${tm} = sub i8 0, ${v}`);
 
-  return {
-    ptr: tm,
-    type: "byte",
-    llvmType: "i8",
-    local,
-    global,
-    postOrPrefix: false,
-    endLabel: null,
-    isVarRef: false,
-  };
-}
+          return {
+            ptr: tm,
+            type: "byte",
+            llvmType: "i8",
+            local,
+            global,
+            postOrPrefix: false,
+            endLabel: null,
+            isVarRef: false,
+          };
+        }
 
         // int
 
@@ -2017,7 +2065,8 @@ if (base.type === "string") {
       }
 
       if (!LNode || !RNode)
-        this.IRB.emitError("TypeError",
+        this.IRB.emitError(
+          "TypeError",
           "Invalid binary operation: left or right operand is missing or invalid",
           node?.left?.line || node?.right?.line,
         );

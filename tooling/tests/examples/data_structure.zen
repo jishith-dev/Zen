@@ -245,3 +245,35 @@ built.setString("s", "hi")
 
 screen(built.getInt("n"))
 screen(built.getString("s"))
+
+# struct with automatically initialized Map and List fields
+
+struct Settings {
+  string name
+  Map metadata
+  List<int> values
+}
+
+Settings settings = {
+  name: "Zen",
+  metadata: {"role": "admin"},
+  values: [10, 20]
+}
+
+screen(settings.name)
+screen(settings.metadata.getString("role"))
+screen(settings.metadata.type("role"))
+screen(settings.values.length)
+
+# iterate over a List of Maps
+
+List<Map> people = [
+  {"name": "Jishith", "age": 21},
+  {"name": "Abhinav", "age": 22},
+  {"name": "Abhishek", "age": 23}
+]
+
+loop (person of people) {
+  screen(person.getString("name"))
+  screen(person.getInt("age"))
+}

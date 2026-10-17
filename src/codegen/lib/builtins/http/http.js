@@ -3,7 +3,7 @@ export class ZenHttp {
     this.IRB = IRB;
     this.expr = expr;
   }
-    zenNativeHTTPCall(
+  zenNativeHTTPCall(
     node,
     globalScope,
     funcName,
@@ -117,7 +117,7 @@ export class ZenHttp {
       retGeneric: isListRet ? "byte" : undefined,
       generic: isListRet ? { type: "List", generic: { type: "byte" } } : null,
     };
-    }
+  }
 
   parseCallbackSpec(spec) {
     const m = /^fn\s+\w+\s*\((.*)\)\s*(\w+)?$/.exec(spec.trim());
@@ -130,7 +130,7 @@ export class ZenHttp {
     };
   }
 
-    validateCallback(arg, spec, name, i) {
+  validateCallback(arg, spec, name, i) {
     const at = `argument ${i + 1} of '${name}'`;
     const cb = arg.name ?? "<inline>";
 
@@ -163,5 +163,5 @@ export class ZenHttp {
         arg,
       );
     }
-    }
+  }
 }

@@ -86,17 +86,18 @@ const hints = {
       hint: "Use the global 'length()' function for strings. String methods are not supported.",
     },
     {
-      match: /Function debug\.pretty\(\) expects a List<T> or struct, but got string/,
+      match:
+        /Function debug\.pretty\(\) expects a List<T> or struct, but got string/,
       hint: "Use 'screen()' for normal values. 'debug.pretty()' is for printing Lists and Maps.",
     },
     {
-  match: /Cannot assign 'int' to variable '.*' of type 'long'/,
-  hint: "Use the 'L' suffix for long literals, e.g. 66L.",
-},
-{
-  match: /Cannot assign 'int' to variable '.*' of type 'byte'/,
-  hint: "Use the 'B' suffix for byte literals, e.g. 66B.",
-}
+      match: /Cannot assign 'int' to variable '.*' of type 'long'/,
+      hint: "Use the 'L' suffix for long literals, e.g. 66L.",
+    },
+    {
+      match: /Cannot assign 'int' to variable '.*' of type 'byte'/,
+      hint: "Use the 'B' suffix for byte literals, e.g. 66B.",
+    },
   ],
 
   SemanticError: [
@@ -106,20 +107,19 @@ const hints = {
     },
   ],
 
-    ReferenceError: [
+  ReferenceError: [
     {
       // Function 'add' is not defined / variable fss is not defined
       match: /(?:Function|variable) '?([\w.]+)'? is not defined/,
-      hint: m => suggestFromName(m[1]),
+      hint: (m) => suggestFromName(m[1]),
     },
     {
       // fs.unknown does not exist
       match: /([\w.]+) does not exist/,
-      hint: m => suggestFromName(m[1]),
+      hint: (m) => suggestFromName(m[1]),
     },
   ],
 };
-
 
 // Levenshtein + adjacent swap
 
@@ -133,7 +133,7 @@ function distance(a, b) {
       dp[i][j] = Math.min(
         dp[i - 1][j] + 1,
         dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost
+        dp[i - 1][j - 1] + cost,
       );
       if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
         dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
@@ -150,10 +150,11 @@ function maxDistance(len) {
 function suggestName(input, candidates, limit = 3) {
   const q = input.toLowerCase();
   const max = maxDistance(q.length);
-  const isUp = s => s[0] === s[0].toUpperCase() && s[0] !== s[0].toLowerCase();
+  const isUp = (s) =>
+    s[0] === s[0].toUpperCase() && s[0] !== s[0].toLowerCase();
 
   return candidates
-    .map(name => {
+    .map((name) => {
       const c = name.toLowerCase();
       if (Math.abs(c.length - q.length) > max) return null;
       const d = distance(q, c);
@@ -166,14 +167,20 @@ function suggestName(input, candidates, limit = 3) {
       };
     })
     .filter(Boolean)
-    .sort((a, b) =>
-      a.d - b.d || a.cm - b.cm || a.first - b.first || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        a.d - b.d ||
+        a.cm - b.cm ||
+        a.first - b.first ||
+        a.name.localeCompare(b.name),
+    )
     .filter((x, _, arr) => x.d === arr[0].d && x.cm === arr[0].cm)
     .slice(0, limit)
-    .map(x => x.name);
+    .map((x) => x.name);
 }
 
-const keysOf = v => (Array.isArray(v) ? v.map(x => x.name ?? x) : Object.keys(v || {}));
+const keysOf = (v) =>
+  Array.isArray(v) ? v.map((x) => x.name ?? x) : Object.keys(v || {});
 
 function globalNames(info) {
   return [
@@ -188,12 +195,12 @@ function memberNames(info, ns) {
   return Object.keys(info.namespaces?.[ns]?.functions || {});
 }
 
-// error hint 
+// error hint
 function didYouMean(info, name, ns = null) {
   const list = ns ? memberNames(info, ns) : globalNames(info);
   const s = suggestName(name, list);
   if (!s.length) return "";
-  const full = n => (ns ? `${ns}.${n}` : n);
+  const full = (n) => (ns ? `${ns}.${n}` : n);
   return s.length === 1
     ? `Did you mean '${full(s[0])}'?`
     : `Did you mean one of: ${s.map(full).join(", ")}?`;
@@ -208,24 +215,26 @@ function suggestFromName(raw) {
   const spaces = BUILTIN_INFO.namespaces || {};
 
   if (spaces[ns]) {
-    
     const own = didYouMean(BUILTIN_INFO, member, ns);
     if (own) return own;
 
     const owners = {};
     for (const [n, v] of Object.entries(spaces))
-      for (const f of Object.keys(v.functions || {})) (owners[f] ??= []).push(n);
+      for (const f of Object.keys(v.functions || {}))
+        (owners[f] ??= []).push(n);
 
-    const hits = suggestName(member, Object.keys(owners), 1)
-      .flatMap(f => owners[f].map(n => `${n}.${f}`));
+    const hits = suggestName(member, Object.keys(owners), 1).flatMap((f) =>
+      owners[f].map((n) => `${n}.${f}`),
+    );
     return hits.length ? `Did you mean '${hits.join("' or '")}'?` : "";
   }
-
 
   const s = suggestName(ns, Object.keys(spaces), 1);
   return s.length ? `Did you mean '${s[0]}.${member}'?` : "";
 }
 //
+
+const ALLOWED_GENERIC_SYNTAX_FN = new Set(["getList"]);
 
 const COMPOUND_OPERATORS = ["+=", "-=", "*=", "/=", "%="];
 
@@ -235,7 +244,7 @@ const ASSIGNMENT_OPS = ["=", "+=", "-=", "*=", "/=", "%="];
 
 const ARITHMETIC_OPS = ["+", "-", "*", "/", "%"];
 
-const UNARY_OPS = ["++", "--", "!", /*"+"*/, "~"]; //commented out + unary, to avoid any conflics between arithamatic +, it handled in parser .
+const UNARY_OPS = ["++", "--", "!" /*"+"*/, , "~"]; //commented out + unary, to avoid any conflics between arithamatic +, it handled in parser .
 
 const COMPARISON_OPS = ["==", "!=", ">=", "<=", ">", "<"];
 
@@ -284,7 +293,7 @@ const KEYWORDS = [
   "thread",
   "extern",
   "private",
-  "as"
+  "as",
 ];
 
 // lexer tokens
@@ -863,9 +872,9 @@ const NAMESPACE_MAP = {
     "clipboard_clear",
     "clipboard_hasText",
     "spawn",
-  "kill",
-  "wait",
-  "isRunning",
+    "kill",
+    "wait",
+    "isRunning",
   ],
 
   time: [
@@ -891,7 +900,7 @@ const NAMESPACE_MAP = {
     "setHeader",
     "clearHeaders",
     "lastStatus",
-    "getProgress"
+    "getProgress",
   ],
 
   net: ["online", "connect", "listen"],
@@ -1426,6 +1435,12 @@ const BUILTIN_STRUCT_METHODS = {
   },
 
   Map: {
+    type: {
+      returnType: "string",
+      args: ["string"],
+      llvmName: "_zen_map_type",
+    },
+
     keys: {
       returnType: "List<string>",
       args: [],
@@ -1613,7 +1628,7 @@ const BUILTIN_MAP = {
 
   matchRegex: {
     returnType: "bool",
-    llvmName: "matchRegex"
+    llvmName: "matchRegex",
   },
 
   String: {
@@ -1832,12 +1847,12 @@ const BUILTIN_MAP = {
 
   count: {
     returnType: "long",
-    llvmName: "_threads_count"
+    llvmName: "_threads_count",
   },
 
   currentId: {
     returnType: "long",
-    llvmName: "_threads_currentId"
+    llvmName: "_threads_currentId",
   },
 
   pretty: {
@@ -2103,7 +2118,7 @@ const BUILTIN_MAP = {
 
   getProgress: {
     returnType: "List<byte>",
-    llvmName: "_http_getProgress"
+    llvmName: "_http_getProgress",
   },
 
   urlEncode: {
@@ -2609,7 +2624,7 @@ const STD_FUNCTIONS_SCHEMA = {
 
   reverse: { ret: "ptr", params: ["ptr"] },
   indexOf: { ret: "i32", params: ["ptr", "ptr"] },
-  lastIndexOf: {ret: "i32", params: ["ptr", "ptr"]},
+  lastIndexOf: { ret: "i32", params: ["ptr", "ptr"] },
   slice: { ret: "ptr", params: ["ptr", "i32", "i32"] },
   charAt: { ret: "ptr", params: ["ptr", "i32"] },
   replace: { ret: "ptr", params: ["ptr", "ptr", "ptr"] },
@@ -2705,7 +2720,7 @@ const HTTPSERVER_MAP = {
 const THREAD_MAP = {
   _threads_waitAll: ["_threads_waitAll", "void", 0, []],
   _threads_count: ["_threads_count", "long", 0, []],
-  _threads_currentId: ["_threads_currentId", "long", 0, []]
+  _threads_currentId: ["_threads_currentId", "long", 0, []],
 };
 
 const DEBUG_MAP = {
@@ -2796,7 +2811,7 @@ const SYS_MAP = {
   _sys_wait: ["_sys_wait", "int", 1, ["long"]],
 
   _sys_isRunning: ["_sys_isRunning", "bool", 1, ["long"]],
-  
+
   _sys_exec: ["_sys_exec", "int", 1, ["string"]],
 
   _sys_panic: ["_sys_panic", "void", 1, ["string"]],
@@ -2873,7 +2888,12 @@ const HTTP_MAP = {
 
   _http_lastStatus: ["_http_lastStatus", "int", 0, []],
 
-  _http_getProgress: ["_http_getProgress", "List<byte>", 2, ["string", "fn cb(long downloaded, long total) void"]],
+  _http_getProgress: [
+    "_http_getProgress",
+    "List<byte>",
+    2,
+    ["string", "fn cb(long downloaded, long total) void"],
+  ],
 };
 
 const FFI_MAP = {
@@ -3030,5 +3050,6 @@ export {
   PRIMITIVE_TYPES,
   hints,
   NAMESPACE_REG,
-  HOST_ARCH_BITS
+  HOST_ARCH_BITS,
+  ALLOWED_GENERIC_SYNTAX_FN,
 };

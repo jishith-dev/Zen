@@ -10,7 +10,7 @@ export class Struct {
   registerStructMethods(structNode, deps) {
     const structName = structNode.name;
     this.IRB.currentStruct = structName;
-    
+
     for (const method of structNode.methods) {
       const fnName = `${structName}_${method.name}`;
 
@@ -30,19 +30,19 @@ export class Struct {
       const generic = returnType === "List" ? method.returnType : null;
 
       this.collectDep(
-  returnType === "List" ? retGeneric : returnType,
-  structName,
-  deps,
-);
+        returnType === "List" ? retGeneric : returnType,
+        structName,
+        deps,
+      );
 
-for (const p of method.params || []) {
-  const t = p.type?.type ?? p.type;
-  this.collectDep(
-    t === "List" ? this.IRB.getDeepestGeneric(p.type.generic) : t,
-    structName,
-    deps,
-  );
-}
+      for (const p of method.params || []) {
+        const t = p.type?.type ?? p.type;
+        this.collectDep(
+          t === "List" ? this.IRB.getDeepestGeneric(p.type.generic) : t,
+          structName,
+          deps,
+        );
+      }
 
       if (isArrayRet)
         this.IRB.emitError(
@@ -61,7 +61,7 @@ for (const p of method.params || []) {
         struct: structName,
         isAsync: method.isAsync,
         isThread: method.isThread,
-        isPrivate: method.isPrivate
+        isPrivate: method.isPrivate,
       });
     }
   }
@@ -76,28 +76,27 @@ for (const p of method.params || []) {
   }
 
   collectDep(typeName, selfName, deps) {
-  if (!typeName || typeName === selfName) return;
-  if (!this.IRB.hasStruct(typeName)) return;
-  const dep = this.IRB.getStruct(typeName);
-  if (dep.isBuiltin) return;
-  deps.add(typeName);
-  (dep.deps || []).forEach((d) => deps.add(d));
+    if (!typeName || typeName === selfName) return;
+    if (!this.IRB.hasStruct(typeName)) return;
+    const dep = this.IRB.getStruct(typeName);
+    if (dep.isBuiltin) return;
+    deps.add(typeName);
+    (dep.deps || []).forEach((d) => deps.add(d));
   }
 
   struct(node, globalScope) {
-   
     const name = node.name;
     const fields = node.fields;
     const isMethod = node?.methods?.length > 0;
 
     const prev = this.IRB.hasStruct(name) ? this.IRB.getStruct(name) : null;
-if (prev?.hidden) {
-  this.IRB.emitError(
-    "NameError",
-    `struct '${name}' conflicts with '${name}' used by imported struct '${prev.via}'`,
-    node,
-  );
-}
+    if (prev?.hidden) {
+      this.IRB.emitError(
+        "NameError",
+        `struct '${name}' conflicts with '${name}' used by imported struct '${prev.via}'`,
+        node,
+      );
+    }
 
     const layout = [];
     const fieldMap = {};
@@ -108,21 +107,21 @@ if (prev?.hidden) {
       const f = fields[i];
 
       const fieldType =
-  f.type === "List" ? this.IRB.getDeepestGeneric(f.generic) : f.type;
+        f.type === "List" ? this.IRB.getDeepestGeneric(f.generic) : f.type;
 
-if (
-  fieldType &&
-  !PRIMITIVE_TYPES.includes(fieldType) &&
-  fieldType !== "Map" &&
-  fieldType !== name &&
-  !this.IRB.hasStruct(fieldType)
-) {
-  this.IRB.emitError(
-    "ReferenceError",
-    `Struct '${fieldType}' is not defined`,
-    f,
-  );
-}
+      if (
+        fieldType &&
+        !PRIMITIVE_TYPES.includes(fieldType) &&
+        fieldType !== "Map" &&
+        fieldType !== name &&
+        !this.IRB.hasStruct(fieldType)
+      ) {
+        this.IRB.emitError(
+          "ReferenceError",
+          `Struct '${fieldType}' is not defined`,
+          f,
+        );
+      }
 
       let llvmType;
 
@@ -156,17 +155,18 @@ if (
         name: f.name,
         type: type,
         isList: f.type === "List",
-        generic: f.type === "List"
-  ? {
-      type: "List",
-      generic: f.generic,
-    }
-  : null,
+        generic:
+          f.type === "List"
+            ? {
+                type: "List",
+                generic: f.generic,
+              }
+            : null,
         llvmType,
         index: i,
         isPrivate: f.isPrivate,
         dimensions: f.dimensions || [],
-        value: f.value
+        value: f.value,
       });
 
       fieldMap[f.name] = i;
@@ -175,14 +175,18 @@ if (
 
     this.IRB.globals.push(`%${name} = type { ${llvmFields.join(", ")} }`);
 
-    this.IRB.setStruct(name, {
-      isGlobal: globalScope,
-      layout,
-      isBuiltin: false,
-      isOpaque: false,
-      fieldMap,
-      size: fields.length,
-    }, node);
+    this.IRB.setStruct(
+      name,
+      {
+        isGlobal: globalScope,
+        layout,
+        isBuiltin: false,
+        isOpaque: false,
+        fieldMap,
+        size: fields.length,
+      },
+      node,
+    );
 
     this.IRB.getStruct(name).byteSize = this.IRB.sizeOf(name);
     this.IRB.getStruct(name).align = this.IRB.alignOf(name);
@@ -217,14 +221,14 @@ if (
     const structInfo = this.IRB.getStruct(structName);
 
     // anonymous dep structs imported implicitly in module analyser
-if (structInfo?.hidden) {
-  this.IRB.emitError(
-    "ReferenceError",
-    `struct '${structName}' is only reachable through '${structInfo.via}'; import it to use it by name`,
-    node,
-  );
-}
-    
+    if (structInfo?.hidden) {
+      this.IRB.emitError(
+        "ReferenceError",
+        `struct '${structName}' is only reachable through '${structInfo.via}'; import it to use it by name`,
+        node,
+      );
+    }
+
     const isOpaque = structInfo.isBuiltin && structInfo.isOpaque;
     const llvmType = isOpaque ? "ptr" : `%${structName}`;
 
@@ -234,23 +238,34 @@ if (structInfo?.hidden) {
 
     if (value?.type === "STRUCT_LITERAL") {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
-      
+
       if (structName === "Map") {
-    // Map manages its own storage — don't pre-allocate/init, just take the returned ptr
-    const result = this.IRB.emitStructLiteral(structName, value, globalScope);
-    ptr = result.ptr;
-  } else {
-    ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
-    this.IRB.applyFieldInitializers(ptr, structName, structInfo);
-    this.IRB.emitStructLiteral(structName, value, globalScope, ptr);
+        // Map manages its own storage — don't pre-allocate/init, just take the returned ptr
+        const result = this.IRB.emitStructLiteral(
+          structName,
+          value,
+          globalScope,
+        );
+        ptr = result.ptr;
+      } else {
+        ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
+        this.IRB.applyFieldInitializers(ptr, structName, structInfo);
+        this.IRB.emitStructLiteral(structName, value, globalScope, ptr);
       }
-      
     } else if (value === null) {
       ptr = this.IRB.allocStructStorage(structInfo, structName, globalScope);
       this.IRB.applyFieldInitializers(ptr, structName, structInfo);
     } else {
       this.IRB.guardStackOp(`STRUCT_INSTANCE - ${structName}`);
       const expr = this.expr.handleExpression(value);
+
+      if (expr.isList || expr.type !== structName) {
+        this.IRB.emitError(
+          "TypeError",
+          `cannot assign ${expr.isList ? "List" : "'" + expr.type + "'"} to struct '${structName}' variable '${varName}'`,
+          node,
+        );
+      }
 
       this.IRB.emitExpr(expr);
 
@@ -418,6 +433,20 @@ if (structInfo?.hidden) {
         `cannot assign value of type '${value.type}' to struct field '${structName}.${fieldName}' of type '${expected}'`,
         node,
       );
+    }
+
+    if (expectedIsList) {
+      const expDepth = this.IRB.getListDepth(fieldMeta.generic);
+      const gotDepth = value.generic
+        ? this.IRB.getListDepth(value.generic)
+        : expDepth;
+      if (expected !== value.type || expDepth !== gotDepth) {
+        this.IRB.emitError(
+          "TypeError",
+          `cannot assign ${"List<".repeat(gotDepth)}${value.type}${">".repeat(gotDepth)} to struct field '${structName}.${fieldName}' of type ${"List<".repeat(expDepth)}${expected}${">".repeat(expDepth)}`,
+          node,
+        );
+      }
     }
 
     this.IRB.emitExpr(value);

@@ -314,34 +314,34 @@ export class Type {
   }
 
   sizeOf(node) {
-  if (node.args.length !== 1) {
-    this.IRB.emitError(
-      "ArgumentError",
-      "Function sizeOf() accepts exactly 1 argument",
-      node,
-    );
-  }
+    if (node.args.length !== 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function sizeOf() accepts exactly 1 argument",
+        node,
+      );
+    }
 
-  const arg = node.args[0];
+    const arg = node.args[0];
 
-  let type;
+    let type;
 
-  if (arg.type === "SIZEOF_TYPE") {
-    type = arg.value;
-  } else {
-    type = this.infer.infer(arg);
-  }
+    if (arg.type === "SIZEOF_TYPE") {
+      type = arg.value;
+    } else {
+      type = this.infer.infer(arg);
+    }
 
-  const size = this.IRB.sizeOf(type);
+    const size = this.IRB.sizeOf(type);
 
-  return {
-    ptr: `${size}`,
-    type: "int",
-    llvmType: "i32",
-    local: [],
-    global: [],
-    isConstant: true
-  };
+    return {
+      ptr: `${size}`,
+      type: "int",
+      llvmType: "i32",
+      local: [],
+      global: [],
+      isConstant: true,
+    };
   }
 
   Byte(node) {
@@ -383,110 +383,110 @@ export class Type {
   }
 
   strToBytes(node) {
-  const args = node.args;
+    const args = node.args;
 
-  if (!args || args.length !== 1) {
-    this.IRB.emitError(
-      "ArgumentError",
-      "Function stringToBytes() accepts exactly 1 argument",
-      node,
+    if (!args || args.length !== 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function stringToBytes() accepts exactly 1 argument",
+        node,
+      );
+    }
+
+    const expr = this.expr.handleExpression(args[0]);
+
+    if (expr.type !== "string" || expr.isList || expr.isStruct) {
+      this.IRB.emitError("TypeError", "stringToBytes() expects a string", node);
+    }
+
+    this.IRB.emitExpr(expr);
+
+    const callArgs = expr.needsLoad
+      ? (() => {
+          const tmp = this.IRB.newTemp();
+          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+          return `ptr ${tmp}`;
+        })()
+      : `ptr ${expr.ptr}`;
+
+    this.IRB.declareOneTime(
+      "_zen_strToBytes",
+      "declare ptr @_zen_strToBytes(ptr)",
     );
+
+    const result = this.IRB.newTemp();
+
+    this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
+
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
+    return {
+      ptr: result,
+      type: "byte",
+      llvmType: "ptr",
+      isList: true,
+      internalType: "List",
+      retGeneric: "byte",
+      generic: { type: "List", generic: { type: "byte" } },
+      local: [],
+      global: [],
+      postOrPrefix: false,
+    };
   }
 
-  const expr = this.expr.handleExpression(args[0]);
+  bytesToStr(node) {
+    const args = node.args;
 
-  if (expr.type !== "string" || expr.isList || expr.isStruct) {
-    this.IRB.emitError("TypeError", "stringToBytes() expects a string", node);
-  }
+    if (!args || args.length !== 1) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "Function bytesToString() accepts exactly 1 argument",
+        node,
+      );
+    }
 
-  this.IRB.emitExpr(expr);
+    const expr = this.expr.handleExpression(args[0]);
 
-  const callArgs = expr.needsLoad
-    ? (() => {
-        const tmp = this.IRB.newTemp();
-        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-        return `ptr ${tmp}`;
-      })()
-    : `ptr ${expr.ptr}`;
+    const elem = expr.generic?.generic;
+    const elemType = typeof elem === "string" ? elem : elem?.type;
 
-  this.IRB.declareOneTime(
-    "_zen_strToBytes",
-    "declare ptr @_zen_strToBytes(ptr)",
-  );
+    if (!expr.isList || elemType !== "byte") {
+      this.IRB.emitError(
+        "TypeError",
+        "bytesToString() expects List<byte>",
+        node,
+      );
+    }
 
-  const result = this.IRB.newTemp();
+    this.IRB.emitExpr(expr);
 
-  this.IRB.emit(`${result} = call ptr @_zen_strToBytes(${callArgs})`);
+    const callArgs = expr.needsLoad
+      ? (() => {
+          const tmp = this.IRB.newTemp();
+          this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
+          return `ptr ${tmp}`;
+        })()
+      : `ptr ${expr.ptr}`;
 
-  this.IRB.cleanupBuiltinStringTemps([expr]);
-
-  return {
-    ptr: result,
-    type: "byte",
-    llvmType: "ptr",
-    isList: true,
-    internalType: "List",
-    retGeneric: "byte",
-    generic: { type: "List", generic: { type: "byte" } },
-    local: [],
-    global: [],
-    postOrPrefix: false,
-  };
-}
-
-bytesToStr(node) {
-  const args = node.args;
-
-  if (!args || args.length !== 1) {
-    this.IRB.emitError(
-      "ArgumentError",
-      "Function bytesToString() accepts exactly 1 argument",
-      node,
+    this.IRB.declareOneTime(
+      "_zen_bytesToStr",
+      "declare ptr @_zen_bytesToStr(ptr)",
     );
+
+    const result = this.IRB.newTemp();
+
+    this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
+
+    this.IRB.cleanupBuiltinStringTemps([expr]);
+
+    return {
+      ptr: result,
+      type: "string",
+      llvmType: "ptr",
+      isConstant: false,
+      local: [],
+      global: [],
+      postOrPrefix: false,
+    };
   }
-
-  const expr = this.expr.handleExpression(args[0]);
-
-  const elem = expr.generic?.generic;
-  const elemType = typeof elem === "string" ? elem : elem?.type;
-
-  if (!expr.isList || elemType !== "byte") {
-    this.IRB.emitError(
-      "TypeError",
-      "bytesToString() expects List<byte>",
-      node,
-    );
-  }
-
-  this.IRB.emitExpr(expr);
-
-  const callArgs = expr.needsLoad
-    ? (() => {
-        const tmp = this.IRB.newTemp();
-        this.IRB.emit(`${tmp} = load ptr, ptr ${expr.ptr}`);
-        return `ptr ${tmp}`;
-      })()
-    : `ptr ${expr.ptr}`;
-
-  this.IRB.declareOneTime(
-    "_zen_bytesToStr",
-    "declare ptr @_zen_bytesToStr(ptr)",
-  );
-
-  const result = this.IRB.newTemp();
-
-  this.IRB.emit(`${result} = call ptr @_zen_bytesToStr(${callArgs})`);
-
-  this.IRB.cleanupBuiltinStringTemps([expr]);
-
-  return {
-    ptr: result,
-    type: "string",
-    llvmType: "ptr",
-    isConstant: false,
-    local: [],
-    global: [],
-    postOrPrefix: false,
-  };
-}
 }

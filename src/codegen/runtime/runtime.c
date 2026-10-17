@@ -24,18 +24,17 @@
 
 #include <stdarg.h>
 
-
 static void zen_error(const char *type, const char *msg) {
-    fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
-    exit(1);
+  fprintf(stderr, "\033[1;31m[Zen  %s]\n  └── %s\033[0m\n", type, msg);
+  exit(1);
 }
 
 typedef void (*ZenThreadFn)(void *);
 
 typedef struct {
-    ZenThreadFn fn;
-    void *arg;
-    long id;
+  ZenThreadFn fn;
+  void *arg;
+  long id;
 } ZenThreadData;
 
 static pthread_t *zen_threads = NULL;
@@ -47,178 +46,156 @@ static atomic_long zen_next_thread_id = 0;
 static __thread long zen_current_thread_id = -1; // -1 = main thread
 
 static void *_zen_thread_runner(void *arg) {
-    ZenThreadData *data = (ZenThreadData *)arg;
+  ZenThreadData *data = (ZenThreadData *)arg;
 
-    zen_current_thread_id = data->id;
+  zen_current_thread_id = data->id;
 
-    data->fn(data->arg);
+  data->fn(data->arg);
 
-    atomic_fetch_sub(&zen_active_thread_count, 1);
+  atomic_fetch_sub(&zen_active_thread_count, 1);
 
-    free(data);
-    return NULL;
+  free(data);
+  return NULL;
 }
 
 void _zen_thread(ZenThreadFn fn, void *ctx) {
-    if (zen_thread_count >= zen_thread_capacity) {
-        int newCapacity = zen_thread_capacity == 0 ? 64 : zen_thread_capacity * 2;
+  if (zen_thread_count >= zen_thread_capacity) {
+    int newCapacity = zen_thread_capacity == 0 ? 64 : zen_thread_capacity * 2;
 
-        pthread_t *grown = realloc(zen_threads, sizeof(pthread_t) * newCapacity);
+    pthread_t *grown = realloc(zen_threads, sizeof(pthread_t) * newCapacity);
 
-        if (!grown) {
-            zen_error(
-                "MemoryError",
-                "Failed to grow thread handle table"
-            );
-        }
-
-        zen_threads = grown;
-        zen_thread_capacity = newCapacity;
+    if (!grown) {
+      zen_error("MemoryError", "Failed to grow thread handle table");
     }
 
-    ZenThreadData *data = malloc(sizeof(ZenThreadData));
+    zen_threads = grown;
+    zen_thread_capacity = newCapacity;
+  }
 
-    if (!data) {
-        zen_error(
-            "MemoryError",
-            "Failed to allocate thread context"
-        );
-    }
+  ZenThreadData *data = malloc(sizeof(ZenThreadData));
 
-    data->fn = fn;
-    data->arg = ctx;
-    data->id = atomic_fetch_add(&zen_next_thread_id, 1);
+  if (!data) {
+    zen_error("MemoryError", "Failed to allocate thread context");
+  }
 
-    atomic_fetch_add(&zen_active_thread_count, 1);
+  data->fn = fn;
+  data->arg = ctx;
+  data->id = atomic_fetch_add(&zen_next_thread_id, 1);
 
-    int result = pthread_create(
-        &zen_threads[zen_thread_count],
-        NULL,
-        _zen_thread_runner,
-        data
-    );
+  atomic_fetch_add(&zen_active_thread_count, 1);
 
-    if (result != 0) {
-        atomic_fetch_sub(&zen_active_thread_count, 1);
-        free(data);
+  int result = pthread_create(&zen_threads[zen_thread_count], NULL, _zen_thread_runner, data);
 
-        zen_error(
-            "ThreadError",
-            "Failed to create thread"
-        );
-    }
+  if (result != 0) {
+    atomic_fetch_sub(&zen_active_thread_count, 1);
+    free(data);
 
-    zen_thread_count++;
+    zen_error("ThreadError", "Failed to create thread");
+  }
+
+  zen_thread_count++;
 }
 
 void _threads_waitAll() {
-    for (int i = 0; i < zen_thread_count; i++) {
-        int result = pthread_join(
-            zen_threads[i],
-            NULL
-        );
+  for (int i = 0; i < zen_thread_count; i++) {
+    int result = pthread_join(zen_threads[i], NULL);
 
-        if (result != 0) {
-            zen_error(
-                "ThreadError",
-                "Failed to join thread"
-            );
-        }
+    if (result != 0) {
+      zen_error("ThreadError", "Failed to join thread");
     }
+  }
 
-    zen_thread_count = 0;
+  zen_thread_count = 0;
 }
 
-long _threads_count(void) {
-    return (long)atomic_load(&zen_active_thread_count);
-}
+long _threads_count(void) { return (long)atomic_load(&zen_active_thread_count); }
 
-long _threads_currentId(void) {
-    return zen_current_thread_id;
-}
-    
-
+long _threads_currentId(void) { return zen_current_thread_id; }
 
 // clipboard API (not fully support)
 
 #ifdef __APPLE__
-#define COPY_CMD  "pbcopy"
+#define COPY_CMD "pbcopy"
 #define PASTE_CMD "pbpaste"
 #else
 static const char *copy_cmd(void) {
-    if (getenv("WAYLAND_DISPLAY")) return "wl-copy 2>/dev/null";
-    return "xclip -selection clipboard 2>/dev/null";
+  if (getenv("WAYLAND_DISPLAY"))
+    return "wl-copy 2>/dev/null";
+  return "xclip -selection clipboard 2>/dev/null";
 }
 
 static const char *paste_cmd(void) {
-    if (getenv("WAYLAND_DISPLAY")) return "wl-paste -n 2>/dev/null";
-    return "xclip -selection clipboard -o 2>/dev/null";
+  if (getenv("WAYLAND_DISPLAY"))
+    return "wl-paste -n 2>/dev/null";
+  return "xclip -selection clipboard -o 2>/dev/null";
 }
 #endif
 
 char *_sys_clipboard_get(void) {
 #ifdef __APPLE__
-    FILE *fp = popen(PASTE_CMD, "r");
+  FILE *fp = popen(PASTE_CMD, "r");
 #else
-    FILE *fp = popen(paste_cmd(), "r");
+  FILE *fp = popen(paste_cmd(), "r");
 #endif
-    if (!fp) zen_error("ClipboardError", "Failed to read from clipboard");
+  if (!fp)
+    zen_error("ClipboardError", "Failed to read from clipboard");
 
-    size_t cap = 256, len = 0;
-    char *buf = malloc(cap);
-    if (!buf) zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
+  size_t cap = 256, len = 0;
+  char *buf = malloc(cap);
+  if (!buf)
+    zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
 
-    int ch;
-    while ((ch = fgetc(fp)) != EOF) {
-        if (len + 1 >= cap) {
-            cap *= 2;
-            char *tmp = realloc(buf, cap);
-            if (!tmp) zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
-            buf = tmp;
-        }
-        buf[len++] = (char)ch;
+  int ch;
+  while ((ch = fgetc(fp)) != EOF) {
+    if (len + 1 >= cap) {
+      cap *= 2;
+      char *tmp = realloc(buf, cap);
+      if (!tmp)
+        zen_error("MemoryError", "Failed to allocate memory for clipboard buffer");
+      buf = tmp;
     }
-    buf[len] = '\0';
+    buf[len++] = (char)ch;
+  }
+  buf[len] = '\0';
 
-    pclose(fp);
-    return buf;
+  pclose(fp);
+  return buf;
 }
 
 void _sys_clipboard_set(const char *text) {
-    if (!text) zen_error("ClipboardError", "Cannot set clipboard to null text");
+  if (!text)
+    zen_error("ClipboardError", "Cannot set clipboard to null text");
 
 #ifdef __APPLE__
-    FILE *fp = popen(COPY_CMD, "w");
+  FILE *fp = popen(COPY_CMD, "w");
 #else
-    FILE *fp = popen(copy_cmd(), "w");
+  FILE *fp = popen(copy_cmd(), "w");
 #endif
-    if (!fp) zen_error("ClipboardError", "Failed to write to clipboard");
+  if (!fp)
+    zen_error("ClipboardError", "Failed to write to clipboard");
 
-    fputs(text, fp);
-    pclose(fp);
+  fputs(text, fp);
+  pclose(fp);
 }
 
-void _sys_clipboard_clear(void) {
-    _sys_clipboard_set("");
-}
+void _sys_clipboard_clear(void) { _sys_clipboard_set(""); }
 
 int _sys_clipboard_hasText(void) {
-    char *text = _sys_clipboard_get();
-    int has = text[0] != '\0';
-    free(text);
-    return has;
+  char *text = _sys_clipboard_get();
+  int has = text[0] != '\0';
+  free(text);
+  return has;
 }
 
 // ----
 
-void _time_sleep(long ms) {
-    usleep(ms * 1000);
-}
+void _time_sleep(long ms) { usleep(ms * 1000); }
 
-int _zen_regex_match(const char* str, const char* pattern) {
+int _zen_regex_match(const char *str, const char *pattern) {
   regex_t re;
   int ret = regcomp(&re, pattern, REG_EXTENDED);
-  if (ret != 0) return -1;
+  if (ret != 0)
+    return -1;
 
   ret = regexec(&re, str, 0, NULL, 0);
   regfree(&re);
@@ -228,1262 +205,1212 @@ int _zen_regex_match(const char* str, const char* pattern) {
 
 double _sys_performance() {
 
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    return (double)ts.tv_sec * 1000.0 +
-           (double)ts.tv_nsec / 1e6;
-
+  return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
 }
 
-char* _sys_input(const char* prompt) {
+char *_sys_input(const char *prompt) {
 
-    char buf[1024];
+  char buf[1024];
 
-    if (prompt != NULL) {
-        printf("%s", prompt);
-        fflush(stdout);
-    }
+  if (prompt != NULL) {
+    printf("%s", prompt);
+    fflush(stdout);
+  }
 
-    if (!fgets(buf, sizeof(buf), stdin)) {
-        buf[0] = '\0';
-    }
+  if (!fgets(buf, sizeof(buf), stdin)) {
+    buf[0] = '\0';
+  }
 
-    // remove newline
-    size_t len = strlen(buf);
-    if (len > 0 && buf[len - 1] == '\n') {
-        buf[len - 1] = '\0';
-    }
+  // remove newline
+  size_t len = strlen(buf);
+  if (len > 0 && buf[len - 1] == '\n') {
+    buf[len - 1] = '\0';
+  }
 
-    // allocate fresh memory per call
-    char* out = (char*)malloc(len + 1);
-    
-    if (!out) {
-    fprintf(stderr, "\033[1;31m[Zen  MemoryError]\n  └── Failed to allocate memory for input buffer\033[0m\n");
+  // allocate fresh memory per call
+  char *out = (char *)malloc(len + 1);
+
+  if (!out) {
+    fprintf(
+        stderr,
+        "\033[1;31m[Zen  MemoryError]\n  └── Failed to allocate memory for input buffer\033[0m\n");
     exit(1);
+  }
+
+  strcpy(out, buf);
+
+  return out;
 }
 
-    strcpy(out, buf);
+void _sys_panic(const char *msg) {
+  // ANSI red color
+  fprintf(stderr, "\033[1;31m");
 
-    return out;
-}
+  fprintf(stderr, "[Zen  PanicError]\n  └── %s\n", msg);
 
-void _sys_panic(const char* msg) {
-    // ANSI red color
-    fprintf(stderr, "\033[1;31m");
+  // reset color
+  fprintf(stderr, "\033[0m");
 
-    fprintf(stderr, "[Zen  PanicError]\n  └── %s\n", msg);
-
-    // reset color
-    fprintf(stderr, "\033[0m");
-
-    exit(1);
+  exit(1);
 }
 
 void _sys_color(const char *color) {
 
-    // NORMAL COLORS
-    if (strcmp(color, "black") == 0)
-        printf("\033[30m");
+  // NORMAL COLORS
+  if (strcmp(color, "black") == 0)
+    printf("\033[30m");
 
-    else if (strcmp(color, "red") == 0)
-        printf("\033[31m");
+  else if (strcmp(color, "red") == 0)
+    printf("\033[31m");
 
-    else if (strcmp(color, "green") == 0)
-        printf("\033[32m");
+  else if (strcmp(color, "green") == 0)
+    printf("\033[32m");
 
-    else if (strcmp(color, "yellow") == 0)
-        printf("\033[33m");
+  else if (strcmp(color, "yellow") == 0)
+    printf("\033[33m");
 
-    else if (strcmp(color, "blue") == 0)
-        printf("\033[34m");
+  else if (strcmp(color, "blue") == 0)
+    printf("\033[34m");
 
-    else if (strcmp(color, "magenta") == 0)
-        printf("\033[35m");
+  else if (strcmp(color, "magenta") == 0)
+    printf("\033[35m");
 
-    else if (strcmp(color, "cyan") == 0)
-        printf("\033[36m");
+  else if (strcmp(color, "cyan") == 0)
+    printf("\033[36m");
 
-    else if (strcmp(color, "white") == 0)
-        printf("\033[37m");
+  else if (strcmp(color, "white") == 0)
+    printf("\033[37m");
 
-    else if (strcmp(color, "brightBlack") == 0)
-        printf("\033[90m");
+  else if (strcmp(color, "brightBlack") == 0)
+    printf("\033[90m");
 
-    else if (strcmp(color, "brightRed") == 0)
-        printf("\033[91m");
+  else if (strcmp(color, "brightRed") == 0)
+    printf("\033[91m");
 
-    else if (strcmp(color, "brightGreen") == 0)
-        printf("\033[92m");
+  else if (strcmp(color, "brightGreen") == 0)
+    printf("\033[92m");
 
-    else if (strcmp(color, "brightYellow") == 0)
-        printf("\033[93m");
+  else if (strcmp(color, "brightYellow") == 0)
+    printf("\033[93m");
 
-    else if (strcmp(color, "brightBlue") == 0)
-        printf("\033[94m");
+  else if (strcmp(color, "brightBlue") == 0)
+    printf("\033[94m");
 
-    else if (strcmp(color, "brightMagenta") == 0)
-        printf("\033[95m");
+  else if (strcmp(color, "brightMagenta") == 0)
+    printf("\033[95m");
 
-    else if (strcmp(color, "brightCyan") == 0)
-        printf("\033[96m");
+  else if (strcmp(color, "brightCyan") == 0)
+    printf("\033[96m");
 
-    else if (strcmp(color, "brightWhite") == 0)
-        printf("\033[97m");
+  else if (strcmp(color, "brightWhite") == 0)
+    printf("\033[97m");
 
-    else if (strcmp(color, "bold") == 0)
-        printf("\033[1m");
+  else if (strcmp(color, "bold") == 0)
+    printf("\033[1m");
 
-    else if (strcmp(color, "underline") == 0)
-        printf("\033[4m");
+  else if (strcmp(color, "underline") == 0)
+    printf("\033[4m");
 
-    else if (strcmp(color, "reverse") == 0)
-        printf("\033[7m");
+  else if (strcmp(color, "reverse") == 0)
+    printf("\033[7m");
 
-    // RESET
-    else if (strcmp(color, "reset") == 0)
-        printf("\033[0m");
+  // RESET
+  else if (strcmp(color, "reset") == 0)
+    printf("\033[0m");
 
-    fflush(stdout);
+  fflush(stdout);
 }
 
-const char* _time_time() {
-    static char buffer[32];
+const char *_time_time() {
+  static char buffer[32];
 
-    time_t now = time(NULL);
-    struct tm *t = localtime(&now);
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
 
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%02d:%02d:%02d",
-        t->tm_hour,
-        t->tm_min,
-        t->tm_sec
-    );
+  snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
 
-    return buffer;
+  return buffer;
 }
 
 int _time_date() {
-    time_t now = time(NULL);
-    return localtime(&now)->tm_mday;
+  time_t now = time(NULL);
+  return localtime(&now)->tm_mday;
 }
 
 int _time_month() {
-    time_t now = time(NULL);
-    return localtime(&now)->tm_mon + 1;
+  time_t now = time(NULL);
+  return localtime(&now)->tm_mon + 1;
 }
 
 int _time_day() {
-    time_t now = time(NULL);
-    return localtime(&now)->tm_wday;
+  time_t now = time(NULL);
+  return localtime(&now)->tm_wday;
 }
 
 int _time_year() {
-    time_t now = time(NULL);
-    return localtime(&now)->tm_year + 1900;
+  time_t now = time(NULL);
+  return localtime(&now)->tm_year + 1900;
 }
 
-const char* _os_battery() {
+const char *_os_battery() {
 
-    static char result[64];
+  static char result[64];
 
-    FILE *f = fopen(
-        "/sys/class/power_supply/BAT0/capacity",
-        "r"
-    );
+  FILE *f = fopen("/sys/class/power_supply/BAT0/capacity", "r");
 
-    if (!f) {
-        return "unknown#0";
-    }
+  if (!f) {
+    return "unknown#0";
+  }
 
-    int percent;
-    fscanf(f, "%d", &percent);
+  int percent;
+  fscanf(f, "%d", &percent);
+  fclose(f);
+
+  f = fopen("/sys/class/power_supply/BAT0/status", "r");
+
+  char status[32] = "unknown";
+
+  if (f) {
+    fscanf(f, "%31s", status);
     fclose(f);
+  }
 
-    f = fopen(
-        "/sys/class/power_supply/BAT0/status",
-        "r"
-    );
+  sprintf(result, "%s#%d", status, percent);
 
-    char status[32] = "unknown";
-
-    if (f) {
-        fscanf(f, "%31s", status);
-        fclose(f);
-    }
-
-    sprintf(
-        result,
-        "%s#%d",
-        status,
-        percent
-    );
-
-    return result;
+  return result;
 }
-
 
 bool _net_online() {
 
-    struct addrinfo *res;
+  struct addrinfo *res;
 
-    if (getaddrinfo("google.com", "80", NULL, &res) != 0) {
-        return false;
-    }
+  if (getaddrinfo("google.com", "80", NULL, &res) != 0) {
+    return false;
+  }
 
-    int sock = socket(
-        res->ai_family,
-        res->ai_socktype,
-        res->ai_protocol
-    );
+  int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
-    bool ok = connect(
-        sock,
-        res->ai_addr,
-        res->ai_addrlen
-    ) == 0;
+  bool ok = connect(sock, res->ai_addr, res->ai_addrlen) == 0;
 
-    close(sock);
+  close(sock);
 
-    freeaddrinfo(res);
+  freeaddrinfo(res);
 
-    return ok;
+  return ok;
 }
 
 int _os_cpuCount() {
-    long n = sysconf(_SC_NPROCESSORS_ONLN);
-    return (n > 0) ? (int)n : 1;
+  long n = sysconf(_SC_NPROCESSORS_ONLN);
+  return (n > 0) ? (int)n : 1;
 }
 
+const char *_os_cpuArch() {
+  static struct utsname u;
+  if (uname(&u) == 0)
+    return u.machine;
+  return "unknown";
+}
 
-const char* _os_cpuArch() {
-    static struct utsname u;
-    if (uname(&u) == 0)
-        return u.machine;
+const char *_os_cpuModel() {
+  static char model[128];
+  FILE *f = fopen("/proc/cpuinfo", "r");
+  if (!f)
     return "unknown";
-}
 
-
-const char* _os_cpuModel() {
-    static char model[128];
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (!f) return "unknown";
-
-    while (fgets(model, sizeof(model), f)) {
-        if (strstr(model, "model name") || strstr(model, "Hardware")) {
-            fclose(f);
-            char *p = strchr(model, ':');
-            return p ? p + 2 : model;
-        }
+  while (fgets(model, sizeof(model), f)) {
+    if (strstr(model, "model name") || strstr(model, "Hardware")) {
+      fclose(f);
+      char *p = strchr(model, ':');
+      return p ? p + 2 : model;
     }
+  }
 
-    fclose(f);
-    return "unknown";
-
+  fclose(f);
+  return "unknown";
 }
-
 
 double _os_cpuSpeed() {
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (!f) return -1;
-
-    char line[128];
-    double mhz = -1;
-
-    while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "cpu MHz : %lf", &mhz) == 1) {
-            fclose(f);
-            return  mhz / 1000;
-        }
-    }
-
-    fclose(f);
-
-    // Android fallback 
-    FILE *g = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
-    if (g) {
-        long khz = 0;
-        if (fscanf(g, "%ld", &khz) == 1) {
-            fclose(g);
-            return khz / 1000.0;
-        }
-        fclose(g);
-    }
-
+  FILE *f = fopen("/proc/cpuinfo", "r");
+  if (!f)
     return -1;
+
+  char line[128];
+  double mhz = -1;
+
+  while (fgets(line, sizeof(line), f)) {
+    if (sscanf(line, "cpu MHz : %lf", &mhz) == 1) {
+      fclose(f);
+      return mhz / 1000;
+    }
+  }
+
+  fclose(f);
+
+  // Android fallback
+  FILE *g = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
+  if (g) {
+    long khz = 0;
+    if (fscanf(g, "%ld", &khz) == 1) {
+      fclose(g);
+      return khz / 1000.0;
+    }
+    fclose(g);
+  }
+
+  return -1;
 }
 
 long _os_totalMemory() {
-    FILE *f = fopen("/proc/meminfo", "r");
-    if (!f) return -1;
+  FILE *f = fopen("/proc/meminfo", "r");
+  if (!f)
+    return -1;
 
-    long mem = -1;
+  long mem = -1;
 
-    if (fscanf(f, "MemTotal: %ld kB", &mem) != 1)
-        mem = -1;
+  if (fscanf(f, "MemTotal: %ld kB", &mem) != 1)
+    mem = -1;
 
-    fclose(f);
+  fclose(f);
 
-    return mem * 1024;
+  return mem * 1024;
 }
 
 long _os_freeMemory() {
-    FILE *f = fopen("/proc/meminfo", "r");
-    if (!f) return -1;
-
-    char line[128];
-    long mem = -1;
-
-    while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "MemAvailable: %ld kB", &mem) == 1) {
-            fclose(f);
-            return mem * 1024;
-        }
-    }
-
-    fclose(f);
+  FILE *f = fopen("/proc/meminfo", "r");
+  if (!f)
     return -1;
+
+  char line[128];
+  long mem = -1;
+
+  while (fgets(line, sizeof(line), f)) {
+    if (sscanf(line, "MemAvailable: %ld kB", &mem) == 1) {
+      fclose(f);
+      return mem * 1024;
+    }
+  }
+
+  fclose(f);
+  return -1;
 }
 
 long _os_usedMemory() {
-    long total = _os_totalMemory();
-    long free = _os_freeMemory();
+  long total = _os_totalMemory();
+  long free = _os_freeMemory();
 
-    if (total == -1 || free == -1)
-        return -1;
+  if (total == -1 || free == -1)
+    return -1;
 
-    return total - free;
+  return total - free;
 }
 
 long _os_processMemory() {
-    FILE *f = fopen("/proc/self/status", "r");
-    if (!f) return -1;
-
-    char line[128];
-    long mem = -1;
-
-    while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "VmRSS: %ld kB", &mem) == 1) {
-            fclose(f);
-            return mem * 1024;
-        }
-    }
-
-    fclose(f);
+  FILE *f = fopen("/proc/self/status", "r");
+  if (!f)
     return -1;
+
+  char line[128];
+  long mem = -1;
+
+  while (fgets(line, sizeof(line), f)) {
+    if (sscanf(line, "VmRSS: %ld kB", &mem) == 1) {
+      fclose(f);
+      return mem * 1024;
+    }
+  }
+
+  fclose(f);
+  return -1;
 }
 
-const char* _os_osName() {
-    static struct utsname u;
-    if (uname(&u) == 0)
-        return u.sysname;
-    return "Linux";
+const char *_os_osName() {
+  static struct utsname u;
+  if (uname(&u) == 0)
+    return u.sysname;
+  return "Linux";
 }
 
-const char* _os_osVersion() {
-    static struct utsname u;
-    if (uname(&u) == 0)
-        return u.release;
-    return "unknown";
+const char *_os_osVersion() {
+  static struct utsname u;
+  if (uname(&u) == 0)
+    return u.release;
+  return "unknown";
 }
 
+char *_os_hostname() {
+  char tmp[256];
+  if (gethostname(tmp, sizeof(tmp)) != 0)
+    return strdup("unknown");
 
-char* _os_hostname() {
-    char tmp[256];
-    if (gethostname(tmp, sizeof(tmp)) != 0)
-        return strdup("unknown");
+  tmp[sizeof(tmp) - 1] = '\0';
 
-    tmp[sizeof(tmp) - 1] = '\0';
+  char *out = (char *)malloc(strlen(tmp) + 1);
+  if (!out)
+    return strdup("unknown");
 
-    char *out = (char*)malloc(strlen(tmp) + 1);
-    if (!out) return strdup("unknown");
-
-    strcpy(out, tmp);
-    return out;
+  strcpy(out, tmp);
+  return out;
 }
 
-const char* _os_username() {
-    const char *u = getenv("USER");
-    if (u) return u;
+const char *_os_username() {
+  const char *u = getenv("USER");
+  if (u)
+    return u;
 
-    u = getenv("LOGNAME");
-    if (u) return u;
+  u = getenv("LOGNAME");
+  if (u)
+    return u;
 
-    return "unknown";
+  return "unknown";
 }
-
 
 double _os_uptime() {
-    FILE *f = fopen("/proc/uptime", "r");
-    if (f) {
-        double t = -1;
-        if (fscanf(f, "%lf", &t) == 1) {
-            fclose(f);
-            return t;
-        }
-        fclose(f);
+  FILE *f = fopen("/proc/uptime", "r");
+  if (f) {
+    double t = -1;
+    if (fscanf(f, "%lf", &t) == 1) {
+      fclose(f);
+      return t;
     }
-
-    // fallback 
-    #ifdef __linux__
-    struct sysinfo info;
-    if (sysinfo(&info) == 0) {
-        return (double)info.uptime;
-    }
-    #endif
-
-    return -1;
-}
-
-int _fs_changeDir(const char *path) {
-    return chdir(path);
-}
-
-char* _fs_cwd() {
-    char *buf = malloc(1024);
-    if (!buf) return NULL;
-
-    char *r = getcwd(buf, 1024);
-    if (!r) {
-        free(buf);
-        return NULL;
-    }
-    return buf;
-}
-
-const char* _sys_getEnv(const char *key) {
-    const char *val = getenv(key);
-    return val ? val : "";
-}
-
-char* _fs_readFile(const char* path) {
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        char* empty = (char*)malloc(1);
-        empty[0] = '\0';
-        return empty;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    rewind(f);
-
-    char* buffer = (char*)malloc(size + 1);
-    if (!buffer) {
-        fclose(f);
-        char* empty = (char*)malloc(1);
-        empty[0] = '\0';
-        return empty;
-    }
-
-    fread(buffer, 1, size, f);
-    buffer[size] = '\0';
-
     fclose(f);
-    return buffer;
+  }
+
+// fallback
+#ifdef __linux__
+  struct sysinfo info;
+  if (sysinfo(&info) == 0) {
+    return (double)info.uptime;
+  }
+#endif
+
+  return -1;
+}
+
+int _fs_changeDir(const char *path) { return chdir(path); }
+
+char *_fs_cwd() {
+  char *buf = malloc(1024);
+  if (!buf)
+    return NULL;
+
+  char *r = getcwd(buf, 1024);
+  if (!r) {
+    free(buf);
+    return NULL;
+  }
+  return buf;
+}
+
+const char *_sys_getEnv(const char *key) {
+  const char *val = getenv(key);
+  return val ? val : "";
+}
+
+char *_fs_readFile(const char *path) {
+  FILE *f = fopen(path, "rb");
+  if (!f) {
+    char *empty = (char *)malloc(1);
+    empty[0] = '\0';
+    return empty;
+  }
+
+  fseek(f, 0, SEEK_END);
+  long size = ftell(f);
+  rewind(f);
+
+  char *buffer = (char *)malloc(size + 1);
+  if (!buffer) {
+    fclose(f);
+    char *empty = (char *)malloc(1);
+    empty[0] = '\0';
+    return empty;
+  }
+
+  fread(buffer, 1, size, f);
+  buffer[size] = '\0';
+
+  fclose(f);
+  return buffer;
 }
 
 int _sys_exec(const char *cmd) {
-    if (!cmd) return -1;
-    return system(cmd);
+  if (!cmd)
+    return -1;
+  return system(cmd);
 }
 
-int _fs_writeFile(const char* path, const char* content) {
-    FILE* f = fopen(path, "wb");
+int _fs_writeFile(const char *path, const char *content) {
+  FILE *f = fopen(path, "wb");
 
-    if (!f) {
-        return 1;
-    }
+  if (!f) {
+    return 1;
+  }
 
-    size_t length = strlen(content);
+  size_t length = strlen(content);
 
-    if (fwrite(content, 1, length, f) != length) {
-        fclose(f);
-        return 1;
-    }
-
+  if (fwrite(content, 1, length, f) != length) {
     fclose(f);
-    return 0;
+    return 1;
+  }
+
+  fclose(f);
+  return 0;
 }
 
 int _fs_appendFile(const char *path, const char *content) {
-    FILE *f = fopen(path, "a");
-    if (!f) return 1;
+  FILE *f = fopen(path, "a");
+  if (!f)
+    return 1;
 
-    fputs(content, f);
-    fclose(f);
+  fputs(content, f);
+  fclose(f);
 
+  return 0;
+}
+
+bool _fs_exists(const char *path) { return access(path, F_OK) == 0; }
+
+int _fs_deleteFile(const char *path) { return remove(path); }
+
+int _fs_renameFile(const char *oldname, const char *newname) { return rename(oldname, newname); }
+
+int _fs_makeDir(const char *path) { return mkdir(path, 0755); }
+
+char *_int_to_string(int x) {
+  char *res = (char *)malloc(20);
+
+  int i = 0;
+  int isNeg = 0;
+
+  if (x == 0) {
+    res[i++] = '0';
+    res[i] = '\0';
+    return res;
+  }
+
+  if (x < 0) {
+    isNeg = 1;
+    x = -x;
+  }
+
+  char temp[20];
+  int t = 0;
+
+  while (x > 0) {
+    temp[t++] = (x % 10) + '0';
+    x /= 10;
+  }
+
+  if (isNeg) {
+    res[i++] = '-';
+  }
+
+  while (t > 0) {
+    res[i++] = temp[--t];
+  }
+
+  res[i] = '\0';
+  return res;
+}
+
+char *_long_to_string(long long x) {
+  char *res = (char *)malloc(32);
+
+  int i = 0;
+  int isNeg = 0;
+
+  if (x == 0) {
+    res[i++] = '0';
+    res[i] = '\0';
+    return res;
+  }
+
+  if (x < 0) {
+    isNeg = 1;
+    x = -x;
+  }
+
+  char temp[32];
+  int t = 0;
+
+  while (x > 0) {
+    temp[t++] = (x % 10) + '0';
+    x /= 10;
+  }
+
+  if (isNeg) {
+    res[i++] = '-';
+  }
+
+  while (t > 0) {
+    res[i++] = temp[--t];
+  }
+
+  res[i] = '\0';
+  return res;
+}
+
+char *_double_to_string(double x) {
+  int len = snprintf(NULL, 0, "%f", x);
+  if (len < 0) {
+    return NULL;
+  }
+
+  char *res = (char *)malloc((size_t)len + 1);
+  if (!res) {
+    return NULL;
+  }
+
+  snprintf(res, (size_t)len + 1, "%f", x);
+  return res;
+}
+
+char *_bool_to_string(bool x) {
+  const char *str = x ? "true" : "false";
+
+  char *res = (char *)malloc(strlen(str) + 1);
+  strcpy(res, str);
+
+  return res;
+}
+
+int _string_to_int(char *str) {
+  if (str == NULL)
     return 0;
-}
 
+  int result = 0;
+  int i = 0;
+  int sign = 1;
 
-bool _fs_exists(const char *path) {
-    
-return access(path, F_OK) == 0;
+  if (str[0] == '-') {
+    sign = -1;
+    i++;
+  }
 
-}
-
-int _fs_deleteFile(const char *path) {
-    return remove(path);
-}
-
-int _fs_renameFile(const char *oldname, const char *newname) {
-    return rename(oldname, newname);
-}
-
-int _fs_makeDir(const char *path) {
-
-    return mkdir(path, 0755);
-
-}
-
-char* _int_to_string(int x) {
-    char* res = (char*)malloc(20);
-    
-    int i = 0;
-    int isNeg = 0;
-
-    if (x == 0) {
-        res[i++] = '0';
-        res[i] = '\0';
-        return res;
+  while (str[i] != '\0') {
+    if (str[i] < '0' || str[i] > '9') {
+      break;
     }
 
-    if (x < 0) {
-        isNeg = 1;
-        x = -x;
-    }
+    result = result * 10 + (str[i] - '0');
+    i++;
+  }
 
-    char temp[20];
-    int t = 0;
-
-    while (x > 0) {
-        temp[t++] = (x % 10) + '0';
-        x /= 10;
-    }
-
-    if (isNeg) {
-        res[i++] = '-';
-    }
-
-    while (t > 0) {
-        res[i++] = temp[--t];
-    }
-
-    res[i] = '\0';
-    return res;
-}
-
-char* _long_to_string(long long x) {
-    char* res = (char*)malloc(32);
-
-    int i = 0;
-    int isNeg = 0;
-
-    if (x == 0) {
-        res[i++] = '0';
-        res[i] = '\0';
-        return res;
-    }
-
-    if (x < 0) {
-        isNeg = 1;
-        x = -x;
-    }
-
-    char temp[32];
-    int t = 0;
-
-    while (x > 0) {
-        temp[t++] = (x % 10) + '0';
-        x /= 10;
-    }
-
-    if (isNeg) {
-        res[i++] = '-';
-    }
-
-    while (t > 0) {
-        res[i++] = temp[--t];
-    }
-
-    res[i] = '\0';
-    return res;
-}
-
-char* _double_to_string(double x) {
-    int len = snprintf(NULL, 0, "%f", x);
-    if (len < 0) {
-        return NULL;
-    }
-
-    char* res = (char*)malloc((size_t)len + 1);
-    if (!res) {
-        return NULL;
-    }
-
-    snprintf(res, (size_t)len + 1, "%f", x);
-    return res;
-}
-
-
-char* _bool_to_string(bool x) {
-    const char* str = x ? "true" : "false";
-
-    char* res = (char*)malloc(strlen(str) + 1);
-    strcpy(res, str);
-
-    return res;
-}
-
-
-int _string_to_int(char* str) {
-    if (str == NULL) return 0;
-
-    int result = 0;
-    int i = 0;
-    int sign = 1;
-
-    if (str[0] == '-') {
-        sign = -1;
-        i++;
-    }
-
-    while (str[i] != '\0') {
-        if (str[i] < '0' || str[i] > '9') {
-            break; 
-        }
-
-        result = result * 10 + (str[i] - '0');
-        i++;
-    }
-
-    return result * sign;
+  return result * sign;
 }
 
 int _string_to_int_ascii(char *str) {
-    if (!str || !*str) return 0;
+  if (!str || !*str)
+    return 0;
 
-    return (int)(unsigned char)str[0];
+  return (int)(unsigned char)str[0];
 }
 
-char* _int_to_string_ascii(int value) {
-    char *out = (char*)malloc(2);
+char *_int_to_string_ascii(int value) {
+  char *out = (char *)malloc(2);
 
-    out[0] = (char)value;
-    out[1] = '\0';
+  out[0] = (char)value;
+  out[1] = '\0';
 
-    return out;
+  return out;
 }
 
-
-double _string_to_double(char* str) {
-    if (str == NULL) return 0.0;
-    return atof(str);
+double _string_to_double(char *str) {
+  if (str == NULL)
+    return 0.0;
+  return atof(str);
 }
 
-
-bool _string_to_bool(char* str) {
-    return (str != NULL && strlen(str) > 0);
-}
+bool _string_to_bool(char *str) { return (str != NULL && strlen(str) > 0); }
 
 int8_t _string_to_byte(const char *str) {
-    if (!str || str[0] == '\0')
-        return 0;
+  if (!str || str[0] == '\0')
+    return 0;
 
-    return (int8_t)(unsigned char)str[0];
+  return (int8_t)(unsigned char)str[0];
 }
 
 char *_byte_to_string(int8_t value) {
-    char *str = malloc(2);
+  char *str = malloc(2);
 
-    if (!str)
-        return NULL;
+  if (!str)
+    return NULL;
 
-    str[0] = (char)value;
-    str[1] = '\0';
+  str[0] = (char)value;
+  str[1] = '\0';
 
-    return str;
+  return str;
 }
 
-
-void _free_string(char* str) {
-    if (str != NULL) {
-        free(str);
-    }
+void _free_string(char *str) {
+  if (str != NULL) {
+    free(str);
+  }
 }
 
-char* _str_concat(const char* a, const char* b) {
-    if (!a) a = "";
-    if (!b) b = "";
+char *_str_concat(const char *a, const char *b) {
+  if (!a)
+    a = "";
+  if (!b)
+    b = "";
 
-    size_t len_a = strlen(a);
-    size_t len_b = strlen(b);
+  size_t len_a = strlen(a);
+  size_t len_b = strlen(b);
 
-    char* res = (char*)malloc(len_a + len_b + 1);
-    if (!res) return NULL;
+  char *res = (char *)malloc(len_a + len_b + 1);
+  if (!res)
+    return NULL;
 
-    memcpy(res, a, len_a);
-    memcpy(res + len_a, b, len_b);
-    res[len_a + len_b] = '\0';
+  memcpy(res, a, len_a);
+  memcpy(res + len_a, b, len_b);
+  res[len_a + len_b] = '\0';
 
-    return res;
+  return res;
 }
 
-char* _zen_char_to_string(char c) {
-    char* s = (char*)malloc(2);
-    s[0] = c;
-    s[1] = '\0';
-    return s;
+char *_zen_char_to_string(char c) {
+  char *s = (char *)malloc(2);
+  s[0] = c;
+  s[1] = '\0';
+  return s;
 }
 
-char* _path_basename(const char* path) {
+void _zen_str_check(const char *s, int i) {
+  if (!s) {
+    fflush(stdout);
+    if (isatty(2))
+      fputs("\033[1;31m", stderr);
+    fputs("[Zen RuntimeError] string is null", stderr);
+    if (isatty(2))
+      fputs("\033[0m", stderr);
+    fputc('\n', stderr);
+    exit(1);
+  }
+  long long len = (long long)strlen(s);
+  if (i < 0 || (long long)i >= len) {
+    char preview[11];
+    int n = len < 10 ? (int)len : 10;
+    for (int k = 0; k < n; k++)
+      preview[k] = (s[k] >= 32 && s[k] < 127) ? s[k] : '?';
+    preview[n] = '\0';
 
-    const char* slash = strrchr(path, '/');
-
-    if (!slash) {
-        return strdup(path);
-    }
-
-    return strdup(slash + 1);
+    fflush(stdout);
+    if (isatty(2))
+      fputs("\033[1;31m", stderr);
+    fprintf(stderr, "[Zen RuntimeError] string index %d out of bounds (length %lld) in \"%s%s\"", i,
+            len, preview, len > 10 ? "..." : "");
+    if (isatty(2))
+      fputs("\033[0m", stderr);
+    fputc('\n', stderr);
+    exit(1);
+  }
 }
 
+char *_path_basename(const char *path) {
 
-char* _path_dirname(const char* path) {
+  const char *slash = strrchr(path, '/');
 
-    const char* slash = strrchr(path, '/');
+  if (!slash) {
+    return strdup(path);
+  }
 
-    if (!slash) {
-        return strdup(".");
-    }
-
-    size_t len = slash - path;
-
-    char* out = malloc(len + 1);
-
-    strncpy(out, path, len);
-    out[len] = '\0';
-
-    return out;
+  return strdup(slash + 1);
 }
 
+char *_path_dirname(const char *path) {
 
-char* _path_extname(const char* path) {
+  const char *slash = strrchr(path, '/');
 
-    const char* dot = strrchr(path, '.');
+  if (!slash) {
+    return strdup(".");
+  }
 
-    if (!dot) {
-        return strdup("");
-    }
+  size_t len = slash - path;
 
-    return strdup(dot);
+  char *out = malloc(len + 1);
+
+  strncpy(out, path, len);
+  out[len] = '\0';
+
+  return out;
 }
 
-char* _path_join(int count, ...) {
-    va_list args;
-    va_start(args, count);
+char *_path_extname(const char *path) {
 
-    char* result = strdup("");
-    if (!result) {
-        va_end(args);
-        return NULL;
-    }
+  const char *dot = strrchr(path, '.');
 
-    for (int i = 0; i < count; i++) {
-        const char* segment = va_arg(args, const char*);
-        if (!segment) segment = "";
+  if (!dot) {
+    return strdup("");
+  }
 
-        size_t lenA = strlen(result);
-        size_t startB = 0;
+  return strdup(dot);
+}
 
-        while (segment[startB] == '/') startB++;
+char *_path_join(int count, ...) {
+  va_list args;
+  va_start(args, count);
 
-        size_t lenB = strlen(segment + startB);
-
-        while (lenA > 0 && result[lenA - 1] == '/') {
-            result[--lenA] = '\0';
-        }
-
-        if (lenB == 0) continue;
-
-        int needSlash = lenA > 0 && result[lenA - 1] != '/';
-
-        char* out = realloc(result, lenA + needSlash + lenB + 1);
-        if (!out) {
-            free(result);
-            va_end(args);
-            return NULL;
-        }
-
-        result = out;
-
-        if (needSlash) result[lenA++] = '/';
-
-        memcpy(result + lenA, segment + startB, lenB + 1);
-    }
-
+  char *result = strdup("");
+  if (!result) {
     va_end(args);
-    return result;
-}
+    return NULL;
+  }
 
-char* _path_normalize(const char* path) {
-    if (!path) path = "";
+  for (int i = 0; i < count; i++) {
+    const char *segment = va_arg(args, const char *);
+    if (!segment)
+      segment = "";
 
-    size_t len = strlen(path);
-    int absolute = len > 0 && path[0] == '/';
-    int trailing = len > 0 && path[len - 1] == '/';
+    size_t lenA = strlen(result);
+    size_t startB = 0;
 
-    const char** seg = malloc(sizeof(char*) * (len / 2 + 2));
-    size_t* segLen = malloc(sizeof(size_t) * (len / 2 + 2));
-    char* out = malloc(len + 4);
+    while (segment[startB] == '/')
+      startB++;
 
-    if (!seg || !segLen || !out) {
-        free(seg);
-        free(segLen);
-        free(out);
-        return NULL;
+    size_t lenB = strlen(segment + startB);
+
+    while (lenA > 0 && result[lenA - 1] == '/') {
+      result[--lenA] = '\0';
     }
 
-    size_t count = 0;
-    size_t i = 0;
+    if (lenB == 0)
+      continue;
 
-    while (i < len) {
-        while (i < len && path[i] == '/') i++;
-        if (i >= len) break;
+    int needSlash = lenA > 0 && result[lenA - 1] != '/';
 
-        size_t start = i;
-        while (i < len && path[i] != '/') i++;
-        size_t n = i - start;
+    char *out = realloc(result, lenA + needSlash + lenB + 1);
+    if (!out) {
+      free(result);
+      va_end(args);
+      return NULL;
+    }
 
-        if (n == 1 && path[start] == '.') continue;
+    result = out;
 
-        if (n == 2 && path[start] == '.' && path[start + 1] == '.') {
-            int lastIsParent = count > 0 && segLen[count - 1] == 2 &&
-                               seg[count - 1][0] == '.' && seg[count - 1][1] == '.';
+    if (needSlash)
+      result[lenA++] = '/';
 
-            if (count > 0 && !lastIsParent) {
-                count--;
-            } else if (!absolute) {
-                seg[count] = path + start;
-                segLen[count] = n;
-                count++;
-            }
-            continue;
-        }
+    memcpy(result + lenA, segment + startB, lenB + 1);
+  }
 
+  va_end(args);
+  return result;
+}
+
+char *_path_normalize(const char *path) {
+  if (!path)
+    path = "";
+
+  size_t len = strlen(path);
+  int absolute = len > 0 && path[0] == '/';
+  int trailing = len > 0 && path[len - 1] == '/';
+
+  const char **seg = malloc(sizeof(char *) * (len / 2 + 2));
+  size_t *segLen = malloc(sizeof(size_t) * (len / 2 + 2));
+  char *out = malloc(len + 4);
+
+  if (!seg || !segLen || !out) {
+    free(seg);
+    free(segLen);
+    free(out);
+    return NULL;
+  }
+
+  size_t count = 0;
+  size_t i = 0;
+
+  while (i < len) {
+    while (i < len && path[i] == '/')
+      i++;
+    if (i >= len)
+      break;
+
+    size_t start = i;
+    while (i < len && path[i] != '/')
+      i++;
+    size_t n = i - start;
+
+    if (n == 1 && path[start] == '.')
+      continue;
+
+    if (n == 2 && path[start] == '.' && path[start + 1] == '.') {
+      int lastIsParent = count > 0 && segLen[count - 1] == 2 && seg[count - 1][0] == '.' &&
+                         seg[count - 1][1] == '.';
+
+      if (count > 0 && !lastIsParent) {
+        count--;
+      } else if (!absolute) {
         seg[count] = path + start;
         segLen[count] = n;
         count++;
+      }
+      continue;
     }
 
-    size_t pos = 0;
+    seg[count] = path + start;
+    segLen[count] = n;
+    count++;
+  }
 
-    if (absolute) out[pos++] = '/';
+  size_t pos = 0;
 
-    for (size_t k = 0; k < count; k++) {
-        if (k > 0) out[pos++] = '/';
-        memcpy(out + pos, seg[k], segLen[k]);
-        pos += segLen[k];
-    }
+  if (absolute)
+    out[pos++] = '/';
 
-    if (pos == 0) out[pos++] = '.';
-    if (trailing && out[pos - 1] != '/') out[pos++] = '/';
+  for (size_t k = 0; k < count; k++) {
+    if (k > 0)
+      out[pos++] = '/';
+    memcpy(out + pos, seg[k], segLen[k]);
+    pos += segLen[k];
+  }
 
-    out[pos] = '\0';
+  if (pos == 0)
+    out[pos++] = '.';
+  if (trailing && out[pos - 1] != '/')
+    out[pos++] = '/';
 
-    free(seg);
-    free(segLen);
+  out[pos] = '\0';
 
-    return out;
+  free(seg);
+  free(segLen);
+
+  return out;
 }
 
-void _os_exit(int code) {
-    exit(code);
-}
+void _os_exit(int code) { exit(code); }
 
-long _os_pid(void) {
-    return (long)getpid();
-}
+long _os_pid(void) { return (long)getpid(); }
 
-long _os_parentPid(void) {
-    return (long)getppid();
-}
+long _os_parentPid(void) { return (long)getppid(); }
 
-char* _os_platform(void) {
+char *_os_platform(void) {
 #if defined(__ANDROID__)
-    return strdup("android");
+  return strdup("android");
 #elif defined(__linux__)
-    return strdup("linux");
+  return strdup("linux");
 #elif defined(__APPLE__)
-    return strdup("darwin");
+  return strdup("darwin");
 #elif defined(_WIN32)
-    return strdup("windows");
+  return strdup("windows");
 #else
-    return strdup("unknown");
+  return strdup("unknown");
 #endif
 }
 
 bool _os_isWindows(void) {
-    char* p = _os_platform();
-    bool result = (strcmp(p, "windows") == 0);
-    free(p);
-    return result;
+  char *p = _os_platform();
+  bool result = (strcmp(p, "windows") == 0);
+  free(p);
+  return result;
 }
 
 bool _os_isLinux(void) {
-    char* p = _os_platform();
-    bool result = (strcmp(p, "linux") == 0);
-    free(p);
-    return result;
+  char *p = _os_platform();
+  bool result = (strcmp(p, "linux") == 0);
+  free(p);
+  return result;
 }
 
 bool _os_isMac(void) {
-    char* p = _os_platform();
-    bool result = (strcmp(p, "darwin") == 0);
-    free(p);
-    return result;
+  char *p = _os_platform();
+  bool result = (strcmp(p, "darwin") == 0);
+  free(p);
+  return result;
 }
 
 bool _os_isAndroid(void) {
-    char* p = _os_platform();
-    bool result = (strcmp(p, "android") == 0);
-    free(p);
-    return result;
+  char *p = _os_platform();
+  bool result = (strcmp(p, "android") == 0);
+  free(p);
+  return result;
 }
 
-void _sys_setEnv(char* name, char* value) {
-    setenv(name, value, 1); // 1 = overwrite if already set
+void _sys_setEnv(char *name, char *value) {
+  setenv(name, value, 1); // 1 = overwrite if already set
 }
 
-bool _sys_hasEnv(char* name) {
-    return getenv(name) != NULL;
+bool _sys_hasEnv(char *name) { return getenv(name) != NULL; }
+
+char *_sys_readLine(void) {
+  size_t bufsize = 256;
+  char *buffer = (char *)malloc(bufsize);
+  if (!buffer) {
+    return strdup("");
+  }
+
+  if (fgets(buffer, (int)bufsize, stdin) == NULL) {
+    free(buffer);
+    return strdup("");
+  }
+
+  // strip trailing newline, if present
+  size_t len = strlen(buffer);
+  if (len > 0 && buffer[len - 1] == '\n') {
+    buffer[len - 1] = '\0';
+    len--;
+  }
+  if (len > 0 && buffer[len - 1] == '\r') {
+    buffer[len - 1] = '\0';
+  }
+
+  return buffer;
 }
 
-char* _sys_readLine(void) {
-    size_t bufsize = 256;
-    char* buffer = (char*)malloc(bufsize);
-    if (!buffer) {
-        return strdup("");
-    }
+char *_sys_execOutput(char *cmd) {
+  FILE *pipe = popen(cmd, "r");
+  if (!pipe) {
+    return strdup("");
+  }
 
-    if (fgets(buffer, (int)bufsize, stdin) == NULL) {
-        free(buffer);
-        return strdup("");
-    }
+  size_t capacity = 256;
+  size_t length = 0;
+  char *result = (char *)malloc(capacity);
+  if (!result) {
+    pclose(pipe);
+    return strdup("");
+  }
+  result[0] = '\0';
 
-    // strip trailing newline, if present
-    size_t len = strlen(buffer);
-    if (len > 0 && buffer[len - 1] == '\n') {
-        buffer[len - 1] = '\0';
-        len--;
-    }
-    if (len > 0 && buffer[len - 1] == '\r') {
-        buffer[len - 1] = '\0';
-    }
+  char chunk[256];
+  while (fgets(chunk, sizeof(chunk), pipe) != NULL) {
+    size_t chunkLen = strlen(chunk);
 
-    return buffer;
-}
-
-char* _sys_execOutput(char* cmd) {
-    FILE* pipe = popen(cmd, "r");
-    if (!pipe) {
-        return strdup("");
-    }
-
-    size_t capacity = 256;
-    size_t length = 0;
-    char* result = (char*)malloc(capacity);
-    if (!result) {
+    while (length + chunkLen + 1 > capacity) {
+      capacity *= 2;
+      char *newResult = (char *)realloc(result, capacity);
+      if (!newResult) {
+        free(result);
         pclose(pipe);
         return strdup("");
-    }
-    result[0] = '\0';
-
-    char chunk[256];
-    while (fgets(chunk, sizeof(chunk), pipe) != NULL) {
-        size_t chunkLen = strlen(chunk);
-
-        while (length + chunkLen + 1 > capacity) {
-            capacity *= 2;
-            char* newResult = (char*)realloc(result, capacity);
-            if (!newResult) {
-                free(result);
-                pclose(pipe);
-                return strdup("");
-            }
-            result = newResult;
-        }
-
-        memcpy(result + length, chunk, chunkLen);
-        length += chunkLen;
-        result[length] = '\0';
+      }
+      result = newResult;
     }
 
-    pclose(pipe);
+    memcpy(result + length, chunk, chunkLen);
+    length += chunkLen;
+    result[length] = '\0';
+  }
 
-    if (length > 0 && result[length - 1] == '\n') {
-        result[length - 1] = '\0';
-    }
+  pclose(pipe);
 
-    return result;
+  if (length > 0 && result[length - 1] == '\n') {
+    result[length - 1] = '\0';
+  }
+
+  return result;
 }
 
 long _time_millis(void) {
-    struct timespec ts;
+  struct timespec ts;
 
-    clock_gettime(CLOCK_REALTIME, &ts);
+  clock_gettime(CLOCK_REALTIME, &ts);
 
-    return ((long long)ts.tv_sec * 1000LL)
-           + (ts.tv_nsec / 1000000LL);
+  return ((long long)ts.tv_sec * 1000LL) + (ts.tv_nsec / 1000000LL);
 }
 
-long _time_now(void) {
-    return (long)time(NULL);
+long _time_now(void) { return (long)time(NULL); }
+
+char *_time_format(long t) {
+  time_t timestamp = (time_t)t;
+
+  struct tm *tm_info = localtime(&timestamp);
+
+  if (!tm_info) {
+    return NULL;
+  }
+
+  char *buffer = malloc(32);
+
+  if (!buffer) {
+    return NULL;
+  }
+
+  strftime(buffer, 32, "%Y-%m-%d %H:%M:%S", tm_info);
+
+  return buffer;
 }
 
-char* _time_format(long t) {
-    time_t timestamp = (time_t)t;
+char *_os_homeDir() {
+  const char *home = getenv("HOME");
+  if (!home) {
+    struct passwd *pw = getpwuid(getuid());
+    home = (pw && pw->pw_dir) ? pw->pw_dir : "";
+  }
 
-    struct tm *tm_info = localtime(&timestamp);
-
-    if (!tm_info) {
-        return NULL;
-    }
-
-    char *buffer = malloc(32);
-
-    if (!buffer) {
-        return NULL;
-    }
-
-    strftime(
-        buffer,
-        32,
-        "%Y-%m-%d %H:%M:%S",
-        tm_info
-    );
-
-    return buffer;
+  char *out = malloc(strlen(home) + 1);
+  strcpy(out, home);
+  return out;
 }
 
-char* _os_homeDir() {
-    const char *home = getenv("HOME");
-    if (!home) {
-        struct passwd *pw = getpwuid(getuid());
-        home = (pw && pw->pw_dir) ? pw->pw_dir : "";
-    }
+char *_sys_key() {
+  static char key[32];
 
-    char *out = malloc(strlen(home) + 1);
-    strcpy(out, home);
-    return out;
-}
+  struct termios oldt, newt;
 
-char* _sys_key() {
-    static char key[32];
-
-    struct termios oldt, newt;
-
-    if (tcgetattr(STDIN_FILENO, &oldt) != 0) {
-        key[0] = '\0';
-        return key;
-    }
-
-    newt = oldt;
-
-    newt.c_lflag &= ~(ICANON | ECHO);
-    newt.c_cc[VMIN] = 1;
-    newt.c_cc[VTIME] = 0;
-
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) != 0) {
-        key[0] = '\0';
-        return key;
-    }
-
+  if (tcgetattr(STDIN_FILENO, &oldt) != 0) {
     key[0] = '\0';
+    return key;
+  }
 
-    int ch = getchar();
+  newt = oldt;
 
-    if (ch == EOF) {
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-        return key;
-    }
+  newt.c_lflag &= ~(ICANON | ECHO);
+  newt.c_cc[VMIN] = 1;
+  newt.c_cc[VTIME] = 0;
 
-    /*
-     * Escape sequence / special key.
-     */
-    if (ch == 27) {
-        int next = getchar();
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) != 0) {
+    key[0] = '\0';
+    return key;
+  }
 
-        if (next == '[') {
-            int seq = getchar();
+  key[0] = '\0';
 
-            if (seq == 'A') {
-                strcpy(key, "up");
-            } else if (seq == 'B') {
-                strcpy(key, "down");
-            } else if (seq == 'C') {
-                strcpy(key, "right");
-            } else if (seq == 'D') {
-                strcpy(key, "left");
-            } else if (seq == 'H') {
-                strcpy(key, "home");
-            } else if (seq == 'F') {
-                strcpy(key, "end");
-            } else if (seq == 'Z') {
-                strcpy(key, "shift-tab");
-            } else {
-                key[0] = '\x1b';
-                key[1] = '\0';
-            }
-        } else if (next == 'O') {
-            int seq = getchar();
+  int ch = getchar();
 
-            if (seq == 'H') {
-                strcpy(key, "home");
-            } else if (seq == 'F') {
-                strcpy(key, "end");
-            } else {
-                key[0] = '\x1b';
-                key[1] = '\0';
-            }
-        } else {
-            strcpy(key, "escape");
-        }
+  if (ch == EOF) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    return key;
+  }
 
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-        return key;
-    }
+  /*
+   * Escape sequence / special key.
+   */
+  if (ch == 27) {
+    int next = getchar();
 
-    if (ch == '\n' || ch == '\r') {
-        strcpy(key, "enter");
-    } else if (ch == 127 || ch == 8) {
-        strcpy(key, "backspace");
-    } else if (ch == '\t') {
-        strcpy(key, "tab");
-    } else {
-        key[0] = (char)ch;
+    if (next == '[') {
+      int seq = getchar();
+
+      if (seq == 'A') {
+        strcpy(key, "up");
+      } else if (seq == 'B') {
+        strcpy(key, "down");
+      } else if (seq == 'C') {
+        strcpy(key, "right");
+      } else if (seq == 'D') {
+        strcpy(key, "left");
+      } else if (seq == 'H') {
+        strcpy(key, "home");
+      } else if (seq == 'F') {
+        strcpy(key, "end");
+      } else if (seq == 'Z') {
+        strcpy(key, "shift-tab");
+      } else {
+        key[0] = '\x1b';
         key[1] = '\0';
+      }
+    } else if (next == 'O') {
+      int seq = getchar();
+
+      if (seq == 'H') {
+        strcpy(key, "home");
+      } else if (seq == 'F') {
+        strcpy(key, "end");
+      } else {
+        key[0] = '\x1b';
+        key[1] = '\0';
+      }
+    } else {
+      strcpy(key, "escape");
     }
 
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-
     return key;
+  }
+
+  if (ch == '\n' || ch == '\r') {
+    strcpy(key, "enter");
+  } else if (ch == 127 || ch == 8) {
+    strcpy(key, "backspace");
+  } else if (ch == '\t') {
+    strcpy(key, "tab");
+  } else {
+    key[0] = (char)ch;
+    key[1] = '\0';
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+  return key;
 }
 
-// Ptr 
+// Ptr
 
-void _zen_ptr_storeInt(void *p, int value) {
-    *(int *)p = value;
-}
+void _zen_ptr_storeInt(void *p, int value) { *(int *)p = value; }
 
-int _zen_ptr_loadInt(void *p) {
-    return *(int *)p;
-}
+int _zen_ptr_loadInt(void *p) { return *(int *)p; }
 
-void _zen_ptr_storeLong(void *p, long value) {
-    *(long *)p = value;
-}
+void _zen_ptr_storeLong(void *p, long value) { *(long *)p = value; }
 
-long _zen_ptr_loadLong(void *p) {
-    return *(long *)p;
-}
+long _zen_ptr_loadLong(void *p) { return *(long *)p; }
 
-void _zen_ptr_storeByte(void *p, int8_t value) {
-    *(int8_t *)p = value;
-}
+void _zen_ptr_storeByte(void *p, int8_t value) { *(int8_t *)p = value; }
 
-int8_t _zen_ptr_loadByte(void *p) {
-    return *(int8_t *)p;
-}
+int8_t _zen_ptr_loadByte(void *p) { return *(int8_t *)p; }
 
-void _zen_ptr_storeDouble(void *p, double value) {
-    *(double *)p = value;
-}
+void _zen_ptr_storeDouble(void *p, double value) { *(double *)p = value; }
 
-double _zen_ptr_loadDouble(void *p) {
-    return *(double *)p;
-}
+double _zen_ptr_loadDouble(void *p) { return *(double *)p; }
 
-void _zen_ptr_storeBool(void *p, bool value) {
-    *(bool *)p = value;
-}
+void _zen_ptr_storeBool(void *p, bool value) { *(bool *)p = value; }
 
-bool _zen_ptr_loadBool(void *p) {
-    return *(bool *)p;
-}
+bool _zen_ptr_loadBool(void *p) { return *(bool *)p; }
 
-void _zen_ptr_storeString(void *p, char *value) {
-    *(char **)p = value;
-}
+void _zen_ptr_storeString(void *p, char *value) { *(char **)p = value; }
 
-char *_zen_ptr_loadString(void *p) {
-    return *(char **)p;
-}
+char *_zen_ptr_loadString(void *p) { return *(char **)p; }
 
-void _zen_ptr_storePtr(void *p, void *value) {
-    *(void **)p = value;
-}
+void _zen_ptr_storePtr(void *p, void *value) { *(void **)p = value; }
 
-void *_zen_ptr_loadPtr(void *p) {
-    return *(void **)p;
-}
+void *_zen_ptr_loadPtr(void *p) { return *(void **)p; }
 
-bool _zen_ptr_isNull(void *p) {
-    return p == NULL;
-}
+bool _zen_ptr_isNull(void *p) { return p == NULL; }
 
-void *_zen_ptr_offset(void *p, int bytes) {
-    return (void *)((char *)p + bytes);
-}
+void *_zen_ptr_offset(void *p, int bytes) { return (void *)((char *)p + bytes); }
 
-void _zen_ptr_copyFrom(void *dst, void *src, int bytes) {
-    memcpy(dst, src, (size_t)bytes);
-}
+void _zen_ptr_copyFrom(void *dst, void *src, int bytes) { memcpy(dst, src, (size_t)bytes); }
 
-void _zen_ptr_copyTo(void *src, void *dst, int bytes) {
-    memcpy(dst, src, (size_t)bytes);
-}
+void _zen_ptr_copyTo(void *src, void *dst, int bytes) { memcpy(dst, src, (size_t)bytes); }
 
-void _zen_ptr_fill(void *p, int value, int bytes) {
-    memset(p, value, (size_t)bytes);
-}
+void _zen_ptr_fill(void *p, int value, int bytes) { memset(p, value, (size_t)bytes); }
 
-void _zen_ptr_free(void *p) {
-    free(p);
-}
+void _zen_ptr_free(void *p) { free(p); }
 
 char *_str_dup(const char *s) {
-    if (!s) s = "";
+  if (!s)
+    s = "";
 
-    size_t len = strlen(s) + 1;
-    char *p = (char *)malloc(len);
-    if (!p) return NULL;
+  size_t len = strlen(s) + 1;
+  char *p = (char *)malloc(len);
+  if (!p)
+    return NULL;
 
-    memcpy(p, s, len);
-    return p;
+  memcpy(p, s, len);
+  return p;
 }
 
-void _zen_string_free(char* s) {
-    free(s);
-}
+void _zen_string_free(char *s) { free(s); }
 
 bool _fs_isDir(const char *path) {
-    struct stat st;
-    if (!path || stat(path, &st) != 0) return false;
-    return S_ISDIR(st.st_mode);
+  struct stat st;
+  if (!path || stat(path, &st) != 0)
+    return false;
+  return S_ISDIR(st.st_mode);
 }
 
 bool _fs_isFile(const char *path) {
-    struct stat st;
-    if (!path || stat(path, &st) != 0) return false;
-    return S_ISREG(st.st_mode);
+  struct stat st;
+  if (!path || stat(path, &st) != 0)
+    return false;
+  return S_ISREG(st.st_mode);
 }
 
 typedef struct {
-    int64_t pid;
-    int code;
+  int64_t pid;
+  int code;
 } ZenExited;
 
 static ZenExited *zen_exited = NULL;
@@ -1492,122 +1419,139 @@ static int zen_exited_cap = 0;
 static pthread_mutex_t zen_proc_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static int _zen_status_to_code(int st) {
-    if (WIFEXITED(st)) return WEXITSTATUS(st);
-    if (WIFSIGNALED(st)) return 128 + WTERMSIG(st);
-    return -1;
+  if (WIFEXITED(st))
+    return WEXITSTATUS(st);
+  if (WIFSIGNALED(st))
+    return 128 + WTERMSIG(st);
+  return -1;
 }
 
 static int _zen_exited_find(int64_t pid) {
-    for (int i = 0; i < zen_exited_count; i++) {
-        if (zen_exited[i].pid == pid) return i;
-    }
-    return -1;
+  for (int i = 0; i < zen_exited_count; i++) {
+    if (zen_exited[i].pid == pid)
+      return i;
+  }
+  return -1;
 }
 
 static void _zen_exited_store(int64_t pid, int code) {
-    if (_zen_exited_find(pid) >= 0) return;
+  if (_zen_exited_find(pid) >= 0)
+    return;
 
-    if (zen_exited_count >= zen_exited_cap) {
-        int newCap = zen_exited_cap == 0 ? 16 : zen_exited_cap * 2;
-        ZenExited *grown = realloc(zen_exited, sizeof(ZenExited) * newCap);
-        if (!grown) return;
-        zen_exited = grown;
-        zen_exited_cap = newCap;
-    }
+  if (zen_exited_count >= zen_exited_cap) {
+    int newCap = zen_exited_cap == 0 ? 16 : zen_exited_cap * 2;
+    ZenExited *grown = realloc(zen_exited, sizeof(ZenExited) * newCap);
+    if (!grown)
+      return;
+    zen_exited = grown;
+    zen_exited_cap = newCap;
+  }
 
-    zen_exited[zen_exited_count].pid = pid;
-    zen_exited[zen_exited_count].code = code;
-    zen_exited_count++;
+  zen_exited[zen_exited_count].pid = pid;
+  zen_exited[zen_exited_count].code = code;
+  zen_exited_count++;
 }
 
 static int _zen_exited_take(int64_t pid, int *code) {
-    int i = _zen_exited_find(pid);
-    if (i < 0) return 0;
+  int i = _zen_exited_find(pid);
+  if (i < 0)
+    return 0;
 
-    *code = zen_exited[i].code;
-    zen_exited[i] = zen_exited[zen_exited_count - 1];
-    zen_exited_count--;
-    return 1;
+  *code = zen_exited[i].code;
+  zen_exited[i] = zen_exited[zen_exited_count - 1];
+  zen_exited_count--;
+  return 1;
 }
 
 int64_t _sys_spawn(const char *cmd) {
-    if (!cmd) return -1;
+  if (!cmd)
+    return -1;
 
-    fflush(stdout);
-    fflush(stderr);
+  fflush(stdout);
+  fflush(stderr);
 
-    pid_t pid = fork();
+  pid_t pid = fork();
 
-    if (pid < 0) return -1;
+  if (pid < 0)
+    return -1;
 
-    if (pid == 0) {
-        setpgid(0, 0);
-        execl(_PATH_BSHELL, "sh", "-c", cmd, (char *)NULL);
-        execlp("sh", "sh", "-c", cmd, (char *)NULL);
-        _exit(127);
-    }
+  if (pid == 0) {
+    setpgid(0, 0);
+    execl(_PATH_BSHELL, "sh", "-c", cmd, (char *)NULL);
+    execlp("sh", "sh", "-c", cmd, (char *)NULL);
+    _exit(127);
+  }
 
-    return (int64_t)pid;
+  return (int64_t)pid;
 }
 
 int _sys_kill(int64_t pid, int sig) {
-    if (pid <= 0) return -1;
-
-    if (killpg((pid_t)pid, sig) == 0) return 0;
-    if (kill((pid_t)pid, sig) == 0) return 0;
-
+  if (pid <= 0)
     return -1;
+
+  if (killpg((pid_t)pid, sig) == 0)
+    return 0;
+  if (kill((pid_t)pid, sig) == 0)
+    return 0;
+
+  return -1;
 }
 
 int _sys_wait(int64_t pid) {
-    if (pid <= 0) return -1;
+  if (pid <= 0)
+    return -1;
 
-    int code = 0;
+  int code = 0;
 
+  pthread_mutex_lock(&zen_proc_lock);
+  int found = _zen_exited_take(pid, &code);
+  pthread_mutex_unlock(&zen_proc_lock);
+
+  if (found)
+    return code;
+
+  int st = 0;
+  pid_t r;
+
+  do {
+    r = waitpid((pid_t)pid, &st, 0);
+  } while (r < 0 && errno == EINTR);
+
+  if (r < 0) {
     pthread_mutex_lock(&zen_proc_lock);
-    int found = _zen_exited_take(pid, &code);
+    found = _zen_exited_take(pid, &code);
     pthread_mutex_unlock(&zen_proc_lock);
+    return found ? code : -1;
+  }
 
-    if (found) return code;
-
-    int st = 0;
-    pid_t r;
-
-    do {
-        r = waitpid((pid_t)pid, &st, 0);
-    } while (r < 0 && errno == EINTR);
-
-    if (r < 0) {
-        pthread_mutex_lock(&zen_proc_lock);
-        found = _zen_exited_take(pid, &code);
-        pthread_mutex_unlock(&zen_proc_lock);
-        return found ? code : -1;
-    }
-
-    return _zen_status_to_code(st);
+  return _zen_status_to_code(st);
 }
 
 bool _sys_isRunning(int64_t pid) {
-    if (pid <= 0) return false;
+  if (pid <= 0)
+    return false;
 
+  pthread_mutex_lock(&zen_proc_lock);
+  int done = _zen_exited_find(pid) >= 0;
+  pthread_mutex_unlock(&zen_proc_lock);
+
+  if (done)
+    return false;
+
+  int st = 0;
+  pid_t r = waitpid((pid_t)pid, &st, WNOHANG);
+
+  if (r == 0)
+    return true;
+
+  if (r > 0) {
     pthread_mutex_lock(&zen_proc_lock);
-    int done = _zen_exited_find(pid) >= 0;
+    _zen_exited_store(pid, _zen_status_to_code(st));
     pthread_mutex_unlock(&zen_proc_lock);
+    return false;
+  }
 
-    if (done) return false;
-
-    int st = 0;
-    pid_t r = waitpid((pid_t)pid, &st, WNOHANG);
-
-    if (r == 0) return true;
-
-    if (r > 0) {
-        pthread_mutex_lock(&zen_proc_lock);
-        _zen_exited_store(pid, _zen_status_to_code(st));
-        pthread_mutex_unlock(&zen_proc_lock);
-        return false;
-    }
-
-    if (kill((pid_t)pid, 0) == 0) return true;
-    return errno == EPERM;
+  if (kill((pid_t)pid, 0) == 0)
+    return true;
+  return errno == EPERM;
 }

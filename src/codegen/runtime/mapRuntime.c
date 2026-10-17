@@ -1,6 +1,6 @@
 
 #include <stdint.h>
-#include <limits.h>   
+#include <limits.h>
 
 #ifdef _WIN32
 #define strdup _strdup
@@ -16,16 +16,10 @@
 #define INT2PTR(x) ((void *)(intptr_t)(x))
 #define PTR2INT(x) ((int)(intptr_t)(x))
 
-enum {
-  ZEN_INT = 1,
-  ZEN_BOOL,
-  ZEN_DOUBLE,
-  ZEN_STRING,
-  ZEN_LIST,
-  ZEN_MAP,
-  ZEN_LONG,
-  ZEN_BYTE
-};
+enum { ZEN_INT = 1, ZEN_BOOL, ZEN_DOUBLE, ZEN_STRING, ZEN_LIST, ZEN_MAP, ZEN_LONG, ZEN_BYTE };
+
+#define ZEN_STRUCT_BASE 1000
+#define ZEN_IS_STRUCT(t) ((t) <= 0 || (t) >= ZEN_STRUCT_BASE)
 
 typedef struct ZenList ZenList;
 
@@ -58,7 +52,6 @@ static void zen_errorf(const char *type, const char *fmt, const char *arg) {
 static void _zen_map_check_alive(ZenMap *map) {
   if (!map)
     zen_error("MemoryError", "Map is null");
-    
 }
 
 void _debug_print_indent(int n);
@@ -84,8 +77,7 @@ void _zen_map_resize(ZenMap *map) {
   _zen_map_check_alive(map);
 
   int newCapacity = map->capacity * 2;
-  MapEntry *newEntries =
-      realloc(map->entries, sizeof(MapEntry) * newCapacity);
+  MapEntry *newEntries = realloc(map->entries, sizeof(MapEntry) * newCapacity);
 
   if (!newEntries)
     zen_error("MemoryError", "Failed to allocate memory for Map — realloc failed");
@@ -96,41 +88,51 @@ void _zen_map_resize(ZenMap *map) {
 
 const char *_zen_type_name(int type) {
   switch (type) {
-    case ZEN_INT: return "Int";
-    case ZEN_BOOL: return "Bool";
-    case ZEN_DOUBLE: return "Double";
-    case ZEN_STRING: return "String";
-    case ZEN_LIST: return "List";
-    case ZEN_MAP: return "Map";
-    case ZEN_LONG: return "Long";
-    case ZEN_BYTE: return "Byte";
-    default: return "Unknown";
+  case ZEN_INT:
+    return "Int";
+  case ZEN_BOOL:
+    return "Bool";
+  case ZEN_DOUBLE:
+    return "Double";
+  case ZEN_STRING:
+    return "String";
+  case ZEN_LIST:
+    return "List";
+  case ZEN_MAP:
+    return "Map";
+  case ZEN_LONG:
+    return "Long";
+  case ZEN_BYTE:
+    return "Byte";
+  default:
+    return type >= ZEN_STRUCT_BASE ? "Struct" : "Unknown";
   }
 }
 
 void _zen_map_free_value(int type, void *value) {
-  if (!value) return;
+  if (!value)
+    return;
 
   switch (type) {
-    case ZEN_INT:
-    case ZEN_BOOL:
-    case ZEN_DOUBLE:
-    case ZEN_STRING:
-    case ZEN_LONG:
-    case ZEN_BYTE:
-      free(value);
-      break;
+  case ZEN_INT:
+  case ZEN_BOOL:
+  case ZEN_DOUBLE:
+  case ZEN_STRING:
+  case ZEN_LONG:
+  case ZEN_BYTE:
+    free(value);
+    break;
 
-    case ZEN_LIST:
-      _zen_list_free((ZenList *)value);
-      break;
+  case ZEN_LIST:
+    _zen_list_free((ZenList *)value);
+    break;
 
-    case ZEN_MAP:
-      _zen_map_free_internal((ZenMap *)value);
-      break;
+  case ZEN_MAP:
+    _zen_map_free_internal((ZenMap *)value);
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 }
 
@@ -156,15 +158,13 @@ MapEntry *_zen_map_get_entry(ZenMap *map, char *key) {
 
 void _zen_map_expect_type(char *key, MapEntry *e, int expected) {
   if (e->type != expected) {
-    fprintf(stderr,
-            "\033[1;31m[Zen  TypeError]\n  └── Key '%s' is %s, not %s\033[0m\n",
-            key, _zen_type_name(e->type), _zen_type_name(expected));
+    fprintf(stderr, "\033[1;31m[Zen  TypeError]\n  └── Key '%s' is %s, not %s\033[0m\n", key,
+            _zen_type_name(e->type), _zen_type_name(expected));
     exit(1);
   }
 }
 
-void _zen_map_set(ZenMap *map, char *key, void *value, int type, int depth,
-                  int deepestType) {
+void _zen_map_set(ZenMap *map, char *key, void *value, int type, int depth, int deepestType) {
   _zen_map_check_alive(map);
 
   if (!key)
@@ -200,9 +200,7 @@ void _zen_map_set(ZenMap *map, char *key, void *value, int type, int depth,
   map->count++;
 }
 
-void *_zen_map_get(ZenMap *map, char *key) {
-  return _zen_map_get_entry(map, key)->value;
-}
+void *_zen_map_get(ZenMap *map, char *key) { return _zen_map_get_entry(map, key)->value; }
 
 bool _zen_map_has(ZenMap *map, char *key) {
   _zen_map_check_alive(map);
@@ -230,16 +228,16 @@ void _zen_map_remove(ZenMap *map, char *key) {
 }
 
 void _zen_map_free_internal(ZenMap *map) {
-    if (!map) return;
+  if (!map)
+    return;
 
-    for (int i = 0; i < map->count; i++) {
-        free(map->entries[i].key);
-        _zen_map_free_value(map->entries[i].type,
-                            map->entries[i].value);
-    }
+  for (int i = 0; i < map->count; i++) {
+    free(map->entries[i].key);
+    _zen_map_free_value(map->entries[i].type, map->entries[i].value);
+  }
 
-    free(map->entries);
-    free(map);
+  free(map->entries);
+  free(map);
 }
 
 void _zen_map_free(ZenMap *map) {
@@ -247,9 +245,7 @@ void _zen_map_free(ZenMap *map) {
   _zen_map_free_internal(map);
 }
 
-int zen_map_get_type(ZenMap *map, char *key) {
-  return _zen_map_get_entry(map, key)->type;
-}
+int zen_map_get_type(ZenMap *map, char *key) { return _zen_map_get_entry(map, key)->type; }
 
 void zen_map_set_int(ZenMap *map, char *key, int value) {
   int *v = malloc(sizeof(int));
@@ -304,8 +300,7 @@ void zen_map_set_string(ZenMap *map, char *key, char *value) {
   _zen_map_set(map, key, dupValue, ZEN_STRING, 0, 0);
 }
 
-void zen_map_set_list(ZenMap *map, char *key, ZenList *value, int depth,
-                       int deepestType) {
+void zen_map_set_list(ZenMap *map, char *key, ZenList *value, int depth, int deepestType) {
   if (!value)
     zen_error("TypeError", "Cannot set null List value in Map");
 
@@ -325,8 +320,8 @@ signed char zen_map_get_byte(ZenMap *map, char *key) {
     long v = *(long *)e->value;
     if (v < -128 || v > 127) {
       zen_errorf("TypeError",
-          "Key '%s' overflows Byte (value must be -128 to 127) — use getLong() instead",
-          key);
+                 "Key '%s' overflows Byte (value must be -128 to 127) — use getLong() instead",
+                 key);
     }
     return (signed char)v;
   }
@@ -335,8 +330,7 @@ signed char zen_map_get_byte(ZenMap *map, char *key) {
     int v = *(int *)e->value;
     if (v < -128 || v > 127) {
       zen_errorf("TypeError",
-          "Key '%s' overflows Byte (value must be -128 to 127) — use getInt() instead",
-          key);
+                 "Key '%s' overflows Byte (value must be -128 to 127) — use getInt() instead", key);
     }
     return (signed char)v;
   }
@@ -348,7 +342,7 @@ signed char zen_map_get_byte(ZenMap *map, char *key) {
 void zen_map_set_map(ZenMap *map, char *key, ZenMap *value) {
   if (!value)
     zen_error("TypeError", "Cannot set null Map value in Map");
-  
+
   if (value == map)
     zen_error("TypeError", "Map cannot contain itself");
 
@@ -362,8 +356,8 @@ int zen_map_get_int(ZenMap *map, char *key) {
     long v = *(long *)e->value;
     if (v < INT_MIN || v > INT_MAX) {
       zen_errorf("TypeError",
-    "Key '%s' overflows Int (value exceeds 32-bit range) — use getLong() instead",
-    key);
+                 "Key '%s' overflows Int (value exceeds 32-bit range) — use getLong() instead",
+                 key);
     }
     return (int)v;
   }
@@ -421,7 +415,19 @@ ZenMap *zen_map_get_map(ZenMap *map, char *key) {
   return child;
 }
 
-void _debug_pretty_map(ZenMap *map, int indent) {
+static void _zen_map_check_printable(ZenMap *map) {
+  for (int i = 0; i < map->count; i++) {
+    MapEntry *e = &map->entries[i];
+
+    if (e->type == ZEN_LIST && ZEN_IS_STRUCT(e->deepestType))
+      zen_error("TypeError", "Map contains a List of structs, which debug.pretty() cannot print");
+
+    if (e->type == ZEN_MAP)
+      _zen_map_check_printable((ZenMap *)e->value);
+  }
+}
+
+void _debug_pretty_map_impl(ZenMap *map, int indent) {
   _zen_map_check_alive(map);
 
   printf("{\n");
@@ -435,44 +441,44 @@ void _debug_pretty_map(ZenMap *map, int indent) {
     printf("%s: ", e->key);
 
     switch (e->type) {
-      case ZEN_INT:
-        printf("%d", *(int *)e->value);
-        break;
+    case ZEN_INT:
+      printf("%d", *(int *)e->value);
+      break;
 
-      case ZEN_BOOL:
-        printf("%s", *(bool *)e->value ? "true" : "false");
-        break;
+    case ZEN_BOOL:
+      printf("%s", *(bool *)e->value ? "true" : "false");
+      break;
 
-      case ZEN_DOUBLE:
-  printf("%.17g", *(double *)e->value);
-  break;
+    case ZEN_DOUBLE:
+      printf("%.17g", *(double *)e->value);
+      break;
 
-      case ZEN_STRING:
-        printf("\"%s\"", (char *)e->value);
-        break;
+    case ZEN_STRING:
+      printf("\"%s\"", (char *)e->value);
+      break;
 
-      case ZEN_LONG:
-  printf("%ld", *(long *)e->value);
-  break;
+    case ZEN_LONG:
+      printf("%ld", *(long *)e->value);
+      break;
 
-case ZEN_BYTE:
-  printf("%d", (int)*(signed char *)e->value);
-  break;
+    case ZEN_BYTE:
+      printf("%d", (int)*(signed char *)e->value);
+      break;
 
-      case ZEN_LIST:
-        _debug_pretty_list_impl((ZenList *)e->value, e->depth,
-                                 e->deepestType);
-        break;
+    case ZEN_LIST:
+      _debug_pretty_list_impl((ZenList *)e->value, e->depth, e->deepestType);
+      break;
 
-      case ZEN_MAP:
-        _debug_pretty_map((ZenMap *)e->value, fieldIndent);
-        break;
+    case ZEN_MAP:
+      _debug_pretty_map_impl((ZenMap *)e->value, fieldIndent);
+      break;
 
-      default:
-        printf("<unknown>");
+    default:
+      printf("<unknown>");
     }
 
-    if (i != map->count - 1) printf(",");
+    if (i != map->count - 1)
+      printf(",");
 
     printf("\n");
   }
@@ -481,10 +487,16 @@ case ZEN_BYTE:
   printf("}\n");
 }
 
+void _debug_pretty_map(ZenMap *map, int indent) {
+  _zen_map_check_alive(map);
+  _zen_map_check_printable(map);
+  _debug_pretty_map_impl(map, indent);
+}
+
 typedef struct {
-    char *buf;
-    size_t len;
-    size_t cap;
+  char *buf;
+  size_t len;
+  size_t cap;
 } JsonBuf;
 
 // implemented in the list runtime file
@@ -495,77 +507,80 @@ void jbuf_init(JsonBuf *jb);
 void _zen_list_append_json(JsonBuf *jb, ZenList *list, int depth, int deepestType);
 
 static void _zen_map_value_to_json(JsonBuf *jb, int type, void *value, int depth, int deepestType) {
-    char numBuf[64];
+  char numBuf[64];
 
-    if (!value) {
-        jbuf_append(jb, "null");
-        return;
-    }
+  if (!value) {
+    jbuf_append(jb, "null");
+    return;
+  }
 
-    switch (type) {
-        case ZEN_INT:
-            snprintf(numBuf, sizeof(numBuf), "%d", *(int *)value);
-            jbuf_append(jb, numBuf);
-            break;
-        case ZEN_LONG:
-            snprintf(numBuf, sizeof(numBuf), "%ld", *(long *)value);
-            jbuf_append(jb, numBuf);
-            break;
-        case ZEN_BYTE:
+  switch (type) {
+  case ZEN_INT:
+    snprintf(numBuf, sizeof(numBuf), "%d", *(int *)value);
+    jbuf_append(jb, numBuf);
+    break;
+  case ZEN_LONG:
+    snprintf(numBuf, sizeof(numBuf), "%ld", *(long *)value);
+    jbuf_append(jb, numBuf);
+    break;
+  case ZEN_BYTE:
     snprintf(numBuf, sizeof(numBuf), "%d", (int)*(signed char *)value);
     jbuf_append(jb, numBuf);
     break;
-        case ZEN_BOOL:
-            jbuf_append(jb, *(bool *)value ? "true" : "false");
-            break;
-        case ZEN_DOUBLE:
+  case ZEN_BOOL:
+    jbuf_append(jb, *(bool *)value ? "true" : "false");
+    break;
+  case ZEN_DOUBLE:
     snprintf(numBuf, sizeof(numBuf), "%.17g", *(double *)value);
     jbuf_append(jb, numBuf);
     break;
-        case ZEN_STRING:
-            jbuf_append_json_string(jb, (char *)value);
-            break;
-        case ZEN_MAP: {
-            ZenMap *child = (ZenMap *)value;
-            _zen_map_check_alive(child);
-            jbuf_append_char(jb, '{');
-            for (int i = 0; i < child->count; i++) {
-                MapEntry *e = &child->entries[i];
-                jbuf_append_json_string(jb, e->key);
-                jbuf_append_char(jb, ':');
-                _zen_map_value_to_json(jb, e->type, e->value, e->depth, e->deepestType);
-                if (i != child->count - 1) jbuf_append_char(jb, ',');
-            }
-            jbuf_append_char(jb, '}');
-            break;
-        }
-        case ZEN_LIST:
-            _zen_list_append_json(jb, (ZenList *)value, depth, deepestType);
-            break;
-        default:
-            jbuf_append(jb, "null");
+  case ZEN_STRING:
+    jbuf_append_json_string(jb, (char *)value);
+    break;
+  case ZEN_MAP: {
+    ZenMap *child = (ZenMap *)value;
+    _zen_map_check_alive(child);
+    jbuf_append_char(jb, '{');
+    for (int i = 0; i < child->count; i++) {
+      MapEntry *e = &child->entries[i];
+      jbuf_append_json_string(jb, e->key);
+      jbuf_append_char(jb, ':');
+      _zen_map_value_to_json(jb, e->type, e->value, e->depth, e->deepestType);
+      if (i != child->count - 1)
+        jbuf_append_char(jb, ',');
     }
+    jbuf_append_char(jb, '}');
+    break;
+  }
+  case ZEN_LIST:
+    if (ZEN_IS_STRUCT(deepestType))
+      zen_error("TypeError", "Map contains a List of structs, which json() cannot serialize");
+    _zen_list_append_json(jb, (ZenList *)value, depth, deepestType);
+    break;
+  default:
+    jbuf_append(jb, "null");
+  }
 }
 
 char *zen_map_json(ZenMap *map) {
-    _zen_map_check_alive(map);
+  _zen_map_check_alive(map);
 
-    JsonBuf jb;
-    jbuf_init(&jb);
+  JsonBuf jb;
+  jbuf_init(&jb);
 
-    jbuf_append_char(&jb, '{');
-    for (int i = 0; i < map->count; i++) {
-        MapEntry *e = &map->entries[i];
-        jbuf_append_json_string(&jb, e->key);
-        jbuf_append_char(&jb, ':');
-        _zen_map_value_to_json(&jb, e->type, e->value, e->depth, e->deepestType);
-        if (i != map->count - 1) jbuf_append_char(&jb, ',');
-    }
-    jbuf_append_char(&jb, '}');
+  jbuf_append_char(&jb, '{');
+  for (int i = 0; i < map->count; i++) {
+    MapEntry *e = &map->entries[i];
+    jbuf_append_json_string(&jb, e->key);
+    jbuf_append_char(&jb, ':');
+    _zen_map_value_to_json(&jb, e->type, e->value, e->depth, e->deepestType);
+    if (i != map->count - 1)
+      jbuf_append_char(&jb, ',');
+  }
+  jbuf_append_char(&jb, '}');
 
-    return jb.buf;
+  return jb.buf;
 }
-
 
 ZenList *_zen_list_new(size_t element_size);
 void _zen_list_push(ZenList *list, void *value);
@@ -574,54 +589,54 @@ int _zen_list_get_depth(ZenList *list);
 int _zen_list_get_deepest_type(ZenList *list);
 
 static char *_zen_map_value_to_string(int type, void *value, int depth, int deepestType) {
-  if (!value) return strdup("null");
+  if (!value)
+    return strdup("null");
 
   char numBuf[64];
 
   switch (type) {
-    case ZEN_INT:
-      snprintf(numBuf, sizeof(numBuf), "%d", *(int *)value);
-      return strdup(numBuf);
+  case ZEN_INT:
+    snprintf(numBuf, sizeof(numBuf), "%d", *(int *)value);
+    return strdup(numBuf);
 
-    case ZEN_LONG:
-      snprintf(numBuf, sizeof(numBuf), "%ld", *(long *)value);
-      return strdup(numBuf);
+  case ZEN_LONG:
+    snprintf(numBuf, sizeof(numBuf), "%ld", *(long *)value);
+    return strdup(numBuf);
 
-    case ZEN_BYTE:
-  snprintf(numBuf, sizeof(numBuf), "%d", (int)*(signed char *)value);
-  return strdup(numBuf);
-    
-    case ZEN_BOOL:
-      return strdup(*(bool *)value ? "true" : "false");
+  case ZEN_BYTE:
+    snprintf(numBuf, sizeof(numBuf), "%d", (int)*(signed char *)value);
+    return strdup(numBuf);
 
-    case ZEN_DOUBLE:
-  snprintf(numBuf, sizeof(numBuf), "%.17g", *(double *)value);
-  return strdup(numBuf);
+  case ZEN_BOOL:
+    return strdup(*(bool *)value ? "true" : "false");
 
-    case ZEN_STRING:
-      return strdup((char *)value);
+  case ZEN_DOUBLE:
+    snprintf(numBuf, sizeof(numBuf), "%.17g", *(double *)value);
+    return strdup(numBuf);
 
-    case ZEN_MAP:
-      return zen_map_json((ZenMap *)value);
+  case ZEN_STRING:
+    return strdup((char *)value);
 
-    case ZEN_LIST: {
+  case ZEN_MAP:
+    return zen_map_json((ZenMap *)value);
+
+  case ZEN_LIST: {
     JsonBuf jb;
     jbuf_init(&jb);
 
     ZenList *list = (ZenList *)value;
 
-    _zen_list_append_json(
-        &jb,
-        list,
-        _zen_list_get_depth(list),
-        _zen_list_get_deepest_type(list)
-    );
+    if (_zen_list_get_deepest_type(list) == 0)
+      zen_error("TypeError",
+                "Map contains a List of structs, which entries() cannot convert to a string");
+
+    _zen_list_append_json(&jb, list, _zen_list_get_depth(list), _zen_list_get_deepest_type(list));
 
     return jb.buf;
-    }
+  }
 
-    default:
-      return strdup("null");
+  default:
+    return strdup("null");
   }
 }
 
@@ -667,4 +682,48 @@ ZenList *zen_map_entries(ZenMap *map) {
   }
 
   return outer;
+}
+
+static const char *_zen_leaf_name(int type) {
+  switch (type) {
+  case 0:
+    return "struct";
+  case ZEN_INT:
+    return "int";
+  case ZEN_BOOL:
+    return "bool";
+  case ZEN_DOUBLE:
+    return "double";
+  case ZEN_STRING:
+    return "string";
+  case ZEN_MAP:
+    return "Map";
+  case ZEN_LONG:
+    return "long";
+  case ZEN_BYTE:
+    return "byte";
+
+  default:
+    return type >= ZEN_STRUCT_BASE ? "struct" : "unknown";
+  }
+}
+
+char *_zen_map_type(ZenMap *map, char *key) {
+  MapEntry *e = _zen_map_get_entry(map, key);
+  int isList = e->type == ZEN_LIST;
+  int depth = isList ? e->depth : 0;
+  const char *leaf = _zen_leaf_name(isList ? e->deepestType : e->type);
+
+  char *out = malloc(strlen(leaf) + (size_t)depth * 6 + 1);
+  if (!out)
+    zen_error("MemoryError", "Failed to allocate memory for Map type");
+
+  out[0] = '\0';
+  for (int i = 0; i < depth; i++)
+    strcat(out, "List<");
+  strcat(out, leaf);
+  for (int i = 0; i < depth; i++)
+    strcat(out, ">");
+
+  return out;
 }

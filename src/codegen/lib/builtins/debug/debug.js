@@ -3,7 +3,7 @@ export class DEBUG {
     this.IRB = IRB;
     this.expr = expr;
   }
-    zenDEBUG(
+  zenDEBUG(
     node,
     globalScope,
     funcName,
@@ -74,7 +74,7 @@ export class DEBUG {
       global: [],
       postOrPrefix: false,
     };
-    }
+  }
 
   pretty(node) {
     const arg = node.args[0];
@@ -89,7 +89,7 @@ export class DEBUG {
     }
 
     this.IRB.emitExpr(expr);
-    
+
     // Struct
     if (expr.isStruct) {
       const structInfo = this.IRB.getStruct(expr.type);
@@ -204,14 +204,13 @@ export class DEBUG {
       this.IRB.emit(
         `call void @_debug_pretty_list(ptr ${t}, i32 ${depth}, i32 ${tv})`,
       );
-
     }
     return {
       ptr: null,
       type: "void",
       llvmType: "void",
       global: [],
-      local: []
-    }
+      local: [],
+    };
   }
 }

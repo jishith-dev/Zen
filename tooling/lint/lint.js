@@ -30,9 +30,7 @@ const PRIMITIVE_TYPES = new Set([
   "Function",
 ]);
 
-
 const NEVER_RETURNS = new Set(["os.exit", "sys.panic"]);
-
 
 const ENTRY_POINTS = new Set(["main"]);
 
@@ -52,9 +50,12 @@ const byPosition = (a, b) =>
 
 export class Lint {
   constructor(ast, { builtins = [] } = {}) {
-    this.ast = Array.isArray(ast) ? ast : Array.isArray(ast?.body) ? ast.body : [];
+    this.ast = Array.isArray(ast)
+      ? ast
+      : Array.isArray(ast?.body)
+        ? ast.body
+        : [];
 
-  
     this.builtinNames = new Set([
       ...Object.keys(BUILTIN_INFO.global_fn || {}),
       ...Object.keys(BUILTIN_INFO.namespaces || {}),
@@ -243,7 +244,6 @@ export class Lint {
     return null;
   }
 
-
   resolve(name, node) {
     const entry = this.lookup(name);
     if (entry) {
@@ -252,7 +252,6 @@ export class Lint {
     }
     if (this.builtinNames.has(name)) return null;
 
-    
     if (this.functionDepth > 0 && this.globalVars.has(name)) {
       this.lateUsed.add(name);
       return null;
@@ -262,7 +261,6 @@ export class Lint {
     return null;
   }
 
-  
   markTypeName(name, node, strict = false) {
     if (typeof name !== "string" || name === "") return;
 
@@ -301,7 +299,6 @@ export class Lint {
     }
   }
 
-  
   report(list, node, message) {
     const line = node?.line ?? this.lastPos.line;
     const column = node?.column ?? this.lastPos.column;
@@ -476,7 +473,6 @@ export class Lint {
 
         if (!infinite) {
           if (node.type === ParserTypes.DO_WHILE) {
-            
             if (body.has(NORMAL) || body.has(CONTINUE)) out.add(NORMAL);
           } else {
             out.add(NORMAL);
@@ -493,7 +489,7 @@ export class Lint {
           for (const kind of f) {
             if (kind !== NORMAL && kind !== BREAK) out.add(kind);
           }
-          
+
           if (f.has(NORMAL) || f.has(BREAK)) out.add(NORMAL);
         };
 
@@ -513,7 +509,6 @@ export class Lint {
     }
   }
 
-  
   isDeclarationOnly(stmt) {
     return (
       stmt.type === ParserTypes.COMMENT ||

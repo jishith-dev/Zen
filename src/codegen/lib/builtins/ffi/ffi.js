@@ -44,7 +44,6 @@ export class FFI {
 
     const exprs = args.map((arg) => this.expr.handleExpression(arg));
 
-    
     this.IRB.checkArgTypes(displayName, params, exprs, args);
 
     const llvm = (t) => this.IRB.getLLVMType(t);

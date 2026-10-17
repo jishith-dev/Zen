@@ -4,9 +4,9 @@
 
 **Statically typed · AOT compiled · LLVM backend**
 <br>
-**Version 3.0.0 · Stable · October 2026**
+**Version 3.1.0 · Stable · October 2026**
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![Released](https://img.shields.io/badge/released-October%202026-orange?style=for-the-badge)
 ![LLVM](https://img.shields.io/badge/LLVM-20%2B-purple?style=for-the-badge)
@@ -157,50 +157,23 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v3.0.0
+Current Version: v3.1.0
 
 ---
 
-### v3.0.0
+### v3.1.0
 
-- Breaking: `toString()` / `toInt()` renamed to `intToAscii()` / `asciiToInt()`
-- Breaking: `private` is now a reserved keyword; keyword `in` removed
-- Breaking: classic loops must use `loop (init, cond, update)`
-- Breaking: `zen tests` renamed to `zen test`, `zen -v` changed to `zen --v`
-- Breaking: `fs.writeFileBytes()` now returns `int`; `sqrt()` takes and returns `double`
-- Formalized numeric widening: `byte` → `int` → `long` → `double`
-- `bool` works in arithmetic and bitwise operations
-- Added bitwise operators `&`, `|`, `>>`, `<<`, `~` and unary `+`
-- Added compile-time constants and `sizeOf()` for types and expressions
-- Struct field default initializers; uninitialized structs get zero-value fields
-- Added `private` fields and methods
-- Added anonymous inline callbacks (no closures); named functions can use closures
-- Thread functions accept parameters; added thread methods in structs
-- Added multiple exports and imports per file, and import aliasing for functions and variables
-- Struct dependency tracking with hidden dependency structs
-- Added scientific notation for `double` literals
-- Signed `byte` (-128 to 127), hex suffix rules (`0xFB_B`, `0xFF_L`)
-- Added `\e` and `\xHH` string escapes
-- Added `Json.map()` with runtime overflow checks for `getInt()`, `getByte()`, `getLong()`
-- Added List methods: `remove()`, `reverse()`, `sort()`, `sum()`, `avg()`, `flat()`
-- Added `Map.keys()` and `Map.entries()`
-- Added `lastIndexOf()`, `stringToBytes()`, `bytesToString()`
-- Added `fs.listDir()`, `fs.isFile()`, `fs.isDir()`
-- Added `sys.spawn()`, `sys.kill()`, `sys.isRunning()`, `sys.wait()`
-- Added `threads.count()` and `threads.currentId()`
-- Added TCP networking: `Tcp`, `TcpServer`, `net.online()`, `net.connect()`, `net.listen()`
-- Added `http.getProgress()` for downloads with progress reporting
-- Added HTTP timeouts and `HttpRequest.getHeader()`
-- Added `zen test`, `zen info`, `zen read`, `zen installed`, `zen upgrade`, `zen update --dev`
-- `zen install` and `zen uninstall` accept multiple packages and `pkg@semver`
-- `zen deps` detects native objects; `.c` files supported as native dependencies
-- Added `zen.json` `flags` and `--link` for native linking
-- Added interactive REPL (`zen` with no arguments)
-- Enhanced LSP (`zen lsp`), formatter and linter
-- Better compile-time diagnostics with hints and source text
-- Installer: added `--tag` and `--branch` modes
-- Windows support temporarily paused
-- Several compiler, CLI, registry, and runtime bug fixes
+- Added automatic initialization of `Map` fields in structs when no initializer is provided
+- Added labeled function arguments using `label: value` syntax
+- Made `path.join()` accept two or more path components
+- Added variadic `print()` for printing multiple values separated by spaces, with a newline at the end
+- Added `Map.type(key)` to return the stored value's canonical type, including nested List types
+- Restricted explicit type arguments to generic-capable calls, such as `getList()`
+- Improved nested List type inference and validation in function returns and Map operations
+- Improved List depth and element-type checks during indexing
+- Added runtime bounds checking for string indexing
+- Improved compiler diagnostics, type errors, and typo suggestions
+- Fixed compiler, runtime, and CLI bugs
 
 ---
 
@@ -768,7 +741,7 @@ This provides a consistent and explicit ownership model across Zen's type system
 
 ## Scope of This Specification
 
-Version 3.0.0 defines the **stable core** of the language:
+Version 3.1.0 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
@@ -860,7 +833,7 @@ Keywords are case-sensitive. `fn` is reserved; `Fn` and `FN` are valid identifie
 
 `async` and `await` are reserved and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Concurrency is currently provided by `thread` functions.
 
-The `in` keyword was removed in v3.0.0 and is no longer reserved. `private` became reserved in v3.0.0, so any existing identifier named `private` must be renamed.
+The `in` keyword was removed in v3.1.0 and is no longer reserved. `private` became reserved in v3.1.0, so any existing identifier named `private` must be renamed.
 
 ---
 
@@ -1449,7 +1422,7 @@ const_decl
 
 ```zen
 const int MAX = 100
-const string VERSION = "3.0.0"
+const string VERSION = "3.1.0"
 ```
 
 ### 4.5 Assignment & Reassignment
@@ -2681,18 +2654,20 @@ Struct fields may be of the following types:
 
 #### Default Values
 
-An uninitialized struct gets zero values for its fields: `0`, `""`, `false`, and an empty list. `List` fields are initialized automatically, so no manual setup is needed. This also applies to structs imported from packages.
+An uninitialized struct gets zero values for its fields: `0`, `""`, `false`, an empty list, and an empty Map. `List` and `Map` fields are initialized automatically, so no manual setup is needed. This also applies to structs imported from packages.
 
 ```zen
 struct User {
   List<string> names
   List<int> scores
+  Map metadata
 }
 
 User user
 
 user.names.push("Alice")
 user.scores.push(100)
+user.metadata.setString("role", "admin")
 ```
 
 Fields can have default initializers:
@@ -2704,7 +2679,8 @@ struct Config {
 }
 ```
 
-Struct literals only set the fields you give them. The rest keep their default or zero value.
+Struct literals only set the fields you provide. The remaining fields keep their default or zero values.
+
 
 #### Instantiation
 
@@ -3083,6 +3059,22 @@ fn matrix(List<List<double>> grid) void { ... }
 
 fn deep(List<List<List<int>>> cube) void { ... }
 ```
+
+---
+
+#### Labeled Arguments
+
+Function calls support optional labels using `label: value` syntax. Labels are for readability only; they do not need to match parameter names and do not affect argument ordering or evaluation.
+
+```zen
+fn predict(bool weather) void {
+  screen(weather)
+}
+
+predict(raining: false)
+```
+
+Labels are optional, and existing positional argument calls remain supported.
 
 ---
 
@@ -3573,7 +3565,7 @@ loop (int i = 0, i < 5, i++) {
 
 The loop variable declared in the initializer is scoped to the loop block.
 
-> **Breaking change in v3.0.0:** the two-clause form `loop (cond, update)` was removed. Classic loops must always use `loop (init, cond, update)`.
+> **Breaking change in v3.1.0:** the two-clause form `loop (cond, update)` was removed. Classic loops must always use `loop (init, cond, update)`.
 
 ---
 
@@ -3962,6 +3954,28 @@ screen(3.14, "%.2f")
 
 ---
 
+#### `print`
+
+Prints multiple values to standard output, separated by a single space, with a newline appended at the end.
+
+```
+print(...values)
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `...values` | supported types | Yes | Values to print |
+
+Returns `void`.
+
+```zen
+print("hello")
+print("Name:", "Jishith", "Score:", 100)
+print("Average:", 95.5, "Active:", true)
+```
+
+---
+
 #### `input`
 
 Reads a line from standard input and returns it as a `string`. The caller is responsible for converting it to the required type using Zen's type conversion functions.
@@ -4224,7 +4238,7 @@ long e = Long(false)
 
 `intToAscii` and `asciiToInt` convert between ASCII codes and characters. They are not general type conversions. For general conversion, use `String()` and `Int()`.
 
-> **Breaking change in v3.0.0:** `toString()` was renamed to `intToAscii()`, and `toInt()` was renamed to `asciiToInt()`.
+> **Breaking change in v3.1.0:** `toString()` was renamed to `intToAscii()`, and `toInt()` was renamed to `asciiToInt()`.
 
 ---
 
@@ -4930,7 +4944,7 @@ fs.writeFileBytes(path, data)
 
 Returns `int`: `0` on success, non-zero on failure.
 
-> **Breaking change in v3.0.0:** `fs.writeFileBytes()` now returns `int` (a success code) instead of `void`.
+> **Breaking change in v3.1.0:** `fs.writeFileBytes()` now returns `int` (a success code) instead of `void`.
 
 ```zen
 List<byte> data = fs.readFileBytes("image.png")
@@ -5763,21 +5777,22 @@ string ext = path.extname("/home/user/file.txt")   # ".txt"
 
 ##### `path.join`
 
-Joins two path components into a single path.
+Joins two or more path components into a single path.
 
 ```
-path.join(path, other)
+path.join(path, paths...)
 ```
 
 | Parameter | Type | Description |
 |---|---|---|
 | `path` | `string` | First path component |
-| `other` | `string` | Second path component |
+| `paths...` | `string` | Additional path components |
 
 Returns `string`.
 
 ```zen
-string full = path.join("/home/user", "file.txt")   # "/home/user/file.txt"
+string full = path.join("/home/user", "file.txt")
+string main = path.join("/home/user", "refs", "heads", "main")
 ```
 
 ---
@@ -6914,6 +6929,7 @@ A string-keyed map. Free it with `free()` when done. Maps returned by `getMap()`
 | Method | Returns | Description |
 |---|---|---|
 | `keys()` | `List<string>` | Returns all keys |
+| `type(key)` | `string` | Returns the type of the value stored at the given key |
 | `entries()` | `List<List<string>>` | Returns all key/value pairs |
 | `has(string key)` | `bool` | Returns `true` if the key exists |
 | `remove(string key)` | `void` | Removes a key |
@@ -6980,6 +6996,7 @@ Future versions are planned to address the following current limitations:
 - Add HTTP retry support.
 - Add HTTP resume support where applicable.
 - Improve or restore Windows support.
+- improve list of user defined struct in Map list field for compatible with Map.json(), Map.entries(), debug.pretty().
 
 ### 15.3 Built-in APIs and Namespaces
 
@@ -6987,12 +7004,6 @@ Future versions are planned to address the following current limitations:
 - Expand the standard library with additional useful built-in functions.
 - Add more built-in structs and methods.
 - Continue improving existing built-in APIs based on practical usage.
-
-### 15.4 Function Parameter Improvements
-
-- Reconsider `screen()` parameter handling.
-- Potentially make `screen()` support variadic parameters.
-- Alternatively, introduce a separate function specifically for accepting variadic parameters.
 
 ### 15.5 Syntax Improvements
 
@@ -7289,8 +7300,7 @@ The ZEN style guide recommends:
 
 | Item | Value |
 |---|---|
-| Documentation Version | 3.0.0 |
-| Language Version | 3.0.0 |
+| Language Version | 3.1.0 |
 | Released | October 2026 |
 | Backend | LLVM |
 | License | MIT |
@@ -7299,9 +7309,9 @@ The ZEN style guide recommends:
 
 ## Disclaimer
 
-This documentation targets **ZEN v3.0.0**.
+This documentation targets **ZEN v3.1.0**.
 
-v3.0.0 included several breaking changes from v2 (see [changelog.md](changelog.md)). Starting with **v3**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
+v3.1.0 included several breaking changes from v2 (see [changelog.md](changelog.md)). Starting with **v3**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
 
 As the documentation continues to evolve alongside the language, you may occasionally encounter:
 

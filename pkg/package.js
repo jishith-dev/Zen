@@ -75,10 +75,7 @@ export class Package {
 
   async installed() {
     try {
-      const packagesDir = path.join(
-        os.homedir(),
-        ".zen_packages",
-      );
+      const packagesDir = path.join(os.homedir(), ".zen_packages");
 
       if (!fs.existsSync(packagesDir)) {
         console.log("No packages installed.");
@@ -500,235 +497,216 @@ export class Package {
   }
 
   async installPackage(input, options = {}) {
-  const atIndex = input.lastIndexOf("@");
+    const atIndex = input.lastIndexOf("@");
 
-  let packageName = input;
-  let requestedVersion = null;
+    let packageName = input;
+    let requestedVersion = null;
 
-  if (atIndex > 0) {
-    packageName = input.slice(0, atIndex);
-    requestedVersion = input.slice(atIndex + 1);
+    if (atIndex > 0) {
+      packageName = input.slice(0, atIndex);
+      requestedVersion = input.slice(atIndex + 1);
 
-    if (!/^\d+\.\d+\.\d+$/.test(requestedVersion)) {
-      console.error(
-        `error: Invalid version '${requestedVersion}'. Expected x.y.z`,
-      );
-      process.exit(1);
-    }
-  }
-
-  try {
-    const displayName = requestedVersion
-      ? `${packageName}@${requestedVersion}`
-      : packageName;
-
-    console.log(`Installing ${displayName}...`);
-
-    let pkg;
-    let installVersion;
-    let repoUrl;
-
-    if (options.repo && options.version) {
-      repoUrl = new URL(options.repo);
-      installVersion = options.version;
-    } else {
-      
-     //  * Normal install uses the registry.
-       
-      const registryUrl =
-  `${BACKEND_URL}/api/packages.json?name=${encodeURIComponent(packageName)}`;
-
-      const registryRes = await fetch(registryUrl);
-
-      if (!registryRes.ok) {
-        const error = await registryRes.json();
-        console.error(`error: ${error.error}`);
-        process.exit(1);
-      }
-
-      pkg = await registryRes.json();
-
-      if (!pkg?.repo) {
-        console.error(`error: Package '${displayName}' not found`);
-        process.exit(1);
-      }
-
-      repoUrl = new URL(pkg.repo);
-
-if (requestedVersion) {
-  installVersion = requestedVersion;
-} else {
-  const [owner, repo] = repoUrl.pathname
-    .replace(/\.git$/, "")
-    .slice(1)
-    .split("/");
-
-  if (!owner || !repo) {
-    console.error("error: Invalid repository URL");
-    process.exit(1);
-  }
-
-  console.log(`Checking ${packageName} for latest version...`);
-
-  const output = execSync(
-    `git ls-remote --tags --refs https://github.com/${owner}/${repo}.git`,
-    {
-      encoding: "utf8",
-    },
-  );
-
-  const versions = output
-    .split("\n")
-    .map((line) => line.trim().split(/\s+/)[1])
-    .filter((tag) => /^refs\/tags\/v\d+\.\d+\.\d+$/.test(tag))
-    .map((tag) => tag.replace("refs/tags/v", ""));
-
-  if (versions.length === 0) {
-    console.error(`error: No version tags found for ${packageName}`);
-    process.exit(1);
-  }
-
-  const compareVersions = (a, b) => {
-    const pa = a.split(".").map(Number);
-    const pb = b.split(".").map(Number);
-
-    for (let i = 0; i < 3; i++) {
-      if (pa[i] !== pb[i]) {
-        return pa[i] - pb[i];
-      }
-    }
-
-    return 0;
-  };
-
-  versions.sort(compareVersions);
-  installVersion = versions[versions.length - 1];
-}
-    }
-
-    const [owner, repo] = repoUrl.pathname
-      .replace(/\.git$/, "")
-      .slice(1)
-      .split("/");
-
-    if (!owner || !repo) {
-      console.error("error: Invalid repository URL");
-      process.exit(1);
-    }
-
-    
-   //  * Get zen.json from exact Git tag.
-    
-    const configRes = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/v${installVersion}/zen.json`,
-    );
-
-    if (!configRes.ok) {
-      console.error(
-        `error: Failed to fetch zen.json for v${installVersion}`,
-      );
-      process.exit(1);
-    }
-
-    const config = await configRes.json();
-
-    const isRunnable = !!config.main;
-    const isLibrary = !!config.bin;
-
-    let installDir;
-
-    if (isRunnable) {
-      installDir = path.join(process.cwd(), packageName);
-    } else if (isLibrary) {
-      installDir = path.join(
-        os.homedir(),
-        ".zen_packages",
-        packageName,
-      );
-    } else {
-      console.error("error: invalid package type");
-      process.exit(1);
-    }
-
-    
-    if (fs.existsSync(installDir)) {
-      const localConfigPath = path.join(installDir, "zen.json");
-
-      if (fs.existsSync(localConfigPath)) {
-        const localConfig = JSON.parse(
-          fs.readFileSync(localConfigPath, "utf8"),
+      if (!/^\d+\.\d+\.\d+$/.test(requestedVersion)) {
+        console.error(
+          `error: Invalid version '${requestedVersion}'. Expected x.y.z`,
         );
+        process.exit(1);
+      }
+    }
 
-        if (localConfig.version === installVersion) {
-          console.log(
-            `Already installed ${packageName} v${installVersion}`,
-          );
-          return;
+    try {
+      const displayName = requestedVersion
+        ? `${packageName}@${requestedVersion}`
+        : packageName;
+
+      console.log(`Installing ${displayName}...`);
+
+      let pkg;
+      let installVersion;
+      let repoUrl;
+
+      if (options.repo && options.version) {
+        repoUrl = new URL(options.repo);
+        installVersion = options.version;
+      } else {
+        //  * Normal install uses the registry.
+
+        const registryUrl = `${BACKEND_URL}/api/packages.json?name=${encodeURIComponent(packageName)}`;
+
+        const registryRes = await fetch(registryUrl);
+
+        if (!registryRes.ok) {
+          const error = await registryRes.json();
+          console.error(`error: ${error.error}`);
+          process.exit(1);
         }
 
-        console.log(
-          `Updating ${packageName} from v${localConfig.version} to v${installVersion}...`,
-        );
+        pkg = await registryRes.json();
+
+        if (!pkg?.repo) {
+          console.error(`error: Package '${displayName}' not found`);
+          process.exit(1);
+        }
+
+        repoUrl = new URL(pkg.repo);
+
+        if (requestedVersion) {
+          installVersion = requestedVersion;
+        } else {
+          const [owner, repo] = repoUrl.pathname
+            .replace(/\.git$/, "")
+            .slice(1)
+            .split("/");
+
+          if (!owner || !repo) {
+            console.error("error: Invalid repository URL");
+            process.exit(1);
+          }
+
+          console.log(`Checking ${packageName} for latest version...`);
+
+          const output = execSync(
+            `git ls-remote --tags --refs https://github.com/${owner}/${repo}.git`,
+            {
+              encoding: "utf8",
+            },
+          );
+
+          const versions = output
+            .split("\n")
+            .map((line) => line.trim().split(/\s+/)[1])
+            .filter((tag) => /^refs\/tags\/v\d+\.\d+\.\d+$/.test(tag))
+            .map((tag) => tag.replace("refs/tags/v", ""));
+
+          if (versions.length === 0) {
+            console.error(`error: No version tags found for ${packageName}`);
+            process.exit(1);
+          }
+
+          const compareVersions = (a, b) => {
+            const pa = a.split(".").map(Number);
+            const pb = b.split(".").map(Number);
+
+            for (let i = 0; i < 3; i++) {
+              if (pa[i] !== pb[i]) {
+                return pa[i] - pb[i];
+              }
+            }
+
+            return 0;
+          };
+
+          versions.sort(compareVersions);
+          installVersion = versions[versions.length - 1];
+        }
       }
-    }
 
-    const parentDir = path.dirname(installDir);
-    const tempDir = path.join(
-      parentDir,
-      `.zen-${packageName}-${installVersion}-tmp`,
-    );
+      const [owner, repo] = repoUrl.pathname
+        .replace(/\.git$/, "")
+        .slice(1)
+        .split("/");
 
-    fs.rmSync(tempDir, {
-      recursive: true,
-      force: true,
-    });
-
-    fs.mkdirSync(parentDir, {
-      recursive: true,
-    });
-
-    console.log(`Cloning ${owner}/${repo}@v${installVersion}...`);
-
-    execSync(
-      `git clone --branch v${installVersion} --single-branch https://github.com/${owner}/${repo}.git ${tempDir}`,
-      {
-        stdio: "ignore",
-      },
-    );
-
-    
- //    * Install dependencies before replacing the current version.
-     
-    if (
-      config.dependencies &&
-      Object.keys(config.dependencies).length > 0
-    ) {
-      for (const [name, version] of Object.entries(config.dependencies)) {
-        console.log(`Installing dependency ${name}@${version}...`);
-
-        execSync(`zen install ${name}@${version}`, {
-          stdio: "inherit",
-        });
+      if (!owner || !repo) {
+        console.error("error: Invalid repository URL");
+        process.exit(1);
       }
+
+      //  * Get zen.json from exact Git tag.
+
+      const configRes = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repo}/v${installVersion}/zen.json`,
+      );
+
+      if (!configRes.ok) {
+        console.error(`error: Failed to fetch zen.json for v${installVersion}`);
+        process.exit(1);
+      }
+
+      const config = await configRes.json();
+
+      const isRunnable = !!config.main;
+      const isLibrary = !!config.bin;
+
+      let installDir;
+
+      if (isRunnable) {
+        installDir = path.join(process.cwd(), packageName);
+      } else if (isLibrary) {
+        installDir = path.join(os.homedir(), ".zen_packages", packageName);
+      } else {
+        console.error("error: invalid package type");
+        process.exit(1);
+      }
+
+      if (fs.existsSync(installDir)) {
+        const localConfigPath = path.join(installDir, "zen.json");
+
+        if (fs.existsSync(localConfigPath)) {
+          const localConfig = JSON.parse(
+            fs.readFileSync(localConfigPath, "utf8"),
+          );
+
+          if (localConfig.version === installVersion) {
+            console.log(`Already installed ${packageName} v${installVersion}`);
+            return;
+          }
+
+          console.log(
+            `Updating ${packageName} from v${localConfig.version} to v${installVersion}...`,
+          );
+        }
+      }
+
+      const parentDir = path.dirname(installDir);
+      const tempDir = path.join(
+        parentDir,
+        `.zen-${packageName}-${installVersion}-tmp`,
+      );
+
+      fs.rmSync(tempDir, {
+        recursive: true,
+        force: true,
+      });
+
+      fs.mkdirSync(parentDir, {
+        recursive: true,
+      });
+
+      console.log(`Cloning ${owner}/${repo}@v${installVersion}...`);
+
+      execSync(
+        `git clone --branch v${installVersion} --single-branch https://github.com/${owner}/${repo}.git ${tempDir}`,
+        {
+          stdio: "ignore",
+        },
+      );
+
+      //    * Install dependencies before replacing the current version.
+
+      if (config.dependencies && Object.keys(config.dependencies).length > 0) {
+        for (const [name, version] of Object.entries(config.dependencies)) {
+          console.log(`Installing dependency ${name}@${version}...`);
+
+          execSync(`zen install ${name}@${version}`, {
+            stdio: "inherit",
+          });
+        }
+      }
+
+      fs.rmSync(installDir, {
+        recursive: true,
+        force: true,
+      });
+
+      fs.renameSync(tempDir, installDir);
+
+      console.log(`Installed ${packageName} v${installVersion}`);
+
+      console.log(`Location: ${installDir}`);
+    } catch (err) {
+      console.error(`error: Install failed: ${err.message}`);
+      process.exit(1);
     }
-
-  
-    fs.rmSync(installDir, {
-      recursive: true,
-      force: true,
-    });
-
-    fs.renameSync(tempDir, installDir);
-
-    console.log(
-      `Installed ${packageName} v${installVersion}`,
-    );
-
-    console.log(`Location: ${installDir}`);
-  } catch (err) {
-    console.error(`error: Install failed: ${err.message}`);
-    process.exit(1);
-  }
   }
 
   async uninstall() {
@@ -749,11 +727,7 @@ if (requestedVersion) {
       let installDir = path.join(process.cwd(), packageName);
 
       if (!fs.existsSync(installDir)) {
-        installDir = path.join(
-          os.homedir(),
-          ".zen_packages",
-          packageName,
-        );
+        installDir = path.join(os.homedir(), ".zen_packages", packageName);
       }
 
       if (!fs.existsSync(installDir)) {
@@ -770,112 +744,105 @@ if (requestedVersion) {
   }
 
   async upgrade() {
-  const packageName = this.args[1];
+    const packageName = this.args[1];
 
-  if (!packageName) {
-    console.error("error: Usage zen upgrade <package>");
-    process.exit(1);
-  }
-
-  try {
-    const packagesDir = path.join(
-      os.homedir(),
-      ".zen_packages",
-    );
-
-    const installDir = path.join(packagesDir, packageName);
-
-    if (!fs.existsSync(installDir)) {
-      console.error(`error: Package '${packageName}' is not installed`);
+    if (!packageName) {
+      console.error("error: Usage zen upgrade <package>");
       process.exit(1);
     }
 
-    const localConfigPath = path.join(installDir, "zen.json");
+    try {
+      const packagesDir = path.join(os.homedir(), ".zen_packages");
 
-    if (!fs.existsSync(localConfigPath)) {
-      console.error(`error: Package '${packageName}' has no zen.json`);
-      process.exit(1);
-    }
+      const installDir = path.join(packagesDir, packageName);
 
-    const localConfig = JSON.parse(
-      fs.readFileSync(localConfigPath, "utf8"),
-    );
-
-    const currentVersion = localConfig.version;
-
-    if (!localConfig.repo) {
-      console.error(`error: Package '${packageName}' has no repository`);
-      process.exit(1);
-    }
-
-    const repoUrl = new URL(localConfig.repo);
-
-    const [owner, repo] = repoUrl.pathname
-      .replace(/\.git$/, "")
-      .slice(1)
-      .split("/");
-
-    if (!owner || !repo) {
-      console.error("error: Invalid repository URL");
-      process.exit(1);
-    }
-
-    console.log(`Checking ${packageName} for updates...`);
-
-    const output = execSync(
-      `git ls-remote --tags --refs https://github.com/${owner}/${repo}.git`,
-      {
-        encoding: "utf8",
-      },
-    );
-
-    const versions = output
-      .split("\n")
-      .map((line) => line.trim().split(/\s+/)[1])
-      .filter((tag) => /^refs\/tags\/v\d+\.\d+\.\d+$/.test(tag))
-      .map((tag) => tag.replace("refs/tags/v", ""));
-
-    if (versions.length === 0) {
-      console.error(`error: No version tags found for ${packageName}`);
-      process.exit(1);
-    }
-
-    const compareVersions = (a, b) => {
-      const pa = a.split(".").map(Number);
-      const pb = b.split(".").map(Number);
-
-      for (let i = 0; i < 3; i++) {
-        if (pa[i] !== pb[i]) {
-          return pa[i] - pb[i];
-        }
+      if (!fs.existsSync(installDir)) {
+        console.error(`error: Package '${packageName}' is not installed`);
+        process.exit(1);
       }
 
-      return 0;
-    };
+      const localConfigPath = path.join(installDir, "zen.json");
 
-    versions.sort(compareVersions);
+      if (!fs.existsSync(localConfigPath)) {
+        console.error(`error: Package '${packageName}' has no zen.json`);
+        process.exit(1);
+      }
 
-    const latestVersion = versions[versions.length - 1];
+      const localConfig = JSON.parse(fs.readFileSync(localConfigPath, "utf8"));
 
-    if (compareVersions(latestVersion, currentVersion) <= 0) {
-      console.log(
-        `Already installed ${packageName} v${currentVersion}`,
+      const currentVersion = localConfig.version;
+
+      if (!localConfig.repo) {
+        console.error(`error: Package '${packageName}' has no repository`);
+        process.exit(1);
+      }
+
+      const repoUrl = new URL(localConfig.repo);
+
+      const [owner, repo] = repoUrl.pathname
+        .replace(/\.git$/, "")
+        .slice(1)
+        .split("/");
+
+      if (!owner || !repo) {
+        console.error("error: Invalid repository URL");
+        process.exit(1);
+      }
+
+      console.log(`Checking ${packageName} for updates...`);
+
+      const output = execSync(
+        `git ls-remote --tags --refs https://github.com/${owner}/${repo}.git`,
+        {
+          encoding: "utf8",
+        },
       );
-      return;
+
+      const versions = output
+        .split("\n")
+        .map((line) => line.trim().split(/\s+/)[1])
+        .filter((tag) => /^refs\/tags\/v\d+\.\d+\.\d+$/.test(tag))
+        .map((tag) => tag.replace("refs/tags/v", ""));
+
+      if (versions.length === 0) {
+        console.error(`error: No version tags found for ${packageName}`);
+        process.exit(1);
+      }
+
+      const compareVersions = (a, b) => {
+        const pa = a.split(".").map(Number);
+        const pb = b.split(".").map(Number);
+
+        for (let i = 0; i < 3; i++) {
+          if (pa[i] !== pb[i]) {
+            return pa[i] - pb[i];
+          }
+        }
+
+        return 0;
+      };
+
+      versions.sort(compareVersions);
+
+      const latestVersion = versions[versions.length - 1];
+
+      if (compareVersions(latestVersion, currentVersion) <= 0) {
+        console.log(`Already installed ${packageName} v${currentVersion}`);
+        return;
+      }
+
+      console.log(
+        `Updating ${packageName} from v${currentVersion} to v${latestVersion}...`,
+      );
+
+      await this.installPackage(packageName, {
+        repo: localConfig.repo,
+        version: latestVersion,
+      });
+    } catch (err) {
+      console.error(`error: Upgrade failed: ${err.message}`);
+      process.exit(1);
     }
-
-    console.log(
-      `Updating ${packageName} from v${currentVersion} to v${latestVersion}...`,
-    );
-
-    await this.installPackage(packageName, {
-      repo: localConfig.repo,
-      version: latestVersion,
-    });
-  } catch (err) {
-    console.error(`error: Upgrade failed: ${err.message}`);
-    process.exit(1);
-  }
   }
 
   async read() {
@@ -974,49 +941,52 @@ if (requestedVersion) {
   }
 
   update() {
-  const dev = this.args.includes("--dev");
-  const branch = dev ? "dev" : "main";
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const stampFile = path.join(root, ".commit");
-
-  let latest;
-  try {
-    latest = execSync(
-      `curl -fsSL -H "Accept: application/vnd.github.sha" https://api.github.com/repos/Jishith-dev/Zen/commits/${branch}`,
-      { encoding: "utf8" },
-    ).trim();
-  } catch {
-    console.error("error: Could not check latest version.");
-    process.exit(1);
-  }
-
-  const stamp = `${branch}:${latest}`;
-  const installed = fs.existsSync(stampFile)
-    ? fs.readFileSync(stampFile, "utf8").trim()
-    : "";
-
-  if (installed === stamp) {
-    console.log(`Zen is already up to date${dev ? " (dev)" : ""}.`);
-    return;
-  }
-
-  try {
-    console.log(`Updating Zen${dev ? " (dev)" : ""}...`);
-
-    const installArgs = dev ? "--branch dev -y" : "-y";
-    execSync(
-      `curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/${branch}/install.sh | bash -s -- ${installArgs}`,
-      { stdio: "inherit", shell: true },
+    const dev = this.args.includes("--dev");
+    const branch = dev ? "dev" : "main";
+    const root = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
     );
+    const stampFile = path.join(root, ".commit");
 
-    fs.writeFileSync(stampFile, stamp);
-    console.log("Zen updated successfully.");
-  } catch {
-    console.error("error: Update failed.");
-    process.exit(1);
+    let latest;
+    try {
+      latest = execSync(
+        `curl -fsSL -H "Accept: application/vnd.github.sha" https://api.github.com/repos/Jishith-dev/Zen/commits/${branch}`,
+        { encoding: "utf8" },
+      ).trim();
+    } catch {
+      console.error("error: Could not check latest version.");
+      process.exit(1);
+    }
+
+    const stamp = `${branch}:${latest}`;
+    const installed = fs.existsSync(stampFile)
+      ? fs.readFileSync(stampFile, "utf8").trim()
+      : "";
+
+    if (installed === stamp) {
+      console.log(`Zen is already up to date${dev ? " (dev)" : ""}.`);
+      return;
+    }
+
+    try {
+      console.log(`Updating Zen${dev ? " (dev)" : ""}...`);
+
+      const installArgs = dev ? "--branch dev -y" : "-y";
+      execSync(
+        `curl -fsSL https://raw.githubusercontent.com/Jishith-dev/Zen/${branch}/install.sh | bash -s -- ${installArgs}`,
+        { stdio: "inherit", shell: true },
+      );
+
+      fs.writeFileSync(stampFile, stamp);
+      console.log("Zen updated successfully.");
+    } catch {
+      console.error("error: Update failed.");
+      process.exit(1);
+    }
   }
-  }
-  
+
   async deps() {
     try {
       const projectDir = process.cwd();
@@ -1113,7 +1083,8 @@ if (requestedVersion) {
             continue;
           }
 
-          const packageDir = path.join(os.homedir(),
+          const packageDir = path.join(
+            os.homedir(),
             ".zen_packages",
             importPath,
           );

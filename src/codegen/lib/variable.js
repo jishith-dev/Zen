@@ -252,7 +252,7 @@ export class Variable {
     }
 
     if (isArrayReassignment) {
-      const { b } = this.IRB.getArrayChain(expression);
+      const { b, indices } = this.IRB.getArrayChain(expression);
 
       if (b.type === "MEMBER_ACCESS") {
         return this.handleMemberArrayReassign(expression);
@@ -297,6 +297,21 @@ export class Variable {
             node,
           );
         }
+
+        if (!varInfo.fromParam) {
+          const expected =
+            this.IRB.getListDepth(varInfo.generic) - indices.length;
+          const actual = valExpr.isList
+            ? this.IRB.getListDepth(valExpr.generic)
+            : 0;
+          if (expected !== actual) {
+            this.IRB.emitError(
+              "TypeError",
+              `List '${base.name}' element expects depth ${expected} but got depth ${actual}`,
+              node,
+            );
+          }
+        }
       }
 
       if (varInfo.isArray) {
@@ -326,9 +341,12 @@ export class Variable {
           );
         }
       } else {
-        this.IRB.emit(
-          `store ${valExpr.llvmType} ${valExpr.ptr}, ptr ${expr.raw}`,
-        );
+        let v = valExpr.ptr;
+        if (valExpr.isList && valExpr.needsLoad && !valExpr.fromParam) {
+          v = this.IRB.newTemp();
+          this.IRB.emit(`${v} = load ptr, ptr ${valExpr.ptr}`);
+        }
+        this.IRB.emit(`store ${valExpr.llvmType} ${v}, ptr ${expr.raw}`);
       }
       return;
     }
@@ -441,6 +459,14 @@ export class Variable {
 
     this.IRB.bindLineColumn(node);
 
+    if (orgData.isList && orgData.fromParam) {
+      this.IRB.emitError(
+        "SemanticError",
+        `Cannot reassign list parameter '${name}'`,
+        node,
+      );
+    }
+
     if (isListLiteral) {
       const wrapped = orgData.generic;
 
@@ -475,47 +501,47 @@ export class Variable {
 
     const expr = this.expr.handleExpression(expression.value);
 
-if (orgData.type !== expr.type) {
-  this.IRB.emitError(
-    "TypeError",
-    `Cannot assign '${expr.type}' to variable '${name}' of type '${orgType}'`,
-    node,
-  );
-}
+    if (orgData.type !== expr.type) {
+      this.IRB.emitError(
+        "TypeError",
+        `Cannot assign '${expr.type}' to variable '${name}' of type '${orgType}'`,
+        node,
+      );
+    }
 
-if (orgData.isList) {
-  if (!expr.isList) {
-    this.IRB.emitError(
-      "TypeError",
-      `Cannot assign '${expr.type}' to variable '${name}' of type 'List'`,
-      node,
-    );
-  }
+    if (orgData.isList) {
+      if (!expr.isList) {
+        this.IRB.emitError(
+          "TypeError",
+          `Cannot assign '${expr.type}' to variable '${name}' of type 'List'`,
+          node,
+        );
+      }
 
-  if (!expr.generic) {
-    this.IRB.emitError(
-      "InternalError",
-      `list expression has no generic (cannot check depth for '${name}')`,
-      node,
-    );
-  }
+      if (!expr.generic) {
+        this.IRB.emitError(
+          "InternalError",
+          `list expression has no generic (cannot check depth for '${name}')`,
+          node,
+        );
+      }
 
-  const td = this.IRB.getListDepth(orgData.generic);
-  const ed = this.IRB.getListDepth(expr.generic);
-  if (td !== ed) {
-    this.IRB.emitError(
-      "TypeError",
-      `List ${name} expected depth ${td} but got depth ${ed}`,
-      node,
-    );
-  }
-} else if (expr.isList) {
-  this.IRB.emitError(
-    "TypeError",
-    `Cannot assign 'List' to variable '${name}' of type '${orgType}'`,
-    node,
-  );
-}
+      const td = this.IRB.getListDepth(orgData.generic);
+      const ed = this.IRB.getListDepth(expr.generic);
+      if (td !== ed) {
+        this.IRB.emitError(
+          "TypeError",
+          `List ${name} expected depth ${td} but got depth ${ed}`,
+          node,
+        );
+      }
+    } else if (expr.isList) {
+      this.IRB.emitError(
+        "TypeError",
+        `Cannot assign 'List' to variable '${name}' of type '${orgType}'`,
+        node,
+      );
+    }
 
     this.IRB.emitExpr(expr);
 
@@ -607,17 +633,25 @@ if (orgData.isList) {
       }
 
       if (!isVarDecl && actualIsList) {
-  const target = this.IRB.getVar(name, node);
-  if (target.isList) {
-    const td = this.IRB.getListDepth(target.generic);
-    const ed = this.IRB.getListDepth(valExpr.generic);
-    if (td !== ed) {
-      this.IRB.emitError("TypeError", `List ${name} expected depth ${td} but got depth ${ed}`, node);
-    }
-    if (target.type !== valExpr.type) {
-      this.IRB.emitError("TypeError", `List ${name} expected ${target.type} but got ${valExpr.type}`, node);
-    }
-  }
+        const target = this.IRB.getVar(name, node);
+        if (target.isList) {
+          const td = this.IRB.getListDepth(target.generic);
+          const ed = this.IRB.getListDepth(valExpr.generic);
+          if (td !== ed) {
+            this.IRB.emitError(
+              "TypeError",
+              `List ${name} expected depth ${td} but got depth ${ed}`,
+              node,
+            );
+          }
+          if (target.type !== valExpr.type) {
+            this.IRB.emitError(
+              "TypeError",
+              `List ${name} expected ${target.type} but got ${valExpr.type}`,
+              node,
+            );
+          }
+        }
       }
 
       this.IRB.emitExpr(valExpr);
@@ -714,17 +748,25 @@ if (orgData.isList) {
     }
 
     if (!isVarDecl && val.isList) {
-  const target = this.IRB.getVar(name, node);
-  if (target.isList) {
-    const td = this.IRB.getListDepth(target.generic);
-    const ed = this.IRB.getListDepth(val.generic);
-    if (td !== ed) {
-      this.IRB.emitError("TypeError", `List ${name} expected depth ${td} but got depth ${ed}`, node);
-    }
-    if (target.type !== val.type) {
-      this.IRB.emitError("TypeError", `List ${name} expected ${target.type} but got ${val.type}`, node);
-    }
-  }
+      const target = this.IRB.getVar(name, node);
+      if (target.isList) {
+        const td = this.IRB.getListDepth(target.generic);
+        const ed = this.IRB.getListDepth(val.generic);
+        if (td !== ed) {
+          this.IRB.emitError(
+            "TypeError",
+            `List ${name} expected depth ${td} but got depth ${ed}`,
+            node,
+          );
+        }
+        if (target.type !== val.type) {
+          this.IRB.emitError(
+            "TypeError",
+            `List ${name} expected ${target.type} but got ${val.type}`,
+            node,
+          );
+        }
+      }
     }
 
     let ptr;
@@ -867,6 +909,11 @@ if (orgData.isList) {
     const ptr = globalScope ? this.IRB.newGlobalTemp() : this.IRB.newTemp();
 
     this.IRB.bindLineColumn(node);
+
+    if (this.IRB.typeDepth(value) > 0) {
+      this.IRB.checkType(dataType, value, { node, what: `variable '${name}'` });
+    }
+
     const expr = this.expr.handleExpression(value);
 
     if (globalScope) {

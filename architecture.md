@@ -2,7 +2,7 @@
 
 Zen is a statically-typed, ahead-of-time compiled programming language. The compiler is written in Node.js and emits LLVM IR. The runtime is written in C and linked into every compiled program.
 
-**Current stable version:** 3.0.0
+**Current stable version:** 3.1.0
 **Supported platforms:** Linux and macOS. Windows support is in progress.
 
 ## About this document
