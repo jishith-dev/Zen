@@ -50,18 +50,14 @@ export class ZenSys {
 
       return {
         ptr: tmp,
-        type: "string", // element type
+        type: "string",
         llvmType: "ptr",
         local: [],
         global: [],
         isList: true,
-        generic: {
-          generic: {
-            type: "string",
-            llvmType: "ptr",
-            isList: false,
-          },
-        },
+        internalType: "List",
+        retGeneric: "string",
+        generic: { type: "List", generic: { type: "string" } },
         postOrPrefix: false,
       };
     }

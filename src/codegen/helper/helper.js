@@ -107,7 +107,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = true;
+    this.diagnosticMode = false;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;

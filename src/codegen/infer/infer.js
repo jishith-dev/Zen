@@ -523,7 +523,14 @@ export class InferType {
       }
     }
 
-    let currentType = this.infer(base, context);
+        if (base.type === "THIS" && !this.IRB.currentStruct) {
+      this.IRB.emitError("ReferenceError", "'this' used outside a struct method", node);
+    }
+
+    let currentType =
+      base.type === "THIS"
+        ? this.IRB.currentStruct?.name ?? this.IRB.currentStruct
+        : this.infer(base, context);
     let currentGeneric = null;
 
     for (const fieldName of fields) {
@@ -818,7 +825,7 @@ export class InferType {
             `too many indexes for list '${root.name}' (cannot index '${base}')`,
             node,
           );
-        return this.infer(node); // strings / fixed arrays: old behavior
+        return this.infer(node); 
       }
 
       case "CALL": {
