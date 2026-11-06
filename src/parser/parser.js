@@ -198,7 +198,13 @@ export class Parser {
       return this.node(this.parseExport());
     }
 
-    if (this.match("BLOCK_END")) return null;
+    if (this.match("BLOCK_END")) {
+  this.IRB.emitError(
+    "SyntaxError",
+    "Unexpected closing '}'",
+    this.lineAndColumn(),
+  );
+    }
 
     if (this.matchKeyword("return")) {
       this.advance();

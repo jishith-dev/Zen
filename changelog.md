@@ -752,3 +752,17 @@ before zen saw them. Use `dir` and `dir -r` instead.
 - Fixed generic handling and type validation in Map list operations
 - Fixed invalid LLVM generation when indexing beyond the declared list depth
 - Various compiler, parser, runtime, CLI, and standard library bug fixes
+
+# v3.1.1 — Bug Fixes & Ownership Clarifications
+
+## Bug Fixes
+
+- Fixed memory leaks when assigning new values to string and List struct fields
+- Fixed incorrect deallocation function selection for `List<string>`
+- Fixed `free()` handling for struct fields and improved ownership validation
+- Fixed potential undefined behavior in List element deallocation
+
+## Documentation
+
+- Clarified List memory management and element ownership
+- Clarified manual memory management rules, including restrictions on freeing indexed expressions and returned values

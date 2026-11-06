@@ -4,9 +4,9 @@
 
 **Statically typed · AOT compiled · LLVM backend**
 <br>
-**Version 3.1.0 · Stable · October 2026**
+**Version 3.1.1 · Stable · November 2026**
 
-![Version](https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.1.1-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)
 ![Released](https://img.shields.io/badge/released-October%202026-orange?style=for-the-badge)
 ![LLVM](https://img.shields.io/badge/LLVM-20%2B-purple?style=for-the-badge)
@@ -157,23 +157,18 @@ The language is designed from the compiler's perspective first. Ease of implemen
 
 ## Version
 
-Current Version: v3.1.0
+Current Version: v3.1.1
 
 ---
 
-### v3.1.0
+### v3.1.1
 
-- Added automatic initialization of `Map` fields in structs when no initializer is provided
-- Added labeled function arguments using `label: value` syntax
-- Made `path.join()` accept two or more path components
-- Added variadic `print()` for printing multiple values separated by spaces, with a newline at the end
-- Added `Map.type(key)` to return the stored value's canonical type, including nested List types
-- Restricted explicit type arguments to generic-capable calls, such as `getList()`
-- Improved nested List type inference and validation in function returns and Map operations
-- Improved List depth and element-type checks during indexing
-- Added runtime bounds checking for string indexing
-- Improved compiler diagnostics, type errors, and typo suggestions
-- Fixed compiler, runtime, and CLI bugs
+- Fixed memory leaks when assigning new values to string and List struct fields
+- Fixed incorrect deallocation function selection for `List<string>`
+- Fixed `free()` handling for struct fields and improved ownership validation
+- Fixed potential undefined behavior in List element deallocation
+- Clarified List memory management, element ownership, and manual memory management rules
+- Clarified restrictions on freeing indexed expressions and returned values
 
 ---
 
@@ -694,7 +689,7 @@ Using an object after it has been freed is caught at compile time. If the compil
 
 Reference-semantic types follow **ownership semantics**.
 
-The object that creates or owns a runtime resource is responsible for releasing it by calling `free()`. Child objects, borrowed references, or values obtained from another object must **not** be freed directly.
+The object that owns a runtime resource is responsible for releasing it by calling `free()`. Borrowed references or values obtained from another object must **not** be freed directly.
 
 ```zen
 Map parent
@@ -706,11 +701,51 @@ child.free()    # Illegal
 
 Whenever possible, the compiler diagnoses ownership violations at compile time. If a violation cannot be determined statically, the runtime detects the error and terminates execution.
 
-After an object has been freed, it immediately becomes invalid. Any attempt to access it, modify it, or free it again is illegal.
+After an object has been freed, it becomes invalid. Any attempt to access it, modify it, or free it again is illegal.
 
-In short, **the parent owns the lifetime of all of its children**. Only the owner of a runtime resource is permitted to destroy it.
+#### List Ownership
 
----
+In the current version, Lists own their backing storage but **do not take ownership of their elements**.
+
+Adding a value to a List does not transfer ownership of that value to the List.
+
+```zen
+string a = "Hello"
+List<string> b = [a]
+
+a.free()   # Frees the string
+b.free()   # Frees only the List's backing storage
+```
+
+Calling `List.free()` releases only the List's own allocations. It does **not** recursively free strings, Maps, nested Lists, or other heap-allocated objects referenced by its elements.
+
+Elements must be managed independently according to their ownership.
+
+#### Freeing in Loops
+
+Calling `free()` inside loops is allowed when the variable being freed is an owning variable.
+
+```zen
+loop (int i = 0, i < 10, i++) {
+    Map m
+    m.setString("name", "Zen")
+    m.free()
+}
+```
+
+The validity of `free()` depends on the ownership of the variable, not simply on whether it appears inside a loop.
+
+#### Memory Management Recommendations
+
+- Prefer calling `free()` near the end of the variable's owning scope.
+- Avoid freeing borrowed references or values that may have other aliases.
+- Do not call `free()` multiple times on the same allocation.
+- Be particularly careful when working with reference-semantic values.
+- Test memory-management code thoroughly, including repeated executions and different control-flow paths.
+
+**Important:** Zen's current ownership model has potential edge cases that can lead to undefined behaviour, particularly when multiple references point to the same allocation. Use manual memory management with caution. Thoroughly test ownership-sensitive code.
+
+> Future versions of Zen may introduce safer ownership mechanisms and explicit ownership-transfer semantics.
 
 ### String Semantics
 
@@ -741,7 +776,7 @@ This provides a consistent and explicit ownership model across Zen's type system
 
 ## Scope of This Specification
 
-Version 3.1.0 defines the **stable core** of the language:
+Version 3.1.1 defines the **stable core** of the language:
 
 - Lexical structure and token definitions
 - Grammar and core syntax rules
@@ -833,7 +868,7 @@ Keywords are case-sensitive. `fn` is reserved; `Fn` and `FN` are valid identifie
 
 `async` and `await` are reserved and the parser recognizes their syntax, but code generation for asynchronous concurrency is not yet implemented. Concurrency is currently provided by `thread` functions.
 
-The `in` keyword was removed in v3.1.0 and is no longer reserved. `private` became reserved in v3.1.0, so any existing identifier named `private` must be renamed.
+The `in` keyword was removed in v3.1.1 and is no longer reserved. `private` became reserved in v3.1.1, so any existing identifier named `private` must be renamed.
 
 ---
 
@@ -1422,7 +1457,7 @@ const_decl
 
 ```zen
 const int MAX = 100
-const string VERSION = "3.1.0"
+const string VERSION = "3.1.1"
 ```
 
 ### 4.5 Assignment & Reassignment
@@ -3565,7 +3600,7 @@ loop (int i = 0, i < 5, i++) {
 
 The loop variable declared in the initializer is scoped to the loop block.
 
-> **Breaking change in v3.1.0:** the two-clause form `loop (cond, update)` was removed. Classic loops must always use `loop (init, cond, update)`.
+> **Breaking change in v3.1.1:** the two-clause form `loop (cond, update)` was removed. Classic loops must always use `loop (init, cond, update)`.
 
 ---
 
@@ -4238,7 +4273,7 @@ long e = Long(false)
 
 `intToAscii` and `asciiToInt` convert between ASCII codes and characters. They are not general type conversions. For general conversion, use `String()` and `Int()`.
 
-> **Breaking change in v3.1.0:** `toString()` was renamed to `intToAscii()`, and `toInt()` was renamed to `asciiToInt()`.
+> **Breaking change in v3.1.1:** `toString()` was renamed to `intToAscii()`, and `toInt()` was renamed to `asciiToInt()`.
 
 ---
 
@@ -4944,7 +4979,7 @@ fs.writeFileBytes(path, data)
 
 Returns `int`: `0` on success, non-zero on failure.
 
-> **Breaking change in v3.1.0:** `fs.writeFileBytes()` now returns `int` (a success code) instead of `void`.
+> **Breaking change in v3.1.1:** `fs.writeFileBytes()` now returns `int` (a success code) instead of `void`.
 
 ```zen
 List<byte> data = fs.readFileBytes("image.png")
@@ -7300,7 +7335,7 @@ The ZEN style guide recommends:
 
 | Item | Value |
 |---|---|
-| Language Version | 3.1.0 |
+| Language Version | 3.1.1 |
 | Released | October 2026 |
 | Backend | LLVM |
 | License | MIT |
@@ -7309,9 +7344,9 @@ The ZEN style guide recommends:
 
 ## Disclaimer
 
-This documentation targets **ZEN v3.1.0**.
+This documentation targets **ZEN v3.1.1**.
 
-v3.1.0 included several breaking changes from v2 (see [changelog.md](changelog.md)). Starting with **v3**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
+v3.1.1 included several breaking changes from v2 (see [changelog.md](changelog.md)). Starting with **v3**, the language syntax is considered **frozen** for backward compatibility. Future releases will focus on adding new features and APIs while preserving existing syntax whenever possible.
 
 As the documentation continues to evolve alongside the language, you may occasionally encounter:
 

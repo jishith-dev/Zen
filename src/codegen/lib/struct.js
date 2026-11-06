@@ -319,6 +319,11 @@ export class Struct {
         ownerId,
       }),
     );
+
+    this.IRB.inheritFreedFields(
+      this.IRB.getVar(varName),
+      value && value.type !== "STRUCT_LITERAL" ? value : null,
+    );
   }
 
   assignStruct(node) {
@@ -451,6 +456,13 @@ export class Struct {
 
     this.IRB.emitExpr(value);
 
+    if (typeof base === "string" && variable?.freedFields) {
+  const key = [...fields, lastField].join(".");
+  for (const k of [...variable.freedFields]) {
+    if (k === key || k.startsWith(key + ".")) variable.freedFields.delete(k);
+  }
+    }
+
     const rhs = value;
 
     const finalPtr = this.IRB.newTemp();
@@ -461,11 +473,12 @@ export class Struct {
 
     // STRUCT COPY
 
-    const isStructCopy =
-      rhs.isVarRef &&
-      rhs.isStruct &&
-      this.IRB.getStruct(rhs.type) &&
-      rhs.type === structInfo.layout[fieldIndex].type;
+    const rhsStruct = rhs.isStruct ? this.IRB.getStruct(rhs.type) : null;
+
+const isStructCopy =
+  rhsStruct &&
+  !(rhsStruct.isBuiltin && rhsStruct.isOpaque) &&
+  rhs.type === structInfo.layout[fieldIndex].type;
 
     if (isStructCopy) {
       const dstPtr = finalPtr;
@@ -498,6 +511,29 @@ export class Struct {
         ptrValue = this.IRB.newTemp();
         this.IRB.emit(`${ptrValue} = load ptr, ptr ${value.ptr}`);
       }
+
+      const fieldType = structInfo.layout[fieldIndex].type;
+const freeFn = isList ? "_zen_list_free" : fieldType === "string" ? "_zen_string_free" : null;
+const freeKey = isList ? "zen_list_free" : "_zen_string_free";
+
+if (freeFn) {
+  this.IRB.declareOneTime(freeKey, `declare void @${freeFn}(ptr)`);
+
+  const oldVal = this.IRB.newTemp();
+  this.IRB.emit(`${oldVal} = load ptr, ptr ${finalPtr}`);
+
+  const same = this.IRB.newTemp();
+  this.IRB.emit(`${same} = icmp eq ptr ${oldVal}, ${ptrValue}`);
+
+  const freeLabel = this.IRB.newLabel("dofree");
+  const endLabel = this.IRB.newLabel("skipfree");
+
+  this.IRB.emit(`br i1 ${same}, label %${endLabel}, label %${freeLabel}`);
+  this.IRB.emit(`${freeLabel}:`);
+  this.IRB.emit(`call void @${freeFn}(ptr ${oldVal})`);
+  this.IRB.emit(`br label %${endLabel}`);
+  this.IRB.emit(`${endLabel}:`);
+}
 
       this.IRB.emit(`store ptr ${ptrValue}, ptr ${finalPtr}`);
     } else {

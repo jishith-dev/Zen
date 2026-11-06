@@ -35,9 +35,28 @@ void _zen_map_free_internal(void *map);
 void _zen_list_free(ZenList *list);
 
 static void _zen_list_free_leaf(ZenList *list, int i) {
+  /*
   if (list->deepestType == ZEN_LIST_STRING) {
     free(*(char **)((char *)list->data + i * list->element_size));
   }
+  */
+  // DISABLED (v3.1.1): strings are reference-semantic, so a List<string>
+  // does not own its elements. Freeing here double-frees `a` in
+  //   string a = "x"; List<string> b = [a]; a.free(); b.free()
+  // Future: transfer ownership when a string is moved into a list.
+  (void)list;
+  (void)i;
+}
+
+static void _zen_list_free_child(ZenList *child) {
+  /*
+  if (child)
+    _zen_list_free(child);
+  */
+  // DISABLED: nested lists are reference-semantic, so an outer List<List<T>>
+  // does not own its children. Freeing here double-frees `a` in
+  //   List<int> a = [1]; List<List<int>> b = [a]; a.free(); b.free()
+  (void)child;
 }
 
 ZenList *_zen_list_new(size_t element_size) {
@@ -157,7 +176,7 @@ void _zen_list_set(ZenList *list, int index, void *value) {
   if (list->depth > 1) {
     ZenList *old = ((ZenList **)list->data)[index];
     if (old)
-      _zen_list_free(old);
+      _zen_list_free_child(old);
   } else {
     _zen_list_free_leaf(list, index);
   }
@@ -195,7 +214,7 @@ void _zen_list_remove(ZenList *list, int index) {
   if (list->depth > 1) {
     ZenList *old = ((ZenList **)list->data)[index];
     if (old)
-      _zen_list_free(old);
+      _zen_list_free_child(old);
   } else {
     _zen_list_free_leaf(list, index);
   }
@@ -218,7 +237,7 @@ void _zen_list_free(ZenList *list) {
       for (int i = 0; i < list->size; i++) {
         ZenList *child = ((ZenList **)list->data)[i];
         if (child)
-          _zen_list_free(child);
+          _zen_list_free_child(child);
       }
     } else {
       for (int i = 0; i < list->size; i++) {
@@ -241,7 +260,7 @@ void _zen_list_clear(ZenList *list) {
       for (int i = 0; i < list->size; i++) {
         ZenList *child = ((ZenList **)list->data)[i];
         if (child)
-          _zen_list_free(child);
+          _zen_list_free_child(child);
       }
     } else {
       for (int i = 0; i < list->size; i++) {
@@ -1080,7 +1099,7 @@ static void _zen_list_remove_at_noerror(ZenList *list, int index) {
     ZenList *old = ((ZenList **)list->data)[index];
 
     if (old)
-      _zen_list_free(old);
+      _zen_list_free_child(old);
   } else {
     _zen_list_free_leaf(list, index);
   }

@@ -441,6 +441,8 @@ export class Variable {
         `call void @llvm.memcpy.p0.p0.i64(ptr ${orgData.ptr}, ptr ${srcPtr}, i64 ${struct.byteSize}, i1 false)`,
       );
 
+      this.IRB.inheritFreedFields(orgData, expression.value);
+
       return;
     }
 

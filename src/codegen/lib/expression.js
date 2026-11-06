@@ -509,6 +509,23 @@ export class Expression {
     if (node.type === "MEMBER_ACCESS") {
       const { base, fields } = this.IRB.resolveMemberChain(node);
 
+      if (base.type === "variable" && this.IRB.hasVar(base.name, node)) {
+  const sym = this.IRB.getVar(base.name, node);
+  if (sym?.freedFields?.size) {
+    let key = "";
+    for (const f of fields) {
+      key = key ? `${key}.${f}` : f;
+      if (sym.freedFields.has(key)) {
+        this.IRB.emitError(
+          "MemoryError",
+          `use-after-free: '${base.name}.${key}' is no longer valid`,
+          node,
+        );
+      }
+    }
+  }
+      }
+
       // namespace resolve
 
       if (
@@ -589,7 +606,29 @@ export class Expression {
 
       this.IRB.emitExpr(object);
 
-      if (object.type === "string" && node.field === "free") {
+      if (
+  node.field === "free" &&
+  Array.isArray(node.args) &&
+  fields.length > 1 &&
+  object.isStruct
+) {
+  const recv = this.handleExpression(node.object); // a.name, no args, so it resolves as a normal field load
+  if (recv.type === "string" && !recv.isList) {
+    this.IRB.emitExpr(recv);
+
+    if (node.args.length !== 0) {
+      this.IRB.emitError(
+        "ArgumentError",
+        "string.free() takes no arguments",
+        node,
+      );
+    }
+
+    return this.IRB.handleStringFree(recv, node);
+  }
+      }
+
+      if (object.type === "string" && !object.isList && node.field === "free") {
         if (!Array.isArray(node.args)) {
           this.IRB.emitError(
             "TypeError",
@@ -656,6 +695,7 @@ export class Expression {
 
             const fakeObject = {
               ptr: t,
+              slotPtr: basePtr,
               type: fieldInfo?.type,
               llvmType: fieldInfo?.llvmType,
               local: [],

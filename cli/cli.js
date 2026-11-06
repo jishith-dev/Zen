@@ -87,7 +87,7 @@ const TEST_COMMANDS = new Set(["test"]);
 
 function help() {
   console.log(`
-Zen Programming Language v3.1.0
+Zen Programming Language v3.1.1
 
 Usage:
   zen <command> [arguments] [options]
@@ -217,7 +217,7 @@ export class CLI {
         process.exit(0);
       }
 
-      console.log("Zen v3.1.0 (latest)");
+      console.log("Zen v3.1.1 (latest)");
       process.exit(0);
     }
 

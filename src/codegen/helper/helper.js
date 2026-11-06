@@ -107,7 +107,7 @@ export class IRBuilder {
     this.loopBlockTerminated = false;
     this.loopIterationSkipped = false;
 
-    this.diagnosticMode = false;
+    this.diagnosticMode = true;
     this.DEBUG_IR = false; // debug mode
     this.exported = false; // exported module flag
     this.haveExport = false;
@@ -3420,6 +3420,37 @@ entry:
           "declare void @_zen_list_free(ptr)",
         );
 
+        if (node.object.type === "MEMBER_ACCESS") {
+  const { base, fields } = this.resolveMemberChain(node.object);
+
+  const isThis = base.type === "THIS";
+
+if (!object.slotPtr || (base.type !== "variable" && !isThis)) {
+  this.emitError(
+    "MemoryError",
+    "free() can only be called on an owning variable or struct field",
+    node,
+  );
+}
+
+this.emit(`call void @_zen_list_free(ptr ${listPtr})`);
+this.emit(`store ptr null, ptr ${object.slotPtr}`);
+
+if (!isThis) {
+  const rootSym = this.getVar(base.name);
+  (rootSym.freedFields ??= new Set()).add(fields.join("."));
+}
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+    isFreed: true,
+  };
+        }
+
         if (!fromMap) {
           this.emit(`call void @_zen_list_free(ptr ${listPtr})`);
           this.emit(`store ptr null, ptr ${object.ptr}`);
@@ -4463,6 +4494,7 @@ entry:
 
     const local = [];
     const global = [];
+    const tempStrArgs = [];
 
     for (let i = 0; i < args.length; i++) {
       if (args[i].type === "STRUCT_LITERAL") {
@@ -4519,6 +4551,14 @@ entry:
       } else {
         llvmArgs.push(`${expr.llvmType} ${t}`);
         llvmArgTypes.push(expr.llvmType);
+      }
+
+      if (
+        expr.type === "string" &&
+        !expr.isList &&
+        (expr.kind === "literal" || expr.isTemp)
+      ) {
+        tempStrArgs.push(t);
       }
     }
 
@@ -4636,11 +4676,24 @@ entry:
       })`,
     );
 
+    const freeTempArgs = () => {
+  if (method.retainsArgs || !tempStrArgs.length) return;
+  this.declareOneTime(
+    "_zen_string_free",
+    "declare void @_zen_string_free(ptr)",
+  );
+  for (const p of tempStrArgs) {
+    local.push(`call void @_zen_string_free(ptr ${p})`);
+  }
+};
+
     if (method.storeResult) {
       const temp = this.newTemp();
 
       local.push(`${temp} = call ptr @${fnName}(${callArgs.join(", ")})`);
       local.push(`store ptr ${temp}, ptr ${obj.ptr}`);
+
+      freeTempArgs()
 
       return {
         ptr: null,
@@ -4656,6 +4709,8 @@ entry:
 
     if (method.returnType === "void") {
       local.push(`call void @${fnName}(${callArgs.join(", ")})`);
+
+      freeTempArgs()
 
       return {
         ptr: null,
@@ -4674,6 +4729,8 @@ entry:
     local.push(
       `${temp} = call ${llvmReturn} @${fnName}(${callArgs.join(", ")})`,
     );
+
+    freeTempArgs()
 
     if (structName === "Map" && methodName === "getList") {
       const normalizedGeneric = this.normalizeGeneric(node.generic);
@@ -5174,39 +5231,29 @@ entry:
   }
 
   handleStringFree(object, node) {
-    this.declareOneTime(
-      "_zen_string_free",
-      "declare void @_zen_string_free(ptr)",
-    );
+  this.declareOneTime(
+    "_zen_string_free",
+    "declare void @_zen_string_free(ptr)",
+  );
 
-    if (node.object.type !== "variable") {
+  // struct field: a.name.free()
+  if (node.object.type === "MEMBER_ACCESS") {
+    const { base, fields } = this.resolveMemberChain(node.object);
+
+    if (!object.addr || base.type !== "variable") {
       this.emitError(
         "MemoryError",
-        "free() can only be called on an owning variable",
+        "free() can only be called on an owning variable or struct field",
         node,
       );
     }
 
-    const sym = this.getVar(node.object.name);
+    this.emit(`call void @_zen_string_free(ptr ${object.ptr})`);
+    this.emit(`store ptr null, ptr ${object.addr}`);
 
-    let v = this.newTemp();
-
-    if (object.needsLoad) {
-      this.emit(`${v} = load ptr, ptr ${object.ptr}`);
-    } else {
-      v = object.ptr;
-    }
-
-    this.emit(`call void @_zen_string_free(ptr ${v})`);
-
-    if (sym.ownerId !== undefined) {
-      this.freedOwners.add(sym.ownerId);
-    }
-    sym.isFreed = true;
-
-    if (sym.fromParam && sym.pIndex !== undefined) {
-      this.functions.get(this.currentFunction.name).freedPindex.add(sym.pIndex);
-    }
+    
+    const rootSym = this.getVar(base.name);
+(rootSym.freedFields ??= new Set()).add(fields.join("."));
 
     return {
       ptr: null,
@@ -5216,6 +5263,45 @@ entry:
       global: [],
       isFreed: true,
     };
+  }
+
+  if (node.object.type !== "variable") {
+    this.emitError(
+      "MemoryError",
+      "free() can only be called on an owning variable",
+      node,
+    );
+  }
+
+  const sym = this.getVar(node.object.name);
+
+  let v = this.newTemp();
+
+  if (object.needsLoad) {
+    this.emit(`${v} = load ptr, ptr ${object.ptr}`);
+  } else {
+    v = object.ptr;
+  }
+
+  this.emit(`call void @_zen_string_free(ptr ${v})`);
+
+  if (sym.ownerId !== undefined) {
+    this.freedOwners.add(sym.ownerId);
+  }
+  sym.isFreed = true;
+
+  if (sym.fromParam && sym.pIndex !== undefined) {
+    this.functions.get(this.currentFunction.name).freedPindex.add(sym.pIndex);
+  }
+
+  return {
+    ptr: null,
+    type: "void",
+    llvmType: "void",
+    local: [],
+    global: [],
+    isFreed: true,
+  };
   }
 
   cleanupBuiltinStringTemps(args) {
@@ -5360,6 +5446,25 @@ entry:
     });
 
     return { ctx, trampolineName };
+  }
+
+  inheritFreedFields(dstSym, valueNode) {
+  const out = new Set();
+
+  if (valueNode?.type === "variable" && this.hasVar(valueNode.name)) {
+    for (const k of this.getVar(valueNode.name).freedFields ?? []) out.add(k);
+  } else if (valueNode?.type === "MEMBER_ACCESS") {
+    // `a = c.inner`: copy keys under that path, with the prefix stripped
+    const { base, fields } = this.resolveMemberChain(valueNode);
+    if (base.type === "variable" && this.hasVar(base.name)) {
+      const prefix = fields.join(".") + ".";
+      for (const k of this.getVar(base.name).freedFields ?? []) {
+        if (k.startsWith(prefix)) out.add(k.slice(prefix.length));
+      }
+    }
+  }
+
+  dstSym.freedFields = out;
   }
 
   applyFieldInitializers(ptr, structName, structInfo) {
